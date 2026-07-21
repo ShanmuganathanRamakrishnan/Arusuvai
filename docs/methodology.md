@@ -94,10 +94,16 @@ With both terms, the same dish is:
 
 ```
 composition  223.65 kcal x 0.25             = 55.9125 kcal
-process      223.65 kcal x 0.040            =  8.9460 kcal   (see below)
-half-width                                   = 64.8585 kcal
-                            = 29% of the point estimate
+process      derived from the oil lines     =  8.8400 kcal   (see below)
+half-width                                   = 64.7525 kcal
+                            = 28.95% of the point estimate
 ```
+
+(The process term is 8.84, not the 8.946 an earlier draft of this section
+showed. That draft used the hand-rounded 0.040 that used to sit in the recipe
+YAML; the derived figure is 0.03952604. See `docs/audit_log.md` finding 9 — the
+doc kept the stale number after the code stopped using it, which is the same
+staleness the derivation was built to eliminate.)
 
 ### Where the declared process bands come from
 
@@ -125,8 +131,12 @@ has been built on the assumption that some plans clear the threshold.
 
 **Every registered `Evidence` in `citations.py` is `verified=False`.** Nobody has
 opened IFCT 2017, FAO FNP 77, or the NIN household-measures manual during this
-build. Consequently every ingredient row carries the 0.25 unverified-composition
-band, and every recipe's protein uncertainty is 0.25 against a
+build.
+
+Separately — `Evidence.verified` and `Ingredient.verified` are distinct flags —
+22 of the 23 ingredient rows are unverified and carry the 0.25 band. The
+exception is `water`, at 0.05, which cannot move any band because all nine of its
+macros are zero. So every recipe's protein uncertainty is 0.25 against an
 `eligibility.max_protein_uncertainty` ceiling of 0.15.
 
 Protein is target-critical for essentially every profile this product serves. So
@@ -166,10 +176,12 @@ remaining 15 rows together move less than 9% of either.
 
 Two things worth recording, because both contradict the obvious assumption:
 
-- **Wheat/atta, curd, coconut and paneer do not appear at all.** They are in the
-  fixture but no authored recipe uses them, so verifying them today buys
-  nothing. This is a property of having three recipes, and the ranking must be
-  recomputed once the library grows — it is not a stable list.
+- **Three fixture rows are used by no authored recipe at all:**
+  `wheat_atta_raw`, `curd_dahi`, `coconut_fresh`. Verifying them today buys
+  nothing. (There is no paneer row in the fixture; an earlier draft of this
+  section claimed there was — `docs/audit_log.md` finding 10.) This is a
+  property of having three recipes, and the ranking must be recomputed once the
+  library grows — it is not a stable list.
 - **The two oils are 17.1% of energy and 0% of protein.** They are worth
   verifying for the energy band and are irrelevant to the protein ceiling, which
   is the binding constraint. Oil composition is also the easiest of the eight to
@@ -202,11 +214,24 @@ diff:
 4. Prefer IFCT's own cooked-state entries; where absent, convert through a
    registered yield factor, never an inline multiplication.
 
-What that would buy, from `test_verification_alone_would_not_clear_the_ceiling_for_free`:
-verified rows carry a 0.05 composition band, which **is** below the 0.15 protein
-ceiling. So verifying the six protein-dominant rows is the specific action that
-changes `dev_mode` status — not a general improvement, a threshold crossing.
-Until then the status below stands unchanged.
+What that would buy: a verified row carries a 0.05 composition band, which **is**
+below the 0.15 protein ceiling. But the band is a *weighted mix*, so a recipe
+clears the ceiling once its protein-dominant ingredients are verified — it does
+not need all of them. Measured per recipe:
+
+| Recipe          | Verifying these clears 0.15                       |
+| --------------- | -------------------------------------------------- |
+| `rajma_chawal`  | `rajma_cooked` alone -> 0.1256                     |
+| `sambar_sadam`  | `rice_cooked` + `toor_dal_cooked`                  |
+| `masala_dosa`   | `urad_dal_raw` + `rice_milled_raw`                 |
+
+Five rows, not six — `potato_boiled` is not needed for the protein ceiling. (An
+earlier draft of this section said six and inferred it from an all-rows test;
+`docs/audit_log.md` finding 10.)
+
+So verification is a threshold crossing with a specific, small target set, not a
+general improvement. Until someone opens the source, the status below stands
+unchanged.
 
 ### `dev_mode` versus `validated`
 

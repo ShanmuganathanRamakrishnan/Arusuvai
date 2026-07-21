@@ -635,8 +635,12 @@ PROCESS_UNASSESSED = register_constant(
         note=(
             "Wide enough to be uncomfortable, on purpose: declaring a macro "
             "unassessed must never be the cheapest way to make a band look "
-            "good. It is deliberately worse than any measured process constant "
-            "currently in this registry."
+            "good. NOTE — it does not currently achieve that. It is equal to, "
+            "not worse than, oil_uptake.dosa_griddled (also 0.20), and the "
+            "loader applies it in place of the derived figure rather than "
+            "taking max(derived, this). A recipe whose derived band exceeds "
+            "0.20 can therefore narrow it by declaring the macro unassessed. "
+            "See docs/audit_log.md finding 5; the missing max() is open."
         ),
     )
 )

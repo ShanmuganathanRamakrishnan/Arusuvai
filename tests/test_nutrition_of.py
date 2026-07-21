@@ -193,7 +193,7 @@ class TestEligibilityConsequence:
                 "can ship as validated is stated there"
             )
 
-    def test_verification_alone_would_not_clear_the_ceiling_for_free(
+    def test_verifying_every_row_would_clear_the_protein_ceiling(
         self, library, ingredients
     ):
         # What verification actually buys, pinned: 0.05 composition band, which

@@ -410,15 +410,20 @@ the repo's git history is authoritative.**
 
 Restored 2026-07-21 from commit `116c765` after an external draft reintroduced
 the fictional rows. The counts below are *not* `116c765`'s — the repo moved
-since (110 -> 114 tests, and the understated-band caveat that row carried has
+since (110 -> 124 tests, and the understated-band caveat that row carried has
 since been fixed), so they were re-derived from a run in this session rather
 than copied.
+
+An earlier draft of this table said 114, having been written mid-session and not
+re-derived after further tests landed in the same commit. That is finding 7 in
+`docs/audit_log.md`, and it is the same failure the process rule above names:
+the transcript in the commit that wrote the line already refuted it.
 
 | Module                    | State                                                                                                                            |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | `core/schemas/`           | Partial — `common.py` (RawOrCooked, Region, MealSlot, DietPattern, MACRO_KEYS). `profile.py` does not exist; `clinical_flags` still to come. |
 | `core/nutrition/`         | Partial — `citations.py` only (Evidence with `phenomenon`, Constant registry, composition + eligibility constants, mechanism-review checklist, rejected-citation record). Energy, protein, macros and targets are not built. |
-| `core/foods/`             | Built — models, templates, ifct_loader, recipe_loader, retention, portions, nutrition_of. 114 tests pass (`python -m pytest tests/ -q` -> `114 passed in 0.14s`, at commit `7d9bc41`). Ingredient data is a hand-entered fixture set, not IFCT; see `data/raw/ifct/README.md`. Composition uncertainty is now modelled — bands are no longer understated — but **nothing can ship as validated**: see `docs/methodology.md`. |
+| `core/foods/`             | Built — models, templates, ifct_loader, recipe_loader, retention, portions, nutrition_of. 124 tests pass (`python -m pytest tests/ -q` -> `124 passed in 0.17s`, at commit `26e5ff4`). Ingredient data is a hand-entered fixture set, not IFCT (22 of 23 rows unverified; `water` is the exception); see `data/raw/ifct/README.md`. Composition uncertainty is modelled and process uncertainty is derived, not pasted — but **nothing can ship as validated**, and the eligibility ceiling is not yet wired to anything (`docs/audit_log.md` finding 1). See `docs/methodology.md`. |
 | `core/planner/`           | Not started — candidates, combination enumeration, feasibility pre-filter, solver, LLM ranking, validator with relaxation ladder |
 | `core/commerce/`          | Not started                                                                                                                      |
 | `api/`, `web/`            | Not started                                                                                                                      |

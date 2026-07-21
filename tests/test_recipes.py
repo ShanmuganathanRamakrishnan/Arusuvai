@@ -286,7 +286,7 @@ class TestRecipeLoaderRules:
             encoding="utf-8",
         )
         with pytest.raises(ValueError, match="no longer read"):
-            load_recipe_file(Path(bad), frozenset(ingredients))
+            load_recipe_file(Path(bad), ingredients)
 
     def test_a_line_may_not_name_an_unregistered_process(self, tmp_path, ingredients):
         from pathlib import Path
@@ -318,7 +318,7 @@ class TestRecipeLoaderRules:
             encoding="utf-8",
         )
         with pytest.raises(KeyError, match="no constant registered"):
-            load_recipe_file(Path(bad), frozenset(ingredients))
+            load_recipe_file(Path(bad), ingredients)
 
     def test_process_uncertainty_is_derived_from_the_constants_not_pasted(
         self, library
