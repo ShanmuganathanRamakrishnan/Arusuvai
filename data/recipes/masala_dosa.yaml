@@ -31,20 +31,18 @@ serving_unit:
     Overrides the generic 90 g dosa weight: this unit is one dosa plus its
     60 g potato filling. Three is a large breakfast and a real one.
 
-process_uncertainty:
-  energy_kcal: 0.040
-  fat_g: 0.143
-
-uncertainty_notes:
-  energy_kcal: >-
-    Two oil lines with different processes. Griddle oil: 3.5 g x 8.84 = 30.94
-    kcal at the +/-20% band on oil_uptake.dosa_griddled = 6.19 kcal. Tempering
-    oil: 3.0 g x 8.84 = 26.52 kcal at the +/-10% band on
-    oil_uptake.vegetable_tempering = 2.65 kcal. Together 8.84 kcal on a dish
-    total of 223.65 kcal = 0.040. Summed rather than root-sum-squared because
-    both errors come from the same cook and the same pan and do not cancel.
-  fat_g: >-
-    (0.20 x 3.5 g) + (0.10 x 3.0 g) = 1.0 g on the dish's 7.02 g fat = 0.143.
+# Energy and fat bands are DERIVED at load from the two oil lines below and
+# their constants' own uncertainty. They are deliberately not written here: a
+# figure hand-computed once goes stale the moment the constant changes, with
+# the suite still green. For reference, the derivation the loader performs is
+#   griddle oil 3.5 g x 8.84 kcal/g x 0.20 = 6.188 kcal
+#   temper  oil 3.0 g x 8.84 kcal/g x 0.10 = 2.652 kcal
+#   (6.188 + 2.652) / 223.65 kcal          = 0.0395
+#
+# Micronutrient retention through fermentation and griddling has not been
+# measured for this dish, so those macros are declared unassessed rather than
+# deriving to a computed 0.0 nobody has earned.
+process_uncertainty_unassessed: [fibre_g, iron_mg, calcium_mg, b12_ug]
 
 ingredients:
   # --- the dosa itself, 90 g finished ---

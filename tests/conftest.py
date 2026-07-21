@@ -24,4 +24,4 @@ def ingredients(load_report: LoadReport):
 
 @pytest.fixture(scope="session")
 def library(ingredients) -> RecipeLibrary:
-    return load_recipes(RECIPE_DIR, frozenset(ingredients), strict=True)
+    return load_recipes(RECIPE_DIR, ingredients, strict=True)

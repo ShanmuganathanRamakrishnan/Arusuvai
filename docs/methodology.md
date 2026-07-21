@@ -140,6 +140,74 @@ tempting fix, once the planner returns nothing, is to nudge 0.25 down or 0.15 up
 until a demo works. Either edit looks reasonable in isolation; both must be
 deliberate acts with a failing assertion attached.
 
+### Verification priority — by macro share, not by row count (2026-07-21)
+
+Verifying the fixture row by row is the wrong unit of work. `composition_uncertainty`
+is combined **weighted by each ingredient's share of the macro**, so a row that
+contributes 0.1% of the library's protein moves no band whatever its provenance.
+The ingredients worth a human's time are the ones that dominate the totals.
+
+Summed absolute contribution across all three authored recipes, one serving unit
+each (reproduce with the snippet in this section's commit):
+
+| Rank | Ingredient        | Energy share | Protein share |
+| ---- | ----------------- | ------------ | ------------- |
+| 1    | `rice_cooked`     | 39.3%        | 28.5%         |
+| 2    | `rajma_cooked`    | 14.5%        | 34.7%         |
+| 3    | `gingelly_oil`    |  9.7%        | 0             |
+| 4    | `rice_milled_raw` |  9.3%        |  6.4%         |
+| 5    | `sunflower_oil`   |  7.4%        | 0             |
+| 6    | `toor_dal_cooked` |  5.7%        | 11.4%         |
+| 7    | `potato_boiled`   |  4.0%        |  3.0%         |
+| 8    | `urad_dal_raw`    |  3.2%        |  7.8%         |
+
+Those eight are **93.0% of library energy and 91.9% of library protein**. The
+remaining 15 rows together move less than 9% of either.
+
+Two things worth recording, because both contradict the obvious assumption:
+
+- **Wheat/atta, curd, coconut and paneer do not appear at all.** They are in the
+  fixture but no authored recipe uses them, so verifying them today buys
+  nothing. This is a property of having three recipes, and the ranking must be
+  recomputed once the library grows — it is not a stable list.
+- **The two oils are 17.1% of energy and 0% of protein.** They are worth
+  verifying for the energy band and are irrelevant to the protein ceiling, which
+  is the binding constraint. Oil composition is also the easiest of the eight to
+  verify, and the least valuable.
+
+### Nothing has been verified. `dev_mode` status is unchanged. (2026-07-21)
+
+No `verified` flag was flipped, and none could be. The rule in `citations.py`
+and in CLAUDE.md's second invariant is that **only a human who has opened the
+source document may set `verified=True`**, and nobody has opened IFCT 2017.
+
+This matters more than it might read. An assistant's recollection of what IFCT
+says about cooked rice *is exactly the thing* `composition.unverified_secondary`
+= 0.25 was registered to describe: a plausible value from a secondary source,
+transcribed from memory. Flipping a flag on that basis would not be verification
+that happened to be automated — it would be the project's central failure mode,
+committed by the mechanism built to name it, and it would silently convert every
+downstream band from 0.25 to 0.05 on no evidence at all.
+
+So the correct output of this exercise is a **work order for a human**, not a
+diff:
+
+1. Obtain IFCT 2017 (NIN Hyderabad).
+2. Look up the eight rows in the table above, in that order. Six of them
+   (`rice_cooked`, `rajma_cooked`, `toor_dal_cooked`, `urad_dal_raw`,
+   `rice_milled_raw`, `potato_boiled`) carry 91.9% of library protein between
+   them and are what actually decide whether the 0.15 protein ceiling can be
+   cleared.
+3. Record the published food code in `ifct_code` and set `verified` per row.
+4. Prefer IFCT's own cooked-state entries; where absent, convert through a
+   registered yield factor, never an inline multiplication.
+
+What that would buy, from `test_verification_alone_would_not_clear_the_ceiling_for_free`:
+verified rows carry a 0.05 composition band, which **is** below the 0.15 protein
+ceiling. So verifying the six protein-dominant rows is the specific action that
+changes `dev_mode` status — not a general improvement, a threshold crossing.
+Until then the status below stands unchanged.
+
 ### `dev_mode` versus `validated`
 
 `core/planner` (not built) must therefore carry two distinct designations:
@@ -183,8 +251,9 @@ let a project estimate be marked verified at all: there is no document to open.
 
 ## Known limitations, Phase 1
 
-1. **The ingredient data is a hand-entered fixture set, not IFCT.** All 23 rows
-   are `verified=False`, every `ifct_code` is empty, and the values are
+1. **The ingredient data is a hand-entered fixture set, not IFCT.** 22 of 23
+   rows are `verified=False` (the exception is `water`, whose macros are all
+   zero), every `ifct_code` is empty, and the values are
    approximations of commonly published figures transcribed from memory. Nobody
    has opened IFCT 2017 during this build. See `data/raw/ifct/README.md` for the
    real-ingest TODO, and "Nothing can currently ship as validated" above for

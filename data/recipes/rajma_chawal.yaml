@@ -25,17 +25,12 @@ serving_unit:
     Overrides the generic cup weight: this unit is a composed plate of rajma
     over rice, not a cup of one thing. Two plates is the honest ceiling.
 
-process_uncertainty:
-  energy_kcal: 0.015
-  fat_g: 0.084
-
-uncertainty_notes:
-  energy_kcal: >-
-    Cooking oil is the uncertain input. 8 g x 8.84 kcal/g = 70.72 kcal of the
-    plate's 472.9 kcal = 15.0%. At the +/-10% band on
-    oil_uptake.vegetable_tempering: 0.10 x 0.150 = 0.015.
-  fat_g: >-
-    Oil is 8.0 g of the plate's 9.49 g fat = 84.3%. 0.10 x 0.843 = 0.084.
+# Derived at load from the cooking-oil line: 8 g x 8.84 kcal/g x 0.10 band
+# = 7.072 kcal on the plate's 472.9 kcal = 0.0150.
+#
+# Rajma is soaked overnight and the soaking water discarded; mineral and
+# folate losses through that step are real and unmeasured here.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
 
 ingredients:
   - id: rice_cooked

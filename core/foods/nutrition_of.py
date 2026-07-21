@@ -12,12 +12,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable, Mapping, Sequence
 
-from core.foods.models import Component, Ingredient, NutritionVector, Recipe
+from core.foods.models import (
+    Component,
+    Ingredient,
+    NutritionVector,
+    Recipe,
+    RecipeIngredient,
+)
 from core.nutrition import citations
 from core.schemas import MACRO_KEYS, RawOrCooked
 
 __all__ = [
     "NutritionEstimate",
+    "nutrition_of_lines",
     "nutrition_of_recipe",
     "nutrition_of_components",
     "format_macro",
@@ -98,9 +105,23 @@ def _ingredient(ingredients: Mapping[str, Ingredient], ingredient_id: str) -> In
         ) from None
 
 
-def _one_unit(recipe: Recipe, ingredients: Mapping[str, Ingredient]) -> NutritionVector:
+def nutrition_of_lines(
+    lines: Sequence[RecipeIngredient],
+    ingredients: Mapping[str, Ingredient],
+    *,
+    recipe_id: str = "<unnamed>",
+) -> NutritionVector:
+    """Summed nutrition for a bare list of recipe lines.
+
+    Separate from :func:`nutrition_of_recipe` because the recipe loader needs
+    this arithmetic *before* a ``Recipe`` exists: it derives each recipe's
+    process uncertainty from the actual macro contribution of the lines a
+    process constant governs, and a Recipe cannot be constructed until that
+    derivation is done.
+    """
+
     total = NutritionVector.zero()
-    for line in recipe.ingredients:
+    for line in lines:
         ing = _ingredient(ingredients, line.ingredient_id)
         if ing.state is not line.state and RawOrCooked.AS_USED not in (
             ing.state,
@@ -111,13 +132,17 @@ def _one_unit(recipe: Recipe, ingredients: Mapping[str, Ingredient]) -> Nutritio
             # the recipe author must either use the matching-state entry or go
             # through core.foods.retention explicitly.
             raise ValueError(
-                f"recipe {recipe.id!r}: line {line.ingredient_id!r} is recorded on a "
+                f"recipe {recipe_id!r}: line {line.ingredient_id!r} is recorded on a "
                 f"{line.state.value} basis but ingredient {ing.id!r} has "
                 f"{ing.state.value} composition data. Convert via "
                 "core.foods.retention, or use the matching-state entry."
             )
         total = total + ing.for_grams(line.quantity_g)
     return total
+
+
+def _one_unit(recipe: Recipe, ingredients: Mapping[str, Ingredient]) -> NutritionVector:
+    return nutrition_of_lines(recipe.ingredients, ingredients, recipe_id=recipe.id)
 
 
 def nutrition_of_recipe(

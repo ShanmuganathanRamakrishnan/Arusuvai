@@ -24,20 +24,14 @@ serving_unit:
     large but real lunch; the ceiling is what stops the solver closing an
     energy gap by serving five.
 
-process_uncertainty:
-  energy_kcal: 0.013
-  fat_g: 0.075
-
-uncertainty_notes:
-  energy_kcal: >-
-    Tempering oil is the only meaningfully uncertain input. Oil contributes
-    4 g x 8.84 kcal/g = 35.36 kcal of the dish's 265.0 kcal = 13.3%. At the
-    +/-10% band on oil_uptake.vegetable_tempering, that is
-    0.10 x 0.133 = 0.013 at the dish level. Everything else here is a
-    cooked-basis composition value against a fixed 200 g portion, so cooking
-    yield does not enter.
-  fat_g: >-
-    Oil is 4.0 g of the dish's 5.35 g fat = 74.8%. 0.10 x 0.748 = 0.075.
+# Derived at load from the tempering-oil line: 4 g x 8.84 kcal/g x 0.10 band
+# = 3.536 kcal on the dish's 265.0 kcal = 0.0133. Everything else here is a
+# cooked-basis composition value against a fixed 200 g portion, so cooking
+# yield does not enter and those macros derive to a computed zero.
+#
+# Sambar is a boiled, drained-water preparation, so mineral leaching is real
+# and unmeasured for this dish.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
 
 ingredients:
   - id: rice_cooked

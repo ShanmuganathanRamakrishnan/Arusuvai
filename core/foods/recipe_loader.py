@@ -12,14 +12,16 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Mapping, Sequence
 
 import yaml
 
-from core.foods.models import Component, Recipe, RecipeIngredient
+from core.foods.models import Component, Ingredient, Recipe, RecipeIngredient
+from core.foods.nutrition_of import nutrition_of_lines
 from core.foods.portions import serving_unit as build_serving_unit
 from core.foods.templates import ALL_TEMPLATES
 from core.nutrition import citations
-from core.schemas import DietPattern, RawOrCooked, Region
+from core.schemas import MACRO_KEYS, DietPattern, RawOrCooked, Region
 
 logger = logging.getLogger(__name__)
 
@@ -54,11 +56,66 @@ def _require(doc: dict, key: str, path: Path):
     return doc[key]
 
 
-def load_recipe_file(path: Path, known_ingredients: frozenset[str]) -> tuple[Recipe, str]:
+def _derive_process_uncertainty(
+    lines: Sequence[RecipeIngredient],
+    ingredients: Mapping[str, Ingredient],
+    unassessed: Sequence[str],
+    path: Path,
+) -> dict[str, float]:
+    """Fractional process uncertainty per macro, computed from the lines.
+
+    For each macro: sum, over the lines carrying a process constant, of that
+    line's contribution to the macro times the constant's own uncertainty; then
+    divide by the dish total for that macro.
+
+    Worked example, masala dosa energy — gingelly oil is 884 kcal/100 g:
+
+        griddle oil 3.5 g x 8.84 kcal/g x 0.20 = 6.188 kcal
+        temper  oil 3.0 g x 8.84 kcal/g x 0.10 = 2.652 kcal
+        (6.188 + 2.652) / 223.65 kcal          = 0.03953
+
+    Every macro is present in the result. A macro nothing process-sensitive
+    touches derives to 0.0, which is a *computed* zero rather than an omitted
+    one — the author cannot obtain it by leaving the work undone. A macro the
+    author declares unassessed takes the registered wide band instead.
+    """
+
+    total = nutrition_of_lines(lines, ingredients, recipe_id=path.stem)
+    unassessed_band = citations.value_of("process.unassessed_uncertainty")
+
+    derived: dict[str, float] = {}
+    for macro in MACRO_KEYS:
+        if macro in unassessed:
+            derived[macro] = unassessed_band
+            continue
+        denominator = getattr(total, macro)
+        if denominator == 0:
+            # Nothing of this macro in the dish, so no fraction is meaningful.
+            derived[macro] = 0.0
+            continue
+        absolute = 0.0
+        for line in lines:
+            if not line.process_key:
+                continue
+            contribution = ingredients[line.ingredient_id].for_grams(line.quantity_g)
+            absolute += getattr(contribution, macro) * citations.uncertainty_of(
+                line.process_key
+            )
+        derived[macro] = absolute / denominator
+    return derived
+
+
+def load_recipe_file(
+    path: Path, ingredients: Mapping[str, Ingredient]
+) -> tuple[Recipe, str]:
     """Parse one recipe file. Returns ``(recipe, category)``.
 
     Raises on anything malformed — a recipe is hand-authored, so a broken one is
     a mistake someone can fix, not a data-quality statistic to tolerate.
+
+    Takes the full ingredient mapping rather than just the set of known ids,
+    because process uncertainty is now derived from each line's actual macro
+    contribution, which needs composition data.
     """
 
     doc = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -87,7 +144,7 @@ def load_recipe_file(path: Path, known_ingredients: frozenset[str]) -> tuple[Rec
     lines: list[RecipeIngredient] = []
     for raw_line in _require(doc, "ingredients", path):
         ingredient_id = str(_require(raw_line, "id", path))
-        if ingredient_id not in known_ingredients:
+        if ingredient_id not in ingredients:
             raise ValueError(
                 f"{path.name}: ingredient {ingredient_id!r} is not in the loaded "
                 "ingredient set (rejected at load time, or never present)"
@@ -115,24 +172,26 @@ def load_recipe_file(path: Path, known_ingredients: frozenset[str]) -> tuple[Rec
             "'process: <constant key>' on the ingredient line whose quantity the "
             "constant determines; Recipe.process_constants is derived from those."
         )
+    if "process_uncertainty" in doc:
+        raise ValueError(
+            f"{path.name}: 'process_uncertainty' is no longer read from the recipe "
+            "file — it is derived at load time from the process constants on the "
+            "ingredient lines and their actual macro contribution. A figure "
+            "hand-computed once and pasted here goes stale the moment the "
+            "constant in citations.py changes, with the test suite still green. "
+            "Use 'process_uncertainty_unassessed: [macro, ...]' for macros you "
+            "believe are process-sensitive but cannot quantify."
+        )
 
-    uncertainty = {str(k): float(v) for k, v in (doc.get("process_uncertainty") or {}).items()}
-    notes = {str(k): str(v) for k, v in (doc.get("uncertainty_notes") or {}).items()}
-    constants = frozenset(line.process_key for line in lines if line.process_key)
+    unassessed = [str(m) for m in (doc.get("process_uncertainty_unassessed") or [])]
+    for macro in unassessed:
+        if macro not in MACRO_KEYS:
+            raise ValueError(
+                f"{path.name}: process_uncertainty_unassessed lists {macro!r}, "
+                f"which is not a known macro (one of {MACRO_KEYS})"
+            )
 
-    for macro, value in uncertainty.items():
-        if macro not in notes or not notes[macro].strip():
-            raise ValueError(
-                f"{path.name}: process_uncertainty[{macro!r}] = {value} has no "
-                "uncertainty_notes entry. An uncertainty figure without its "
-                "derivation is a magic number in a data file."
-            )
-        if value > 0 and not constants:
-            raise ValueError(
-                f"{path.name}: declares uncertainty on {macro!r} but no ingredient "
-                "line carries a 'process' key, so there is no registered constant "
-                "the figure could have been derived from"
-            )
+    uncertainty = _derive_process_uncertainty(lines, ingredients, unassessed, path)
 
     recipe = Recipe(
         id=recipe_id,
@@ -150,7 +209,7 @@ def load_recipe_file(path: Path, known_ingredients: frozenset[str]) -> tuple[Rec
 
 def load_recipes(
     recipe_dir: Path | str,
-    known_ingredients: frozenset[str],
+    ingredients: Mapping[str, Ingredient],
     *,
     strict: bool = True,
 ) -> RecipeLibrary:
@@ -160,7 +219,7 @@ def load_recipes(
         if path.name == "schema.yaml":
             continue  # the specification, not a recipe
         try:
-            recipe, category = load_recipe_file(path, known_ingredients)
+            recipe, category = load_recipe_file(path, ingredients)
         except (ValueError, KeyError, TypeError) as exc:
             message = f"{path.name}: {exc}"
             logger.warning("rejected recipe — %s", message)

@@ -211,6 +211,7 @@ REVIEWED_MECHANISM_MATCHES: dict[str, str] = {
     "yield.potato_boiled": "reviewed: near-unity mass change on boiling whole potato, applied to boiled potato",
     "oil_uptake.dosa_griddled": "reviewed: NO matching primary source; project estimate, mechanism stated honestly",
     "oil_uptake.vegetable_tempering": "reviewed: NO matching primary source; project estimate",
+    "process.unassessed_uncertainty": "reviewed: NO matching primary source; project estimate standing in for an unmeasured process",
     "composition.unverified_secondary": "reviewed: NO matching primary source; project estimate of transcription-plus-analytical error",
     "composition.verified_primary": "reviewed: NO matching primary source; project estimate of analytical spread",
     "eligibility.max_protein_uncertainty": "reviewed: project decision, no physical process claimed",
@@ -396,6 +397,29 @@ PROJECT_COMPOSITION_UNCERTAINTY = register_evidence(
             "rendered as '~220 kcal (+/-4%)' — a band narrower than the "
             "acknowledged error of its own inputs, which asserts the error is "
             "small rather than merely failing to mention it."
+        ),
+    )
+)
+
+PROJECT_UNASSESSED_PROCESS = register_evidence(
+    Evidence(
+        id="project_unassessed_process",
+        summary="Stand-in band for a macro whose process sensitivity nobody has quantified.",
+        phenomenon=(
+            "change in a nutrient's content during domestic cooking where the "
+            "retention or loss has not been measured for this preparation at all "
+            "— e.g. mineral and vitamin retention through boiling, steaming and "
+            "griddling of Indian dishes"
+        ),
+        source="This project's own estimate.",
+        doi=None,
+        grade=Grade.PROJECT_ESTIMATE,
+        verified=False,
+        note=(
+            "Exists so that 'we have not assessed this' is representable as "
+            "something other than zero. Before it, a macro absent from a "
+            "recipe's uncertainty map read as perfectly certain, which made "
+            "skipping the work produce the most confident-looking output."
         ),
     )
 )
@@ -593,6 +617,26 @@ COMPOSITION_VERIFIED = register_constant(
             "Nothing in the library currently qualifies: every ingredient row is "
             "verified=False. Registered now so the number exists before the data "
             "does, rather than being chosen later to fit whatever passes."
+        ),
+    )
+)
+
+PROCESS_UNASSESSED = register_constant(
+    Constant(
+        key="process.unassessed_uncertainty",
+        value=0.20,
+        unit="fraction",
+        evidence_id="project_unassessed_process",
+        applied_to=(
+            "a macro a recipe author has declared process-sensitive but for "
+            "which no retention or loss constant is registered"
+        ),
+        uncertainty=0.0,
+        note=(
+            "Wide enough to be uncomfortable, on purpose: declaring a macro "
+            "unassessed must never be the cheapest way to make a band look "
+            "good. It is deliberately worse than any measured process constant "
+            "currently in this registry."
         ),
     )
 )

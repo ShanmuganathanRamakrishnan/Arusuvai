@@ -401,14 +401,28 @@ transcript.
 
 Only update this table with a command transcript in the same message.
 
+Corrected 2026-07-21 during the Phase 1 build: rows previously marked "Built"
+described files that did not exist in this repo. That is exactly the failure
+mode the process rule above names — a status claim with no artifact behind it.
+The table records what a fresh `pytest` run and inspection of the working tree
+actually show. **Where this table and an external draft of CLAUDE.md disagree,
+the repo's git history is authoritative.**
+
+Restored 2026-07-21 from commit `116c765` after an external draft reintroduced
+the fictional rows. The counts below are *not* `116c765`'s — the repo moved
+since (110 -> 114 tests, and the understated-band caveat that row carried has
+since been fixed), so they were re-derived from a run in this session rather
+than copied.
+
 | Module                    | State                                                                                                                            |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `core/schemas/profile.py` | Built (predates `clinical_flags` — needs that field added)                                                                       |
-| `core/nutrition/`         | Built — citations, energy, protein, macros, targets. Needs `phenomenon` field added to `Evidence`.                               |
-| `core/foods/`             | Not started — MealTemplate, serving units, cooked-weight recipe schema                                                           |
+| `core/schemas/`           | Partial — `common.py` (RawOrCooked, Region, MealSlot, DietPattern, MACRO_KEYS). `profile.py` does not exist; `clinical_flags` still to come. |
+| `core/nutrition/`         | Partial — `citations.py` only (Evidence with `phenomenon`, Constant registry, composition + eligibility constants, mechanism-review checklist, rejected-citation record). Energy, protein, macros and targets are not built. |
+| `core/foods/`             | Built — models, templates, ifct_loader, recipe_loader, retention, portions, nutrition_of. 114 tests pass (`python -m pytest tests/ -q` -> `114 passed in 0.14s`, at commit `7d9bc41`). Ingredient data is a hand-entered fixture set, not IFCT; see `data/raw/ifct/README.md`. Composition uncertainty is now modelled — bands are no longer understated — but **nothing can ship as validated**: see `docs/methodology.md`. |
 | `core/planner/`           | Not started — candidates, combination enumeration, feasibility pre-filter, solver, LLM ranking, validator with relaxation ladder |
 | `core/commerce/`          | Not started                                                                                                                      |
 | `api/`, `web/`            | Not started                                                                                                                      |
+| Audit workflow            | Partial — `docs/audit_log.md` exists. `.claude/agents/auditor.md` and `.claude/commands/grill.md` described in "Audit workflow" above **do not exist**; audits currently run via an ad-hoc read-only subagent. |
 
 ## Commands
 

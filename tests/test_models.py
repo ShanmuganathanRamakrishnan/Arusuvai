@@ -13,7 +13,7 @@ from core.foods.models import (
     ServingUnit,
     TemplateSlot,
 )
-from core.schemas import DietPattern, RawOrCooked, Region
+from core.schemas import MACRO_KEYS, DietPattern, RawOrCooked, Region
 
 
 def make_unit(**overrides) -> ServingUnit:
@@ -107,6 +107,15 @@ def _ing(**kw) -> Ingredient:
     return Ingredient(**base)
 
 
+def _full_uncertainty(**overrides) -> dict[str, float]:
+    """A complete per-macro map. Recipe rejects a partial one — absent is not
+    zero, so there is no shorthand for "the rest are certain"."""
+
+    values = {macro: 0.0 for macro in MACRO_KEYS}
+    values.update(overrides)
+    return values
+
+
 def _recipe(**kw) -> Recipe:
     base = dict(
         id="r",
@@ -119,6 +128,7 @@ def _recipe(**kw) -> Recipe:
         ),
         serving_unit=make_unit(name="katori", grams_per_unit=100.0),
         prep_minutes=10,
+        process_uncertainty=_full_uncertainty(),
     )
     base.update(kw)
     return Recipe(**base)
@@ -137,18 +147,31 @@ class TestRecipe:
 
     def test_unknown_uncertainty_macro_is_rejected(self):
         with pytest.raises(ValueError, match="not a known macro"):
-            _recipe(process_uncertainty={"enrgy_kcal": 0.1})
+            _recipe(process_uncertainty=_full_uncertainty(enrgy_kcal=0.1))
 
     def test_uncertainty_must_be_a_fraction(self):
         with pytest.raises(ValueError, match="fraction"):
-            _recipe(process_uncertainty={"energy_kcal": 1.5})
+            _recipe(process_uncertainty=_full_uncertainty(energy_kcal=1.5))
 
     def test_uncertainty_mapping_cannot_be_mutated_after_construction(self):
         # Uncertainty is a property of the data, never a knob a later module
         # turns to make a plan pass.
-        r = _recipe(process_uncertainty={"energy_kcal": 0.1})
+        r = _recipe(process_uncertainty=_full_uncertainty(energy_kcal=0.1))
         with pytest.raises(TypeError):
             r.process_uncertainty["energy_kcal"] = 0.0  # type: ignore[index]
+
+    def test_an_omitted_macro_is_rejected_rather_than_reading_as_certain(self):
+        # The other half of the composition-side fix. Absent used to mean 0.0,
+        # so the cheapest authoring path — leaving a macro out — produced the
+        # most confident-looking output. It now fails construction.
+        partial = {"energy_kcal": 0.04, "fat_g": 0.14}
+        with pytest.raises(ValueError, match="process_uncertainty is missing"):
+            _recipe(process_uncertainty=partial)
+
+    def test_uncertainty_for_an_absent_macro_raises_instead_of_returning_zero(self):
+        r = _recipe()
+        with pytest.raises(KeyError, match="Absent is not zero"):
+            r.uncertainty_for("vitamin_d_ug")
 
     def test_empty_ingredients_rejected(self):
         with pytest.raises(ValueError, match="no ingredients"):

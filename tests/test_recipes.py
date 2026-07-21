@@ -8,10 +8,12 @@ numbers must be recomputed by hand, which is the point.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from core.foods.nutrition_of import nutrition_of_recipe
-from core.schemas import DietPattern, Region
+from core.schemas import MACRO_KEYS, DietPattern, Region
 
 
 class TestSambarSadam:
@@ -318,17 +320,92 @@ class TestRecipeLoaderRules:
         with pytest.raises(KeyError, match="no constant registered"):
             load_recipe_file(Path(bad), frozenset(ingredients))
 
-    def test_a_recipe_may_not_invent_an_uncertainty_figure(self, tmp_path, ingredients):
+    def test_process_uncertainty_is_derived_from_the_constants_not_pasted(
+        self, library
+    ):
+        # 884 kcal/100 g oil:
+        #   griddle 3.5 g x 8.84 x 0.20 = 6.188 kcal
+        #   temper  3.0 g x 8.84 x 0.10 = 2.652 kcal
+        #   8.840 / 223.65 kcal          = 0.0395260...
+        dosa = library.recipes["masala_dosa"]
+        assert dosa.uncertainty_for("energy_kcal") == pytest.approx(0.03952604, abs=1e-8)
+        #   fat: (3.5 x 1.0 x 0.20) + (3.0 x 1.0 x 0.10) = 1.0 g
+        #   over the dish's exact 7.0175 g fat (see TestMasalaDosa.test_fat —
+        #   the recipe file's note rounds this to 7.02, which is why the band is
+        #   derived from the composition rows and not from that note)
+        #   1.0 / 7.0175 = 0.14250089...
+        assert dosa.uncertainty_for("fat_g") == pytest.approx(0.14250089, abs=1e-8)
+
+    def test_mutating_a_constant_moves_every_recipe_that_depends_on_it(
+        self, ingredients, tmp_path
+    ):
+        # The perturbation test. A static assertion against a fixed YAML value
+        # cannot catch a stale figure — that is precisely how the pasted
+        # 0.040 survived. Here the constant is changed and the recipe's derived
+        # uncertainty must follow it, or the derivation is not real.
+        from pathlib import Path
+
+        from core.foods.recipe_loader import load_recipes
+        from core.nutrition import citations
+
+        recipe_dir = Path(__file__).resolve().parents[1] / "data" / "recipes"
+        before = load_recipes(recipe_dir, ingredients, strict=True)
+        dosa_before = before.recipes["masala_dosa"].uncertainty_for("energy_kcal")
+
+        original = citations._CONSTANTS["oil_uptake.dosa_griddled"]
+        doubled = replace(original, uncertainty=original.uncertainty * 2)
+        citations._CONSTANTS["oil_uptake.dosa_griddled"] = doubled
+        try:
+            after = load_recipes(recipe_dir, ingredients, strict=True)
+            dosa_after = after.recipes["masala_dosa"].uncertainty_for("energy_kcal")
+        finally:
+            citations._CONSTANTS["oil_uptake.dosa_griddled"] = original
+
+        # Only the griddle term doubles; the tempering term is untouched:
+        #   (3.5 x 8.84 x 0.40) + (3.0 x 8.84 x 0.10) = 12.376 + 2.652 = 15.028
+        #   15.028 / 223.65 = 0.06719428...
+        assert dosa_before == pytest.approx(0.03952604, abs=1e-8)
+        assert dosa_after == pytest.approx(0.06719428, abs=1e-8)
+        assert dosa_after > dosa_before
+
+        # And a recipe that does not use that constant must NOT move.
+        assert after.recipes["sambar_sadam"].uncertainty_for(
+            "energy_kcal"
+        ) == pytest.approx(
+            before.recipes["sambar_sadam"].uncertainty_for("energy_kcal")
+        )
+
+    def test_an_unassessed_macro_takes_the_registered_wide_band(self, library):
+        # Declaring a macro unassessed must be worse than measuring it, never a
+        # cheap way to a tidy number.
+        from core.nutrition import citations
+
+        wide = citations.value_of("process.unassessed_uncertainty")
+        dosa = library.recipes["masala_dosa"]
+        assert dosa.uncertainty_for("iron_mg") == pytest.approx(wide)
+        assert dosa.uncertainty_for("b12_ug") == pytest.approx(wide)
+        # Strictly worse than any measured process constant in the registry.
+        assert wide > dosa.uncertainty_for("energy_kcal")
+
+    def test_every_recipe_carries_a_value_for_every_macro(self, library):
+        # No default-zero anywhere: an omitted macro cannot reach a Recipe.
+        for recipe in library.recipes.values():
+            for macro in MACRO_KEYS:
+                assert isinstance(recipe.uncertainty_for(macro), float)
+
+    def test_a_recipe_may_not_paste_a_process_uncertainty_figure(
+        self, tmp_path, ingredients
+    ):
         from pathlib import Path
 
         from core.foods.recipe_loader import load_recipe_file
 
-        bad = tmp_path / "bad.yaml"
+        bad = tmp_path / "pasted.yaml"
         bad.write_text(
             "\n".join(
                 [
-                    "id: bad",
-                    "name: Bad",
+                    "id: pasted",
+                    "name: Pasted",
                     "region: south_indian",
                     "diet_patterns: [vegetarian]",
                     "category: rice",
@@ -348,5 +425,6 @@ class TestRecipeLoaderRules:
             ),
             encoding="utf-8",
         )
-        with pytest.raises(ValueError, match="uncertainty_notes"):
-            load_recipe_file(Path(bad), frozenset(ingredients))
+        with pytest.raises(ValueError, match="no longer read from the recipe file"):
+            load_recipe_file(Path(bad), ingredients)
+

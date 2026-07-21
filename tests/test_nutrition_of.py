@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from core.foods.models import Component, RecipeIngredient
+from core.foods.models import Component, NutritionVector, RecipeIngredient
 from core.foods.nutrition_of import format_macro, nutrition_of_components, nutrition_of_recipe
 from core.nutrition import citations
 from core.schemas import RawOrCooked
@@ -35,35 +35,39 @@ class TestInterval:
     def test_interval_brackets_the_point_estimate(self, library, ingredients):
         # Two terms, summed. Every ingredient row is verified=False, so each
         # carries composition.unverified_secondary = 0.25, and the weighted sum
-        # over lines collapses to 0.25 of the dish total:
-        #   composition band = 223.65 x 0.25  = 55.9125
-        #   process band     = 223.65 x 0.040 =  8.946   (declared, oil uptake)
-        #   half-width       = 64.8585
-        #   low  = 223.65 - 64.8585 = 158.7915
-        #   high = 223.65 + 64.8585 = 288.5085
+        # over lines collapses to 0.25 of the dish total. The process term is
+        # now derived by the loader from the oil lines (884 kcal/100 g):
+        #   composition band = 223.65 x 0.25                    = 55.9125
+        #   process band     = 3.5 x 8.84 x 0.20 = 6.188 kcal
+        #                    + 3.0 x 8.84 x 0.10 = 2.652 kcal   =  8.8400
+        #   half-width                                           = 64.7525
+        #   low  = 223.65 - 64.7525 = 158.8975
+        #   high = 223.65 + 64.7525 = 288.4025
         items = [(library.component("masala_dosa"), 1)]
         est = nutrition_of_components(items, ingredients)
-        assert est.low.energy_kcal == pytest.approx(158.7915)
-        assert est.high.energy_kcal == pytest.approx(288.5085)
+        assert est.low.energy_kcal == pytest.approx(158.8975)
+        assert est.high.energy_kcal == pytest.approx(288.4025)
 
     def test_composition_uncertainty_dominates_the_process_term(
         self, library, ingredients
     ):
         # The defect this replaced: the band came from the oil constant alone,
         # so a dish that is 96% rice/urad/potato displayed +/-4% — narrower than
-        # the acknowledged error of its own inputs. Composition is now 6.25x the
-        # process term (55.9125 vs 8.946), which is the honest ratio.
+        # the acknowledged error of its own inputs. Composition is now 6.32x the
+        # process term (55.9125 vs 8.84), which is the honest ratio.
         items = [(library.component("masala_dosa"), 1)]
         est = nutrition_of_components(items, ingredients)
         half_width = (est.high.energy_kcal - est.low.energy_kcal) / 2
-        process_only = est.point.energy_kcal * 0.040
-        assert half_width == pytest.approx(64.8585)
-        assert half_width > 6 * process_only
+        recipe = library.recipes["masala_dosa"]
+        process_only = est.point.energy_kcal * recipe.uncertainty_for("energy_kcal")
+        assert half_width == pytest.approx(64.7525)
+        assert process_only == pytest.approx(8.84)
+        assert half_width - process_only == pytest.approx(55.9125)
 
     def test_bands_are_summed_not_root_sum_squared(self, library, ingredients):
-        # dosa         223.65 x (0.25 + 0.040) = 223.65 x 0.290 = 64.8585
-        # sambar sadam 265.04 x (0.25 + 0.013) = 265.04 x 0.263 = 69.70552
-        # summed half-width = 134.56402 ; RSS would be 95.28, i.e. narrower and
+        # dosa         223.65 x 0.25 + 8.840 = 55.9125 + 8.840 = 64.7525
+        # sambar sadam 265.04 x 0.25 + 3.536 = 66.2600 + 3.536 = 69.7960
+        # summed half-width = 134.5485 ; RSS would be 95.27, i.e. narrower and
         # wrong: on this library the errors share a provenance (one author, one
         # sitting, all from memory), so they do not cancel.
         items = [
@@ -72,16 +76,16 @@ class TestInterval:
         ]
         est = nutrition_of_components(items, ingredients)
         half_width = (est.high.energy_kcal - est.low.energy_kcal) / 2
-        assert half_width == pytest.approx(134.56402)
+        assert half_width == pytest.approx(134.5485)
 
     def test_uncertainty_fraction_of_the_plate(self, library, ingredients):
-        # 134.56402 / (223.65 + 265.04) = 134.56402 / 488.69 = 0.2753566...
+        # 134.5485 / (223.65 + 265.04) = 134.5485 / 488.69 = 0.2753248...
         items = [
             (library.component("masala_dosa"), 1),
             (library.component("sambar_sadam"), 1),
         ]
         est = nutrition_of_components(items, ingredients)
-        assert est.uncertainty_fraction("energy_kcal") == pytest.approx(0.2753566, abs=1e-6)
+        assert est.uncertainty_fraction("energy_kcal") == pytest.approx(0.2753248, abs=1e-6)
 
     def test_a_macro_with_no_declared_process_uncertainty_still_has_a_band(
         self, library, ingredients
@@ -103,7 +107,7 @@ class TestInterval:
         # changes, not merely be described as depending on it. Flipping every
         # row to verified swaps composition.unverified_secondary (0.25) for
         # composition.verified_primary (0.05):
-        #   223.65 x (0.05 + 0.040) = 223.65 x 0.090 = 20.1285
+        #   223.65 x 0.05 + 8.84 = 11.1825 + 8.84 = 20.0225
         from dataclasses import replace
 
         from core.schemas import MACRO_KEYS
@@ -119,7 +123,7 @@ class TestInterval:
         items = [(library.component("masala_dosa"), 1)]
         est = nutrition_of_components(items, verified)
         half_width = (est.high.energy_kcal - est.low.energy_kcal) / 2
-        assert half_width == pytest.approx(20.1285)
+        assert half_width == pytest.approx(20.0225)
 
 
 class TestUnverifiedEnergyAttribution:
@@ -147,15 +151,40 @@ class TestEligibilityConsequence:
     either one a deliberate act with a failing assertion attached.
     """
 
+    def test_the_four_load_bearing_constants_are_exactly_these_values(self):
+        # Pinned to literals, not directions. Every one of these four decides
+        # whether the library can plan anything, and the tempting fix once
+        # core/planner returns nothing is to nudge one of them until a demo
+        # works. Each edit looks reasonable alone. Changing any of these numbers
+        # must mean deliberately editing this test and saying why in the commit.
+        assert citations.value_of("composition.unverified_secondary") == 0.25
+        assert citations.value_of("composition.verified_primary") == 0.05
+        assert citations.value_of("eligibility.max_protein_uncertainty") == 0.15
+        assert citations.value_of("eligibility.max_energy_uncertainty") == 0.20
+
+    def test_every_recipe_sits_at_exactly_the_unverified_composition_band(
+        self, library, ingredients
+    ):
+        # Not "above the ceiling" — exactly 0.25. Oil carries no protein, so no
+        # process term touches this macro on any of the three recipes, and the
+        # figure is the composition band alone. A direction-only assertion would
+        # survive the band drifting to 0.9 or 0.16; this does not.
+        for recipe_id, component in library.components.items():
+            est = nutrition_of_components([(component, 1)], ingredients)
+            assert est.uncertainty_fraction("protein_g") == pytest.approx(0.25), (
+                f"{recipe_id}: protein band moved off the unverified-composition "
+                "constant"
+            )
+
     def test_no_recipe_currently_clears_the_protein_eligibility_ceiling(
         self, library, ingredients
     ):
-        # Every ingredient is unverified, so every recipe's protein uncertainty
-        # is 0.25 against a 0.15 ceiling. Protein is target-critical for
-        # essentially every profile this product serves, so the candidate pool
-        # is empty for all of them — and the relaxation ladder cannot help,
+        # 0.25 against a 0.15 ceiling, for all three. Protein is target-critical
+        # for essentially every profile this product serves, so the candidate
+        # pool is empty for all of them — and the relaxation ladder cannot help,
         # because it moves tolerance and never uncertainty.
         ceiling = citations.value_of("eligibility.max_protein_uncertainty")
+        assert ceiling == 0.15
         for recipe_id, component in library.components.items():
             est = nutrition_of_components([(component, 1)], ingredients)
             assert est.uncertainty_fraction("protein_g") > ceiling, (
@@ -164,10 +193,59 @@ class TestEligibilityConsequence:
                 "can ship as validated is stated there"
             )
 
+    def test_verification_alone_would_not_clear_the_ceiling_for_free(
+        self, library, ingredients
+    ):
+        # What verification actually buys, pinned: 0.05 composition band, which
+        # IS below the 0.15 protein ceiling. So flipping the dominant
+        # ingredients to verified is the thing that changes dev_mode status —
+        # stated as an exact number so a future change to either constant
+        # surfaces here rather than silently flipping the shipping story.
+        from dataclasses import replace
+
+        from core.schemas import MACRO_KEYS
+
+        verified = {
+            key: replace(
+                ing,
+                verified=True,
+                composition_uncertainty={m: 0.05 for m in MACRO_KEYS},
+            )
+            for key, ing in ingredients.items()
+        }
+        ceiling = citations.value_of("eligibility.max_protein_uncertainty")
+        for component in library.components.values():
+            est = nutrition_of_components([(component, 1)], verified)
+            assert est.uncertainty_fraction("protein_g") == pytest.approx(0.05)
+            assert est.uncertainty_fraction("protein_g") < ceiling
+
     def test_every_registered_evidence_is_still_unverified(self):
         # The precondition for the above. If this ever fails, someone has opened
         # a source document, and the shipping story genuinely changes.
-        assert all(not ev.verified for ev in citations.all_evidence())
+        unverified_ids = sorted(ev.id for ev in citations.all_evidence() if not ev.verified)
+        assert unverified_ids == sorted(ev.id for ev in citations.all_evidence()), (
+            "some Evidence is now verified — docs/methodology.md's 'nothing can "
+            "ship as validated' claim must be re-derived, not left standing"
+        )
+
+    def test_water_is_the_only_verified_ingredient_row(self, ingredients):
+        # The other precondition, pinned to the exact set rather than a count.
+        #
+        # `water` is legitimately verified: "water contributes no nutrients" is
+        # not a claim that needs IFCT open on the desk. It is also the only row
+        # whose verification cannot move any band, since all nine of its macros
+        # are zero — so its presence does not weaken the shipping story below.
+        # Both data/raw/ifct/README.md and docs/methodology.md previously stated
+        # that *every* row is unverified; they were wrong, and this test is what
+        # found it.
+        assert sorted(k for k, v in ingredients.items() if v.verified) == ["water"]
+        assert ingredients["water"].composition_uncertainty_for("protein_g") == 0.05
+        assert ingredients["water"].per_100g() == NutritionVector.zero()
+        assert all(
+            ing.composition_uncertainty_for("protein_g") == 0.25
+            for k, ing in ingredients.items()
+            if k != "water"
+        )
 
 
 class TestStateMismatch:

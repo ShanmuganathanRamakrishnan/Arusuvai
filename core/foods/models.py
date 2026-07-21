@@ -279,11 +279,18 @@ class Recipe:
     serving_unit: ServingUnit
     prep_minutes: int
     tags: frozenset[str] = frozenset()
-    #: Fractional process uncertainty keyed by macro, e.g.
-    #: ``{"energy_kcal": 0.15}`` for a griddled item whose oil uptake is not
-    #: well characterised. Read later by the candidate eligibility filter in
-    #: core/planner — it never loosens a tolerance, it makes a recipe less
-    #: usable where the macro is target-critical.
+    #: Fractional process uncertainty keyed by macro. **Every macro in
+    #: MACRO_KEYS must be present** — there is no default-zero, because an
+    #: omitted macro used to read as perfectly certain, which made skipping the
+    #: work produce the most confident-looking output.
+    #:
+    #: The loader derives these from the process constants attached to the
+    #: ingredient lines, so an author cannot paste a stale figure here; a macro
+    #: the author declares process-sensitive but unquantified gets the
+    #: registered ``process.unassessed_uncertainty`` band instead of zero.
+    #: Read later by the candidate eligibility filter in core/planner — it never
+    #: loosens a tolerance, it makes a recipe less usable where the macro is
+    #: target-critical.
     process_uncertainty: Mapping[str, float] = field(default_factory=dict)
     warnings: tuple[str, ...] = ()
 
@@ -301,6 +308,15 @@ class Recipe:
                     f"recipe {self.id!r}: process_uncertainty[{macro!r}]={unc} "
                     "must be a fraction in [0, 1)"
                 )
+        missing = [m for m in MACRO_KEYS if m not in self.process_uncertainty]
+        if missing:
+            raise ValueError(
+                f"recipe {self.id!r}: process_uncertainty is missing {missing}. "
+                "Every macro must carry a value — an absent one used to read as "
+                "0.0, i.e. perfectly certain, which made omitting the work the "
+                "cheapest route to the most confident-looking output. Derive it "
+                "from a registered constant or declare the macro unassessed."
+            )
         total = sum(ri.quantity_g for ri in self.ingredients)
         declared = self.serving_unit.grams_per_unit
         if abs(total - declared) > _RECIPE_MASS_TOLERANCE * declared:
@@ -318,7 +334,13 @@ class Recipe:
         )
 
     def uncertainty_for(self, macro: str) -> float:
-        return float(self.process_uncertainty.get(macro, 0.0))
+        try:
+            return float(self.process_uncertainty[macro])
+        except KeyError:
+            raise KeyError(
+                f"recipe {self.id!r} has no process uncertainty for {macro!r}. "
+                "Absent is not zero; see Recipe.process_uncertainty."
+            ) from None
 
     @property
     def process_constants(self) -> frozenset[str]:

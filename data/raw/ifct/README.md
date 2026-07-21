@@ -3,8 +3,15 @@
 ## What is actually in here
 
 `fixture_ingredients.csv` is a **hand-entered fixture set**, not an IFCT
-extract. Every row's `verified` column is `false` and every `ifct_code` is
-empty. Both of those are deliberate:
+extract. 22 of its 23 rows have `verified` set to `false`, and every
+`ifct_code` is empty. Both of those are deliberate:
+
+The one exception is `water`, which is `verified=true`. All nine of its macros
+are zero, and "water contributes no nutrients" is not a claim that needs IFCT
+open on the desk. It is therefore also the only verified row that cannot move
+any uncertainty band. (This README previously said *every* row was `false`; a
+test added on 2026-07-21 —
+`test_water_is_the_only_verified_ingredient_row` — found otherwise.)
 
 - The nutrient values are approximations of commonly published figures,
   transcribed from memory. Nobody has opened *Indian Food Composition Tables*

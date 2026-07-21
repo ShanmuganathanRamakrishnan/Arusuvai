@@ -32,16 +32,21 @@
 #
 # 2. NO NUTRITIONAL CONSTANT MAY BE INVENTED IN THIS FILE.
 #
-#    `process_uncertainty` is not a free-hand number. Every macro listed must
-#    have a matching entry in `uncertainty_notes` showing the arithmetic that
-#    produced it from a constant in `core/nutrition/citations.py`, and at least
-#    one ingredient line must carry a `process` key naming such a constant. The
-#    rule against magic numbers does not stop at the boundary of a data file.
+#    `process_uncertainty` is NOT a field in this file. The loader derives it,
+#    per macro, from the process constants attached to the ingredient lines and
+#    each line's actual macro contribution. A file that declares it is rejected:
+#    a figure hand-computed once and pasted here goes stale the moment the
+#    constant in citations.py changes, with the suite still green. The rule
+#    against magic numbers does not stop at the boundary of a data file.
 #
-#    KNOWN GAP: the `process_uncertainty` figures are still hand-computed and
-#    pasted here. Editing a constant in citations.py leaves them stale with the
-#    tests green. Per-line `process` attribution (below) exists so the loader
-#    can derive them instead; that derivation is not built yet.
+#    Every macro gets a value — there is no default-zero. A macro that nothing
+#    process-sensitive touches derives to a *computed* 0.0, which an author
+#    cannot obtain by leaving the work undone. A macro you believe is
+#    process-sensitive but cannot quantify goes in
+#    `process_uncertainty_unassessed`, which takes the registered
+#    `process.unassessed_uncertainty` band — deliberately wider than any
+#    measured constant in the registry, so declaring something unassessed is
+#    never the cheap route to a tidy number.
 #
 # 3. PROCESS ATTRIBUTION GOES ON THE LINE, NOT THE RECIPE.
 #
@@ -92,14 +97,10 @@ serving_unit:
   max_count: int
   note: string # optional; required in spirit if grams_per_unit overrides the measure
 
-# Fractional uncertainty on this dish's total for each macro, at the dish level.
-process_uncertainty:
-  energy_kcal: float
-  fat_g: float
-
-# Mandatory alongside process_uncertainty: how each figure was derived.
-uncertainty_notes:
-  energy_kcal: string # show the arithmetic and name the constant
+# Macros you believe cooking affects but for which no constant is registered.
+# These take the wide registered `process.unassessed_uncertainty` band instead
+# of deriving to zero. There is NO `process_uncertainty` key — it is derived.
+process_uncertainty_unassessed: [fibre_g, iron_mg, calcium_mg, b12_ug]
 
 ingredients:
   - id: string # must exist in the loaded ingredient set
