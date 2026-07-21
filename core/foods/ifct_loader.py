@@ -20,7 +20,7 @@ from typing import Iterable, Iterator, Sequence
 
 from core.foods.models import Ingredient
 from core.nutrition.citations import value_of
-from core.schemas import RawOrCooked
+from core.schemas import MACRO_KEYS, RawOrCooked
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +153,17 @@ def _row_to_ingredient(row: dict[str, str]) -> Ingredient:
 
     ifct_code = (row.get("ifct_code") or "").strip() or None
     diaas = _parse_float(row.get("diaas"))
+    verified = _parse_bool(row.get("verified"), default=False)
+
+    # Composition uncertainty is resolved here, from a registered constant keyed
+    # on provenance, rather than read from a column. A per-row band in the CSV
+    # would be a nutritional constant living in a data file — the thing the
+    # registry exists to prevent — and would let an author quietly narrow the
+    # band on their own unverified row.
+    band = value_of(
+        "composition.verified_primary" if verified else "composition.unverified_secondary"
+    )
+    composition_uncertainty = {macro: band for macro in MACRO_KEYS}
 
     return Ingredient(
         id=row["id"].strip(),
@@ -165,7 +176,8 @@ def _row_to_ingredient(row: dict[str, str]) -> Ingredient:
         is_animal_product=_parse_bool(row.get("is_animal_product"), default=False),
         jain_safe=_parse_bool(row.get("jain_safe"), default=True),
         allergens=_parse_allergens(row.get("allergens")),
-        verified=_parse_bool(row.get("verified"), default=False),
+        verified=verified,
+        composition_uncertainty=composition_uncertainty,
         **numbers,
     )
 

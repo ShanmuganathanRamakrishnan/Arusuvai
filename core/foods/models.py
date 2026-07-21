@@ -125,6 +125,35 @@ class Ingredient:
     #: False while the underlying value has not been read out of a primary
     #: source by a human. Mirrors the citations registry's own flag.
     verified: bool = False
+    #: Fractional band on this row's composition values, per macro. Populated by
+    #: the loader from a registered constant chosen on ``verified`` — never
+    #: hand-entered in the CSV, which would put a nutritional constant back in a
+    #: data file. Read by ``nutrition_of`` and weighted by this ingredient's
+    #: share of each macro.
+    #:
+    #: Empty means *not populated by a loader*, and
+    #: ``composition_uncertainty_for`` refuses rather than returning 0.0: an
+    #: unassessed value must never read as perfectly certain, because that makes
+    #: skipping the work produce the most confident-looking output.
+    composition_uncertainty: Mapping[str, float] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "composition_uncertainty",
+            MappingProxyType(dict(self.composition_uncertainty)),
+        )
+
+    def composition_uncertainty_for(self, macro: str) -> float:
+        try:
+            return float(self.composition_uncertainty[macro])
+        except KeyError:
+            raise KeyError(
+                f"ingredient {self.id!r} has no composition uncertainty for "
+                f"{macro!r}. Absent means unassessed, which is the widest case, "
+                "not the narrowest — populate it from a registered constant "
+                "rather than letting it default to zero."
+            ) from None
 
     def per_100g(self) -> NutritionVector:
         return NutritionVector(*(getattr(self, k) for k in MACRO_KEYS))

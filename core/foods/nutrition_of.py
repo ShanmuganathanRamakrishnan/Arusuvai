@@ -136,16 +136,56 @@ def nutrition_of_recipe(
     return _one_unit(recipe, ingredients) * unit_count
 
 
+def _composition_band(
+    recipe: Recipe,
+    unit_count: int,
+    ingredients: Mapping[str, Ingredient],
+) -> NutritionVector:
+    """Absolute half-width contributed by uncertainty in the composition data.
+
+    Weighted by each ingredient's share of each macro, which is what makes it
+    behave correctly on a dish like the masala dosa: 96% of its energy comes
+    from rice, urad and potato, so a band derived only from the griddle-oil
+    constant described 4% of the dish and called it the whole error.
+    """
+
+    band = NutritionVector.zero()
+    for line in recipe.ingredients:
+        ing = _ingredient(ingredients, line.ingredient_id)
+        contribution = ing.for_grams(line.quantity_g) * unit_count
+        band = band + NutritionVector(
+            *(
+                getattr(contribution, macro) * ing.composition_uncertainty_for(macro)
+                for macro in MACRO_KEYS
+            )
+        )
+    return band
+
+
 def _interval_for_recipe(
-    recipe: Recipe, point: NutritionVector
+    recipe: Recipe,
+    point: NutritionVector,
+    unit_count: int,
+    ingredients: Mapping[str, Ingredient],
 ) -> tuple[NutritionVector, NutritionVector]:
+    """Point estimate bracketed by composition *and* process uncertainty.
+
+    The two are summed rather than combined in quadrature, for the same reason
+    the plate-level sum is: see ``nutrition_of_components``. Note the summing is
+    load-bearing in the conservative direction here — the composition term
+    dominates by roughly an order of magnitude on this library.
+    """
+
+    composition = _composition_band(recipe, unit_count, ingredients)
     lows: list[float] = []
     highs: list[float] = []
     for macro in MACRO_KEYS:
         v = getattr(point, macro)
-        u = recipe.uncertainty_for(macro)
-        lows.append(v * (1 - u))
-        highs.append(v * (1 + u))
+        half_width = getattr(composition, macro) + v * recipe.uncertainty_for(macro)
+        # Clamped because a nutrient cannot go negative; a band wider than the
+        # point estimate is a legitimate statement about very poor data.
+        lows.append(max(0.0, v - half_width))
+        highs.append(v + half_width)
     return NutritionVector(*lows), NutritionVector(*highs)
 
 
@@ -185,6 +225,17 @@ def nutrition_of_components(
     systematic errors (this cook, this pan, this recipe library's yield
     assumptions), not independent random draws, so they do not cancel. When in
     doubt the band is widened, never narrowed.
+
+    For the *composition* term the correlation argument is provenance rather
+    than mechanism: every value in the current fixture was transcribed from
+    memory by one author in one sitting, so the errors plausibly share a common
+    bias. That justification expires the moment real IFCT data lands — per-food
+    laboratory errors are far closer to independent, and summing them linearly
+    would then over-widen every band substantially. Over-wide is not free: the
+    candidate eligibility filter excludes on uncertainty, so an inflated band
+    silently shrinks the recipe library. Revisit this with the real ingest, and
+    prefer making correlation a declared property of the evidence over leaving
+    the convention hardcoded in this loop.
     """
 
     point = NutritionVector.zero()
@@ -195,7 +246,7 @@ def nutrition_of_components(
     for component, count in items:
         recipe = component.recipe
         p = nutrition_of_recipe(recipe, count, ingredients)
-        lo, hi = _interval_for_recipe(recipe, p)
+        lo, hi = _interval_for_recipe(recipe, p, count, ingredients)
         point = point + p
         low = low + lo
         high = high + hi

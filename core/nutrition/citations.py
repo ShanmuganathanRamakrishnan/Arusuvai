@@ -211,6 +211,10 @@ REVIEWED_MECHANISM_MATCHES: dict[str, str] = {
     "yield.potato_boiled": "reviewed: near-unity mass change on boiling whole potato, applied to boiled potato",
     "oil_uptake.dosa_griddled": "reviewed: NO matching primary source; project estimate, mechanism stated honestly",
     "oil_uptake.vegetable_tempering": "reviewed: NO matching primary source; project estimate",
+    "composition.unverified_secondary": "reviewed: NO matching primary source; project estimate of transcription-plus-analytical error",
+    "composition.verified_primary": "reviewed: NO matching primary source; project estimate of analytical spread",
+    "eligibility.max_protein_uncertainty": "reviewed: project decision, no physical process claimed",
+    "eligibility.max_energy_uncertainty": "reviewed: project decision, no physical process claimed",
     "measure.katori_gravy_g": "reviewed: household volume-to-mass measure, applied to serving-unit gram weight",
     "measure.cup_cooked_rice_g": "reviewed: as above",
     "measure.idli_g": "reviewed: as above",
@@ -371,6 +375,31 @@ PROJECT_OIL_UPTAKE_ESTIMATE = register_evidence(
     )
 )
 
+PROJECT_COMPOSITION_UNCERTAINTY = register_evidence(
+    Evidence(
+        id="project_composition_uncertainty",
+        summary="How wrong a composition value is likely to be, by where it came from.",
+        phenomenon=(
+            "dispersion between a stated per-100 g nutrient value and the true "
+            "content of the food as eaten, arising from analytical variation, "
+            "cultivar and seasonal spread, and — for values not read out of a "
+            "primary table — transcription error"
+        ),
+        source="This project's own estimate.",
+        doi=None,
+        grade=Grade.PROJECT_ESTIMATE,
+        verified=False,
+        note=(
+            "Registered because the alternative was worse: before this existed, "
+            "composition error contributed exactly zero to every displayed band, "
+            "so a dosa whose ingredient values were transcribed from memory "
+            "rendered as '~220 kcal (+/-4%)' — a band narrower than the "
+            "acknowledged error of its own inputs, which asserts the error is "
+            "small rather than merely failing to mention it."
+        ),
+    )
+)
+
 PROJECT_DECISION = register_evidence(
     Evidence(
         id="project_decision",
@@ -525,6 +554,82 @@ OIL_UPTAKE_TEMPERING = register_constant(
             "gravy or tossed with vegetables; nearly all of it is served"
         ),
         uncertainty=0.10,
+    )
+)
+
+# Composition uncertainty, by provenance of the value. Applied per ingredient
+# and weighted by that ingredient's share of the macro — a dish that is 96%
+# rice and 4% griddle oil must not display a band that reflects only the oil.
+COMPOSITION_UNVERIFIED = register_constant(
+    Constant(
+        key="composition.unverified_secondary",
+        value=0.25,
+        unit="fraction",
+        evidence_id="project_composition_uncertainty",
+        applied_to=(
+            "a per-100 g nutrient value that was not read out of a primary "
+            "composition table — transcribed from memory or a secondary source"
+        ),
+        uncertainty=0.0,
+        note=(
+            "Wide on purpose. Deliberately larger than the analytical spread "
+            "alone, because the dominant error in an unread value is "
+            "transcription, not cultivar variation."
+        ),
+    )
+)
+COMPOSITION_VERIFIED = register_constant(
+    Constant(
+        key="composition.verified_primary",
+        value=0.05,
+        unit="fraction",
+        evidence_id="project_composition_uncertainty",
+        applied_to=(
+            "a per-100 g nutrient value read out of a primary national "
+            "composition table by a human"
+        ),
+        uncertainty=0.0,
+        note=(
+            "Nothing in the library currently qualifies: every ingredient row is "
+            "verified=False. Registered now so the number exists before the data "
+            "does, rather than being chosen later to fit whatever passes."
+        ),
+    )
+)
+
+# Candidate eligibility ceilings. Per CLAUDE.md, uncertainty never widens a
+# tolerance — it makes a recipe ineligible where the macro is target-critical.
+# Registered here rather than left as prose so core/planner reads a constant
+# instead of inventing one.
+ELIGIBILITY_PROTEIN = register_constant(
+    Constant(
+        key="eligibility.max_protein_uncertainty",
+        value=0.15,
+        unit="fraction",
+        evidence_id="project_decision",
+        applied_to=(
+            "excluding a recipe from a candidate pool where protein is "
+            "target-critical, because its protein estimate is too uncertain"
+        ),
+        uncertainty=0.0,
+        note=(
+            "No recipe in the library currently clears this — see the test in "
+            "tests/test_nutrition_of.py. That is the honest consequence of "
+            "unverified composition data, not a bug in the ceiling."
+        ),
+    )
+)
+ELIGIBILITY_ENERGY = register_constant(
+    Constant(
+        key="eligibility.max_energy_uncertainty",
+        value=0.20,
+        unit="fraction",
+        evidence_id="project_decision",
+        applied_to=(
+            "excluding a recipe from a candidate pool on energy uncertainty; "
+            "looser than protein per CLAUDE.md's 'wider tolerance on energy'"
+        ),
+        uncertainty=0.0,
     )
 )
 

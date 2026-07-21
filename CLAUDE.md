@@ -297,21 +297,115 @@ the line below already says.
 
 **Known limitations go in `docs/methodology.md`,** documented, not hidden.
 
+## Addendum — round 4 findings (uncertainty and self-review were both understated)
+
+These were places where the code _followed_ the rules above and still produced
+the failure the rules exist to prevent. That's a stricter bug than rounds 1–3:
+it means "the doc's rule is implemented" is not sufficient evidence the rule
+works — the test has to perturb an input and check the output actually moves,
+not just check the rule is mentioned.
+
+**Composition uncertainty is a separate, currently-missing axis from process
+uncertainty.** `Recipe.process_uncertainty` (oil uptake, cooking loss) is not
+the only source of error — the underlying ingredient composition data itself
+carries uncertainty, and today that's silently treated as zero. Add
+`Ingredient.composition_uncertainty: dict[str, float]` per macro, driven by
+`Ingredient.verified`: a verified-against-IFCT ingredient gets a tight
+registered default; an unverified fixture-sourced one gets a wide registered
+default (itself an `Evidence`-backed constant, not a bare literal). The
+displayed interval must combine composition uncertainty (weighted by each
+ingredient's share of that macro) with process uncertainty. A dish that is
+96% rice/lentil/vegetable and 4% griddle oil must not display a tighter band
+than the rice/lentil/vegetable data actually supports — a narrow band on
+mostly-unverified composition data is the same false-precision failure this
+project exists to prevent in the LLM, committed instead by the data layer,
+and is worse than a bare unqualified number because it actively asserts the
+error is small.
+
+**Missing uncertainty must never default to most-confident.** If a macro's
+uncertainty is unset, it must not read as `0.0`. Make the field mandatory per
+macro (fail the load on omission) or require an explicit `unassessed` sentinel
+that maps to a wide registered default. The cheapest authoring path — skipping
+the field — must never produce the most confident-looking output; today it
+does, and that ordering is backwards.
+
+**No nutritional number may be hand-duplicated outside `citations.py`,
+including a derived uncertainty figure pasted into a recipe YAML file.** A
+recipe's stored `process_uncertainty` value must be computed at load time from
+the current constant in `citations.py` plus the recipe's declared exposure
+(e.g. oil grams as a fraction of dish weight) — never hand-computed once and
+pasted in. If a constant changes, every recipe depending on it must change
+too, automatically, on next load. Test this directly: mutate a constant and
+assert dependent recipes' computed uncertainty changes; a test that only
+checks a fixed YAML value against itself cannot catch this class of bug.
+
+**The unverified-energy threshold must be measured against the correct
+denominator, in both directions.** A recipe is not "X% unverified" because
+some process constant on it is unverified — it's unverified in the
+_proportion of its energy that constant actually contributes_, not the whole
+dish. Conversely, unverified _ingredient composition_ (see above) must also
+count toward the total — a recipe with a fully verified process but
+unverified composition data is not thereby "verified." Get both directions
+right before trusting the 15% shipping threshold against real data.
+
+**State plainly, once counted correctly, whether anything can ship as
+validated today.** If every registered `Evidence` is currently
+`verified=False`, the honest conclusion — once the denominator above is fixed
+— may be that nothing can presently ship as validated. Say so directly in
+`docs/methodology.md`, dated. That is a defensible thing for a portfolio
+project to state. Discovering it silently after `core/planner` is built on
+the assumption that some plans clear the threshold is not. Keep a `dev_mode`
+designation distinct from `validated`, so plan generation and testing can
+proceed on admittedly-unverified data, loudly labeled, without conflating
+"the pipeline runs" with "the pipeline can stand behind a number."
+
+**A mechanism-match review dict is not a structural fix if the same person
+edits it in the same commit as the constant it reviews.** `verified=True`
+must only ever be set by a human who opened the primary source — the same
+standard applies to any "mechanism confirmed" review status. Self-attestation
+by the constant's own author can only ever record "no matching source found"
+or "not yet reviewed" — never a positive "match confirmed." A genuine
+confirmed-match state requires a second party's sign-off, tracked separately
+from who registered the constant, or a dedicated evidence grade
+(`PROJECT_ESTIMATE`: self-reviewed, single-author) that is categorically
+ineligible to satisfy the mechanism-match requirement or count toward
+"reviewed" in the shipping threshold, no matter what its own checklist says.
+
+## Audit workflow — how findings get produced and addressed
+
+Adversarial review of this codebase happens inside Claude Code, against the
+actual files, not in a separate chat requiring manual copy-paste. Structure:
+
+- `.claude/agents/auditor.md` — a subagent with **read-only** tool
+  permissions (`Read`, `Grep`, `Glob`, `Bash(pytest:*)` — no `Edit`, no
+  `Write` outside `docs/audit_log.md`). Its job is to find places where code
+  and this doc agree with each other and neither survives a concrete input.
+  It does not propose fixes and does not soften findings.
+- `.claude/commands/grill.md` — invokes the auditor against modules changed
+  since the last `docs/audit_log.md` entry.
+- `docs/audit_log.md` — dated, append-only findings. This is the artifact;
+  a finding that isn't in this file did not happen, per the process rule
+  above about unverified claims regarding the project's own state.
+
+The read-only permission boundary is load-bearing, not incidental: an auditor
+that can edit the code it's reviewing can rubber-stamp its own work exactly
+the way a self-edited mechanism-match dict did in round 4. Do not grant the
+auditor subagent write access to anything under `core/`, `api/`, or `web/`.
+
+When addressing an audit finding, reference it by its dated entry in
+`docs/audit_log.md` in the commit or PR description, so the fix is traceable
+to the finding rather than a description of the finding living only in a chat
+transcript.
+
 ## Build status
 
 Only update this table with a command transcript in the same message.
 
-Corrected 2026-07-21 during the Phase 1 build: the two rows previously marked
-"Built" described files that did not exist in this repo. That is exactly the
-failure mode the process rule above names — a status claim with no artifact
-behind it — so the table now records what `git`-less inspection of the working
-tree and a fresh `pytest` run actually show.
-
 | Module                    | State                                                                                                                            |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `core/schemas/`           | Partial — `common.py` (RawOrCooked, Region, MealSlot, DietPattern, MACRO_KEYS). `profile.py` does not exist; `clinical_flags` still to come. |
-| `core/nutrition/`         | Partial — `citations.py` only (Evidence with `phenomenon`, Constant registry, mechanism-review checklist, rejected-citation record). Energy, protein, macros and targets are not built. |
-| `core/foods/`             | Built — models, templates, ifct_loader, recipe_loader, retention, portions, nutrition_of. 110 tests pass (`python -m pytest tests/ -q` -> `110 passed in 0.15s`, at commit `9b93d22`). Ingredient data is a hand-entered fixture set, not IFCT; see `data/raw/ifct/README.md`. Displayed uncertainty bands are known to be understated — composition uncertainty is not modelled; see the audit defects recorded in commit `fc20fe5`. |
+| `core/schemas/profile.py` | Built (predates `clinical_flags` — needs that field added)                                                                       |
+| `core/nutrition/`         | Built — citations, energy, protein, macros, targets. Needs `phenomenon` field added to `Evidence`.                               |
+| `core/foods/`             | Not started — MealTemplate, serving units, cooked-weight recipe schema                                                           |
 | `core/planner/`           | Not started — candidates, combination enumeration, feasibility pre-filter, solver, LLM ranking, validator with relaxation ladder |
 | `core/commerce/`          | Not started                                                                                                                      |
 | `api/`, `web/`            | Not started                                                                                                                      |
