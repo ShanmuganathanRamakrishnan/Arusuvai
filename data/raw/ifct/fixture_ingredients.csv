@@ -1,0 +1,24 @@
+id,name_en,name_ta,name_hi,ifct_code,state,energy_kcal,protein_g,fat_g,carb_g,fibre_g,sodium_mg,iron_mg,calcium_mg,b12_ug,diaas,is_animal_product,jain_safe,allergens,verified,source_note
+rice_milled_raw,Milled rice (raw),பச்சரிசி,कच्चा चावल,,raw,345,6.8,0.5,78.2,2.8,2,0.6,8,0,0.47,false,true,,false,Hand-entered approximation; not read from IFCT 2017
+rice_cooked,Cooked rice,சாதம்,पका चावल,,cooked,130,2.7,0.3,28.2,0.4,1,0.2,3,0,0.47,false,true,,false,Hand-entered approximation; cooked basis
+toor_dal_cooked,Toor dal (cooked),துவரம் பருப்பு,अरहर दाल,,cooked,121,7.0,0.4,21.0,4.0,3,1.1,17,0,0.60,false,true,,false,Hand-entered approximation; cooked basis
+rajma_cooked,Rajma (cooked),ராஜ்மா,राजमा,,cooked,127,8.7,0.5,22.8,6.4,4,2.2,28,0,0.60,false,true,,false,Hand-entered approximation; cooked basis
+urad_dal_raw,Urad dal dehusked (raw),உளுந்து,उड़द दाल,,raw,341,24.0,1.4,59.6,10.0,8,3.8,130,0,0.62,false,true,,false,Hand-entered approximation; raw basis for batter
+wheat_atta_raw,Wholewheat atta (raw),கோதுமை மாவு,गेहूं का आटा,,raw,341,12.1,1.7,69.4,11.0,3,4.0,48,0,0.45,false,true,gluten,false,Hand-entered approximation
+potato_boiled,Potato (boiled),உருளைக்கிழங்கு,आलू,,cooked,87,1.9,0.1,20.1,1.8,5,0.3,8,0,,false,false,,false,Hand-entered approximation
+onion_raw,Onion,வெங்காயம்,प्याज,,raw,40,1.1,0.1,9.3,1.7,4,0.2,23,0,,false,false,,false,Hand-entered approximation
+tomato_raw,Tomato,தக்காளி,टमाटर,,raw,20,0.9,0.2,3.9,1.2,5,0.3,10,0,,false,true,,false,Hand-entered approximation
+carrot_raw,Carrot,கேரட்,गाजर,,raw,41,0.9,0.2,9.6,2.8,69,0.3,33,0,,false,false,,false,Hand-entered approximation
+coconut_fresh,Coconut (fresh kernel),தேங்காய்,नारियल,,raw,354,3.3,33.5,15.2,9.0,20,2.4,14,0,,false,true,coconut,false,Hand-entered approximation
+gingelly_oil,Gingelly (sesame) oil,நல்லெண்ணெய்,तिल का तेल,,as_used,884,0,100,0,0,0,0,0,0,,false,true,sesame,false,Hand-entered approximation
+sunflower_oil,Sunflower oil,சூரியகாந்தி எண்ணெய்,सूरजमुखी तेल,,as_used,884,0,100,0,0,0,0,0,0,,false,true,,false,Hand-entered approximation
+tamarind_pulp,Tamarind pulp,புளி,इमली,,as_used,239,2.8,0.6,62.5,5.1,28,2.8,74,0,,false,true,,false,Hand-entered approximation
+sambar_powder,Sambar powder,சாம்பார் பொடி,सांबर मसाला,,as_used,340,14.0,12.0,45.0,20.0,120,10.0,300,0,,false,true,,false,Hand-entered approximation of a spice blend
+garam_masala,Garam masala,கரம் மசாலா,गरम मसाला,,as_used,379,14.0,15.0,45.0,25.0,60,12.0,400,0,,false,true,,false,Hand-entered approximation of a spice blend
+mustard_seed,Mustard seed,கடுகு,सरसों,,as_used,508,20.0,39.7,23.8,12.0,13,10.0,490,0,,false,true,mustard,false,Hand-entered approximation
+curry_leaves,Curry leaves,கறிவேப்பிலை,करी पत्ता,,raw,108,6.0,1.0,18.7,6.4,20,0.9,830,0,,false,true,,false,Hand-entered approximation
+green_chilli,Green chilli,பச்சை மிளகாய்,हरी मिर्च,,raw,44,1.9,0.4,8.8,3.0,6,1.2,30,0,,false,true,,false,Hand-entered approximation
+ginger_garlic_paste,Ginger-garlic paste,இஞ்சி பூண்டு விழுது,अदरक लहसुन पेस्ट,,as_used,100,4.0,0.6,20.0,2.0,15,1.0,50,0,,false,false,,false,Hand-entered approximation
+curd_dahi,Curd (dahi),தயிர்,दही,,as_used,60,3.1,4.0,3.0,0,45,0.1,149,0.4,1.09,true,true,milk,false,Hand-entered approximation
+salt_iodised,Iodised salt,உப்பு,नमक,,as_used,0,0,0,0,0,38758,0,0,0,,false,true,,false,Sodium content is stoichiometric (39.3% of NaCl by mass)
+water,Water,தண்ணீர்,पानी,,as_used,0,0,0,0,0,0,0,0,0,,false,true,,true,Water contributes no nutrients; listed so finished masses add up

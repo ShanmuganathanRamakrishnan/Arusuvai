@@ -1,0 +1,71 @@
+# Rajma chawal — North Indian, and deliberately a *lunch* recipe rather than a
+# dinner one: it is built on rice, and NORTH_DINNER has no rice slot. See the
+# note on NORTH_LUNCH in core/foods/templates.py.
+id: rajma_chawal
+name: Rajma chawal
+name_ta: ராஜ்மா சாதம்
+name_hi: राजमा चावल
+
+region: north_indian
+diet_patterns: [vegetarian, vegan]
+# Not jain: onion and ginger-garlic.
+
+category: combo_rice_legume
+prep_minutes: 55
+tags: [one_plate, lunch, high_protein]
+
+serving_unit:
+  measure: cup
+  name: plate
+  grams_per_unit: 350.0
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    Overrides the generic cup weight: this unit is a composed plate of rajma
+    over rice, not a cup of one thing. Two plates is the honest ceiling.
+
+process_constants: [oil_uptake.vegetable_tempering]
+
+process_uncertainty:
+  energy_kcal: 0.015
+  fat_g: 0.084
+
+uncertainty_notes:
+  energy_kcal: >-
+    Cooking oil is the uncertain input. 8 g x 8.84 kcal/g = 70.72 kcal of the
+    plate's 472.9 kcal = 15.0%. At the +/-10% band on
+    oil_uptake.vegetable_tempering: 0.10 x 0.150 = 0.015.
+  fat_g: >-
+    Oil is 8.0 g of the plate's 9.49 g fat = 84.3%. 0.10 x 0.843 = 0.084.
+
+ingredients:
+  - id: rice_cooked
+    quantity_g: 183.0
+    state: cooked
+    note: About 61 g raw milled rice, via yield.rice_milled_boiled.
+  - id: rajma_cooked
+    quantity_g: 110.0
+    state: cooked
+    note: About 46 g dry rajma, soaked overnight, via yield.rajma_soaked_boiled.
+  - id: onion_raw
+    quantity_g: 20.0
+    state: raw
+  - id: tomato_raw
+    quantity_g: 20.0
+    state: raw
+  - id: sunflower_oil
+    quantity_g: 8.0
+    state: as_used
+    note: >-
+      Retained oil. About 8.4 g into the pan; the masala is served whole, so
+      almost none is left behind (oil_uptake.vegetable_tempering = 0.95).
+  - id: ginger_garlic_paste
+    quantity_g: 5.0
+    state: as_used
+  - id: garam_masala
+    quantity_g: 2.0
+    state: as_used
+  - id: salt_iodised
+    quantity_g: 2.0
+    state: as_used

@@ -1,0 +1,238 @@
+"""Hand-computed macros for the three example recipes.
+
+Every expected value below is arithmetic done from the composition rows in
+``data/raw/ifct/fixture_ingredients.csv``, shown term by term. None of it is a
+snapshot of what the code currently returns — if a fixture value changes, these
+numbers must be recomputed by hand, which is the point.
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from core.foods.nutrition_of import nutrition_of_recipe
+from core.schemas import DietPattern, Region
+
+
+class TestSambarSadam:
+    """One cup, 200 g: rice 108, toor dal 45, tomato 12, onion 12, carrot 10,
+    tamarind 3, sambar powder 3, gingelly oil 4, mustard 1, curry leaf 1, salt 1.
+    108+45+12+12+10+3+3+4+1+1+1 = 200 g.
+    """
+
+    def test_energy(self, library, ingredients):
+        # kcal, per-100 g record x grams/100:
+        #   rice      1.30 x 108 = 140.40
+        #   toor dal  1.21 x  45 =  54.45
+        #   tomato    0.20 x  12 =   2.40
+        #   onion     0.40 x  12 =   4.80
+        #   carrot    0.41 x  10 =   4.10
+        #   tamarind  2.39 x   3 =   7.17
+        #   sambar pw 3.40 x   3 =  10.20
+        #   oil       8.84 x   4 =  35.36
+        #   mustard   5.08 x   1 =   5.08
+        #   curry     1.08 x   1 =   1.08
+        #   salt      0.00 x   1 =   0.00
+        #   total                 = 265.04
+        v = nutrition_of_recipe(library.recipes["sambar_sadam"], 1, ingredients)
+        assert v.energy_kcal == pytest.approx(265.04)
+
+    def test_protein(self, library, ingredients):
+        #   rice     0.027 x 108 = 2.916
+        #   toor dal 0.070 x  45 = 3.150
+        #   tomato   0.009 x  12 = 0.108
+        #   onion    0.011 x  12 = 0.132
+        #   carrot   0.009 x  10 = 0.090
+        #   tamarind 0.028 x   3 = 0.084
+        #   sambar   0.140 x   3 = 0.420
+        #   mustard  0.200 x   1 = 0.200
+        #   curry    0.060 x   1 = 0.060
+        #   total                = 7.160
+        v = nutrition_of_recipe(library.recipes["sambar_sadam"], 1, ingredients)
+        assert v.protein_g == pytest.approx(7.16)
+
+    def test_fat(self, library, ingredients):
+        #   rice 0.324 + dal 0.180 + tomato 0.024 + onion 0.012 + carrot 0.020
+        #   + tamarind 0.018 + sambar powder 0.360 + oil 4.000 + mustard 0.397
+        #   + curry 0.010 = 5.345
+        v = nutrition_of_recipe(library.recipes["sambar_sadam"], 1, ingredients)
+        assert v.fat_g == pytest.approx(5.345)
+
+    def test_two_cups_is_exactly_double(self, library, ingredients):
+        # 265.04 x 2 = 530.08. Portions scale by integer unit count, nothing else.
+        v = nutrition_of_recipe(library.recipes["sambar_sadam"], 2, ingredients)
+        assert v.energy_kcal == pytest.approx(530.08)
+
+    def test_diet_patterns_and_region(self, library):
+        r = library.recipes["sambar_sadam"]
+        assert r.region is Region.SOUTH_INDIAN
+        assert DietPattern.VEGAN in r.diet_patterns
+        # Onion and carrot: not jain, and that is stated rather than derived
+        # from "vegetarian".
+        assert DietPattern.JAIN not in r.diet_patterns
+
+
+class TestRajmaChawal:
+    """One plate, 350 g: rice 183, rajma 110, onion 20, tomato 20, oil 8,
+    ginger-garlic 5, garam masala 2, salt 2. Sums to 350 g.
+    """
+
+    def test_energy(self, library, ingredients):
+        #   rice   1.30 x 183 = 237.90
+        #   rajma  1.27 x 110 = 139.70
+        #   onion  0.40 x  20 =   8.00
+        #   tomato 0.20 x  20 =   4.00
+        #   oil    8.84 x   8 =  70.72
+        #   gg     1.00 x   5 =   5.00
+        #   garam  3.79 x   2 =   7.58
+        #   salt   0.00 x   2 =   0.00
+        #   total             = 472.90
+        v = nutrition_of_recipe(library.recipes["rajma_chawal"], 1, ingredients)
+        assert v.energy_kcal == pytest.approx(472.90)
+
+    def test_protein(self, library, ingredients):
+        #   rice  0.027 x 183 = 4.941
+        #   rajma 0.087 x 110 = 9.570
+        #   onion 0.011 x  20 = 0.220
+        #   tomato 0.009 x 20 = 0.180
+        #   gg    0.040 x   5 = 0.200
+        #   garam 0.140 x   2 = 0.280
+        #   total             = 15.391
+        v = nutrition_of_recipe(library.recipes["rajma_chawal"], 1, ingredients)
+        assert v.protein_g == pytest.approx(15.391)
+
+    def test_fat(self, library, ingredients):
+        #   rice 0.549 + rajma 0.550 + onion 0.020 + tomato 0.040 + oil 8.000
+        #   + gg 0.030 + garam 0.300 = 9.489
+        v = nutrition_of_recipe(library.recipes["rajma_chawal"], 1, ingredients)
+        assert v.fat_g == pytest.approx(9.489)
+
+    def test_sodium_is_dominated_by_added_salt(self, library, ingredients):
+        #   salt 387.58 mg/g x 2 g = 775.16
+        #   rice 0.01 x 183 = 1.83 ; rajma 0.04 x 110 = 4.40 ; onion 0.80 ;
+        #   tomato 1.00 ; gg 0.75 ; garam 1.20  -> 9.98
+        #   total = 785.14
+        v = nutrition_of_recipe(library.recipes["rajma_chawal"], 1, ingredients)
+        assert v.sodium_mg == pytest.approx(785.14)
+
+
+class TestMasalaDosa:
+    """One dosa unit, 150 g = 90 g dosa + 60 g potato masala.
+    Batter is recorded as raw rice 26 + raw urad 9 + water 51, because no
+    cooked-basis composition entry exists for a fermented griddled batter.
+    """
+
+    def test_energy(self, library, ingredients):
+        #   rice raw   3.45 x 26.0 = 89.70
+        #   urad raw   3.41 x  9.0 = 30.69
+        #   water      0.00 x 51.0 =  0.00
+        #   griddle oil 8.84 x 3.5 = 30.94
+        #   potato     0.87 x 44.0 = 38.28
+        #   onion      0.40 x 10.0 =  4.00
+        #   temper oil 8.84 x  3.0 = 26.52
+        #   chilli     0.44 x  1.0 =  0.44
+        #   mustard    5.08 x  0.5 =  2.54
+        #   curry      1.08 x  0.5 =  0.54
+        #   salt       0.00 x  1.5 =  0.00
+        #   total                  = 223.65
+        v = nutrition_of_recipe(library.recipes["masala_dosa"], 1, ingredients)
+        assert v.energy_kcal == pytest.approx(223.65)
+
+    def test_protein(self, library, ingredients):
+        #   rice   0.068 x 26.0 = 1.768
+        #   urad   0.240 x  9.0 = 2.160
+        #   potato 0.019 x 44.0 = 0.836
+        #   onion  0.011 x 10.0 = 0.110
+        #   chilli 0.019 x  1.0 = 0.019
+        #   mustard 0.200 x 0.5 = 0.100
+        #   curry  0.060 x  0.5 = 0.030
+        #   total               = 5.023
+        v = nutrition_of_recipe(library.recipes["masala_dosa"], 1, ingredients)
+        assert v.protein_g == pytest.approx(5.023)
+
+    def test_fat(self, library, ingredients):
+        #   rice 0.130 + urad 0.126 + griddle oil 3.500 + potato 0.044
+        #   + onion 0.010 + temper oil 3.000 + chilli 0.004 + mustard 0.1985
+        #   + curry 0.005 = 7.0175
+        v = nutrition_of_recipe(library.recipes["masala_dosa"], 1, ingredients)
+        assert v.fat_g == pytest.approx(7.0175)
+
+    def test_water_line_carries_no_nutrients_but_makes_the_mass_add_up(
+        self, library, ingredients
+    ):
+        recipe = library.recipes["masala_dosa"]
+        total_g = sum(line.quantity_g for line in recipe.ingredients)
+        assert total_g == pytest.approx(recipe.serving_unit.grams_per_unit)
+        assert ingredients["water"].energy_kcal == 0
+
+    def test_default_serving_is_two_dosas(self, library, ingredients):
+        # 223.65 x 2 = 447.30
+        recipe = library.recipes["masala_dosa"]
+        assert recipe.serving_unit.default_count == 2
+        v = nutrition_of_recipe(recipe, recipe.serving_unit.default_count, ingredients)
+        assert v.energy_kcal == pytest.approx(447.30)
+
+
+class TestRecipeLoaderRules:
+    def test_all_three_recipes_load_with_no_warnings(self, library):
+        assert set(library.recipes) == {"sambar_sadam", "rajma_chawal", "masala_dosa"}
+        assert library.rejected == []
+        assert library.warnings == []
+
+    def test_every_recipe_category_is_plannable(self, library):
+        from core.foods.templates import ALL_TEMPLATES
+
+        accepted = frozenset().union(*(t.categories() for t in ALL_TEMPLATES))
+        for component in library.components.values():
+            assert component.category in accepted
+
+    def test_declared_uncertainty_is_backed_by_registered_constants(self, library):
+        from core.nutrition import citations
+
+        for recipe in library.recipes.values():
+            if recipe.process_uncertainty:
+                assert recipe.process_constants
+            for key in recipe.process_constants:
+                assert citations.constant(key)
+
+    def test_dosa_uncertainty_matches_its_own_arithmetic(self, library, ingredients):
+        # Declared energy band, rederived here from the recipe's own oil lines:
+        #   griddle oil 3.5 g x 8.84 kcal/g x 0.20 = 6.188 kcal
+        #   temper  oil 3.0 g x 8.84 kcal/g x 0.10 = 2.652 kcal
+        #   (6.188 + 2.652) / 223.65 kcal = 0.03952 -> declared 0.040
+        recipe = library.recipes["masala_dosa"]
+        expected = (3.5 * 8.84 * 0.20 + 3.0 * 8.84 * 0.10) / 223.65
+        assert recipe.uncertainty_for("energy_kcal") == pytest.approx(expected, abs=1e-3)
+
+    def test_a_recipe_may_not_invent_an_uncertainty_figure(self, tmp_path, ingredients):
+        from pathlib import Path
+
+        from core.foods.recipe_loader import load_recipe_file
+
+        bad = tmp_path / "bad.yaml"
+        bad.write_text(
+            "\n".join(
+                [
+                    "id: bad",
+                    "name: Bad",
+                    "region: south_indian",
+                    "diet_patterns: [vegetarian]",
+                    "category: rice",
+                    "serving_unit:",
+                    "  measure: cup",
+                    "  grams_per_unit: 100.0",
+                    "  min_count: 1",
+                    "  default_count: 1",
+                    "  max_count: 2",
+                    "process_uncertainty:",
+                    "  energy_kcal: 0.25",
+                    "ingredients:",
+                    "  - id: rice_cooked",
+                    "    quantity_g: 100.0",
+                    "    state: cooked",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError, match="uncertainty_notes"):
+            load_recipe_file(Path(bad), frozenset(ingredients))

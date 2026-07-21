@@ -1,0 +1,94 @@
+# Recipe file format
+#
+# One recipe per file. This document is the specification; the three files
+# beside it are worked examples. `core/foods/recipe_loader.py` enforces
+# everything stated here — where this document and the loader disagree, the
+# loader is the defect.
+#
+# ---------------------------------------------------------------------------
+# The two rules that are easy to get wrong
+# ---------------------------------------------------------------------------
+#
+# 1. QUANTITIES ARE FINISHED WEIGHTS, AND THEY SUM TO ONE SERVING UNIT.
+#
+#    `ingredients[].quantity_g` is the mass of that constituent in the plated
+#    dish, and the ingredient list sums to `serving_unit.grams_per_unit`
+#    (within 2%). The loader rejects a recipe where it does not.
+#
+#    Each line also carries `state`, naming the composition basis to look the
+#    ingredient up on. Rice roughly triples on cooking, so a raw value read
+#    against a cooked quantity is a 3x error, not a tolerance-band problem —
+#    which is why the basis is stated per line rather than assumed per file.
+#
+#    Where a dish is made from a raw constituent that absorbs water (a dosa
+#    from rice-and-urad batter), record the raw constituents on a `raw` basis
+#    and list the absorbed `water` explicitly, so the masses still sum to the
+#    finished weight. Do not multiply by a yield factor inline: go through
+#    `core/foods/retention.py`, which reads the factor from `citations.py`.
+#
+#    Oil lines record the oil RETAINED in the finished dish, not the oil put
+#    in the pan. Note the applied amount in `note` for the cook's benefit; the
+#    retained figure comes from a registered oil-uptake constant.
+#
+# 2. NO NUTRITIONAL CONSTANT MAY BE INVENTED IN THIS FILE.
+#
+#    `process_uncertainty` is not a free-hand number. Every macro listed must
+#    have a matching entry in `uncertainty_notes` showing the arithmetic that
+#    produced it from a constant in `core/nutrition/citations.py`, and every
+#    constant so used must be listed in `process_constants`. The loader checks
+#    all three agree. The rule against magic numbers does not stop at the
+#    boundary of a data file.
+#
+# ---------------------------------------------------------------------------
+# Fields
+# ---------------------------------------------------------------------------
+
+id: string # stable, snake_case, unique across the library
+name: string # display name, English
+name_ta: string # optional, Tamil
+name_hi: string # optional, Hindi
+
+region: south_indian | north_indian | pan_indian
+
+# Which diet patterns this dish satisfies. Stated explicitly, never inferred:
+# jain excludes onion, garlic and root vegetables, and that is not derivable
+# from "vegetarian".
+diet_patterns: [vegetarian, vegan, jain, eggetarian, non_vegetarian]
+
+# The role this dish plays inside a MealTemplate slot (see core/foods/templates.py).
+# Must be a category some template accepts, or the recipe can never be planned.
+category: string # e.g. tiffin, sambar, chutney, rice, mixed_rice, poriyal, dal, sabzi, roti
+
+prep_minutes: int
+tags: [string] # free-form: one_pot, high_protein, festive, ...
+
+# The discrete thing the eater is handed. The solver searches integer counts in
+# [min_count, max_count]. There is no continuous multiplier and no five-point
+# multiplier scale anywhere in this system: 1.25 idlis is 3.75 idlis at three
+# units, which nobody can serve.
+serving_unit:
+  measure: string # a key from core/foods/portions.py MEASURES
+  name: string # optional display override, defaults to the measure name
+  grams_per_unit: float # may differ from the generic measure weight; if so, say why in note
+  min_count: int # >= 1
+  default_count: int # min <= default <= max
+  max_count: int
+  note: string # optional; required in spirit if grams_per_unit overrides the measure
+
+# Citation keys (core/nutrition/citations.py) this recipe's numbers depend on.
+process_constants: [string]
+
+# Fractional uncertainty on this dish's total for each macro, at the dish level.
+process_uncertainty:
+  energy_kcal: float
+  fat_g: float
+
+# Mandatory alongside process_uncertainty: how each figure was derived.
+uncertainty_notes:
+  energy_kcal: string # show the arithmetic and name the constant
+
+ingredients:
+  - id: string # must exist in the loaded ingredient set
+    quantity_g: float # finished weight, > 0
+    state: raw | cooked | as_used # composition basis to look up
+    note: string # optional

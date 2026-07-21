@@ -1,0 +1,82 @@
+# Sambar sadam — the South Indian one-pot lunch. Hand-authored; see
+# schema.yaml for the format and the rules the loader enforces.
+id: sambar_sadam
+name: Sambar sadam
+name_ta: சாம்பார் சாதம்
+name_hi: सांबर चावल
+
+region: south_indian
+diet_patterns: [vegetarian, vegan]
+# Not jain: onion, and carrot is a root vegetable.
+
+category: mixed_rice
+prep_minutes: 40
+tags: [one_pot, lunch, comfort]
+
+serving_unit:
+  measure: cup
+  grams_per_unit: 200.0
+  min_count: 1
+  default_count: 1
+  max_count: 3
+  note: >-
+    One levelled cup of mixed rice, the generic cup weight. Three cups is a
+    large but real lunch; the ceiling is what stops the solver closing an
+    energy gap by serving five.
+
+process_constants: [oil_uptake.vegetable_tempering]
+
+process_uncertainty:
+  energy_kcal: 0.013
+  fat_g: 0.075
+
+uncertainty_notes:
+  energy_kcal: >-
+    Tempering oil is the only meaningfully uncertain input. Oil contributes
+    4 g x 8.84 kcal/g = 35.36 kcal of the dish's 265.0 kcal = 13.3%. At the
+    +/-10% band on oil_uptake.vegetable_tempering, that is
+    0.10 x 0.133 = 0.013 at the dish level. Everything else here is a
+    cooked-basis composition value against a fixed 200 g portion, so cooking
+    yield does not enter.
+  fat_g: >-
+    Oil is 4.0 g of the dish's 5.35 g fat = 74.8%. 0.10 x 0.748 = 0.075.
+
+ingredients:
+  - id: rice_cooked
+    quantity_g: 108.0
+    state: cooked
+  - id: toor_dal_cooked
+    quantity_g: 45.0
+    state: cooked
+    note: About 18 g dry toor dal, via yield.toor_dal_boiled.
+  - id: tomato_raw
+    quantity_g: 12.0
+    state: raw
+  - id: onion_raw
+    quantity_g: 12.0
+    state: raw
+    note: Small shallots in practice; the onion composition row stands in for them.
+  - id: carrot_raw
+    quantity_g: 10.0
+    state: raw
+  - id: tamarind_pulp
+    quantity_g: 3.0
+    state: as_used
+  - id: sambar_powder
+    quantity_g: 3.0
+    state: as_used
+  - id: gingelly_oil
+    quantity_g: 4.0
+    state: as_used
+    note: >-
+      Retained oil. About 4.2 g goes into the tempering pan; nearly all of it
+      is poured over the rice (oil_uptake.vegetable_tempering = 0.95).
+  - id: mustard_seed
+    quantity_g: 1.0
+    state: as_used
+  - id: curry_leaves
+    quantity_g: 1.0
+    state: raw
+  - id: salt_iodised
+    quantity_g: 1.0
+    state: as_used

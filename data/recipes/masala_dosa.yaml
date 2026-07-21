@@ -1,0 +1,101 @@
+# Masala dosa — the recipe that carries the project's honest-uncertainty
+# example. Nobody has a primary source for how much oil stays on a griddled
+# dosa; see oil_uptake.dosa_griddled in citations.py, and REJECTED_CITATIONS
+# for the deep-frying paper that was found, examined, and refused because it
+# describes a different mechanism.
+#
+# The batter is recorded as raw rice + raw urad + explicit water, because there
+# is no cooked-basis composition entry for a fermented griddled batter and
+# inventing one would hide a 3x-class error inside a single number. Written
+# this way, the masses still sum to the finished dosa.
+id: masala_dosa
+name: Masala dosa
+name_ta: மசாலா தோசை
+name_hi: मसाला डोसा
+
+region: south_indian
+diet_patterns: [vegetarian, vegan]
+# Not jain: potato and onion.
+
+category: tiffin
+prep_minutes: 25
+tags: [breakfast, fermented, griddled]
+
+serving_unit:
+  measure: dosa
+  grams_per_unit: 150.0
+  min_count: 1
+  default_count: 2
+  max_count: 3
+  note: >-
+    Overrides the generic 90 g dosa weight: this unit is one dosa plus its
+    60 g potato filling. Three is a large breakfast and a real one.
+
+process_constants:
+  - oil_uptake.dosa_griddled
+  - oil_uptake.vegetable_tempering
+
+process_uncertainty:
+  energy_kcal: 0.040
+  fat_g: 0.143
+
+uncertainty_notes:
+  energy_kcal: >-
+    Two oil lines with different processes. Griddle oil: 3.5 g x 8.84 = 30.94
+    kcal at the +/-20% band on oil_uptake.dosa_griddled = 6.19 kcal. Tempering
+    oil: 3.0 g x 8.84 = 26.52 kcal at the +/-10% band on
+    oil_uptake.vegetable_tempering = 2.65 kcal. Together 8.84 kcal on a dish
+    total of 223.65 kcal = 0.040. Summed rather than root-sum-squared because
+    both errors come from the same cook and the same pan and do not cancel.
+  fat_g: >-
+    (0.20 x 3.5 g) + (0.10 x 3.0 g) = 1.0 g on the dish's 7.02 g fat = 0.143.
+
+ingredients:
+  # --- the dosa itself, 90 g finished ---
+  - id: rice_milled_raw
+    quantity_g: 26.0
+    state: raw
+    note: Soaked and ground into batter; its absorbed water is the `water` line below.
+  - id: urad_dal_raw
+    quantity_g: 9.0
+    state: raw
+    note: Roughly 3:1 rice to urad, the everyday household ratio.
+  - id: water
+    quantity_g: 51.0
+    state: as_used
+    note: >-
+      Water held in the fermented batter and retained after griddling. Listed
+      explicitly so the finished mass adds up without a hidden yield factor.
+  - id: gingelly_oil
+    quantity_g: 3.5
+    state: as_used
+    note: >-
+      Retained oil. About 5 g is spooned onto the tawa; oil_uptake.dosa_griddled
+      = 0.70 of it stays with the dosa. This is the least certain number in the
+      recipe and the source of its energy band.
+  - id: salt_iodised
+    quantity_g: 0.5
+    state: as_used
+  # --- potato masala filling, 60 g finished ---
+  - id: potato_boiled
+    quantity_g: 44.0
+    state: cooked
+  - id: onion_raw
+    quantity_g: 10.0
+    state: raw
+  - id: gingelly_oil
+    quantity_g: 3.0
+    state: as_used
+    note: Tempering oil for the masala, nearly all of it served.
+  - id: green_chilli
+    quantity_g: 1.0
+    state: raw
+  - id: mustard_seed
+    quantity_g: 0.5
+    state: as_used
+  - id: curry_leaves
+    quantity_g: 0.5
+    state: raw
+  - id: salt_iodised
+    quantity_g: 1.0
+    state: as_used
