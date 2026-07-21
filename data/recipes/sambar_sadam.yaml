@@ -24,8 +24,6 @@ serving_unit:
     large but real lunch; the ceiling is what stops the solver closing an
     energy gap by serving five.
 
-process_constants: [oil_uptake.vegetable_tempering]
-
 process_uncertainty:
   energy_kcal: 0.013
   fat_g: 0.075
@@ -68,6 +66,7 @@ ingredients:
   - id: gingelly_oil
     quantity_g: 4.0
     state: as_used
+    process: oil_uptake.vegetable_tempering
     note: >-
       Retained oil. About 4.2 g goes into the tempering pan; nearly all of it
       is poured over the rice (oil_uptake.vegetable_tempering = 0.95).

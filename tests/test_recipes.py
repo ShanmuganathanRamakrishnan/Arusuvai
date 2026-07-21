@@ -204,6 +204,120 @@ class TestRecipeLoaderRules:
         expected = (3.5 * 8.84 * 0.20 + 3.0 * 8.84 * 0.10) / 223.65
         assert recipe.uncertainty_for("energy_kcal") == pytest.approx(expected, abs=1e-3)
 
+    def test_process_constants_are_derived_from_the_ingredient_lines(self, library):
+        # Not read from a recipe-level list: derived, so a stale list cannot
+        # disagree with the lines it claims to describe.
+        dosa = library.recipes["masala_dosa"]
+        assert dosa.process_constants == frozenset(
+            {"oil_uptake.dosa_griddled", "oil_uptake.vegetable_tempering"}
+        )
+        assert library.recipes["sambar_sadam"].process_constants == frozenset(
+            {"oil_uptake.vegetable_tempering"}
+        )
+
+    def test_two_lines_of_the_same_ingredient_carry_different_processes(self, library):
+        # The case a recipe-level list cannot express, and the reason the dosa's
+        # energy band needed two terms: 3.5 g griddle oil at +/-20%, 3.0 g
+        # tempering oil at +/-10%, same ingredient id.
+        dosa = library.recipes["masala_dosa"]
+        griddled = dosa.lines_for_process("oil_uptake.dosa_griddled")
+        tempered = dosa.lines_for_process("oil_uptake.vegetable_tempering")
+        assert [line.ingredient_id for line in griddled] == ["gingelly_oil"]
+        assert [line.ingredient_id for line in tempered] == ["gingelly_oil"]
+        assert griddled[0].quantity_g == pytest.approx(3.5)
+        assert tempered[0].quantity_g == pytest.approx(3.0)
+
+    def test_exposure_is_computed_from_the_lines_not_transcribed(self, library):
+        from dataclasses import replace
+
+        dosa = library.recipes["masala_dosa"]
+        assert dosa.process_exposure_g("oil_uptake.dosa_griddled") == pytest.approx(3.5)
+
+        # The regression this whole change exists to make impossible: edit a
+        # quantity and the derived figure must move with it. A stored exposure
+        # fraction would sit unchanged here with the suite still green.
+        heavier = replace(
+            dosa,
+            ingredients=tuple(
+                replace(line, quantity_g=7.0)
+                if line.process_key == "oil_uptake.dosa_griddled"
+                else line
+                for line in dosa.ingredients
+            ),
+            # 3.5 g more oil, so the declared unit weight must move too or the
+            # mass-consistency check in Recipe.__post_init__ rejects it.
+            serving_unit=replace(
+                dosa.serving_unit, grams_per_unit=dosa.serving_unit.grams_per_unit + 3.5
+            ),
+        )
+        assert heavier.process_exposure_g("oil_uptake.dosa_griddled") == pytest.approx(7.0)
+
+    def test_a_recipe_level_process_constants_key_is_rejected(self, tmp_path, ingredients):
+        from pathlib import Path
+
+        from core.foods.recipe_loader import load_recipe_file
+
+        bad = tmp_path / "stale_list.yaml"
+        bad.write_text(
+            "\n".join(
+                [
+                    "id: stale",
+                    "name: Stale",
+                    "region: south_indian",
+                    "diet_patterns: [vegetarian]",
+                    "category: rice",
+                    "serving_unit:",
+                    "  measure: cup",
+                    "  grams_per_unit: 100.0",
+                    "  min_count: 1",
+                    "  default_count: 1",
+                    "  max_count: 2",
+                    # Names a real constant, and no line uses it — exactly the
+                    # silent disagreement the derived property rules out.
+                    "process_constants: [oil_uptake.dosa_griddled]",
+                    "ingredients:",
+                    "  - id: rice_cooked",
+                    "    quantity_g: 100.0",
+                    "    state: cooked",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError, match="no longer read"):
+            load_recipe_file(Path(bad), frozenset(ingredients))
+
+    def test_a_line_may_not_name_an_unregistered_process(self, tmp_path, ingredients):
+        from pathlib import Path
+
+        from core.foods.recipe_loader import load_recipe_file
+
+        bad = tmp_path / "invented_process.yaml"
+        bad.write_text(
+            "\n".join(
+                [
+                    "id: invented",
+                    "name: Invented",
+                    "region: south_indian",
+                    "diet_patterns: [vegetarian]",
+                    "category: rice",
+                    "serving_unit:",
+                    "  measure: cup",
+                    "  grams_per_unit: 100.0",
+                    "  min_count: 1",
+                    "  default_count: 1",
+                    "  max_count: 2",
+                    "ingredients:",
+                    "  - id: rice_cooked",
+                    "    quantity_g: 100.0",
+                    "    state: cooked",
+                    "    process: oil_uptake.deep_fried_vada",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        with pytest.raises(KeyError, match="no constant registered"):
+            load_recipe_file(Path(bad), frozenset(ingredients))
+
     def test_a_recipe_may_not_invent_an_uncertainty_figure(self, tmp_path, ingredients):
         from pathlib import Path
 

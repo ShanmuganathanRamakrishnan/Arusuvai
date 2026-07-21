@@ -31,10 +31,6 @@ serving_unit:
     Overrides the generic 90 g dosa weight: this unit is one dosa plus its
     60 g potato filling. Three is a large breakfast and a real one.
 
-process_constants:
-  - oil_uptake.dosa_griddled
-  - oil_uptake.vegetable_tempering
-
 process_uncertainty:
   energy_kcal: 0.040
   fat_g: 0.143
@@ -69,6 +65,7 @@ ingredients:
   - id: gingelly_oil
     quantity_g: 3.5
     state: as_used
+    process: oil_uptake.dosa_griddled
     note: >-
       Retained oil. About 5 g is spooned onto the tawa; oil_uptake.dosa_griddled
       = 0.70 of it stays with the dosa. This is the least certain number in the
@@ -86,6 +83,7 @@ ingredients:
   - id: gingelly_oil
     quantity_g: 3.0
     state: as_used
+    process: oil_uptake.vegetable_tempering
     note: Tempering oil for the masala, nearly all of it served.
   - id: green_chilli
     quantity_g: 1.0

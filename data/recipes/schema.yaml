@@ -34,10 +34,27 @@
 #
 #    `process_uncertainty` is not a free-hand number. Every macro listed must
 #    have a matching entry in `uncertainty_notes` showing the arithmetic that
-#    produced it from a constant in `core/nutrition/citations.py`, and every
-#    constant so used must be listed in `process_constants`. The loader checks
-#    all three agree. The rule against magic numbers does not stop at the
-#    boundary of a data file.
+#    produced it from a constant in `core/nutrition/citations.py`, and at least
+#    one ingredient line must carry a `process` key naming such a constant. The
+#    rule against magic numbers does not stop at the boundary of a data file.
+#
+#    KNOWN GAP: the `process_uncertainty` figures are still hand-computed and
+#    pasted here. Editing a constant in citations.py leaves them stale with the
+#    tests green. Per-line `process` attribution (below) exists so the loader
+#    can derive them instead; that derivation is not built yet.
+#
+# 3. PROCESS ATTRIBUTION GOES ON THE LINE, NOT THE RECIPE.
+#
+#    A line whose quantity was determined by a registered constant names it in
+#    `process`. A masala dosa has two `gingelly_oil` lines — griddle and
+#    tempering — that differ only by which process they belong to, which a
+#    recipe-level list cannot express.
+#
+#    There is no recipe-level `process_constants` key. It is derived from the
+#    lines, and the loader rejects a file that still declares one: a
+#    hand-maintained list can silently disagree with the ingredients it claims
+#    to describe. Exposure (how many grams a constant governs) is likewise
+#    computed, never written down.
 #
 # ---------------------------------------------------------------------------
 # Fields
@@ -75,9 +92,6 @@ serving_unit:
   max_count: int
   note: string # optional; required in spirit if grams_per_unit overrides the measure
 
-# Citation keys (core/nutrition/citations.py) this recipe's numbers depend on.
-process_constants: [string]
-
 # Fractional uncertainty on this dish's total for each macro, at the dish level.
 process_uncertainty:
   energy_kcal: float
@@ -91,4 +105,5 @@ ingredients:
   - id: string # must exist in the loaded ingredient set
     quantity_g: float # finished weight, > 0
     state: raw | cooked | as_used # composition basis to look up
+    process: string # optional; the citations.py constant that set this quantity
     note: string # optional

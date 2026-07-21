@@ -92,20 +92,33 @@ def load_recipe_file(path: Path, known_ingredients: frozenset[str]) -> tuple[Rec
                 f"{path.name}: ingredient {ingredient_id!r} is not in the loaded "
                 "ingredient set (rejected at load time, or never present)"
             )
+        process_key = raw_line.get("process")
+        if process_key is not None:
+            process_key = str(process_key)
+            # Raises with a pointed message if unregistered. Checked here rather
+            # than in models.py so the dataclass layer stays free of a
+            # dependency on the citations registry.
+            citations.constant(process_key)
         lines.append(
             RecipeIngredient(
                 ingredient_id=ingredient_id,
                 quantity_g=float(_require(raw_line, "quantity_g", path)),
                 state=RawOrCooked(str(_require(raw_line, "state", path))),
+                process_key=process_key,
             )
+        )
+
+    if "process_constants" in doc:
+        raise ValueError(
+            f"{path.name}: recipe-level 'process_constants' is no longer read — a "
+            "hand-maintained list can disagree with the lines it describes. Put "
+            "'process: <constant key>' on the ingredient line whose quantity the "
+            "constant determines; Recipe.process_constants is derived from those."
         )
 
     uncertainty = {str(k): float(v) for k, v in (doc.get("process_uncertainty") or {}).items()}
     notes = {str(k): str(v) for k, v in (doc.get("uncertainty_notes") or {}).items()}
-    constants = frozenset(str(k) for k in (doc.get("process_constants") or []))
-
-    for key in constants:
-        citations.constant(key)  # raises with a pointed message if unregistered
+    constants = frozenset(line.process_key for line in lines if line.process_key)
 
     for macro, value in uncertainty.items():
         if macro not in notes or not notes[macro].strip():
@@ -116,8 +129,9 @@ def load_recipe_file(path: Path, known_ingredients: frozenset[str]) -> tuple[Rec
             )
         if value > 0 and not constants:
             raise ValueError(
-                f"{path.name}: declares uncertainty on {macro!r} but lists no "
-                "process_constants to derive it from"
+                f"{path.name}: declares uncertainty on {macro!r} but no ingredient "
+                "line carries a 'process' key, so there is no registered constant "
+                "the figure could have been derived from"
             )
 
     recipe = Recipe(
@@ -130,7 +144,6 @@ def load_recipe_file(path: Path, known_ingredients: frozenset[str]) -> tuple[Rec
         prep_minutes=int(doc.get("prep_minutes", 0)),
         tags=frozenset(str(t) for t in (doc.get("tags") or [])),
         process_uncertainty=uncertainty,
-        process_constants=constants,
     )
     return recipe, category
 

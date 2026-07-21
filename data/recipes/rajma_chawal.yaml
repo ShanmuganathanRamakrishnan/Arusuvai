@@ -25,8 +25,6 @@ serving_unit:
     Overrides the generic cup weight: this unit is a composed plate of rajma
     over rice, not a cup of one thing. Two plates is the honest ceiling.
 
-process_constants: [oil_uptake.vegetable_tempering]
-
 process_uncertainty:
   energy_kcal: 0.015
   fat_g: 0.084
@@ -57,6 +55,7 @@ ingredients:
   - id: sunflower_oil
     quantity_g: 8.0
     state: as_used
+    process: oil_uptake.vegetable_tempering
     note: >-
       Retained oil. About 8.4 g into the pan; the masala is served whole, so
       almost none is left behind (oil_uptake.vegetable_tempering = 0.95).

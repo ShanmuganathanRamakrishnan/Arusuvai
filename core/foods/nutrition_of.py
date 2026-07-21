@@ -150,6 +150,22 @@ def _interval_for_recipe(
 
 
 def _depends_on_unverified(recipe: Recipe) -> bool:
+    """Whether any constant behind this recipe's numbers is unverified.
+
+    Known over-attribution, deliberately left in place: a True here charges the
+    recipe's *whole* energy to the unverified bucket, though only the grams
+    returned by ``Recipe.lines_for_process`` actually depend on the constant —
+    for the masala dosa that is 8.84 kcal of 223.65, not all of it.
+
+    It is not narrowed yet because the opposite error is larger and not fixed:
+    ``Ingredient.verified`` never reaches this calculation at all, so composition
+    data transcribed from memory — 96% of a dish's energy — currently counts as
+    verified. Correcting the smaller error alone would move the reported figure
+    *away* from the truth. Both land together, once ingredient composition
+    uncertainty exists; the per-line attribution this function would need is
+    already available.
+    """
+
     for key in recipe.process_constants:
         ev = citations.evidence(citations.constant(key).evidence_id)
         if not ev.verified:

@@ -142,11 +142,23 @@ class RecipeIngredient:
     ingredient_id: str
     quantity_g: float
     state: RawOrCooked
+    #: Key of the registered process constant that *determined this line's
+    #: quantity* — e.g. ``oil_uptake.dosa_griddled`` on the retained-oil line of
+    #: a dosa. Attribution belongs on the line, not the recipe: a masala dosa
+    #: has two ``gingelly_oil`` lines that differ only by which process they
+    #: belong to, and a recipe-level list cannot express that. It is also what
+    #: makes exposure a computed quantity instead of a hand-copied one.
+    process_key: str | None = None
 
     def __post_init__(self) -> None:
         if self.quantity_g <= 0:
             raise ValueError(
                 f"{self.ingredient_id}: quantity_g must be positive, got {self.quantity_g}"
+            )
+        if self.process_key is not None and not self.process_key.strip():
+            raise ValueError(
+                f"{self.ingredient_id}: process_key must be a registered constant "
+                "key or absent, never an empty string"
             )
         if self.state is RawOrCooked.RAW:
             # Not forbidden outright — a raw-basis line is legitimate for
@@ -244,10 +256,6 @@ class Recipe:
     #: core/planner — it never loosens a tolerance, it makes a recipe less
     #: usable where the macro is target-critical.
     process_uncertainty: Mapping[str, float] = field(default_factory=dict)
-    #: Keys into core.nutrition.citations for the process constants this
-    #: recipe's numbers depend on. Lets the planner report which plans rest on
-    #: unverified constants without re-deriving it from the ingredient list.
-    process_constants: frozenset[str] = frozenset()
     warnings: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
@@ -282,6 +290,47 @@ class Recipe:
 
     def uncertainty_for(self, macro: str) -> float:
         return float(self.process_uncertainty.get(macro, 0.0))
+
+    @property
+    def process_constants(self) -> frozenset[str]:
+        """Process constants this recipe depends on, *derived* from its lines.
+
+        Deliberately not a stored field. A hand-maintained list can silently
+        disagree with the ingredients it claims to describe, and a reader has no
+        way to tell which one is wrong. Deriving it means the disagreement
+        cannot be represented.
+        """
+
+        return frozenset(
+            line.process_key for line in self.ingredients if line.process_key
+        )
+
+    def process_exposure_g(self, process_key: str) -> float:
+        """Finished grams whose quantity was determined by ``process_key``.
+
+        Computed from the lines every time. The previous design stored the
+        equivalent figure (as a pre-divided fraction) in the recipe YAML, where
+        editing a quantity left it stale with the tests still green — the
+        registry exists precisely so a number derivable from a constant is never
+        transcribed beside it.
+        """
+
+        return sum(
+            line.quantity_g
+            for line in self.ingredients
+            if line.process_key == process_key
+        )
+
+    def lines_for_process(self, process_key: str) -> tuple[RecipeIngredient, ...]:
+        """The lines attributed to ``process_key``.
+
+        Needed to attribute an unverified constant's influence to the grams it
+        actually governs, rather than to the whole dish.
+        """
+
+        return tuple(
+            line for line in self.ingredients if line.process_key == process_key
+        )
 
 
 @dataclass(frozen=True)
