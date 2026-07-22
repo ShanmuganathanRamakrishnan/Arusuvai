@@ -9,11 +9,23 @@ from core.schemas.common import (
     RawOrCooked,
     Region,
 )
+from core.schemas.profile import (
+    ActivityLevel,
+    ClinicalFlag,
+    Goal,
+    Profile,
+    Sex,
+)
 
 __all__ = [
     "MACRO_KEYS",
+    "ActivityLevel",
+    "ClinicalFlag",
     "DietPattern",
+    "Goal",
     "MealSlot",
+    "Profile",
     "RawOrCooked",
     "Region",
+    "Sex",
 ]

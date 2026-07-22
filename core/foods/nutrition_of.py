@@ -28,6 +28,7 @@ __all__ = [
     "nutrition_of_recipe",
     "nutrition_of_components",
     "format_macro",
+    "unit_for",
 ]
 
 #: Macros for which showing an interval is worth the ink. Below a few percent
@@ -76,6 +77,19 @@ _UNITS: dict[str, str] = {
     "calcium_mg": "mg",
     "b12_ug": "ug",
 }
+
+
+def unit_for(macro: str) -> str:
+    """The unit a macro's target was stated in ('g', 'kcal', 'mg').
+
+    Public because CLAUDE.md requires the protein relaxation disclosure to be
+    written "in the same units the target was originally stated in", and the
+    validator must not keep its own second copy of this mapping — a disclosure
+    that says 90 mg of protein because two tables drifted apart is worse than
+    no disclosure.
+    """
+
+    return _UNITS.get(macro, "")
 
 
 def format_macro(value: float, uncertainty: float, macro: str) -> str:

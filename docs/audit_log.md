@@ -8,6 +8,122 @@ Newest entries at the top.
 
 ---
 
+## 2026-07-22 — Phase 3 build notes: two self-caught defects
+
+Not an independent audit pass. Both were caught while building
+`core/planner/validator.py`, and both are recorded because they are instances
+of failure modes CLAUDE.md names by name.
+
+### Finding 13 — a hand-computed test expectation was wrong, and its own test agreed with it
+
+`tests/factories.SOUTH_LUNCH_MAX_PROTEIN_G` was `33.6 g`, and
+`tests/test_planner_solver.py::TestThinFeasibleSet::
+test_the_synthetic_pool_cannot_reach_90g_protein_at_all` asserted exactly that
+value against a comment restating the same derivation. The derivation summed
+*both* crisp candidates (`crisp_a` 1.0 + `crisp_b` 0.3, doubled), but the
+`crisp` slot has `max_selections=1`, so no combination ever contains two. The
+true maximum is `33.0 g`.
+
+The test passed throughout Phase 2 because the assertion and the comment were
+the same mistake written twice. CLAUDE.md's testing convention ("expected
+values are hand-computed, with the arithmetic shown in a comment") is
+necessary but, as this shows, not sufficient: a hand-computed value is only
+worth what its derivation is worth, and a comment cannot check itself.
+
+**Severity:** LOW in consequence — the conclusion the test drew (33.6 < 90, so
+the audit's thin case really is infeasible) is still true at 33.0, and nothing
+in `core/` read the constant. MEDIUM in kind: it is precisely the
+"code and docs agree with each other and neither survives a concrete input"
+shape this log exists to catch, committed in a test rather than in a doc.
+
+**Disposition: FIXED.** Value corrected to 33.0 with the per-slot arithmetic
+shown, and a second test
+(`test_the_hand_derived_max_matches_what_enumeration_actually_reaches`) now
+cross-checks the hand-derived figure against what `enumerate_combinations` +
+`macro_bounds` actually reach, so the arithmetic and the code must agree with
+*each other*, not only with themselves. This is a cross-check, not a snapshot:
+the hand-derived value is still stated and readable in `tests/factories.py`.
+
+### Finding 14 — the relaxation ladder searched a set pre-filtered against the un-relaxed target
+
+First implementation of `plan_within_ladder` took an already-pre-filtered
+combination set and re-solved it after each rung. The O(1) feasibility
+pre-filter is target-dependent, so the set handed in had already been pruned
+to fit the *tight* target: every rung then widened a target and searched a
+population selected to fit the target it was widening. Plans the ladder should
+have found were unreachable, and the failure is silent — the system declines,
+with a decline message that correctly names a constraint, and nothing
+indicates the search space was wrong.
+
+Measured on the Phase 2 synthetic pool: 17 of 144 combinations survive the
+pre-filter under a 500 mg sodium ceiling; 141 survive once rung 1 drops it.
+The plan the corrected ladder returns is *not* in the 17.
+
+**Severity:** HIGH. It defeats the ladder for exactly the profiles the ladder
+exists for, and presents as a legitimate decline.
+
+**Disposition: FIXED.** `plan_within_ladder` now runs `feasible_combinations`
+itself, once per rung, against that rung's target, and its docstring states
+that callers must pass the enumerated set rather than a pre-filtered one.
+Pinned by `tests/test_planner_validator.py::TestLadderFires::
+test_relaxation_recovers_combinations_the_tight_pre_filter_discarded`, which
+asserts the chosen plan is one the tight pre-filter discarded — a test that
+fails if the pre-filter is ever hoisted back out.
+
+---
+
+## 2026-07-21 — Phase 2 build note: finding 1 closed, finding 2 status clarified
+
+Not an independent audit pass (no fresh read-only subagent run against this
+diff yet — that is still open work). Recorded here because building
+`core/planner/candidates.py` directly resolves one open finding and bears on
+another, and CLAUDE.md's audit-workflow section says a finding's disposition
+belongs in this file, not only in a commit message.
+
+**Finding 1 ("the protein eligibility ceiling is applied to a quantity that
+is 0.0 for every recipe") — CLOSED.** `core/planner/candidates.py` gates on
+`core.foods.nutrition_of.NutritionEstimate.uncertainty_fraction` — composition
+uncertainty (mandatory per ingredient, never zero) plus process uncertainty —
+computed via `nutrition_of_components` for each candidate recipe, not on
+`Recipe.process_uncertainty` alone. `tests/test_planner_candidates.py::
+TestUncertaintyEligibility::test_every_real_recipe_is_excluded_in_validated_mode`
+asserts, per real recipe, that the combined protein fraction is pinned at
+0.25 against a 0.15 ceiling (matching the figure already pinned in
+`tests/test_nutrition_of.py::TestEligibilityConsequence`) and that all three
+are excluded with `dev_mode=False`. CLAUDE.md's "Uncertainty" section wording
+is corrected to say "combined composition-plus-process uncertainty" rather
+than "process uncertainty."
+
+`dev_mode` (named as a requirement in `docs/methodology.md`'s "dev_mode versus
+validated" section, not previously implemented anywhere) is now a real
+parameter on `build_candidate_pool`: `False` (default) excludes a recipe that
+misses a ceiling; `True` keeps it and records the miss in
+`CandidatePool.flagged` rather than silently treating it as validated. The
+Phase 2 property test (200 random moderate profiles) runs against a synthetic,
+tightly-verified fixture (`tests/factories.py`, not real recipe data) that
+clears both ceilings even with `dev_mode=False` — it does not depend on
+suspending the ceiling, and a separate test confirms the real library still
+clears nothing.
+
+**Finding 2 ("a recipe with no `process:` lines reads as fully
+process-certain") — still OPEN, scope note added.** This finding is about
+`core/foods/recipe_loader.py`'s `_derive_process_uncertainty` and
+`core/foods/nutrition_of.py`'s `_depends_on_unverified`, neither of which
+`core/planner` touches. It is not silently inherited by the eligibility filter
+today: `Ingredient.composition_uncertainty` is mandatory per macro (construction
+fails on an unpopulated entry — see `core/foods/models.py`), so the *combined*
+figure `candidates.py` gates on can never be zero for a recipe built from
+today's fixture, independent of whether that recipe declares any process at
+all. The exposure finding 2 actually describes — a *verified*, tight-composition
+ingredient combined with an undeclared process on a griddled or fried dish —
+does not exist in the current fixture (every ingredient but `water` is
+unverified) and so cannot presently slip through `candidates.py` either. It
+would as soon as that combination exists. Closing finding 2 before that point
+is still the right order of work; it just is not blocking today's `dev_mode`
+eligibility behaviour the way finding 1 was.
+
+---
+
 ## 2026-07-21 — audit of `7d9bc41` and `26e5ff4`
 
 **Scope.** Composition uncertainty (`7d9bc41`) and the derive-process-uncertainty

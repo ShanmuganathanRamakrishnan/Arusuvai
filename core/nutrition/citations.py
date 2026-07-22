@@ -216,6 +216,11 @@ REVIEWED_MECHANISM_MATCHES: dict[str, str] = {
     "composition.verified_primary": "reviewed: NO matching primary source; project estimate of analytical spread",
     "eligibility.max_protein_uncertainty": "reviewed: project decision, no physical process claimed",
     "eligibility.max_energy_uncertainty": "reviewed: project decision, no physical process claimed",
+    "tolerance.energy_default": "reviewed: project decision, no physical process claimed",
+    "tolerance.energy_relaxed": "reviewed: project decision, no physical process claimed",
+    "tolerance.fat_carb_default": "reviewed: project decision, no physical process claimed",
+    "tolerance.fat_carb_relaxed": "reviewed: project decision, no physical process claimed",
+    "tolerance.protein_relaxed_fraction": "reviewed: project decision, no physical process claimed",
     "measure.katori_gravy_g": "reviewed: household volume-to-mass measure, applied to serving-unit gram weight",
     "measure.cup_cooked_rice_g": "reviewed: as above",
     "measure.idli_g": "reviewed: as above",
@@ -678,6 +683,81 @@ ELIGIBILITY_ENERGY = register_constant(
             "looser than protein per CLAUDE.md's 'wider tolerance on energy'"
         ),
         uncertainty=0.0,
+    )
+)
+
+# Tolerance bands, default and relaxed. These are the *tolerance* axis, which
+# CLAUDE.md keeps strictly separate from the uncertainty axis above: a
+# tolerance is a product decision about how far a plan may sit from its target,
+# an uncertainty is a measured property of the data. They are neighbours in
+# this file only because both are numbers that must not be written inline —
+# nothing here may ever be read as an uncertainty, and the relaxation ladder in
+# core/planner/validator.py only ever widens values from this block, never one
+# from the eligibility or composition blocks.
+#
+# The default/relaxed pairs are transcribed from CLAUDE.md's "Relaxation
+# ladder" section, which states the ranges (fat/carb 15% -> up to 25%, energy
+# 5% -> up to 10%) as a design decision rather than deriving them from
+# literature. Registering them here rather than leaving them as literals in
+# target.py means the ladder and the default target constructor cannot drift
+# apart, which they otherwise would the first time one of them was edited.
+TOLERANCE_ENERGY_DEFAULT = register_constant(
+    Constant(
+        key="tolerance.energy_default",
+        value=0.05,
+        unit="fraction",
+        evidence_id="project_decision",
+        applied_to="the +/- band around a plan's energy target before any relaxation",
+        uncertainty=0.0,
+    )
+)
+TOLERANCE_ENERGY_RELAXED = register_constant(
+    Constant(
+        key="tolerance.energy_relaxed",
+        value=0.10,
+        unit="fraction",
+        evidence_id="project_decision",
+        applied_to="the widened energy band at relaxation ladder step 3",
+        uncertainty=0.0,
+    )
+)
+TOLERANCE_FAT_CARB_DEFAULT = register_constant(
+    Constant(
+        key="tolerance.fat_carb_default",
+        value=0.15,
+        unit="fraction",
+        evidence_id="project_decision",
+        applied_to="the +/- band around fat and carb targets before any relaxation",
+        uncertainty=0.0,
+    )
+)
+TOLERANCE_FAT_CARB_RELAXED = register_constant(
+    Constant(
+        key="tolerance.fat_carb_relaxed",
+        value=0.25,
+        unit="fraction",
+        evidence_id="project_decision",
+        applied_to="the widened fat/carb band at relaxation ladder step 2",
+        uncertainty=0.0,
+    )
+)
+TOLERANCE_PROTEIN_RELAXED_FRACTION = register_constant(
+    Constant(
+        key="tolerance.protein_relaxed_fraction",
+        value=0.15,
+        unit="fraction",
+        evidence_id="project_decision",
+        applied_to=(
+            "how far below its floor the protein target may fall at the last "
+            "relaxation ladder step; CLAUDE.md says protein relaxes 'partially', "
+            "and this is the number that makes 'partially' checkable"
+        ),
+        uncertainty=0.0,
+        note=(
+            "Deliberately the tightest relaxation on the ladder. Widening this "
+            "makes plans pass that should have been declined with a disclosure, "
+            "which is the failure the ladder's ordering exists to prevent."
+        ),
     )
 )
 

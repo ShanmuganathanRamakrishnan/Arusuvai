@@ -133,12 +133,22 @@ mechanism and was caught specifically because it inverts the point of having
 a gate at all.
 
 Uncertainty is instead a **candidate eligibility filter, applied before a
-plan is assembled**: a recipe whose process uncertainty on a given macro
-exceeds a stated ceiling (default ±15% on protein, wider tolerance on energy)
-is excluded from candidate pools where that macro is target-critical, or its
-contribution to that macro is estimated conservatively (high-end, not
-optimistic) rather than at the point estimate. Uncertain data makes a recipe
-less usable, never makes a plan easier to pass.
+plan is assembled**: a recipe whose *combined* composition-plus-process
+uncertainty on a given macro exceeds a stated ceiling (default ±15% on
+protein, wider tolerance on energy) is excluded from candidate pools where
+that macro is target-critical, or its contribution to that macro is estimated
+conservatively (high-end, not optimistic) rather than at the point estimate.
+Uncertain data makes a recipe less usable, never makes a plan easier to pass.
+
+Gate on the *combined* figure
+(`core.foods.nutrition_of.NutritionEstimate.uncertainty_fraction`), never on
+`Recipe.process_uncertainty` alone. Corrected 2026-07-21 (`docs/audit_log.md`
+finding 1): the process field alone is 0.0 for protein on every recipe in the
+library — oil carries no protein, so no process term ever touches that macro
+— and an implementation that gated on it literally would admit every recipe
+regardless of how unreliable its composition data is, while matching this
+paragraph's previous wording exactly. `core/planner/candidates.py` gates on
+the combined figure; see its module docstring for the worked argument.
 
 **Display the interval to the user regardless.** "≈1,850 kcal (±10%)" is a
 stronger and more honest artifact than "1,847 kcal." Precision the data
@@ -419,12 +429,22 @@ re-derived after further tests landed in the same commit. That is finding 7 in
 `docs/audit_log.md`, and it is the same failure the process rule above names:
 the transcript in the commit that wrote the line already refuted it.
 
+Updated 2026-07-21 for the Phase 2 build (`core/planner/candidates.py`,
+`combinations.py`, `solver.py`, `target.py`). Transcript in the same session:
+`python -m pytest tests/ -q` -> `154 passed in 55.01s`.
+
+Updated 2026-07-22 for the Phase 3 build (`core/planner/validator.py`,
+`core/schemas/profile.py`, tolerance constants in `citations.py`). Transcript
+in the same session, re-derived after the last edit rather than copied from the
+earlier run in that session: `python -m pytest tests/ -q` -> `179 passed in
+69.97s`.
+
 | Module                    | State                                                                                                                            |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `core/schemas/`           | Partial — `common.py` (RawOrCooked, Region, MealSlot, DietPattern, MACRO_KEYS). `profile.py` does not exist; `clinical_flags` still to come. |
+| `core/schemas/`           | Partial — `common.py` (RawOrCooked, Region, MealSlot, DietPattern, MACRO_KEYS) and `profile.py` (`Profile`, `ClinicalFlag`, `ActivityLevel`, `Goal`, `Sex`). `Profile` records inputs and derives nothing: only `clinical_flags` is read by any code today, by the relaxation ladder. Nothing turns its body fields into a target — that is `core/nutrition/targets.py`, not built. |
 | `core/nutrition/`         | Partial — `citations.py` only (Evidence with `phenomenon`, Constant registry, composition + eligibility constants, mechanism-review checklist, rejected-citation record). Energy, protein, macros and targets are not built. |
-| `core/foods/`             | Built — models, templates, ifct_loader, recipe_loader, retention, portions, nutrition_of. 124 tests pass (`python -m pytest tests/ -q` -> `124 passed in 0.17s`, at commit `26e5ff4`). Ingredient data is a hand-entered fixture set, not IFCT (22 of 23 rows unverified; `water` is the exception); see `data/raw/ifct/README.md`. Composition uncertainty is modelled and process uncertainty is derived, not pasted — but **nothing can ship as validated**, and the eligibility ceiling is not yet wired to anything (`docs/audit_log.md` finding 1). See `docs/methodology.md`. |
-| `core/planner/`           | Not started — candidates, combination enumeration, feasibility pre-filter, solver, LLM ranking, validator with relaxation ladder |
+| `core/foods/`             | Built — models, templates, ifct_loader, recipe_loader, retention, portions, nutrition_of. Ingredient data is a hand-entered fixture set, not IFCT (22 of 23 rows unverified; `water` is the exception); see `data/raw/ifct/README.md`. Composition uncertainty is modelled and process uncertainty is derived, not pasted — but **nothing can ship as validated**. `docs/audit_log.md` finding 2 (a recipe with no `process:` lines reads as 0% process-uncertain) is still OPEN; `core/planner/candidates.py` gates on the *combined* composition+process band, so today's real library is unaffected in practice — every ingredient's composition uncertainty is mandatory-per-macro and never zero — but finding 2 remains a real gap in `core/foods` and should be closed before a verified ingredient with an undeclared process is added. See `docs/methodology.md`. |
+| `core/planner/`           | Partial — `target.py` (`NutritionTarget`, floor/ceiling/point, `simple_target`), `candidates.py` (hard filters + the uncertainty eligibility filter, gating on the combined band per finding 1 below), `combinations.py` (enumeration, naive-bound logging, the O(1) feasibility pre-filter, the no-repeat variety filter), `solver.py` (exhaustive integer search with a shared point-vector cache, `swap_candidates`). `validator.py` (point-estimate gate, `RELAXATION_ORDER`, `LOCKED_CONSTRAINTS`, `plan_within_ladder`). `docs/audit_log.md` finding 1 — "nothing in `core/` reads the eligibility ceiling" — is CLOSED by `candidates.py`; findings 13 and 14 (Phase 3 self-caught: a wrong hand-computed test constant, and the ladder searching a set pre-filtered against the un-relaxed target) are both FIXED; findings 3–6 (interval edge cases in `nutrition_of.py`) are untouched by these phases and remain OPEN. LLM ranking and narration are not started. |
 | `core/commerce/`          | Not started                                                                                                                      |
 | `api/`, `web/`            | Not started                                                                                                                      |
 | Audit workflow            | Partial — `docs/audit_log.md` exists. `.claude/agents/auditor.md` and `.claude/commands/grill.md` described in "Audit workflow" above **do not exist**; audits currently run via an ad-hoc read-only subagent. |

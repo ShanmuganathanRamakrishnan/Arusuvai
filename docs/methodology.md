@@ -1,16 +1,40 @@
 # Methodology and known limitations
 
-Current as of the Phase 1 build (food data layer). Sections for the solver,
-validator, relaxation ladder and LLM layer will be added as those phases land —
-this document only describes what exists.
+Current as of the Phase 3 build (validator and relaxation ladder). Sections for
+the LLM ranking/narration layer, commerce, API and web will be added as those
+phases land — this document only describes what exists.
 
 ## Scope statement — read this first
 
 This is a portfolio project, not clinical nutrition guidance. Nothing here is a
-substitute for advice from a dietitian or a doctor. Once `clinical_flags` exists
-on the profile (not yet — see "What is not built"), a user with a diagnosed
-dietary condition should be relying on it rather than on any default behaviour
-of this system.
+substitute for advice from a dietitian or a doctor.
+
+**The relaxation ladder's default ordering assumes no clinical dietary
+condition.** By default, when no plan fits a profile, this system loosens
+constraints in a fixed order — sodium and fibre first, then fat and carb, then
+energy, then protein — and the first three of those are loosened *silently*.
+That ordering is a general-population judgement about which constraints matter
+least. It is the wrong judgement for someone whose sodium ceiling is a medical
+instruction rather than general health guidance.
+
+A user with a diagnosed condition must rely on `Profile.clinical_flags`
+(`core/schemas/profile.py`), not on the default behaviour. A flag hard-locks
+its constraint out of the ladder entirely: the constraint becomes a floor or
+ceiling that is never relaxed for that profile, and if locking it makes the
+feasible set empty, the system declines and names the blocking constraint
+rather than loosening it. The mapping from flag to locked macro is
+`core/planner/validator.LOCKED_CONSTRAINTS`:
+
+| `ClinicalFlag`           | Locks                  |
+| ------------------------ | ---------------------- |
+| `hypertension`           | `sodium_mg`            |
+| `chronic_kidney_disease` | `protein_g`, `sodium_mg` |
+| `diabetes`               | `carb_g`               |
+
+This list is short and it is not a diagnosis tool. A condition that is not in
+it gets no protection at all — the default ordering applies in full — which is
+the honest state of a portfolio project and the reason the paragraph above
+matters more than the table does.
 
 ## Raw versus cooked weight
 
@@ -235,23 +259,112 @@ unchanged.
 
 ### `dev_mode` versus `validated`
 
-`core/planner` (not built) must therefore carry two distinct designations:
+`core/planner` therefore carries two distinct designations, implemented as of
+Phase 2 (`core/planner/candidates.py::build_candidate_pool`, parameter
+`dev_mode: bool`):
 
-- **`validated`** — the plan's data clears the uncertainty ceilings and the
-  unverified-energy threshold. Currently unreachable, by the above.
-- **`dev_mode`** — plan generation and testing proceed on admittedly unverified
-  data, with the ceilings suspended. This is the only mode the planner will run
-  in until the real ingest lands.
+- **`validated`** (`dev_mode=False`, the default) — a recipe that misses an
+  eligibility ceiling is excluded from the candidate pool outright, recorded
+  in `CandidatePool.excluded`. Against today's real library this empties the
+  pool for any protein-critical target, by the above — that is the honest
+  result of unverified data, not a bug in the filter (see
+  `tests/test_planner_candidates.py::TestUncertaintyEligibility::
+  test_every_real_recipe_is_excluded_in_validated_mode`).
+- **`dev_mode=True`** — plan generation and testing proceed on admittedly
+  unverified data; a recipe that misses a ceiling is kept but recorded in
+  `CandidatePool.flagged` rather than silently treated as validated. This is
+  the only mode that returns anything against today's real library, and the
+  only mode Phase 2's own tests exercising real recipes use for anything past
+  the eligibility filter itself.
 
 `dev_mode` is a **deliberate suspension of a stated invariant**, not a
 convenience flag. Its exit condition is named: a human opens IFCT 2017 and flips
 `verified` per row, at which point the composition band drops to 0.05 and the
-ceilings become satisfiable.
+ceilings become satisfiable. A later phase (API/web) must still plumb
+`dev_mode`/`CandidatePool.flagged` into any rendered plan's disclosure — see
+the paragraph below on artifacts surviving without context; Phase 2 records
+the flag on the pool, it does not yet render it anywhere.
 
 Because a portfolio project's output is a screenshot, "unvalidated" must survive
 being viewed without surrounding context. A boolean on a dataclass does not. Any
 rendered plan, any `demo.py` stdout, and any README transcript produced in
 `dev_mode` must carry that label in the artifact itself.
+
+## Validation and the relaxation ladder (2026-07-22, Phase 3)
+
+`core/planner/validator.py`.
+
+### The gate reads the point estimate and nothing else
+
+A plan is valid when its **point estimate** sits inside the target's floors and
+ceilings. The interval is computed and returned alongside it, for display, and
+is never compared against anything.
+
+This is deliberate and it is the single most important line in the module. The
+alternative — passing a plan when its uncertainty interval *overlaps* the
+target band — is the more natural-looking implementation and it inverts the
+incentive of the entire project: a plan built on worse data has a wider band,
+overlaps more, and would therefore pass more easily than one built on better
+data. The one mechanism the system has for keeping its numbers honest would
+reward the numbers being less honest.
+
+Uncertainty instead acts before a plan exists, as a candidate eligibility
+filter (`core/planner/candidates.py`). Uncertain data makes a recipe less
+usable. It never makes a plan easier to pass, and it is never a knob the ladder
+turns — every rung below widens a *tolerance*, and no rung reads, writes or
+scales an uncertainty figure.
+
+### The ladder
+
+When the solver returns zero feasible plans, `plan_within_ladder` widens the
+target one rung at a time, in this order, re-solving after each. The first rung
+that yields a plan wins; the ladder stops there rather than continuing to the
+loosest target that would also have worked.
+
+1. **`sodium_max_fibre_min`** — drops the sodium ceiling and fibre floor
+   outright. Both are one-sided general-health guidance rather than the
+   product's core nutritional claim. Applied silently.
+2. **`fat_carb_tolerance`** — 15% → 25%. Least load-bearing macros; they absorb
+   whatever energy is left over. Applied silently.
+3. **`energy_tolerance`** — 5% → 10%. Applied silently.
+4. **`protein_tolerance`** — lowers the protein floor by 15%, and never removes
+   it. **Always disclosed**, in the units the target was stated in, e.g. "this
+   plan delivers 27.2g of protein against a 32.0g target, a shortfall of 4.8g."
+
+All five tolerance figures are registered constants
+(`tolerance.*` in `core/nutrition/citations.py`), not literals — the same
+constants `simple_target` reads for its defaults, so the ladder and the default
+target constructor cannot drift apart.
+
+The disclosure is enforced structurally rather than by convention:
+`ValidationResult.__post_init__` refuses to construct a result that relaxed
+protein without a disclosure, or that fails without naming a specific
+violation. A generic decline is not representable.
+
+Two behaviours worth naming because they are easy to get wrong:
+
+- **The feasibility pre-filter is re-run per rung**, against that rung's
+  widened target. Pre-filtering once against the original target would leave
+  every later rung searching a set already pruned to fit the target it is
+  trying to widen. In the fixture case this is the difference between 17 and
+  141 surviving combinations, and the plan actually chosen is one of the
+  recovered ones.
+- **A fully locked rung is skipped, not run-and-ignored.** A rung whose every
+  macro is locked by a clinical flag does not appear in `relaxation_applied`,
+  because reporting a relaxation that did not happen misdescribes the plan.
+
+### Known limitation: the ladder is cumulative, so it can over-relax
+
+Rungs apply in order and cumulatively, which is what CLAUDE.md specifies
+("relax in this order, and only this order"). A consequence: a profile that
+only needs protein relaxed still arrives there with sodium dropped and
+fat/carb/energy widened, because those rungs fired first and did not help. The
+plan is still validated against the target it was solved against, and the
+weighted-deviation objective keeps it near the ideal points regardless, but the
+target it cleared is looser than it strictly needed to be. Fixing this would
+mean searching rung subsets rather than prefixes, which trades a stated,
+auditable order for a search — not obviously the right trade for a safety
+mechanism, and not made here.
 
 ## Citations: mechanism must match, not just format
 
@@ -330,7 +443,20 @@ let a project estimate be marked verified at all: there is no document to open.
 
 ## What is not built
 
-`core/schemas/profile.py`, the rest of `core/nutrition/` (energy, protein,
-macros, targets), `core/planner/`, `core/commerce/`, `api/` and `web/`. The
-Phase 1 subset of `core/nutrition/` is `citations.py` only. The build-status
-table in `CLAUDE.md` reflects this.
+The rest of `core/nutrition/` (energy, protein, macros, targets), LLM ranking
+and narration, `core/commerce/`, `api/` and `web/`. The subset of
+`core/nutrition/` that exists is `citations.py` only.
+
+`core/planner/` as of Phase 3 has `target.py`, `candidates.py`,
+`combinations.py`, `solver.py` and `validator.py` — pure functions, no LLM call
+anywhere.
+
+`core/schemas/profile.py` exists but is deliberately partial: it records the
+body, activity and goal inputs and the clinical flags, and derives nothing.
+`Profile` is currently read only for `clinical_flags`; no code turns its body
+fields into an energy or protein target yet. `NutritionTarget` is constructed
+directly (`simple_target`) rather than derived from a profile, so the numbers
+in every test are stated, not computed from a formula that does not exist. That
+derivation is `core/nutrition/targets.py`, not built.
+
+The build-status table in `CLAUDE.md` reflects this.
