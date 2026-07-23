@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arusuvai · Six tastes, balanced for your body</title>
+<meta name="description" content="An AI meal planner for South Indian cities. South Indian, North Indian and continental meal plans, personalised to your body and grounded in published nutrition research.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=Hanken+Grotesk:wght@400;500;600;700&family=Noto+Serif+Tamil:wght@400;500;600;700&family=Noto+Serif+Telugu:wght@400;600&family=Noto+Serif+Kannada:wght@400;600&family=Noto+Serif+Malayalam:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ============ SCROLL-FORMED KOLAM BACKGROUND ============ -->
+<!-- The pulli-and-line dot grid drawn at Tamil thresholds; here it breathes:
+     draws itself in, holds, unravels. Built in app.js so no image is shipped. -->
+<div id="kolam" aria-hidden="true"></div>
+
+<!-- ============ PROTEIN CALCULATOR DOCK (slide-out) ============ -->
+<!-- NOTE: this is an illustrative landing-page demo, not the product's target
+     engine. The real per-user targets are computed deterministically in the
+     Python backend (core/nutrition); the web layer never determines the
+     quantities a user relies on. The g/kg factor here is a public rule of
+     thumb from Morton et al., shown to convey the product's character. -->
+<div id="calcDock" class="calc-dock">
+  <div class="calc-panel">
+    <div class="calc-card">
+      <div class="calc-kicker">Protein target</div>
+      <div class="calc-lede">A three-second demo of how targets are set.</div>
+      <div class="calc-sentence">
+        I weigh <input id="calcWeight" class="w" type="number" min="0" max="250" value="68" aria-label="body weight in kilograms" /> kg and train
+        <input id="calcDays" class="d" type="number" min="0" max="7" value="4" aria-label="training days per week" /> days a week.
+      </div>
+      <div class="calc-result">
+        <div class="val">Your protein target: <strong><span id="calcTarget">109</span> g/day</strong></div>
+        <div class="calc-cite"><span id="calcFactor">1.6</span> g/kg — Morton et al., meta-analysis of 49 trials</div>
+      </div>
+    </div>
+  </div>
+  <button id="calcToggle" class="calc-toggle" aria-expanded="false" aria-controls="calcDock" aria-label="Toggle protein calculator">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-9 4 18 3-9h4"></path></svg>
+    <span class="lbl">Protein target</span>
+    <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
+  </button>
+</div>
+
+<!-- ============ HEADER ============ -->
+<header id="siteHeader" class="site-header">
+  <div class="header-inner">
+    <div class="brand">
+      <span class="brand-ta">அறுசுவை</span>
+      <span class="brand-latin">arusuvai</span>
+    </div>
+    <div class="nav">
+      <a href="#how" class="hide-sm">How it works</a>
+      <button id="btnSignin" class="btn btn-link">Sign in</button>
+      <button id="btnSignup" class="btn btn-primary">Sign up</button>
+    </div>
+  </div>
+  <div class="header-rule" aria-hidden="true"></div>
+</header>
+
+<div class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero no-rule">
+    <div class="eyebrow">AI meal planner · built for South Indian cities</div>
+
+    <div class="morph-row">
+      <span id="morphWord" class="morph-word">அறுசுவை</span>
+      <span id="morphLang" class="morph-lang">Tamil</span>
+    </div>
+
+    <h1 class="hero-title">Six tastes. Every meal.<br>Balanced for your body.</h1>
+
+    <p class="hero-sub">South Indian, North Indian, and continental — planned around your body's needs, grounded in real nutrition research.</p>
+
+    <div class="cred-line">
+      <span class="cred-dot"></span>
+      <span>Every gram traceable to a paper.</span>
+    </div>
+
+    <div class="draft-note">Placeholder copy — written for the founder to rewrite in his own voice.</div>
+
+    <div class="cta-row">
+      <a href="#early" class="cta cta-solid">Get early access</a>
+      <a href="#bloom" class="cta cta-ghost">See the six tastes</a>
+    </div>
+
+    <div class="free-line"><strong>The meal planner is free, everywhere.</strong> Delivery is where we're starting small.</div>
+    <div class="cred-strip">Grounded in ICMR-NIN 2020 · IOM DRI · WHO/FAO · peer-reviewed sports nutrition research</div>
+
+    <a href="#bloom" class="scroll-cue" aria-label="Scroll to explore the six tastes">
+      <span>Explore</span>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+    </a>
+  </section>
+
+  <!-- ============ SIX-FOOD BLOOM ============ -->
+  <section id="bloom" class="bloom no-rule">
+    <div class="eyebrow">The six tastes, taught</div>
+    <h2>Balance isn't a number.<br>It's <span class="accent">your body's arusuvai</span>.</h2>
+    <p class="bloom-lede">Six tastes, six foods — the Tamil plate's checklist for a complete meal.</p>
+
+    <div id="bloomGrid" class="bloom-grid">
+      <div class="bloom-card"><div class="ta">இனிப்பு</div><div class="taste">Sweet</div><div class="food">Jaggery</div><div class="foodta">வெல்லம்</div></div>
+      <div class="bloom-card"><div class="ta">புளிப்பு</div><div class="taste">Sour</div><div class="food">Tamarind</div><div class="foodta">புளி</div></div>
+      <div class="bloom-card"><div class="ta">உவர்ப்பு</div><div class="taste">Salty</div><div class="food">Sea salt</div><div class="foodta">உப்பு</div></div>
+      <div class="bloom-card"><div class="ta">கசப்பு</div><div class="taste">Bitter</div><div class="food">Bitter gourd</div><div class="foodta">பாகற்காய்</div></div>
+      <div class="bloom-card"><div class="ta">காரம்</div><div class="taste">Pungent</div><div class="food">Black pepper</div><div class="foodta">மிளகு</div></div>
+      <div class="bloom-card"><div class="ta">துவர்ப்பு</div><div class="taste">Astringent</div><div class="food">Plantain</div><div class="foodta">வாழைக்காய்</div></div>
+    </div>
+  </section>
+
+  <!-- ============ ONE KITCHEN, THREE TRADITIONS ============ -->
+  <section id="kitchens" class="traditions">
+    <div class="head">
+      <div class="eyebrow sec-eyebrow">One kitchen, three traditions</div>
+      <h2 class="sec-title">One plan, cooked three ways.</h2>
+    </div>
+    <div class="trad-grid">
+      <div class="trad-card">
+        <div class="trad-plate"><img src="assets/si.jpg" alt="South Indian plate" loading="lazy" onerror="this.remove()"></div>
+        <div class="trad-name">South Indian</div>
+        <div class="trad-dishes">Sambar · poriyal · meen varuval</div>
+        <p class="trad-note">Rice-forward and light, with dal and fish carrying the protein.</p>
+      </div>
+      <div class="trad-card">
+        <div class="trad-plate"><img src="assets/nt.jpg" alt="North Indian plate" loading="lazy" onerror="this.remove()"></div>
+        <div class="trad-name">North Indian</div>
+        <div class="trad-dishes">Dal makhani · paneer · roti</div>
+        <p class="trad-note">Hearty and warming — paneer, curd and legumes keep it protein-rich.</p>
+      </div>
+      <div class="trad-card">
+        <div class="trad-plate"><img src="assets/ct.jpg" alt="Continental plate" loading="lazy" onerror="this.remove()"></div>
+        <div class="trad-name">Continental</div>
+        <div class="trad-dishes">Grilled fish · quinoa · greens</div>
+        <p class="trad-note">Lean and fresh, built around grilled protein and whole grains.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section id="how" class="how">
+    <div class="eyebrow">How it works</div>
+    <h2 class="sec-title">From your body to your table, in four calm steps.</h2>
+    <div class="steps-grid">
+      <div class="step"><div class="n">01</div><div class="t">Tell us about your body</div><div class="b">Age, build, activity, goals, and how you like to eat — vegetarian, egg, or otherwise.</div></div>
+      <div class="step"><div class="n">02</div><div class="t">We compute your targets</div><div class="b">Derived from published nutrition research, with every number traceable back to its source.</div></div>
+      <div class="step"><div class="n">03</div><div class="t">Choose your kitchen</div><div class="b">Plans in South Indian, North Indian, or continental styles — balanced across all six tastes.</div></div>
+      <div class="step"><div class="n">04</div><div class="t">Cook it, or get it delivered</div><div class="b">Follow the recipes at home, or get cooked meals delivered where we operate.</div></div>
+    </div>
+
+    <div class="facts">
+      <div class="col">
+        <div class="lbl">Diets supported</div>
+        <div class="tag-row">
+          <span class="tag tag-diet">Vegetarian</span>
+          <span class="tag tag-diet">Eggetarian</span>
+          <span class="tag tag-diet">Non-vegetarian</span>
+          <span class="tag tag-diet">Vegan</span>
+          <span class="tag tag-diet">Jain</span>
+        </div>
+        <div class="fine">Jain plans skip onion, garlic and root vegetables — most planners don't handle it.</div>
+      </div>
+      <div class="col">
+        <div class="lbl">Goals</div>
+        <div class="tag-row">
+          <span class="tag tag-goal">Fat loss</span>
+          <span class="tag tag-goal">Muscle gain</span>
+          <span class="tag tag-goal">Maintain</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ A REAL SAMPLE DAY ============ -->
+  <section id="sampleday" class="sample">
+    <div class="eyebrow">A real sample day</div>
+    <h2 class="sec-title">One balanced day, start to finish.</h2>
+    <div class="who">For a 68 kg vegetarian who trains four days a week.</div>
+    <div class="meal-grid">
+      <div class="meal-card"><div class="meal">Breakfast</div><div class="dish">Idli with sambar &amp; coconut chutney</div><p class="desc">A light, fermented start — easy on the gut, with steady energy into the morning.</p><div class="stat">≈ 480 kcal · 22g protein · 68g carb · 12g fat</div></div>
+      <div class="meal-card"><div class="meal">Lunch</div><div class="dish">Brown rice, rajma, beans poriyal &amp; curd</div><p class="desc">The main balanced plate — legumes and curd stacking up quality protein.</p><div class="stat">≈ 720 kcal · 34g protein · 92g carb · 18g fat</div></div>
+      <div class="meal-card"><div class="meal">Dinner</div><div class="dish">Paneer tikka, jeera rice &amp; sautéed greens</div><p class="desc">Warm and satisfying, front-loading protein before the day winds down.</p><div class="stat">≈ 640 kcal · 38g protein · 58g carb · 22g fat</div></div>
+    </div>
+    <div class="day-total"><strong>Day total</strong><span class="num">≈ 1,840 kcal · 94g protein · 218g carb · 52g fat</span></div>
+    <div class="illus">Numbers shown are illustrative.</div>
+  </section>
+
+  <!-- ============ SCIENCE ============ -->
+  <section class="science">
+    <div class="science-grid">
+      <div class="col">
+        <div class="eyebrow sec-eyebrow">The science, honestly</div>
+        <h2 class="sec-title">Every gram traceable to a paper.</h2>
+        <p class="lede">Your targets aren't guessed. The engine derives them from published nutrition research and keeps the citation attached, so a curious user can follow any number back to its source. We'd rather show our working than oversell precision.</p>
+        <p class="scope">Built for general healthy adults. Not a substitute for clinical nutrition guidance — if you have a diagnosed condition affecting your diet, talk to your doctor or dietitian.</p>
+      </div>
+      <div class="col">
+        <div class="quality-card">
+          <h3>Protein, quality-adjusted</h3>
+          <p>A vegetarian hitting a protein number on dal is not the same as on paneer or egg. We score protein by quality, not just grams — so a plant-forward plate actually delivers.</p>
+          <div class="quality-list">
+            <div><span class="dot" style="background:#3A5A40"></span>Dal &amp; legumes — counted at their real, quality-adjusted value</div>
+            <div><span class="dot" style="background:#E0A526"></span>Paneer, curd, egg — complementary sources balanced in</div>
+            <div><span class="dot" style="background:#C1694F"></span>Gaps flagged before they become a deficit</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FREE PLANNER BAND ============ -->
+  <section class="free-band">
+    <p><span class="accent">The meal planner is free, everywhere.</span> Delivery is where we're starting small.</p>
+  </section>
+
+  <!-- ============ DELIVERY ============ -->
+  <section id="early" class="delivery">
+    <div class="delivery-grid">
+      <div class="col">
+        <div class="eyebrow sec-eyebrow">Delivery, honestly scoped</div>
+        <h2 class="sec-title">The planner is free everywhere. Delivery is starting small.</h2>
+        <p>Plan and cook your balanced meals anywhere. Cooked delivery is rolling out city by city — we'll only ever claim the cities we actually serve.</p>
+        <div class="city-row">
+          <span class="city live">Chennai · live</span>
+          <span class="city soon">Coimbatore · soon</span>
+          <span class="city soon">Bengaluru · soon</span>
+        </div>
+      </div>
+      <div class="early-card">
+        <div class="ta">உங்கள் அறுசுவை</div>
+        <p>Your six tastes, balanced for your body. Join the early list and we'll bring it to your city.</p>
+        <form class="early-form" id="earlyForm">
+          <input type="email" placeholder="you@email.com" aria-label="email address" required>
+          <button type="submit">Notify me</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FAQ ============ -->
+  <section id="faq" class="faq">
+    <div class="eyebrow">Questions</div>
+    <h2 class="sec-title">The honest answers.</h2>
+    <div class="faq-list" id="faqList">
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false"><span>Is the meal planner really free?</span><span class="sign">+</span></button>
+        <div class="faq-a"><p>Yes. Building and following your plan costs nothing, everywhere. We only charge for cooked delivery, and only in the cities we actually serve.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false"><span>How accurate are the nutrition numbers?</span><span class="sign">+</span></button>
+        <div class="faq-a"><p>They come from published research and standard food-composition tables — careful estimates, not lab measurements. Good enough to guide real decisions, and every figure shows its source.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false"><span>Do you handle Jain, vegan, or allergy restrictions?</span><span class="sign">+</span></button>
+        <div class="faq-a"><p>Yes. Vegetarian, eggetarian, non-veg, vegan and Jain (no onion, garlic or root vegetables) are all supported, and you can exclude specific ingredients.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false"><span>What if I don't live in Chennai?</span><span class="sign">+</span></button>
+        <div class="faq-a"><p>The planner works anywhere. Cooked delivery is live in Chennai and rolling out city by city — join the early list and we'll tell you when we reach you.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false"><span>Can I cook these myself instead of ordering?</span><span class="sign">+</span></button>
+        <div class="faq-a"><p>Absolutely. Every plan comes with recipes written for a home kitchen. Delivery is an option, never a requirement.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false"><span>Can I pause or cancel delivery?</span><span class="sign">+</span></button>
+        <div class="faq-a"><p>Any time, no lock-in. Pause for a week or stop entirely from your account.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false"><span>Where do your nutrition targets come from?</span><span class="sign">+</span></button>
+        <div class="faq-a"><p>ICMR-NIN 2020 for Indian requirements, IOM DRI and WHO/FAO for macros, and peer-reviewed sports-nutrition meta-analyses for protein and activity.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="site-footer">
+    <div class="footer-grid">
+      <div class="col footer-brand">
+        <div class="brand">
+          <span class="brand-ta">அறுசுவை</span>
+          <span class="brand-latin">arusuvai</span>
+        </div>
+        <p>Six tastes, balanced for your body.</p>
+      </div>
+      <div class="col">
+        <div class="lbl">Explore</div>
+        <div class="footer-links">
+          <a href="#how">How it works</a>
+          <a href="#bloom">The six tastes</a>
+          <a href="#early">Delivery</a>
+          <a href="#faq">FAQ</a>
+        </div>
+      </div>
+      <div class="col">
+        <div class="lbl">Get in touch</div>
+        <div class="footer-links">
+          <a href="mailto:hello@arusuvai.in">hello@arusuvai.in</a>
+          <a href="#">Privacy</a>
+          <a href="#">Terms</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>Made in Chennai</span>
+      <span>Numbers shown are illustrative placeholders.</span>
+    </div>
+  </footer>
+</div>
+
+<!-- ============ AUTH MODAL ============ -->
+<div id="authOverlay" class="modal-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <button id="authClose" class="modal-close" aria-label="Close">×</button>
+    <div class="brand">
+      <span class="brand-ta">அறுசுவை</span>
+      <span class="brand-latin">arusuvai</span>
+    </div>
+    <h2 id="authTitle">Welcome back</h2>
+    <p id="authSub" class="sub">Sign in to pick up your plan where you left off.</p>
+    <form class="fields" onsubmit="return false">
+      <label class="field-name" id="authNameField" hidden>
+        <span>Name</span>
+        <input type="text" placeholder="Your name">
+      </label>
+      <label>
+        <span>Email</span>
+        <input type="email" placeholder="you@email.com">
+      </label>
+      <label>
+        <span>Password</span>
+        <input type="password" placeholder="••••••••">
+      </label>
+      <button type="submit" id="authCta" class="submit">Sign in</button>
+    </form>
+    <div class="switch">
+      <span id="authSwitchLabel">New to Arusuvai?</span>
+      <button id="authSwitch">Create an account</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
