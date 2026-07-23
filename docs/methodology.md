@@ -425,6 +425,55 @@ composition-weighted DIAAS computed from the actual recipes once `core/foods`
 protein data is verified, at which point the estimate can be retired rather than
 verified. `docs/audit_log.md` is where any finding against this reasoning belongs.
 
+## Clinical flags do not tighten a target (2026-07-23)
+
+`Profile.clinical_flags` is read in exactly one place today:
+`core/planner/validator.py::LOCKED_CONSTRAINTS`, which stops the relaxation
+ladder from *loosening* a constraint for a flagged profile. `core/nutrition/
+targets.py::derive_target` does not read `clinical_flags` at all — a
+hypertensive profile and a general profile get the identical
+`nutrient.sodium_max_mg` ceiling out of target derivation. Locking a ceiling
+from being raised and lowering it in the first place are different things,
+and only the first exists.
+
+This is a decision, stated here because the onboarding page is about to put a
+sodium number on screen next to a clinical-flags checkbox, and a user who
+checks "hypertension" and sees the number not move would reasonably read that
+as a bug rather than the documented behaviour.
+
+**Decision: target-time tightening is out of scope for this increment, and
+stays out until there is a real cited number to put there.** The reasons:
+
+- `core/nutrition` cannot see `LOCKED_CONSTRAINTS` even if it wanted to reuse
+  it — that mapping lives in `core/planner`, and `core/nutrition` must never
+  import `core/planner` (CLAUDE.md, "Architecture"). A condition-specific
+  ceiling would need its own registered constant in `core/nutrition/
+  citations.py` (e.g. a WHO/AHA hypertension-specific sodium limit, likely
+  ~1,500 mg against the general 2,000 mg used today), not a borrowed mapping.
+- That constant does not exist yet. Registering one now, under time pressure
+  from a UI page, is exactly the "transcribed from memory, marked
+  `verified=False` forever" failure mode this project's citation discipline
+  exists to slow down. It should be added deliberately, with its own
+  `Evidence.phenomenon` (a hypertension-specific dietary sodium ceiling is a
+  different claim than a general-population one, not the same number
+  narrowed), when clinical targets are actually built out — not folded
+  silently into this increment.
+
+**What is done instead, so the gap is structural rather than a paragraph
+nobody reads:** `derive_target` now inspects `profile.clinical_flags` and, if
+any are set, appends a mandatory warning to `DerivedTarget.warnings` — visible
+in the API response's `warnings` array and therefore renderable on the
+onboarding page next to the checkbox — stating plainly that the displayed
+numbers are general-population values, that the flag only affects plan
+generation later, and that this is not a substitute for clinical guidance.
+`tests/test_nutrition_targets.py::TestClinicalFlagsDoNotTightenTargets` pins
+this: a flagged profile's `sodium_mg_max` equals an unflagged profile's
+exactly, and the warning is present; an unflagged profile carries no such
+warning.
+
+The onboarding page must render this warning when present, not just the
+headline numbers — see `web/onboarding.html`.
+
 ## Known limitations, Phase 1
 
 1. **The ingredient data is a hand-entered fixture set, not IFCT.** 22 of 23

@@ -25,7 +25,7 @@ from core.nutrition.targets import (
     energy_target,
     tdee,
 )
-from core.schemas import ActivityLevel, DietPattern, Goal, Profile, Sex
+from core.schemas import ActivityLevel, ClinicalFlag, DietPattern, Goal, Profile, Sex
 
 
 def _make(
@@ -37,6 +37,7 @@ def _make(
     activity=ActivityLevel.MODERATE,
     goal=Goal.MAINTAIN,
     diet=DietPattern.NON_VEGETARIAN,
+    clinical_flags=frozenset(),
 ) -> Profile:
     return Profile(
         weight_kg=weight_kg,
@@ -46,6 +47,7 @@ def _make(
         activity=activity,
         goal=goal,
         diet=diet,
+        clinical_flags=clinical_flags,
     )
 
 
@@ -180,6 +182,34 @@ class TestDeriveTargetIntegration:
         p = _make(weight_kg=300.0)
         dt = derive_target(p)
         assert any("outside the usual adult range" in w for w in dt.warnings)
+
+
+class TestClinicalFlagsDoNotTightenTargets:
+    """docs/methodology.md, "Clinical flags do not tighten a target" (2026-07-23).
+
+    core/nutrition cannot see core/planner's LOCKED_CONSTRAINTS mapping
+    (downward-dependency rule), and no clinical-specific sodium/protein/carb
+    constant is registered yet, so a flagged profile gets the exact same
+    numbers as an unflagged one today. The only thing that must change is a
+    mandatory disclosure, so the gap is structural rather than a paragraph
+    nobody reads before a UI checkbox ships next to a number.
+    """
+
+    def test_hypertension_flag_does_not_change_the_sodium_ceiling(self):
+        plain = derive_target(_make())
+        flagged = derive_target(_make(clinical_flags=frozenset({ClinicalFlag.HYPERTENSION})))
+        assert flagged.sodium_mg_max == pytest.approx(plain.sodium_mg_max)
+        assert flagged.nutrition_target.ceiling("sodium_mg") == pytest.approx(
+            plain.nutrition_target.ceiling("sodium_mg")
+        )
+
+    def test_flagged_profile_carries_a_mandatory_disclosure(self):
+        dt = derive_target(_make(clinical_flags=frozenset({ClinicalFlag.HYPERTENSION})))
+        assert any("hypertension" in w and "general-population" in w for w in dt.warnings)
+
+    def test_unflagged_profile_carries_no_such_warning(self):
+        dt = derive_target(_make())
+        assert not any("general-population" in w for w in dt.warnings)
 
 
 class TestEnumKeysAllResolve:

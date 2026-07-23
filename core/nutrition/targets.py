@@ -287,6 +287,33 @@ def _status_and_disclosure() -> tuple[str, str]:
     return "dev_mode", disclosure
 
 
+def _clinical_flag_warning(profile: Profile) -> tuple[str, ...]:
+    """Disclose that clinical_flags do not adjust any number here.
+
+    ``Profile.clinical_flags`` is read by ``core/planner/validator.py`` to
+    *lock* a constraint out of the relaxation ladder later — it never *tightens*
+    a target value here. `core/nutrition` cannot even see the flag->macro
+    mapping that does that locking (`LOCKED_CONSTRAINTS` lives in
+    `core/planner`, and `core/nutrition` must never import `core/planner`,
+    CLAUDE.md "Architecture"). So a hypertensive profile gets the exact same
+    `nutrient.sodium_max_mg` ceiling as anyone else at this stage: a deliberate
+    scope boundary (docs/methodology.md, "Clinical flags do not tighten a
+    target"), not a silent one. Disclosed here, structurally, rather than left
+    for a caller to remember to mention next to a clinical-flags checkbox.
+    """
+
+    if not profile.clinical_flags:
+        return ()
+    flags = ", ".join(f.value for f in sorted(profile.clinical_flags, key=lambda f: f.value))
+    return (
+        f"You've disclosed: {flags}. These targets are general-population "
+        "values — no number above is adjusted for a diagnosed condition. "
+        "Disclosed flags currently only prevent the affected limit from being "
+        "loosened later, during plan generation; they do not tighten it now. "
+        "This is not a substitute for clinical dietary guidance.",
+    )
+
+
 def derive_target(profile: Profile) -> DerivedTarget:
     """Turn a Profile into a full, cited, dev-mode-labelled nutritional target."""
 
@@ -330,8 +357,8 @@ def derive_target(profile: Profile) -> DerivedTarget:
         sodium_mg_max=sodium_mg_max,
         status=status,
         disclosure=disclosure,
-        # profile.warnings (implausible body inputs) + any macro warnings, so the
-        # caller sees every caveat in one place.
-        warnings=tuple(profile.warnings) + macro_warnings,
+        # profile.warnings (implausible body inputs) + macro warnings + the
+        # clinical-flags disclosure, so the caller sees every caveat in one place.
+        warnings=tuple(profile.warnings) + macro_warnings + _clinical_flag_warning(profile),
         sources=_SOURCE_KEYS,
     )
