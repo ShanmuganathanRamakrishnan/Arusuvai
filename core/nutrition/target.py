@@ -1,12 +1,15 @@
-"""The narrow target contract ``core/planner`` needs.
+"""The canonical target shape: a floor and/or ceiling per macro, plus an ideal.
 
-``core/nutrition/targets.py`` — the module that will derive a real target from
-a ``Profile`` (BMR, activity factor, goal, DIAAS-adjusted protein) — is not
-built yet; see the build-status table in CLAUDE.md. Phase 2 does not need that
-derivation to exercise candidates/combinations/solver, so this module defines
-the narrower shape those three actually consume: a floor and/or ceiling per
-macro. When ``core/nutrition/targets.py`` lands, it must produce exactly this
-shape (or a superset the ladder in Phase 3 extends), not a parallel one.
+This lives in ``core/nutrition`` — not ``core/planner`` — because the target is
+a nutrition concept the planner *consumes*, and the dependency direction is
+strictly downward (CLAUDE.md, "Architecture": ``core/nutrition`` must never
+import from ``core/planner``). It was moved here from ``core/planner`` when
+``core/nutrition/targets.py`` landed: that module derives a real target from a
+``Profile`` (BMR -> activity factor -> goal energy -> DIAAS-adjusted protein ->
+macros) and, per this file's original promise, produces *exactly this shape*
+via :func:`simple_target` rather than a parallel one. The planner still imports
+``NutritionTarget``/``band`` from here (downward), so nothing about how the
+solver and validator consume a target changed.
 
 Tolerance (this module) and uncertainty (``core.foods.nutrition_of``) are the
 two axes CLAUDE.md's "Uncertainty" section says must never be merged. Nothing

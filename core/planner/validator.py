@@ -57,7 +57,7 @@ from core.foods.nutrition_of import unit_for
 from core.nutrition import citations
 from core.planner.combinations import MealCombination, feasible_combinations, macro_bounds
 from core.planner.solver import SolvedPlan, solve
-from core.planner.target import NutritionTarget, band
+from core.nutrition.target import NutritionTarget, band
 from core.schemas import ClinicalFlag, Profile
 
 __all__ = [

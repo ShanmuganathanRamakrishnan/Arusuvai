@@ -18,9 +18,10 @@ convention:
    dangerous case, because a fabricated citation is falsifiable by anyone who
    looks it up and a mismatched-but-real one is not.
 
-Scope note: this module is the Phase 1 subset of ``core/nutrition``. Energy,
-protein, macro and target computation are not built yet — see the build-status
-table in CLAUDE.md.
+Scope note: this module registers the constants. Energy/protein/macro target
+computation reads them in ``core/nutrition/targets.py``; the target-derivation
+constants (Mifflin-St Jeor, activity/PAL, protein g/kg, per-diet DIAAS, goal
+energy factors, macro AMDR, fibre, sodium) live at the end of this file.
 """
 
 from __future__ import annotations
@@ -786,3 +787,372 @@ for _key, _grams, _applied, _unc in _MEASURES:
             uncertainty=_unc,
         )
     )
+
+
+# ==========================================================================
+# Target-derivation constants (core/nutrition/targets.py)
+# ==========================================================================
+#
+# Everything below turns a Profile into an energy/protein/macro target. Per
+# CLAUDE.md's "no magic numbers" rule, the Mifflin-St Jeor coefficients, the
+# activity multipliers, the protein g/kg figures, the per-diet DIAAS factors,
+# the goal energy factors and the macro-distribution bounds all live here, not
+# inline in targets.py — each one changes the number a user is shown.
+#
+# Grades are honest: the two real equations (Mifflin 1990, Morton 2018) and the
+# two national/international tables (IOM DRI, WHO) are graded as such but remain
+# verified=False, because nobody has opened the source documents in this build.
+# The mappings this project *chose* — the exact activity point within a PAL
+# range, the deficit/surplus size, the per-diet DIAAS rollup — are PROJECT_
+# ESTIMATE or PROJECT_DECISION, so nothing here can ship as validated (see
+# docs/methodology.md). targets.py labels every derived target dev_mode for
+# exactly this reason.
+
+MIFFLIN_ST_JEOR_1990 = register_evidence(
+    Evidence(
+        id="mifflin_st_jeor_1990",
+        summary="The Mifflin-St Jeor resting metabolic rate equation.",
+        phenomenon=(
+            "resting metabolic rate measured by indirect calorimetry in 498 "
+            "healthy adults, regressed on weight, height, age and sex; the paper "
+            "reports the equation predicts measured RMR within about +/-10% for "
+            "most individuals"
+        ),
+        source=(
+            "Mifflin, M.D., St Jeor, S.T., Hill, L.A., Scott, B.J., Daugherty, "
+            "S.A., Koh, Y.O. (1990). A new predictive equation for resting energy "
+            "expenditure in healthy individuals. Am J Clin Nutr 51(2):241-247."
+        ),
+        grade=Grade.PRIMARY_MEASUREMENT,
+        doi="10.1093/ajcn/51.2.241",
+        verified=False,
+        note=(
+            "Coefficients transcribed from memory of the published equation; the "
+            "paper has not been opened in this build. Chosen over Harris-Benedict "
+            "because it was fitted on a more modern population and reports a "
+            "tighter prediction error."
+        ),
+    )
+)
+
+MORTON_2018_PROTEIN = register_evidence(
+    Evidence(
+        id="morton_2018_protein",
+        summary="Meta-analysis of protein intake and resistance-training gains.",
+        phenomenon=(
+            "the dietary protein intake, in g per kg body weight per day, above "
+            "which resistance-trained adults saw no further gain in fat-free mass "
+            "in a meta-regression of 49 randomised trials (breakpoint ~1.6 g/kg)"
+        ),
+        source=(
+            "Morton, R.W. et al. (2018). A systematic review, meta-analysis and "
+            "meta-regression of the effect of protein supplementation on "
+            "resistance training-induced gains in muscle mass and strength in "
+            "healthy adults. Br J Sports Med 52(6):376-384."
+        ),
+        grade=Grade.PRIMARY_MEASUREMENT,
+        doi="10.1136/bjsports-2017-097608",
+        verified=False,
+        note=(
+            "The 1.6 g/kg breakpoint is the maintenance/anchor figure. It is the "
+            "same source the landing-page calculator cites; the paper has not "
+            "been opened here."
+        ),
+    )
+)
+
+IOM_DRI_2005 = register_evidence(
+    Evidence(
+        id="iom_dri_2005",
+        summary="US Institute of Medicine Dietary Reference Intakes (macros).",
+        phenomenon=(
+            "population acceptable macronutrient distribution ranges (fat as a "
+            "percentage of energy) and adequate fibre intake per 1000 kcal, set "
+            "from balance and observational data across healthy adults"
+        ),
+        source=(
+            "Institute of Medicine (2005). Dietary Reference Intakes for Energy, "
+            "Carbohydrate, Fiber, Fat, Fatty Acids, Cholesterol, Protein, and "
+            "Amino Acids. National Academies Press."
+        ),
+        grade=Grade.NATIONAL_TABLE,
+        doi="10.17226/10490",
+        verified=False,
+        note=(
+            "AMDR fat range (20-35% of energy) and fibre (14 g/1000 kcal) "
+            "transcribed from memory; not opened here. US, not Indian — ICMR-NIN "
+            "2020 would be the preferred source and is a known substitution to "
+            "make once a human opens either document."
+        ),
+    )
+)
+
+WHO_SODIUM_2012 = register_evidence(
+    Evidence(
+        id="who_sodium_2012",
+        summary="WHO guideline ceiling on adult sodium intake.",
+        phenomenon=(
+            "the daily sodium intake below which population blood-pressure and "
+            "cardiovascular risk benefits were observed in the WHO evidence "
+            "review; a guideline maximum, not a physiological requirement"
+        ),
+        source="World Health Organization (2012). Guideline: Sodium intake for adults and children.",
+        grade=Grade.NATIONAL_TABLE,
+        doi=None,
+        url="https://www.who.int/publications/i/item/9789241504836",
+        verified=False,
+        note="2000 mg/day (< 5 g salt) transcribed from memory; not opened here.",
+    )
+)
+
+PROJECT_ACTIVITY_FACTOR_ESTIMATE = register_evidence(
+    Evidence(
+        id="project_activity_factor_estimate",
+        summary="The multiplier from RMR to total energy, per activity level. Project estimate.",
+        phenomenon=(
+            "physical activity level as the ratio of total daily energy "
+            "expenditure to basal metabolic rate; the specific factor assigned to "
+            "each of this project's five activity levels is a project mapping onto "
+            "the customary 1.2-1.9 PAL range, not a measured value for any person"
+        ),
+        source="This project's own estimate, over the conventional activity-factor range.",
+        doi=None,
+        grade=Grade.PROJECT_ESTIMATE,
+        verified=False,
+        note=(
+            "The WHO/FAO/UNU 2004 report tabulates PAL bands; picking a single "
+            "point per enum level is this project's choice, so the honest grade is "
+            "estimate, with a wide band feeding the displayed energy interval."
+        ),
+    )
+)
+
+PROJECT_GOAL_ENERGY_POLICY = register_evidence(
+    Evidence(
+        id="project_goal_energy_policy",
+        summary="How far above/below maintenance each body-composition goal sits. Project decision.",
+        phenomenon=(
+            "no physical process; the size of the energy deficit or surplus this "
+            "project applies for a fat-loss or muscle-gain goal, chosen as a "
+            "moderate, widely-used policy (a 20% deficit, a 10% surplus)"
+        ),
+        source="This project's decision.",
+        doi=None,
+        grade=Grade.PROJECT_DECISION,
+        verified=False,
+    )
+)
+
+PROJECT_DIET_DIAAS_ESTIMATE = register_evidence(
+    Evidence(
+        id="project_diet_diaas_estimate",
+        summary="Representative protein quality (DIAAS) of a day's protein, per diet pattern. Estimate.",
+        phenomenon=(
+            "the digestible indispensable amino acid score (DIAAS, FAO 2013 "
+            "method) of the limiting amino acid in a representative day's protein "
+            "for each diet pattern; a single per-diet rollup is a project estimate "
+            "and is not the measured DIAAS of any individual food"
+        ),
+        source="This project's own estimate, informed by published single-food DIAAS values.",
+        doi=None,
+        grade=Grade.PROJECT_ESTIMATE,
+        verified=False,
+        note=(
+            "Animal proteins (milk, egg) score near or above 1.0; mixed plant "
+            "proteins are lower and lysine-limited. A vegan day is scored well "
+            "below a non-vegetarian one, so the protein GRAM target is inflated "
+            "for lower-quality diets — a plant-forward plate must actually deliver "
+            "the utilisable protein, not just hit a gram number. Wide band."
+        ),
+    )
+)
+
+PROJECT_PROTEIN_TARGET_POLICY = register_evidence(
+    Evidence(
+        id="project_protein_target_policy",
+        summary="Protein g/kg for fat-loss and muscle-gain goals. Project decision above the Morton anchor.",
+        phenomenon=(
+            "no single measured breakpoint; the protein intake this project "
+            "targets in an energy deficit (to spare lean mass) or a building "
+            "phase, set above the Morton maintenance figure — direction supported "
+            "by the deficit-protein literature, exact value a project decision"
+        ),
+        source="This project's decision, anchored on morton_2018_protein.",
+        doi=None,
+        grade=Grade.PROJECT_DECISION,
+        verified=False,
+    )
+)
+
+# --- BMR: Mifflin-St Jeor coefficients ------------------------------------
+# BMR = weight_coeff*kg + height_coeff*cm - age_coeff*years + sex_constant.
+# The coefficients are exact regression outputs (uncertainty 0); the equation's
+# ~+/-10% individual prediction spread is carried separately below and is what
+# feeds the displayed energy interval.
+register_constant(Constant(
+    key="bmr.mifflin.weight_coeff", value=10.0, unit="kcal/day per kg",
+    evidence_id="mifflin_st_jeor_1990",
+    applied_to="the body-weight term of the Mifflin-St Jeor RMR equation",
+    uncertainty=0.0,
+))
+register_constant(Constant(
+    key="bmr.mifflin.height_coeff", value=6.25, unit="kcal/day per cm",
+    evidence_id="mifflin_st_jeor_1990",
+    applied_to="the height term of the Mifflin-St Jeor RMR equation",
+    uncertainty=0.0,
+))
+register_constant(Constant(
+    key="bmr.mifflin.age_coeff", value=5.0, unit="kcal/day per year",
+    evidence_id="mifflin_st_jeor_1990",
+    applied_to="the age term (subtracted) of the Mifflin-St Jeor RMR equation",
+    uncertainty=0.0,
+))
+register_constant(Constant(
+    key="bmr.mifflin.sex_constant_male", value=5.0, unit="kcal/day",
+    evidence_id="mifflin_st_jeor_1990",
+    applied_to="the constant term of the Mifflin-St Jeor RMR equation for male bodies",
+    uncertainty=0.0,
+))
+register_constant(Constant(
+    key="bmr.mifflin.sex_constant_female", value=-161.0, unit="kcal/day",
+    evidence_id="mifflin_st_jeor_1990",
+    applied_to="the constant term of the Mifflin-St Jeor RMR equation for female bodies",
+    uncertainty=0.0,
+))
+register_constant(Constant(
+    key="bmr.mifflin.rmr_prediction_uncertainty", value=0.10, unit="fraction",
+    evidence_id="mifflin_st_jeor_1990",
+    applied_to=(
+        "the fractional spread between the equation's predicted RMR and an "
+        "individual's measured RMR; carried into the displayed energy interval"
+    ),
+    uncertainty=0.0,
+    note="The equation predicts within ~10% for most people, not all; a point RMR is false-precise.",
+))
+
+# --- Activity: PAL multipliers (RMR -> total energy) ----------------------
+_PAL: tuple[tuple[str, float, str], ...] = (
+    ("activity.pal_sedentary", 1.2, "little or no exercise, desk-bound day"),
+    ("activity.pal_light", 1.375, "light exercise 1-3 days/week"),
+    ("activity.pal_moderate", 1.55, "moderate exercise 3-5 days/week"),
+    ("activity.pal_active", 1.725, "hard exercise 6-7 days/week"),
+    ("activity.pal_very_active", 1.9, "very hard exercise or a physical job"),
+)
+for _k, _v, _desc in _PAL:
+    register_constant(Constant(
+        key=_k, value=_v, unit="ratio (total energy / RMR)",
+        evidence_id="project_activity_factor_estimate",
+        applied_to=f"multiplying RMR to total daily energy for: {_desc}",
+        uncertainty=0.10,
+    ))
+
+# --- Protein: g/kg body weight per day, by goal ---------------------------
+register_constant(Constant(
+    key="protein.g_per_kg_maintain", value=1.6, unit="g/kg/day",
+    evidence_id="morton_2018_protein",
+    applied_to="the protein intake target for a maintenance goal (Morton breakpoint)",
+    uncertainty=0.15,
+))
+register_constant(Constant(
+    key="protein.g_per_kg_lose_fat", value=1.8, unit="g/kg/day",
+    evidence_id="project_protein_target_policy",
+    applied_to="the protein intake target in an energy deficit, raised to spare lean mass",
+    uncertainty=0.15,
+))
+register_constant(Constant(
+    key="protein.g_per_kg_gain_muscle", value=1.8, unit="g/kg/day",
+    evidence_id="project_protein_target_policy",
+    applied_to="the protein intake target in a building phase",
+    uncertainty=0.15,
+))
+
+# --- Diet: representative DIAAS by pattern (divides the protein target) ----
+# quality_adjusted_grams = base_grams / diaas: a lower score => more grams.
+_DIAAS: tuple[tuple[str, float, str], ...] = (
+    ("diaas.non_vegetarian", 1.0, "mixed animal and plant protein across the day"),
+    ("diaas.eggetarian", 0.95, "dairy, egg and plant protein"),
+    ("diaas.vegetarian", 0.90, "dairy and plant protein, no egg"),
+    ("diaas.jain", 0.85, "dairy and plant protein, no root vegetables"),
+    ("diaas.vegan", 0.75, "plant protein only, typically lysine-limited"),
+)
+for _k, _v, _desc in _DIAAS:
+    register_constant(Constant(
+        key=_k, value=_v, unit="DIAAS (fraction of high-quality protein)",
+        evidence_id="project_diet_diaas_estimate",
+        applied_to=f"quality-adjusting the protein gram target for: {_desc}",
+        uncertainty=0.15,
+    ))
+
+# --- Goal: energy multiplier on maintenance TDEE --------------------------
+_GOAL_ENERGY: tuple[tuple[str, float, str], ...] = (
+    ("energy.goal_factor_lose_fat", 0.80, "a fat-loss goal: a 20% energy deficit"),
+    ("energy.goal_factor_maintain", 1.00, "a maintenance goal: no adjustment"),
+    ("energy.goal_factor_gain_muscle", 1.10, "a muscle-gain goal: a 10% energy surplus"),
+)
+for _k, _v, _desc in _GOAL_ENERGY:
+    register_constant(Constant(
+        key=_k, value=_v, unit="multiplier",
+        evidence_id="project_goal_energy_policy",
+        applied_to=f"scaling maintenance TDEE to the energy target for {_desc}",
+        uncertainty=0.0,
+    ))
+
+# --- Macro distribution, fibre, sodium ------------------------------------
+register_constant(Constant(
+    key="macro.fat_energy_fraction_min", value=0.20, unit="fraction of energy",
+    evidence_id="iom_dri_2005",
+    applied_to="the lower bound of the fat acceptable macronutrient distribution range",
+    uncertainty=0.0,
+))
+register_constant(Constant(
+    key="macro.fat_energy_fraction_max", value=0.35, unit="fraction of energy",
+    evidence_id="iom_dri_2005",
+    applied_to="the upper bound of the fat acceptable macronutrient distribution range",
+    uncertainty=0.0,
+))
+register_constant(Constant(
+    key="nutrient.fibre_g_per_1000kcal", value=14.0, unit="g per 1000 kcal",
+    evidence_id="iom_dri_2005",
+    applied_to="the adequate dietary fibre intake scaled to a plan's energy target",
+    uncertainty=0.10,
+))
+register_constant(Constant(
+    key="nutrient.sodium_max_mg", value=2000.0, unit="mg/day",
+    evidence_id="who_sodium_2012",
+    applied_to="the daily sodium ceiling applied to a plan (relaxable unless hypertension is flagged)",
+    uncertainty=0.0,
+))
+
+# Mechanism review for every constant registered above. Kept next to the
+# registrations (rather than in the literal near the top) so a reviewer sees
+# the applied_to and its review verdict together. Single-author mechanism
+# review only — it records that phenomenon and applied_to describe the same
+# mechanism, never that a source was opened (that is `verified`, still False).
+REVIEWED_MECHANISM_MATCHES.update({
+    "bmr.mifflin.weight_coeff": "reviewed: RMR regression coefficient, applied to the same RMR equation term",
+    "bmr.mifflin.height_coeff": "reviewed: as above",
+    "bmr.mifflin.age_coeff": "reviewed: as above",
+    "bmr.mifflin.sex_constant_male": "reviewed: as above",
+    "bmr.mifflin.sex_constant_female": "reviewed: as above",
+    "bmr.mifflin.rmr_prediction_uncertainty": "reviewed: the equation's own reported prediction spread, applied as the RMR interval",
+    "activity.pal_sedentary": "reviewed: NO matching primary source; project point within the conventional PAL range",
+    "activity.pal_light": "reviewed: NO matching primary source; project point within the conventional PAL range",
+    "activity.pal_moderate": "reviewed: NO matching primary source; project point within the conventional PAL range",
+    "activity.pal_active": "reviewed: NO matching primary source; project point within the conventional PAL range",
+    "activity.pal_very_active": "reviewed: NO matching primary source; project point within the conventional PAL range",
+    "protein.g_per_kg_maintain": "reviewed: meta-regression protein breakpoint, applied to the protein intake target",
+    "protein.g_per_kg_lose_fat": "reviewed: project decision above the Morton anchor; no single measured breakpoint claimed",
+    "protein.g_per_kg_gain_muscle": "reviewed: project decision above the Morton anchor; no single measured breakpoint claimed",
+    "diaas.non_vegetarian": "reviewed: NO matching primary source for a per-diet rollup; project estimate of protein quality",
+    "diaas.eggetarian": "reviewed: NO matching primary source for a per-diet rollup; project estimate of protein quality",
+    "diaas.vegetarian": "reviewed: NO matching primary source for a per-diet rollup; project estimate of protein quality",
+    "diaas.jain": "reviewed: NO matching primary source for a per-diet rollup; project estimate of protein quality",
+    "diaas.vegan": "reviewed: NO matching primary source for a per-diet rollup; project estimate of protein quality",
+    "energy.goal_factor_lose_fat": "reviewed: project decision, a chosen deficit size, no physical process claimed",
+    "energy.goal_factor_maintain": "reviewed: project decision, no adjustment, no physical process claimed",
+    "energy.goal_factor_gain_muscle": "reviewed: project decision, a chosen surplus size, no physical process claimed",
+    "macro.fat_energy_fraction_min": "reviewed: AMDR fat lower bound, applied to the fat distribution bound",
+    "macro.fat_energy_fraction_max": "reviewed: AMDR fat upper bound, applied to the fat distribution bound",
+    "nutrient.fibre_g_per_1000kcal": "reviewed: adequate fibre intake per energy, applied to the fibre floor",
+    "nutrient.sodium_max_mg": "reviewed: guideline sodium ceiling, applied to the sodium ceiling",
+})

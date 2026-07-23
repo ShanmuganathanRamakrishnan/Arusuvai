@@ -1,8 +1,10 @@
 # Methodology and known limitations
 
-Current as of the Phase 3 build (validator and relaxation ladder). Sections for
-the LLM ranking/narration layer, commerce, API and web will be added as those
-phases land — this document only describes what exists.
+Current as of the onboarding build (2026-07-23): profile→target derivation
+(`core/nutrition/targets.py`) and a thin `api/` exposing it, on top of the
+Phase 3 validator and relaxation ladder. Sections for the LLM ranking/narration
+layer, commerce and web will be added as those phases land — this document only
+describes what exists.
 
 ## Scope statement — read this first
 
@@ -386,6 +388,42 @@ re-derive the rejection.
 Where no matching source exists, the constant is registered as a
 `PROJECT_ESTIMATE` with `verified=False` and a wide band. `Evidence` refuses to
 let a project estimate be marked verified at all: there is no document to open.
+
+## Target derivation from a profile (2026-07-23)
+
+`core/nutrition/targets.py` turns a `Profile` into an energy/protein/macro
+target. This is the first place the product computes a number a user would act
+on, so two things are stated plainly here.
+
+**The pipeline is deterministic and every coefficient is cited.** BMR comes from
+Mifflin-St Jeor (`bmr.mifflin.*`), scaled by an activity factor (`activity.pal_*`)
+to maintenance TDEE, then by a goal factor (`energy.goal_factor_*`). Protein is
+`weight × g/kg` (`protein.g_per_kg_*`, anchored on Morton 2018) **divided by a
+per-diet DIAAS factor** (`diaas.*`): a lower-quality-protein diet needs *more*
+grams to deliver the same utilisable protein, so a vegan target is higher than a
+non-vegetarian one for the same body. Fat takes the IOM AMDR midpoint; carbohydrate
+is the remainder. No coefficient is written inline — all live in `citations.py`.
+
+**These targets are `dev_mode`, never `validated` — and cannot become validated
+as currently sourced.** `DerivedTarget.status` is computed from the backing
+evidence, not hard-coded. The activity factors, the per-diet DIAAS rollup, and
+the goal energy deltas are `PROJECT_ESTIMATE`/`PROJECT_DECISION` evidence, which
+`Evidence` forbids from ever being `verified=True` (there is no single document
+to open for "the DIAAS of a vegetarian day"). So even if a human verifies
+Mifflin, Morton, the IOM DRIs and the WHO sodium guideline, the status stays
+`dev_mode`. `tests/test_nutrition_targets.py::
+test_targets_can_never_be_validated_while_they_rest_on_project_estimates` asserts
+exactly this. A one-sentence disclosure accompanies every derived target; the
+displayed energy figure carries the equation's ~±14% band (Mifflin's own RMR
+prediction spread combined in quadrature with activity-factor uncertainty), not
+a false-precise point.
+
+The DIAAS per-diet values are deliberately conservative estimates, not measured
+figures. Verifying them is not possible in the `Evidence.verified` sense; the
+honest improvement path is to replace the single per-diet rollup with a
+composition-weighted DIAAS computed from the actual recipes once `core/foods`
+protein data is verified, at which point the estimate can be retired rather than
+verified. `docs/audit_log.md` is where any finding against this reasoning belongs.
 
 ## Known limitations, Phase 1
 

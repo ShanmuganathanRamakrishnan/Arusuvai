@@ -12,7 +12,7 @@ from core.planner.combinations import (
     enumerate_combinations,
     feasible_combinations,
 )
-from core.planner.target import NutritionTarget
+from core.nutrition.target import NutritionTarget
 from core.schemas import DietPattern
 from tests.factories import (
     FEASIBILITY_COMPONENTS,

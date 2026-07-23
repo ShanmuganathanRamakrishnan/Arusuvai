@@ -20,7 +20,7 @@ from core.planner.combinations import (
     feasible_combinations,
 )
 from core.planner.solver import SolvedPlan, solve
-from core.planner.target import NutritionTarget, simple_target
+from core.nutrition.target import NutritionTarget, simple_target
 from core.planner.validator import (
     LOCKED_CONSTRAINTS,
     RELAXATION_ORDER,
@@ -72,6 +72,7 @@ def _profile(*flags: ClinicalFlag) -> Profile:
         sex=Sex.FEMALE,
         activity=ActivityLevel.LIGHT,
         goal=Goal.MAINTAIN,
+        diet=DietPattern.VEGETARIAN,
         clinical_flags=frozenset(flags),
     )
 

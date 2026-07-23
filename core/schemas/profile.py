@@ -15,16 +15,22 @@ sodium ceiling *does* relax, with no error anywhere, which is the failure mode
 this whole project is organised around: a safety mechanism that quietly
 degrades to no mechanism. An unrecognised enum value fails at construction.
 
-Only the body fields needed to derive an energy target are modelled. The
-derivation itself (``core/nutrition/targets.py``) is not built yet; see the
-build-status table in CLAUDE.md. This module deliberately stops at recording
-the inputs rather than guessing at a formula it does not yet own.
+The body fields needed to derive an energy target are modelled, plus ``diet``:
+protein quality (DIAAS) varies by diet pattern, so ``core/nutrition/targets``
+must read it to inflate the gram target for lower-quality-protein diets — a
+vegan hitting a protein number on plant sources needs more grams than a
+non-vegetarian to deliver the same utilisable protein. ``diet`` is therefore a
+target-math input, not merely a later candidate-filtering key. Only the
+``DietPattern`` enum is carried here; allergens and region preferences wait for
+``core/planner``, which has nothing to filter against yet.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+
+from core.schemas.common import DietPattern
 
 
 class ClinicalFlag(str, Enum):
@@ -85,6 +91,9 @@ class Profile:
     sex: Sex
     activity: ActivityLevel
     goal: Goal
+    #: Read by ``core/nutrition/targets`` to quality-adjust the protein target
+    #: (DIAAS varies by pattern), not only by a later candidate filter.
+    diet: DietPattern
     clinical_flags: frozenset[ClinicalFlag] = frozenset()
     warnings: tuple[str, ...] = field(default_factory=tuple)
 

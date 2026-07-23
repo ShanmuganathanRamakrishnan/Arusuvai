@@ -48,7 +48,7 @@ from typing import Mapping, Sequence
 from core.foods.models import Component, Ingredient, MealTemplate, TemplateSlot
 from core.foods.nutrition_of import nutrition_of_recipe
 from core.planner.candidates import CandidatePool
-from core.planner.target import NutritionTarget
+from core.nutrition.target import NutritionTarget
 
 logger = logging.getLogger(__name__)
 

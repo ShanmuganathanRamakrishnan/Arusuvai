@@ -38,7 +38,7 @@ from core.foods.models import Component, NutritionVector
 from core.foods.nutrition_of import NutritionEstimate, nutrition_of_components, nutrition_of_recipe
 from core.planner.candidates import CandidatePool
 from core.planner.combinations import MealCombination
-from core.planner.target import NutritionTarget
+from core.nutrition.target import NutritionTarget
 
 __all__ = ["DEVIATION_WEIGHTS", "SolvedPlan", "solve_combination", "solve", "swap_candidates"]
 

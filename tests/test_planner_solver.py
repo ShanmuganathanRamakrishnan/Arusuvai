@@ -15,7 +15,7 @@ from core.planner.combinations import (
     macro_bounds,
 )
 from core.planner.solver import solve, solve_combination, swap_candidates
-from core.planner.target import NutritionTarget, simple_target
+from core.nutrition.target import NutritionTarget, simple_target
 from core.schemas import DietPattern
 from tests.factories import (
     FEASIBILITY_COMPONENTS,
