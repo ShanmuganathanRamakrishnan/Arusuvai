@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arusuvai · Your targets</title>
+<meta name="description" content="Tell us about your body and goal — get a cited, dev-mode nutritional target from the real Arusuvai engine, not a demo.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=Hanken+Grotesk:wght@400;500;600;700&family=Noto+Serif+Tamil:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ============ HEADER ============ -->
+<header id="siteHeader" class="site-header">
+  <div class="header-inner">
+    <a href="index.html" class="brand">
+      <span class="brand-ta">அறுசுவை</span>
+      <span class="brand-latin">arusuvai</span>
+    </a>
+    <div class="nav">
+      <a href="index.html#how" class="hide-sm">How it works</a>
+      <a href="index.html">Back home</a>
+    </div>
+  </div>
+  <div class="header-rule" aria-hidden="true"></div>
+</header>
+
+<div class="wrap">
+
+  <!-- ============ ONBOARDING HEADER ============ -->
+  <section class="ob-hero no-rule">
+    <div class="eyebrow">Your targets, computed live</div>
+    <h1 class="ob-title">Tell us about your body.</h1>
+    <p class="ob-sub">This calls the real engine over HTTP — <code>POST /api/targets</code> — the same deterministic
+      Python that would back a plan. Nothing here is illustrative.</p>
+  </section>
+
+  <!-- ============ FORM + RESULTS ============ -->
+  <section class="ob-grid no-rule">
+
+    <!-- ---- form ---- -->
+    <form id="obForm" class="ob-card" novalidate>
+      <div class="ob-field-row">
+        <label>
+          <span>Weight (kg)</span>
+          <input type="number" id="fWeight" name="weight_kg" min="1" step="0.1" value="68" required>
+        </label>
+        <label>
+          <span>Height (cm)</span>
+          <input type="number" id="fHeight" name="height_cm" min="1" step="0.1" value="170" required>
+        </label>
+        <label>
+          <span>Age (years)</span>
+          <input type="number" id="fAge" name="age_years" min="1" step="1" value="30" required>
+        </label>
+      </div>
+
+      <div class="ob-field-row">
+        <label>
+          <span>Sex</span>
+          <select id="fSex" name="sex">
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+        </label>
+        <label>
+          <span>Activity</span>
+          <select id="fActivity" name="activity">
+            <option value="sedentary">Sedentary</option>
+            <option value="light">Light</option>
+            <option value="moderate" selected>Moderate</option>
+            <option value="active">Active</option>
+            <option value="very_active">Very active</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="ob-field-row">
+        <label>
+          <span>Goal</span>
+          <select id="fGoal" name="goal">
+            <option value="lose_fat">Lose fat</option>
+            <option value="maintain" selected>Maintain</option>
+            <option value="gain_muscle">Gain muscle</option>
+          </select>
+        </label>
+        <label>
+          <span>Diet</span>
+          <select id="fDiet" name="diet">
+            <option value="non_vegetarian">Non-vegetarian</option>
+            <option value="eggetarian">Eggetarian</option>
+            <option value="vegetarian" selected>Vegetarian</option>
+            <option value="jain">Jain</option>
+            <option value="vegan">Vegan</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="ob-flags">
+        <span class="ob-flags-lbl">Disclosed clinical conditions (optional)</span>
+        <div class="ob-flags-row">
+          <label class="ob-check"><input type="checkbox" name="clinical_flags" value="hypertension"> Hypertension</label>
+          <label class="ob-check"><input type="checkbox" name="clinical_flags" value="chronic_kidney_disease"> Chronic kidney disease</label>
+          <label class="ob-check"><input type="checkbox" name="clinical_flags" value="diabetes"> Diabetes</label>
+        </div>
+        <p class="ob-flags-note">These do not change any number below yet — see the disclosure that appears once you
+          submit, and <a href="index.html#faq">docs/methodology.md</a> in the repo for why.</p>
+      </div>
+
+      <button type="submit" class="btn btn-primary ob-submit" id="obSubmit">Compute my targets</button>
+      <div class="ob-endpoint">Calling <code id="obEndpointLabel">http://localhost:8000/api/targets</code></div>
+    </form>
+
+    <!-- ---- results ---- -->
+    <div class="ob-card ob-results" id="obResults" aria-live="polite">
+      <div class="ob-results-empty" id="obEmpty">
+        <div class="ob-results-empty-t">Nothing computed yet</div>
+        <p>Fill in the form and submit — the numbers below come straight from <code>derive_target</code>, not the
+          browser.</p>
+      </div>
+
+      <div id="obError" class="ob-error" hidden></div>
+
+      <div id="obOutput" hidden>
+        <div class="ob-status-row">
+          <span class="ob-status-pill" id="obStatusPill">dev_mode</span>
+        </div>
+        <p class="ob-disclosure" id="obDisclosure"></p>
+
+        <div class="ob-stat-block">
+          <div class="ob-stat-lbl">Energy</div>
+          <div class="ob-stat-line" id="obEnergy"></div>
+        </div>
+
+        <div class="ob-stat-block">
+          <div class="ob-stat-lbl">Protein — quality-adjusted for your diet</div>
+          <div class="ob-stat-line" id="obProtein"></div>
+        </div>
+
+        <div class="ob-stat-block">
+          <div class="ob-stat-lbl">Fat &amp; carbohydrate</div>
+          <div class="ob-stat-line" id="obMacros"></div>
+        </div>
+
+        <div class="ob-stat-block">
+          <div class="ob-stat-lbl">Fibre &amp; sodium</div>
+          <div class="ob-stat-line" id="obFibreSodium"></div>
+        </div>
+
+        <div class="ob-stat-block" id="obWarningsBlock" hidden>
+          <div class="ob-stat-lbl">Warnings</div>
+          <ul class="ob-warn-list" id="obWarnings"></ul>
+        </div>
+
+        <details class="ob-sources">
+          <summary>Every number, traced to its source</summary>
+          <div class="ob-sources-list" id="obSources"></div>
+        </details>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="site-footer">
+    <div class="footer-bottom">
+      <span>Made in Chennai</span>
+      <span>These targets are dev-mode: careful estimates, not clinical advice.</span>
+    </div>
+  </footer>
+</div>
+
+<script src="onboarding.js"></script>
+</body>
+</html>

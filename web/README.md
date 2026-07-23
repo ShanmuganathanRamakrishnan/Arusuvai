@@ -7,23 +7,40 @@ build step.
 
 ```
 web/
-  index.html    markup (semantic, class-based)
-  styles.css    palette, type, layout, motion
-  app.js        vanilla-JS behaviour (no framework)
-  assets/       plate photos — see assets/README.md
+  index.html       landing page markup (semantic, class-based)
+  onboarding.html  the form that calls POST /api/targets — see below
+  onboarding.js    fetch + render for onboarding.html; computes nothing
+  styles.css       palette, type, layout, motion (shared by both pages)
+  app.js           landing-page vanilla-JS behaviour (no framework)
+  assets/          plate photos — see assets/README.md
 ```
 
 ## Run
 
-Any static server, e.g.:
+`index.html` is a self-contained static page — any static server, or opening
+it directly, works:
 
 ```bash
 python -m http.server 8000 --directory web
 # then open http://localhost:8000
 ```
 
-Opening `index.html` directly works too; the Google Fonts and the plate images
-are the only external requests.
+`onboarding.html` additionally needs the real API running, on a **different**
+port than the page itself (browsers treat different ports as different
+origins, and `api/main.py`'s CORS list is scoped to exactly `:3000` and
+`:8000` for the page, expecting the API on `:8000` when the page is on
+`:3000`, or vice versa — see the comment in `api/main.py`):
+
+```bash
+uvicorn api.main:app --reload              # API on :8000
+python -m http.server 3000 --directory web # page on :3000
+# then open http://localhost:3000/onboarding.html
+```
+
+Opening `index.html` directly (no server) works too, for the landing page
+only; the Google Fonts and the plate images are the only external requests.
+`onboarding.html` needs an HTTP origin (not `file://`) for `fetch()` to carry
+a matchable `Origin` header to the API's CORS check.
 
 ## What it does
 
@@ -36,6 +53,29 @@ are the only external requests.
 - **Six-food bloom**, **FAQ accordion**, **auth modal**, **sticky header**.
 - Honours `prefers-reduced-motion`: the kolam settles static, the bloom shows
   immediately, and the headline swaps without a fade.
+
+## `onboarding.html` — the first page that does something real
+
+A form (body, activity, goal, diet, disclosed clinical conditions) that POSTs
+straight to `/api/targets` and renders the response. Unlike the calculator
+dock on the landing page, **nothing here is illustrative**: every figure shown
+is a field read off the JSON response, formatted (rounded) for display but
+never recomputed. `onboarding.js`'s own docstring states this as the file's
+central constraint.
+
+Renders, from the real response: the energy interval (point + `±%`, matching
+`DESIGN_SYSTEM.md`'s number-display rule — no boxed stat grid), the
+DIAAS-quality-adjusted protein target, fat/carb/fibre/sodium, the `dev_mode`
+status pill and its one-line disclosure, every `warnings` entry (including the
+clinical-flags disclosure from `docs/methodology.md`, "Clinical flags do not
+tighten a target" — checking a condition does not change the sodium number,
+and the page says so rather than leaving that silent), and a collapsible
+source list (`<details>`) with each constant's citation, grade, DOI and
+verification state.
+
+Failure states are explicit, not swallowed: a network failure (API not
+running) shows a message naming the exact command to start it; a 422 shows the
+API's own validation detail.
 
 ## Relationship to CLAUDE.md
 

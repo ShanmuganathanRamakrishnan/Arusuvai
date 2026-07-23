@@ -35,6 +35,8 @@ variable, never a re-typed hex.
 | `--amber-deep`   | `#B98416`              | Amber for text/links on cream (contrast-safe)    |
 | `--terracotta`   | `#C1694F`              | Secondary/tertiary only (e.g. a third dot)       |
 | `--rule`         | `rgba(43,38,34,.08)`   | Hairline dividers between sections/cards          |
+| `--error`        | `#B3392C`              | Form/API error states (`web/onboarding.html`)    |
+| `--error-bg`     | `rgba(179,57,44,.08)`  | Error message background                         |
 
 **State / derived colors** (not yet tokenized — see "Known inconsistencies"):
 
@@ -42,8 +44,11 @@ variable, never a re-typed hex.
   captions, fine print. Common stops: `.72` (hero sub), `.68` (body), `.6`,
   `.55`, `.5` (captions), `.4` (finest print).
 - Borders on inputs/cards: `rgba(43,38,34,.09–.16)`.
-- Error/success: **none defined yet.** The early-access and auth forms have no
-  validation-error styling. First page that needs one defines it here.
+- Error/success: **`--error`/`--error-bg`, defined 2026-07-23** by
+  `web/onboarding.html` (`.ob-error`) — the first page with a real submission
+  failure state (an unreachable API, a 422). The early-access and auth forms
+  still have no validation-error styling; when they get one, reuse these
+  tokens rather than inventing a second pair.
 
 **The one-accent rule.** `--amber` is the single primary accent, used
 *sparingly, one thing at a time*. It marks exactly one focal element per
@@ -298,11 +303,16 @@ Reusable pieces already built. Reuse these before building a near-duplicate.
 | **Calc dock**        | Fixed slide-out illustrative protein calculator                  | `styles.css:118–170`; `startCalc()` `app.js` — **illustrative only**, see CLAUDE.md `web/` note |
 | **Kolam background** | Runtime-generated SVG ambient layer                              | `#kolam` `styles.css:65–73`; `buildKolam()`/`renderKolam()` `app.js` |
 | **Footer**           | Brand + link columns + illustrative-numbers disclaimer           | `styles.css:350–356`; markup `index.html:281–312` |
+| **Onboarding form**  | Grouped inputs/selects, checkbox flag row (`.ob-field-row`/`.ob-flags`) | `web/onboarding.html`; `.ob-*` `styles.css` (onboarding section) |
+| **Status pill**      | `dev_mode`/`validated` badge, amber vs. green tint (`.ob-status-pill`) | `web/onboarding.html`; `styles.css` (onboarding section) |
+| **Error message**    | Inline error banner using `--error`/`--error-bg` (`.ob-error`)   | `web/onboarding.html`; `styles.css` (onboarding section) |
+| **Source list**      | Collapsible `<details>` of cited constants (`.ob-sources`)       | `web/onboarding.html`; `styles.css` (onboarding section) |
 
-Everything currently lives in the single static trio (`web/index.html`,
-`web/styles.css`, `web/app.js`). When this migrates to Next.js (per CLAUDE.md's
-`web/` scope), each row above becomes a component; keep this table pointing at
-wherever it lands.
+Everything currently lives in two static pages (`web/index.html`,
+`web/onboarding.html`) sharing `web/styles.css`, plus page-specific
+`web/app.js` / `web/onboarding.js`. When this migrates to Next.js (per
+CLAUDE.md's `web/` scope), each row above becomes a component; keep this table
+pointing at wherever it lands.
 
 ---
 

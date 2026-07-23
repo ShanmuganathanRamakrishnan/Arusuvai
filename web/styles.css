@@ -16,6 +16,13 @@
   --amber: #E0A526;
   --amber-deep: #B98416;
   --terracotta: #C1694F;
+  /* Added for web/onboarding.html: the first form with real submission
+     failure states (a 422 from the API, an unreachable server). Not in the
+     original design brief — DESIGN_SYSTEM.md flagged this as undefined, so
+     it's registered here rather than left as an inline color. Distinct from
+     --terracotta (a tertiary *accent*, not a status color). */
+  --error: #B3392C;
+  --error-bg: rgba(179, 57, 44, .08);
   --serif: 'Spectral', Georgia, serif;
   --sans: 'Hanken Grotesk', system-ui, sans-serif;
   --tamil: 'Noto Serif Tamil', serif;
@@ -391,6 +398,75 @@ section.no-rule { border-top: none; }
 .modal .switch { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; font-size: 13.5px; color: rgba(43, 38, 34, .6); margin-top: 20px; }
 .modal .switch button { background: none; border: none; cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--green); padding: 0; white-space: nowrap; }
 .modal .switch button:hover { color: var(--amber-deep); }
+
+/* ---------- onboarding (web/onboarding.html) ---------- */
+.ob-hero { padding: clamp(34px, 5vw, 56px) 0 clamp(20px, 3vw, 32px); }
+.ob-hero .eyebrow { margin-bottom: 14px; }
+.ob-title { font-family: var(--serif); font-weight: 500; font-size: clamp(28px, 4vw, 42px); line-height: 1.12; letter-spacing: -.01em; margin: 0; color: var(--ink); max-width: 22ch; }
+.ob-sub { font-size: 15px; line-height: 1.6; color: rgba(43, 38, 34, .68); max-width: 60ch; margin: 14px 0 0; text-wrap: pretty; }
+.ob-sub code { background: rgba(43, 38, 34, .06); border-radius: 5px; padding: 1px 6px; font-size: .93em; }
+
+.ob-grid { padding: 0 0 clamp(60px, 8vw, 100px); display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: clamp(20px, 3vw, 32px); align-items: start; }
+
+.ob-card { background: var(--cream-card); border: 1px solid rgba(43, 38, 34, .09); border-radius: 16px; padding: clamp(22px, 3vw, 30px); min-width: 0; }
+
+/* Form fields reuse the modal's input treatment (11px radius, cream-sink
+   background) rather than inventing a third input style — see
+   DESIGN_SYSTEM.md "Known inconsistencies #2" on not multiplying input shapes. */
+.ob-field-row { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
+.ob-field-row label { flex: 1 1 140px; min-width: 0; }
+.ob-card label span { display: block; font-size: 12px; font-weight: 600; color: rgba(43, 38, 34, .6); margin-bottom: 6px; }
+.ob-card input[type="number"],
+.ob-card select {
+  width: 100%; background: var(--cream-sink); border: 1px solid rgba(43, 38, 34, .16);
+  border-radius: 11px; padding: 11px 13px; font-family: var(--sans); font-size: 14.5px; color: var(--ink);
+  outline: none; transition: border-color .25s; appearance: none;
+}
+.ob-card select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%232B2622' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 13px center; padding-right: 34px; }
+.ob-card input[type="number"]:focus,
+.ob-card select:focus { border-color: var(--green); }
+
+.ob-flags { margin: 18px 0 20px; padding-top: 16px; border-top: 1px solid var(--rule); }
+.ob-flags-lbl { display: block; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: rgba(43, 38, 34, .45); font-weight: 600; margin-bottom: 12px; }
+.ob-flags-row { display: flex; flex-wrap: wrap; gap: 10px 18px; }
+.ob-check { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink); cursor: pointer; }
+.ob-check input { accent-color: var(--green); width: 15px; height: 15px; }
+.ob-flags-note { font-size: 12.5px; line-height: 1.55; color: rgba(43, 38, 34, .5); margin: 12px 0 0; max-width: 46ch; }
+
+.ob-submit { width: 100%; padding: 13px; font-size: 15px; border-radius: 999px; }
+.ob-submit:disabled { opacity: .55; cursor: wait; }
+.ob-endpoint { font-size: 11.5px; color: rgba(43, 38, 34, .4); margin-top: 10px; text-align: center; }
+.ob-endpoint code { font-size: .95em; }
+
+/* Results — plain inline stat lines per DESIGN_SYSTEM.md's Number display
+   rule: no bordered table or grid of stat cards. */
+.ob-results-empty { text-align: center; padding: clamp(30px, 5vw, 50px) 0; color: rgba(43, 38, 34, .45); }
+.ob-results-empty-t { font-family: var(--serif); font-size: 18px; color: rgba(43, 38, 34, .6); margin-bottom: 8px; }
+.ob-results-empty p { font-size: 13.5px; line-height: 1.55; max-width: 36ch; margin: 0 auto; }
+.ob-results-empty code { background: rgba(43, 38, 34, .06); border-radius: 5px; padding: 1px 6px; }
+
+.ob-error { background: var(--error-bg); border: 1px solid rgba(179, 57, 44, .25); color: var(--error); border-radius: 12px; padding: 14px 16px; font-size: 13.5px; line-height: 1.55; }
+
+.ob-status-row { display: flex; margin-bottom: 10px; }
+.ob-status-pill { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; border-radius: 999px; padding: 5px 13px; }
+.ob-status-pill.dev-mode { background: rgba(224, 165, 38, .16); color: var(--amber-deep); }
+.ob-status-pill.validated { background: rgba(58, 90, 64, .13); color: var(--green); }
+.ob-disclosure { font-size: 13px; line-height: 1.6; color: rgba(43, 38, 34, .6); font-style: italic; margin: 0 0 22px; }
+
+.ob-stat-block { margin-bottom: 16px; }
+.ob-stat-lbl { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: rgba(43, 38, 34, .45); font-weight: 600; margin-bottom: 6px; }
+.ob-stat-line { font-size: 15px; line-height: 1.55; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.ob-warn-list { margin: 0; padding-left: 18px; }
+.ob-warn-list li { font-size: 13px; line-height: 1.55; color: var(--amber-deep); margin-bottom: 6px; }
+
+.ob-sources { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--rule); }
+.ob-sources summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--green); }
+.ob-sources-list { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto; }
+.ob-source-row { font-size: 12px; line-height: 1.5; color: rgba(43, 38, 34, .62); border-bottom: 1px solid var(--rule); padding-bottom: 8px; }
+.ob-source-row .k { font-weight: 600; color: var(--ink); }
+.ob-source-row .verified-no { color: var(--terracotta); }
+.ob-source-row .verified-yes { color: var(--green); }
 
 /* ---------- responsive ---------- */
 @media (max-width: 560px) {
