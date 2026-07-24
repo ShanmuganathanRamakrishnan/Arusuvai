@@ -12,23 +12,25 @@ from core.schemas import RawOrCooked
 
 class TestPlateTotals:
     def test_two_components_sum(self, library, ingredients):
-        # 2 masala dosas (223.65 x 2 = 447.30) + 1 cup sambar sadam (265.04)
-        # = 712.34 kcal
+        # 2 masala dosas (226.614 x 2 = 453.228) + 1 cup sambar sadam (265.04)
+        # = 718.268 kcal. (masala dosa moved from 223.65 to 226.614 when
+        # rice_milled_raw was corrected to real IFCT 2017 values 2026-07-24 —
+        # see TestMasalaDosa.test_energy in test_recipes.py.)
         items = [
             (library.component("masala_dosa"), 2),
             (library.component("sambar_sadam"), 1),
         ]
         est = nutrition_of_components(items, ingredients)
-        assert est.point.energy_kcal == pytest.approx(712.34)
+        assert est.point.energy_kcal == pytest.approx(718.268)
 
     def test_protein_sums(self, library, ingredients):
-        # 5.023 x 2 + 7.16 = 17.206 g
+        # 5.3194 x 2 + 7.16 = 17.7988 g
         items = [
             (library.component("masala_dosa"), 2),
             (library.component("sambar_sadam"), 1),
         ]
         est = nutrition_of_components(items, ingredients)
-        assert est.point.protein_g == pytest.approx(17.206)
+        assert est.point.protein_g == pytest.approx(17.7988)
 
 
 class TestInterval:
@@ -36,56 +38,58 @@ class TestInterval:
         # Two terms, summed. Every ingredient row is verified=False, so each
         # carries composition.unverified_secondary = 0.25, and the weighted sum
         # over lines collapses to 0.25 of the dish total. The process term is
-        # now derived by the loader from the oil lines (884 kcal/100 g):
-        #   composition band = 223.65 x 0.25                    = 55.9125
+        # now derived by the loader from the oil lines (884 kcal/100 g). Dish
+        # total moved from 223.65 to 226.614 when rice_milled_raw was corrected
+        # to real IFCT 2017 values 2026-07-24 (see test_recipes.py):
+        #   composition band = 226.614 x 0.25                   = 56.6535
         #   process band     = 3.5 x 8.84 x 0.20 = 6.188 kcal
         #                    + 3.0 x 8.84 x 0.10 = 2.652 kcal   =  8.8400
-        #   half-width                                           = 64.7525
-        #   low  = 223.65 - 64.7525 = 158.8975
-        #   high = 223.65 + 64.7525 = 288.4025
+        #   half-width                                           = 65.4935
+        #   low  = 226.614 - 65.4935 = 161.1205
+        #   high = 226.614 + 65.4935 = 292.1075
         items = [(library.component("masala_dosa"), 1)]
         est = nutrition_of_components(items, ingredients)
-        assert est.low.energy_kcal == pytest.approx(158.8975)
-        assert est.high.energy_kcal == pytest.approx(288.4025)
+        assert est.low.energy_kcal == pytest.approx(161.1205)
+        assert est.high.energy_kcal == pytest.approx(292.1075)
 
     def test_composition_uncertainty_dominates_the_process_term(
         self, library, ingredients
     ):
         # The defect this replaced: the band came from the oil constant alone,
         # so a dish that is 96% rice/urad/potato displayed +/-4% — narrower than
-        # the acknowledged error of its own inputs. Composition is now 6.32x the
-        # process term (55.9125 vs 8.84), which is the honest ratio.
+        # the acknowledged error of its own inputs. Composition is now 6.41x the
+        # process term (56.6535 vs 8.84), which is the honest ratio.
         items = [(library.component("masala_dosa"), 1)]
         est = nutrition_of_components(items, ingredients)
         half_width = (est.high.energy_kcal - est.low.energy_kcal) / 2
         recipe = library.recipes["masala_dosa"]
         process_only = est.point.energy_kcal * recipe.uncertainty_for("energy_kcal")
-        assert half_width == pytest.approx(64.7525)
+        assert half_width == pytest.approx(65.4935)
         assert process_only == pytest.approx(8.84)
-        assert half_width - process_only == pytest.approx(55.9125)
+        assert half_width - process_only == pytest.approx(56.6535)
 
     def test_bands_are_summed_not_root_sum_squared(self, library, ingredients):
-        # dosa         223.65 x 0.25 + 8.840 = 55.9125 + 8.840 = 64.7525
+        # dosa         226.614 x 0.25 + 8.840 = 56.6535 + 8.840 = 65.4935
         # sambar sadam 265.04 x 0.25 + 3.536 = 66.2600 + 3.536 = 69.7960
-        # summed half-width = 134.5485 ; RSS would be 95.27, i.e. narrower and
-        # wrong: on this library the errors share a provenance (one author, one
-        # sitting, all from memory), so they do not cancel.
+        # summed half-width = 135.2895 ; RSS would be narrower and wrong: on
+        # this library the errors share a provenance (one author, one sitting,
+        # all from memory), so they do not cancel.
         items = [
             (library.component("masala_dosa"), 1),
             (library.component("sambar_sadam"), 1),
         ]
         est = nutrition_of_components(items, ingredients)
         half_width = (est.high.energy_kcal - est.low.energy_kcal) / 2
-        assert half_width == pytest.approx(134.5485)
+        assert half_width == pytest.approx(135.2895)
 
     def test_uncertainty_fraction_of_the_plate(self, library, ingredients):
-        # 134.5485 / (223.65 + 265.04) = 134.5485 / 488.69 = 0.2753248...
+        # 135.2895 / (226.614 + 265.04) = 135.2895 / 491.654 = 0.2751722...
         items = [
             (library.component("masala_dosa"), 1),
             (library.component("sambar_sadam"), 1),
         ]
         est = nutrition_of_components(items, ingredients)
-        assert est.uncertainty_fraction("energy_kcal") == pytest.approx(0.2753248, abs=1e-6)
+        assert est.uncertainty_fraction("energy_kcal") == pytest.approx(0.2751722, abs=1e-6)
 
     def test_a_macro_with_no_declared_process_uncertainty_still_has_a_band(
         self, library, ingredients
@@ -107,7 +111,7 @@ class TestInterval:
         # changes, not merely be described as depending on it. Flipping every
         # row to verified swaps composition.unverified_secondary (0.25) for
         # composition.verified_primary (0.05):
-        #   223.65 x 0.05 + 8.84 = 11.1825 + 8.84 = 20.0225
+        #   226.614 x 0.05 + 8.84 = 11.3307 + 8.84 = 20.1707
         from dataclasses import replace
 
         from core.schemas import MACRO_KEYS
@@ -123,7 +127,7 @@ class TestInterval:
         items = [(library.component("masala_dosa"), 1)]
         est = nutrition_of_components(items, verified)
         half_width = (est.high.energy_kcal - est.low.energy_kcal) / 2
-        assert half_width == pytest.approx(20.0225)
+        assert half_width == pytest.approx(20.1707)
 
 
 class TestUnverifiedEnergyAttribution:
@@ -252,9 +256,9 @@ class TestStateMismatch:
     def test_a_cooked_quantity_against_a_raw_record_is_refused(
         self, library, ingredients
     ):
-        # Reading the 345 kcal/100 g raw rice record against a cooked quantity
-        # is a 3x error, not a tolerance-band problem — so it raises rather
-        # than guessing a yield factor.
+        # Reading the 356.4 kcal/100 g raw rice record against a cooked
+        # quantity is a 3x error, not a tolerance-band problem — so it raises
+        # rather than guessing a yield factor.
         from dataclasses import replace
 
         recipe = library.recipes["sambar_sadam"]

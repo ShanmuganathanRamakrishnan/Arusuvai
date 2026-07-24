@@ -206,6 +206,7 @@ REVIEWED_MECHANISM_MATCHES: dict[str, str] = {
     "atwater.fat_kcal_per_g": "reviewed: same mechanism as above",
     "atwater.carb_kcal_per_g": "reviewed: same mechanism as above",
     "qa.energy_reconciliation_tolerance": "reviewed: project decision, no physical process claimed",
+    "atwater.fibre_kcal_per_g": "reviewed: IFCT's own stated fibre energy factor, applied to the fibre portion of the energy reconciliation check",
     "yield.rice_milled_boiled": "reviewed: water absorption on boiling, applied to boiled rice",
     "yield.toor_dal_boiled": "reviewed: water absorption on boiling, applied to boiled toor dal",
     "yield.rajma_soaked_boiled": "reviewed: soak plus boil water uptake, applied to boiled rajma",
@@ -222,6 +223,8 @@ REVIEWED_MECHANISM_MATCHES: dict[str, str] = {
     "tolerance.fat_carb_default": "reviewed: project decision, no physical process claimed",
     "tolerance.fat_carb_relaxed": "reviewed: project decision, no physical process claimed",
     "tolerance.protein_relaxed_fraction": "reviewed: project decision, no physical process claimed",
+    "tolerance.sodium_relaxed_fraction": "reviewed: project decision, no physical process claimed",
+    "tolerance.fibre_relaxed_fraction": "reviewed: project decision, no physical process claimed",
     "measure.katori_gravy_g": "reviewed: household volume-to-mass measure, applied to serving-unit gram weight",
     "measure.cup_cooked_rice_g": "reviewed: as above",
     "measure.idli_g": "reviewed: as above",
@@ -290,6 +293,44 @@ IFCT_2017 = register_evidence(
             "commonly published figures, not read out of this document. Nobody "
             "has opened IFCT 2017 in the course of this build. Do not flip "
             "verified until someone has."
+        ),
+    )
+)
+
+IFCT_2017_ENERGY_FACTORS = register_evidence(
+    Evidence(
+        id="ifct_2017_energy_factors",
+        summary=(
+            "IFCT 2017's own component-specific energy conversion factors: "
+            "protein 4, fat 9, available carbohydrate 4, fibre 2 kcal/g."
+        ),
+        phenomenon=(
+            "the metabolisable-energy conversion factors IFCT 2017 itself uses "
+            "to compute the tabulated 'energy' value of a food from its stated "
+            "protein, fat, available carbohydrate and dietary fibre content — "
+            "notably crediting fibre at ~2 kcal/g, distinct from and lower than "
+            "the general 4 kcal/g factor applied to available carbohydrate"
+        ),
+        source=(
+            "Longvah, T., Ananthan, R., Bhaskarachary, K., Venkaiah, K. (2017). "
+            "Indian Food Composition Tables. National Institute of Nutrition, "
+            "Hyderabad — energy calculation methodology, as re-published in "
+            "machine-readable form by Sahu, S. & Sahu, A. (2022), "
+            "ifct2017/ifct2017 v2.0.10, Zenodo, energies/index.csv."
+        ),
+        grade=Grade.NATIONAL_TABLE,
+        doi="10.5281/zenodo.7088653",
+        url="https://github.com/ifct2017/compositions",
+        verified=False,
+        note=(
+            "This project has not opened the primary IFCT2017.pdf (it exceeds "
+            "this tool's fetch size limit); the four-factor table above was "
+            "read from the Sahu & Sahu machine-readable re-publication's "
+            "energies/index.csv, cross-checked structurally against several "
+            "IFCT food-code rows in the same dataset (see the fibre discussion "
+            "on atwater.fibre_kcal_per_g). A human should confirm this table "
+            "against the primary PDF's own methodology section before flipping "
+            "verified."
         ),
     )
 )
@@ -478,12 +519,50 @@ ATWATER_CARB = register_constant(
         value=4.0,
         unit="kcal/g",
         evidence_id="fao_fnp_77",
-        applied_to="estimating metabolisable energy from stated carbohydrate content",
+        applied_to=(
+            "estimating metabolisable energy at 4 kcal/g per gram of "
+            "carbohydrate. Two call sites, two different aggregates: "
+            "core/foods/ifct_loader.py applies it to AVAILABLE carbohydrate "
+            "only (carb_g minus fibre_g) when reconciling one ingredient row's "
+            "stated energy, with fibre charged separately at "
+            "atwater.fibre_kcal_per_g; core/nutrition/targets.py applies it to "
+            "the day-level target's whole carbohydrate remainder (protein and "
+            "fat energy subtracted out), which does not yet budget fibre "
+            "separately at that level. The rate is the same 4 kcal/g in both "
+            "places; what differs is which grams it is multiplied against."
+        ),
         uncertainty=0.10,
         note=(
-            "Widest of the three in practice: carbohydrate here is total "
-            "carbohydrate including dietary fibre, and fibre yields well under "
-            "4 kcal/g, so high-fibre foods reconcile worse than starchy ones."
+            "Until 2026-07-24 the ifct_loader call site applied this to total "
+            "carbohydrate including fibre, which over-charges high-fibre foods "
+            "(fibre yields well under 4 kcal/g). Corrected after real IFCT 2017 "
+            "data for rajma (B020) failed the energy reconciliation gate at 19% "
+            "under the old, fibre-inclusive formula: IFCT's own energy "
+            "methodology (see ifct_2017_energy_factors below) separates "
+            "available carbohydrate from fibre and charges them at different "
+            "rates. The targets.py call site was not touched by this fix — see "
+            "its own applied_to note above for why it's a different aggregate."
+        ),
+    )
+)
+ATWATER_FIBRE = register_constant(
+    Constant(
+        key="atwater.fibre_kcal_per_g",
+        value=2.0,
+        unit="kcal/g",
+        evidence_id="ifct_2017_energy_factors",
+        applied_to=(
+            "estimating metabolisable energy from stated dietary fibre content, "
+            "distinct from and lower than the available-carbohydrate rate above"
+        ),
+        uncertainty=0.10,
+        note=(
+            "Added 2026-07-24. Without this, the loader's energy-reconciliation "
+            "check charged fibre at the same 4 kcal/g as starch, which is wrong "
+            "and specifically punished high-fibre legumes: rajma's real IFCT "
+            "figures (16.57g fibre/100g) failed the 15% reconciliation gate at "
+            "19% under the flat formula but reconcile at 8% once fibre is "
+            "charged at its own rate, matching IFCT's own stated methodology."
         ),
     )
 )
@@ -759,6 +838,38 @@ TOLERANCE_PROTEIN_RELAXED_FRACTION = register_constant(
             "makes plans pass that should have been declined with a disclosure, "
             "which is the failure the ladder's ordering exists to prevent."
         ),
+    )
+)
+TOLERANCE_SODIUM_RELAXED_FRACTION = register_constant(
+    Constant(
+        key="tolerance.sodium_relaxed_fraction",
+        value=0.50,
+        unit="fraction",
+        evidence_id="project_decision",
+        applied_to=(
+            "how far the sodium ceiling widens at relaxation ladder step 1, for "
+            "a profile with no clinical_flags locking sodium. CLAUDE.md's Round-4 "
+            "clarification: this rung widens rather than drops the ceiling, so an "
+            "unflagged profile is never solved against zero sodium ceiling at all"
+        ),
+        uncertainty=0.0,
+        note=(
+            "Deliberately the widest fraction on the ladder, not zero: this rung "
+            "is CLAUDE.md's 'general health guidance, not the product's core "
+            "nutritional claim', so it is the one place a large widening is "
+            "appropriate -- but 'least load-bearing' is not the same claim as "
+            "'unbounded', and dropping the ceiling entirely conflated the two."
+        ),
+    )
+)
+TOLERANCE_FIBRE_RELAXED_FRACTION = register_constant(
+    Constant(
+        key="tolerance.fibre_relaxed_fraction",
+        value=0.50,
+        unit="fraction",
+        evidence_id="project_decision",
+        applied_to="how far the fibre floor lowers at relaxation ladder step 1",
+        uncertainty=0.0,
     )
 )
 
@@ -1123,6 +1234,35 @@ register_constant(Constant(
     uncertainty=0.0,
 ))
 
+# --- Meal split: dividing a day's target across meal slots ----------------
+# core/nutrition/targets.py derives a whole-DAY target; core/planner/plan.py
+# solves ONE meal at a time (one template call = one plate). Comparing a
+# single meal's combination against the unscaled day target would make every
+# meal fail on energy alone (no breakfast plate is meant to hit a whole day's
+# 1800 kcal), which is a modelling error, not evidence about the recipe
+# library. These four fractions split the day proportionally by meal_slot,
+# named the same as core.schemas.common.MealSlot values so a renamed slot
+# fails the lookup loudly rather than falling back to a wrong default. A
+# project decision (there is no physical process to measure), not a claim
+# from any source — the customary "big lunch" shape of an Indian day, nothing
+# more.
+_MEAL_SPLIT: tuple[tuple[str, float, str], ...] = (
+    ("meal_split.energy_fraction_breakfast", 0.25, "breakfast"),
+    ("meal_split.energy_fraction_lunch", 0.35, "lunch"),
+    ("meal_split.energy_fraction_dinner", 0.30, "dinner"),
+    ("meal_split.energy_fraction_snack", 0.10, "snack"),
+)
+for _k, _v, _slot in _MEAL_SPLIT:
+    register_constant(Constant(
+        key=_k, value=_v, unit="fraction of the day's target",
+        evidence_id="project_decision",
+        applied_to=(
+            f"scaling every floor/ceiling/point of a day-level NutritionTarget "
+            f"down to a single-meal target for the {_slot} slot"
+        ),
+        uncertainty=0.0,
+    ))
+
 # Mechanism review for every constant registered above. Kept next to the
 # registrations (rather than in the literal near the top) so a reviewer sees
 # the applied_to and its review verdict together. Single-author mechanism
@@ -1155,4 +1295,8 @@ REVIEWED_MECHANISM_MATCHES.update({
     "macro.fat_energy_fraction_max": "reviewed: AMDR fat upper bound, applied to the fat distribution bound",
     "nutrient.fibre_g_per_1000kcal": "reviewed: adequate fibre intake per energy, applied to the fibre floor",
     "nutrient.sodium_max_mg": "reviewed: guideline sodium ceiling, applied to the sodium ceiling",
+    "meal_split.energy_fraction_breakfast": "reviewed: project decision, no physical process claimed",
+    "meal_split.energy_fraction_lunch": "reviewed: project decision, no physical process claimed",
+    "meal_split.energy_fraction_dinner": "reviewed: project decision, no physical process claimed",
+    "meal_split.energy_fraction_snack": "reviewed: project decision, no physical process claimed",
 })

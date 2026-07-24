@@ -8,9 +8,12 @@ build step.
 ```
 web/
   index.html       landing page markup (semantic, class-based)
-  onboarding.html  the form that calls POST /api/targets — see below
+  onboarding.html  steps 1-5 (no account needed) + step 6, the account/save hinge
   onboarding.js    fetch + render for onboarding.html; computes nothing
-  styles.css       palette, type, layout, motion (shared by both pages)
+  dashboard.html   auth-gated: saved profile + plate picker + POST /api/plan
+  dashboard.js     fetch + render for dashboard.html; computes nothing
+  auth.js          shared signup/login/logout/session calls + auth-modal wiring
+  styles.css       palette, type, layout, motion (shared by all pages)
   app.js           landing-page vanilla-JS behaviour (no framework)
   assets/          plate photos — see assets/README.md
 ```
@@ -76,6 +79,35 @@ verification state.
 Failure states are explicit, not swallowed: a network failure (API not
 running) shows a message naming the exact command to start it; a 422 shows the
 API's own validation detail.
+
+Steps 1-5 need no account — anyone can walk through body/activity/goal/diet
+and see a real target. Step 6 is the account/save hinge: create an account or
+sign in, the just-completed profile is persisted against the resulting
+`user_id` (`PUT /api/profile`, or attached to `POST /api/auth/signup`
+directly), and the page hands off to `dashboard.html`. A signed-in visitor
+who returns to `onboarding.html` is prefilled from their saved profile
+(`GET /api/profile`) and dropped straight at step 5 rather than five blank
+steps — see `docs/methodology.md`, "Accounts and persistence: scope".
+
+## `dashboard.html` — the account-gated page
+
+Requires an authenticated session; an unauthenticated visitor is redirected
+to `onboarding.html?next=dashboard` rather than shown any dashboard content.
+Renders the saved profile (`GET /api/profile`) and the plate-picker +
+`POST /api/plan` flow that used to live in onboarding's step 6 — moved here
+verbatim, not rewritten, per this increment's brief not to touch the
+plan-call/decline logic. Success and honest-decline are still both real,
+designed states, not an error path either way.
+
+## `auth.js` — shared by `onboarding.html` and `dashboard.html`
+
+`signup`/`login`/`logout`/`me`/`getProfile`/`saveProfile` wrappers around the
+five `/api/auth/*` and `/api/profile` endpoints (all `credentials: "include"`,
+required for the signed session cookie to survive the cross-port fetch
+between the static page and the API — see `api/main.py`'s CORS comment), plus
+`initAuthModal()`, which wires the auth-modal markup originally added to
+`index.html` as a decorative demo (`DESIGN_SYSTEM.md`'s "Auth modal" row) to
+these real calls. `index.html`'s own modal is untouched and still decorative.
 
 ## Relationship to CLAUDE.md
 

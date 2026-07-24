@@ -22,7 +22,10 @@ right there and think it should be used.
 ## The ladder relaxes tolerance, never uncertainty
 
 ``RELAXATION_ORDER`` is CLAUDE.md's list, in CLAUDE.md's order, as data.
-Every step widens or drops a *tolerance* — a floor or a ceiling. No step
+Every step widens a *tolerance* — a floor or a ceiling — never drops one to
+"no bound at all"; CLAUDE.md's relaxation-ladder section states this
+explicitly for step 1 specifically, since dropping is the more natural-looking
+implementation for a one-sided bound with no point to widen around. No step
 reads, writes, or scales an uncertainty figure, because uncertainty is a
 property of the data and not a knob (CLAUDE.md, "Uncertainty"). The two axes
 never multiply: a plan does not become admissible because its data got worse.
@@ -122,9 +125,13 @@ class RelaxationStep:
     ``apply`` receives the already-partly-relaxed target and the set of macros
     it may not touch, and returns a new target. It is a function rather than a
     (macro -> new tolerance) table because the rungs are not all the same shape
-    — step 1 *drops* two bounds outright while steps 2-4 widen a band around a
-    point — and flattening that into a table would have meant a sentinel value
-    standing for "remove this bound", which reads as a number and is not one.
+    — step 1 widens sodium's ceiling and fibre's floor proportionally to their
+    *existing* bound (they have no registered ideal point to widen a band
+    around), while steps 2-4 widen a band around a point — and flattening that
+    into a table would have meant a second widening mechanism hidden behind a
+    single row, which is exactly the kind of implementation detail CLAUDE.md's
+    relaxation-ladder section now states explicitly rather than leaving to this
+    docstring alone.
     """
 
     name: str
@@ -138,15 +145,6 @@ class RelaxationStep:
 
     def is_fully_locked(self, locked: frozenset[str]) -> bool:
         return all(macro in locked for macro in self.macros)
-
-
-def _drop_bounds(
-    target: NutritionTarget, locked: frozenset[str], *, floors: tuple[str, ...] = (),
-    ceilings: tuple[str, ...] = (),
-) -> NutritionTarget:
-    new_floors = {m: v for m, v in target.floors.items() if m in locked or m not in floors}
-    new_ceilings = {m: v for m, v in target.ceilings.items() if m in locked or m not in ceilings}
-    return NutritionTarget(floors=new_floors, ceilings=new_ceilings, points=target.points)
 
 
 def _widen_band(
@@ -185,11 +183,29 @@ def _widen_band(
 
 
 def _relax_sodium_fibre(target: NutritionTarget, locked: frozenset[str]) -> NutritionTarget:
-    # Dropped outright rather than widened: both are one-sided guidance bounds
-    # with no ideal point to widen around, and CLAUDE.md describes this rung as
-    # setting aside "general health guidance, not the product's core
-    # nutritional claim" — not as trading a tight guideline for a loose one.
-    return _drop_bounds(target, locked, floors=("fibre_g",), ceilings=("sodium_mg",))
+    """Widen the sodium ceiling and fibre floor by a registered fraction.
+
+    Not ``_widen_band``: sodium and fibre are one-sided guidance bounds with no
+    ideal ``point`` registered by ``simple_target`` (see its docstring), so
+    "widen around the point" has nothing to widen around — calling
+    ``_widen_band`` here would silently no-op, which is the trap its own
+    docstring warns about. Widened proportionally to the *existing bound*
+    instead — CLAUDE.md ("Relaxation ladder, round-4 addendum") is explicit
+    that this rung must not drop the bound outright: an unflagged profile
+    would then be solved against zero sodium ceiling at all, which is a
+    materially different (and unbounded) thing from "the least load-bearing
+    constraint relaxes first."
+    """
+
+    ceilings = dict(target.ceilings)
+    if "sodium_mg" in ceilings and "sodium_mg" not in locked:
+        fraction = citations.value_of("tolerance.sodium_relaxed_fraction")
+        ceilings["sodium_mg"] = ceilings["sodium_mg"] * (1.0 + fraction)
+    floors = dict(target.floors)
+    if "fibre_g" in floors and "fibre_g" not in locked:
+        fraction = citations.value_of("tolerance.fibre_relaxed_fraction")
+        floors["fibre_g"] = floors["fibre_g"] * (1.0 - fraction)
+    return NutritionTarget(floors=floors, ceilings=ceilings, points=target.points)
 
 
 def _relax_fat_carb(target: NutritionTarget, locked: frozenset[str]) -> NutritionTarget:

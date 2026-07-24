@@ -299,7 +299,7 @@ Reusable pieces already built. Reuse these before building a near-duplicate.
 | **FAQ item**         | Serif question button + `+`→`×` sign + max-height accordion       | `styles.css:336–347`; `startFaq()` `app.js` |
 | **Quality card**     | Recessed `--cream-sink` panel with colored-dot list               | `styles.css:296–301` |
 | **Early-access card**| Green inset card with pill email input + amber submit             | `styles.css:318–329`; `startEarly()` `app.js` |
-| **Auth modal**       | Centered dialog, blurred overlay, signin/signup toggle            | `styles.css:359–393`; markup `index.html:316–345`; `startAuth()` `app.js` |
+| **Auth modal**       | Centered dialog, blurred overlay, signin/signup toggle            | `styles.css:359–393`; markup `index.html:316–345`; `startAuth()` `app.js` — **decorative only on `index.html`** (unchanged); the identical markup is reused, real, on `onboarding.html`/`dashboard.html`, wired to `POST /api/auth/signup`\|`login` by `web/auth.js`'s `initAuthModal()` (added 2026-07-24) rather than a second modal component |
 | **Calc dock**        | Fixed slide-out illustrative protein calculator                  | `styles.css:118–170`; `startCalc()` `app.js` — **illustrative only**, see CLAUDE.md `web/` note |
 | **Kolam background** | Runtime-generated SVG ambient layer                              | `#kolam` `styles.css:65–73`; `buildKolam()`/`renderKolam()` `app.js` |
 | **Footer**           | Brand + link columns + illustrative-numbers disclaimer           | `styles.css:350–356`; markup `index.html:281–312` |
@@ -307,12 +307,21 @@ Reusable pieces already built. Reuse these before building a near-duplicate.
 | **Status pill**      | `dev_mode`/`validated` badge, amber vs. green tint (`.ob-status-pill`) | `web/onboarding.html`; `styles.css` (onboarding section) |
 | **Error message**    | Inline error banner using `--error`/`--error-bg` (`.ob-error`)   | `web/onboarding.html`; `styles.css` (onboarding section) |
 | **Source list**      | Collapsible `<details>` of cited constants (`.ob-sources`)       | `web/onboarding.html`; `styles.css` (onboarding section) |
+| **Progress steps**   | Numbered pill row, current/done/future states (`.ob-progress`, `.ob-progress-step`) | Added 2026-07-24 for the six-step onboarding wizard; `web/onboarding.html`; `styles.css` |
+| **Goal card**        | Radio-as-card picker, green border/tint when selected (`.ob-goal-card`) | Added 2026-07-24; `web/onboarding.html`; `styles.css` |
+| **Plate picker**      | Pill radio group for (region, meal_slot) choice (`.ob-plate-opt`) | Added 2026-07-24; moved to `web/dashboard.html` the same day (accounts increment) — onboarding no longer collects a plate, only a target; `styles.css` |
+| **Decline card**     | Honest-decline state: amber-tinted `--cream-sink` card, **not** `--error` — an expected, disclosed outcome is not styled as a failure (`.ob-decline`) | Added 2026-07-24; moved to `web/dashboard.html` the same day, alongside the plate picker and `POST /api/plan` call it belongs to; `styles.css` |
+| **Loading line**      | Plain inline "Calling `POST /api/…`…" text, no spinner (`.ob-loading`) | Added 2026-07-24; `web/onboarding.html`, `web/dashboard.html`; `styles.css` |
+| **Auth status bar**   | Right-aligned "Signed in as … · Log out" / "Sign in" row, reuses `.btn-link` rather than a new button style (`.ob-authbar`) | Added 2026-07-24 (accounts increment); `web/onboarding.html`, `web/dashboard.html`; `styles.css` |
 
-Everything currently lives in two static pages (`web/index.html`,
-`web/onboarding.html`) sharing `web/styles.css`, plus page-specific
-`web/app.js` / `web/onboarding.js`. When this migrates to Next.js (per
-CLAUDE.md's `web/` scope), each row above becomes a component; keep this table
-pointing at wherever it lands.
+Everything currently lives in three static pages (`web/index.html`,
+`web/onboarding.html`, `web/dashboard.html`) sharing `web/styles.css`, plus
+page-specific `web/app.js` / `web/onboarding.js` / `web/dashboard.js` and one
+shared `web/auth.js` (session calls + the auth-modal wiring, used by both
+`onboarding.html` and `dashboard.html` — added 2026-07-24 rather than
+duplicating the fetch/modal logic per page). When this migrates to Next.js
+(per CLAUDE.md's `web/` scope), each row above becomes a component; keep this
+table pointing at wherever it lands.
 
 ---
 

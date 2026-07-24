@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arusuvai · Your dashboard</title>
+<meta name="description" content="Your saved profile and a real plate from the real engine — POST /api/plan, gated on your account.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=Hanken+Grotesk:wght@400;500;600;700&family=Noto+Serif+Tamil:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ============ HEADER ============ -->
+<header id="siteHeader" class="site-header">
+  <div class="header-inner">
+    <a href="index.html" class="brand">
+      <span class="brand-ta">அறுசுவை</span>
+      <span class="brand-latin">arusuvai</span>
+    </a>
+    <div class="nav">
+      <a href="onboarding.html" class="hide-sm">Edit profile</a>
+      <a href="index.html">Back home</a>
+    </div>
+  </div>
+  <div class="header-rule" aria-hidden="true"></div>
+</header>
+
+<div class="wrap">
+
+  <!-- ============ AUTH BAR ============ -->
+  <div class="ob-authbar" id="obAuthBar" hidden>
+    <span id="obAuthBarText"></span>
+    <button type="button" class="btn btn-link" id="obAuthBarLogout" hidden>Log out</button>
+  </div>
+
+  <!-- ============ GATE: checking session ============ -->
+  <div id="dashGateLoading" class="ob-loading">Checking your session…</div>
+
+  <!-- ============ GATE: signed in, no saved profile ============ -->
+  <section id="dashNoProfile" class="ob-hero no-rule" hidden>
+    <div class="eyebrow">No saved profile yet</div>
+    <h1 class="ob-title">Complete onboarding to see your dashboard.</h1>
+    <p class="ob-sub">You're signed in, but there's no profile saved against this account yet.</p>
+    <p class="ob-nav"><a href="onboarding.html" class="btn btn-primary">Start onboarding →</a></p>
+  </section>
+
+  <!-- ============ DASHBOARD ============ -->
+  <div id="dashMain" hidden>
+
+    <section class="ob-hero no-rule">
+      <div class="eyebrow">Your dashboard</div>
+      <h1 class="ob-title">Your saved profile, and a real plate.</h1>
+      <p class="ob-sub">This profile was saved from onboarding against your account
+        (<code>GET /api/profile</code>). Pick a plate below and call <code>POST /api/plan</code> — the same
+        engine, the same honest decline if the library can't build one, unchanged by this account increment.</p>
+    </section>
+
+    <section class="ob-wizard no-rule">
+      <div class="ob-card ob-wizard-card">
+
+        <div class="ob-stat-block">
+          <div class="ob-stat-lbl">Saved profile</div>
+          <div class="ob-stat-line" id="dashProfileLine"></div>
+        </div>
+        <p class="ob-field-note">Not what you expected? <a href="onboarding.html">Edit your profile</a> —
+          onboarding will prefill it from what's saved here.</p>
+
+        <div class="ob-field-row ob-plate-row">
+          <label><span>Which plate should we solve for?</span></label>
+        </div>
+        <div class="ob-plate-picker" id="obPlatePicker">
+          <label class="ob-plate-opt"><input type="radio" name="plate" value="south_indian:breakfast" checked> South Indian breakfast</label>
+          <label class="ob-plate-opt"><input type="radio" name="plate" value="south_indian:lunch"> South Indian lunch</label>
+          <label class="ob-plate-opt"><input type="radio" name="plate" value="north_indian:lunch"> North Indian lunch</label>
+          <label class="ob-plate-opt"><input type="radio" name="plate" value="north_indian:dinner"> North Indian dinner</label>
+        </div>
+        <p class="ob-field-note">These four are the only (region, meal) combinations with a real recipe template
+          today — see CLAUDE.md's "Meal templates" and the build-status table for why the library is this thin
+          right now.</p>
+
+        <div class="ob-save-actions">
+          <button type="button" class="btn btn-primary" id="dashGenerate">Generate my plan →</button>
+        </div>
+        <div class="ob-endpoint" id="dashEndpointLabel"></div>
+
+        <div id="obPlanLoading" class="ob-loading" hidden>Calling <code>POST /api/plan</code>…</div>
+        <div id="obPlanNetworkError" class="ob-error" hidden></div>
+
+        <!-- success -->
+        <div id="obPlanSuccess" hidden>
+          <div class="ob-status-row">
+            <span class="ob-status-pill validated">plan built</span>
+          </div>
+          <div id="obPlanMeals" class="meal-card ob-plan-meals"></div>
+          <p class="ob-disclosure" id="obPlanRelaxationNote"></p>
+        </div>
+
+        <!-- honest decline -->
+        <div id="obPlanDecline" class="ob-decline" hidden>
+          <div class="ob-decline-head">
+            <span class="ob-decline-badge">No plan today</span>
+          </div>
+          <p class="ob-decline-lede" id="obDeclineLede"></p>
+          <ul class="ob-decline-violations" id="obDeclineViolations"></ul>
+          <p class="ob-decline-disclosure" id="obDeclineDisclosure"></p>
+        </div>
+
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="site-footer">
+    <div class="footer-bottom">
+      <span>Made in Chennai</span>
+      <span>These targets are dev-mode: careful estimates, not clinical advice.</span>
+    </div>
+  </footer>
+</div>
+
+<script src="auth.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>

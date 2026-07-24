@@ -86,11 +86,15 @@ class TestRajmaChawal:
         #   tomato 0.20 x  20 =   4.00
         #   oil    8.84 x   8 =  70.72
         #   gg     1.00 x   5 =   5.00
-        #   garam  3.79 x   2 =   7.58
+        #   garam  3.21 x   2 =   6.42
         #   salt   0.00 x   2 =   0.00
-        #   total             = 472.90
+        #   total             = 471.74
+        # garam_masala corrected from 3.79 to 3.21 kcal/g (379->321 kcal/100g)
+        # 2026-07-24 to reconcile against its own declared fibre content once
+        # atwater.fibre_kcal_per_g was added — see citations.py and
+        # docs/methodology.md, "Known limitations, Phase 1" item 3.
         v = nutrition_of_recipe(library.recipes["rajma_chawal"], 1, ingredients)
-        assert v.energy_kcal == pytest.approx(472.90)
+        assert v.energy_kcal == pytest.approx(471.74)
 
     def test_protein(self, library, ingredients):
         #   rice  0.027 x 183 = 4.941
@@ -125,39 +129,42 @@ class TestMasalaDosa:
     """
 
     def test_energy(self, library, ingredients):
-        #   rice raw   3.45 x 26.0 = 89.70
-        #   urad raw   3.41 x  9.0 = 30.69
-        #   water      0.00 x 51.0 =  0.00
-        #   griddle oil 8.84 x 3.5 = 30.94
-        #   potato     0.87 x 44.0 = 38.28
-        #   onion      0.40 x 10.0 =  4.00
-        #   temper oil 8.84 x  3.0 = 26.52
-        #   chilli     0.44 x  1.0 =  0.44
-        #   mustard    5.08 x  0.5 =  2.54
-        #   curry      1.08 x  0.5 =  0.54
-        #   salt       0.00 x  1.5 =  0.00
-        #   total                  = 223.65
+        # rice_milled_raw corrected 2026-07-24 to real IFCT 2017 values
+        # (code A015: 356.4 kcal, 7.94 g protein, 0.52 g fat per 100 g) — see
+        # citations.py and data/raw/ifct/README.md.
+        #   rice raw   3.564 x 26.0 = 92.664
+        #   urad raw   3.41  x  9.0 = 30.69
+        #   water      0.00  x 51.0 =  0.00
+        #   griddle oil 8.84 x  3.5 = 30.94
+        #   potato     0.87  x 44.0 = 38.28
+        #   onion      0.40  x 10.0 =  4.00
+        #   temper oil 8.84  x  3.0 = 26.52
+        #   chilli     0.44  x  1.0 =  0.44
+        #   mustard    5.08  x  0.5 =  2.54
+        #   curry      1.08  x  0.5 =  0.54
+        #   salt       0.00  x  1.5 =  0.00
+        #   total                   = 226.614
         v = nutrition_of_recipe(library.recipes["masala_dosa"], 1, ingredients)
-        assert v.energy_kcal == pytest.approx(223.65)
+        assert v.energy_kcal == pytest.approx(226.614)
 
     def test_protein(self, library, ingredients):
-        #   rice   0.068 x 26.0 = 1.768
-        #   urad   0.240 x  9.0 = 2.160
-        #   potato 0.019 x 44.0 = 0.836
-        #   onion  0.011 x 10.0 = 0.110
-        #   chilli 0.019 x  1.0 = 0.019
-        #   mustard 0.200 x 0.5 = 0.100
-        #   curry  0.060 x  0.5 = 0.030
-        #   total               = 5.023
+        #   rice   0.0794 x 26.0 = 2.0644
+        #   urad   0.240  x  9.0 = 2.160
+        #   potato 0.019  x 44.0 = 0.836
+        #   onion  0.011  x 10.0 = 0.110
+        #   chilli 0.019  x  1.0 = 0.019
+        #   mustard 0.200 x  0.5 = 0.100
+        #   curry  0.060  x  0.5 = 0.030
+        #   total                = 5.3194
         v = nutrition_of_recipe(library.recipes["masala_dosa"], 1, ingredients)
-        assert v.protein_g == pytest.approx(5.023)
+        assert v.protein_g == pytest.approx(5.3194)
 
     def test_fat(self, library, ingredients):
-        #   rice 0.130 + urad 0.126 + griddle oil 3.500 + potato 0.044
+        #   rice 0.1352 + urad 0.126 + griddle oil 3.500 + potato 0.044
         #   + onion 0.010 + temper oil 3.000 + chilli 0.004 + mustard 0.1985
-        #   + curry 0.005 = 7.0175
+        #   + curry 0.005 = 7.0227
         v = nutrition_of_recipe(library.recipes["masala_dosa"], 1, ingredients)
-        assert v.fat_g == pytest.approx(7.0175)
+        assert v.fat_g == pytest.approx(7.0227)
 
     def test_water_line_carries_no_nutrients_but_makes_the_mass_add_up(
         self, library, ingredients
@@ -168,11 +175,11 @@ class TestMasalaDosa:
         assert ingredients["water"].energy_kcal == 0
 
     def test_default_serving_is_two_dosas(self, library, ingredients):
-        # 223.65 x 2 = 447.30
+        # 226.614 x 2 = 453.228
         recipe = library.recipes["masala_dosa"]
         assert recipe.serving_unit.default_count == 2
         v = nutrition_of_recipe(recipe, recipe.serving_unit.default_count, ingredients)
-        assert v.energy_kcal == pytest.approx(447.30)
+        assert v.energy_kcal == pytest.approx(453.228)
 
 
 class TestRecipeLoaderRules:
@@ -198,12 +205,14 @@ class TestRecipeLoaderRules:
                 assert citations.constant(key)
 
     def test_dosa_uncertainty_matches_its_own_arithmetic(self, library, ingredients):
-        # Declared energy band, rederived here from the recipe's own oil lines:
+        # Declared energy band, rederived here from the recipe's own oil lines.
+        # Denominator is 226.614 kcal, not 223.65, since rice_milled_raw was
+        # corrected to real IFCT values 2026-07-24 (see TestMasalaDosa.test_energy):
         #   griddle oil 3.5 g x 8.84 kcal/g x 0.20 = 6.188 kcal
         #   temper  oil 3.0 g x 8.84 kcal/g x 0.10 = 2.652 kcal
-        #   (6.188 + 2.652) / 223.65 kcal = 0.03952 -> declared 0.040
+        #   (6.188 + 2.652) / 226.614 kcal = 0.03901
         recipe = library.recipes["masala_dosa"]
-        expected = (3.5 * 8.84 * 0.20 + 3.0 * 8.84 * 0.10) / 223.65
+        expected = (3.5 * 8.84 * 0.20 + 3.0 * 8.84 * 0.10) / 226.614
         assert recipe.uncertainty_for("energy_kcal") == pytest.approx(expected, abs=1e-3)
 
     def test_process_constants_are_derived_from_the_ingredient_lines(self, library):
@@ -323,18 +332,20 @@ class TestRecipeLoaderRules:
     def test_process_uncertainty_is_derived_from_the_constants_not_pasted(
         self, library
     ):
-        # 884 kcal/100 g oil:
+        # 884 kcal/100 g oil. Denominator is 226.614 kcal, not 223.65, since
+        # rice_milled_raw was corrected to real IFCT values 2026-07-24 (see
+        # TestMasalaDosa.test_energy):
         #   griddle 3.5 g x 8.84 x 0.20 = 6.188 kcal
         #   temper  3.0 g x 8.84 x 0.10 = 2.652 kcal
-        #   8.840 / 223.65 kcal          = 0.0395260...
+        #   8.840 / 226.614 kcal          = 0.03900906...
         dosa = library.recipes["masala_dosa"]
-        assert dosa.uncertainty_for("energy_kcal") == pytest.approx(0.03952604, abs=1e-8)
+        assert dosa.uncertainty_for("energy_kcal") == pytest.approx(0.03900906, abs=1e-8)
         #   fat: (3.5 x 1.0 x 0.20) + (3.0 x 1.0 x 0.10) = 1.0 g
-        #   over the dish's exact 7.0175 g fat (see TestMasalaDosa.test_fat —
+        #   over the dish's exact 7.0227 g fat (see TestMasalaDosa.test_fat —
         #   the recipe file's note rounds this to 7.02, which is why the band is
         #   derived from the composition rows and not from that note)
-        #   1.0 / 7.0175 = 0.14250089...
-        assert dosa.uncertainty_for("fat_g") == pytest.approx(0.14250089, abs=1e-8)
+        #   1.0 / 7.0227 = 0.14239537...
+        assert dosa.uncertainty_for("fat_g") == pytest.approx(0.14239537, abs=1e-8)
 
     def test_mutating_a_constant_moves_every_recipe_that_depends_on_it(
         self, ingredients, tmp_path
@@ -361,11 +372,13 @@ class TestRecipeLoaderRules:
         finally:
             citations._CONSTANTS["oil_uptake.dosa_griddled"] = original
 
-        # Only the griddle term doubles; the tempering term is untouched:
+        # Only the griddle term doubles; the tempering term is untouched.
+        # Denominator is 226.614 kcal, not 223.65 (rice_milled_raw corrected
+        # to real IFCT values 2026-07-24, see TestMasalaDosa.test_energy):
         #   (3.5 x 8.84 x 0.40) + (3.0 x 8.84 x 0.10) = 12.376 + 2.652 = 15.028
-        #   15.028 / 223.65 = 0.06719428...
-        assert dosa_before == pytest.approx(0.03952604, abs=1e-8)
-        assert dosa_after == pytest.approx(0.06719428, abs=1e-8)
+        #   15.028 / 226.614 = 0.06631541...
+        assert dosa_before == pytest.approx(0.03900906, abs=1e-8)
+        assert dosa_after == pytest.approx(0.06631541, abs=1e-8)
         assert dosa_after > dosa_before
 
         # And a recipe that does not use that constant must NOT move.

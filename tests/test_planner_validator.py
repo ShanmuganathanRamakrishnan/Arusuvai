@@ -231,6 +231,46 @@ class TestLadderFires:
         # Rung 1 is "general health guidance" — disclosed nowhere, by design.
         assert outcome.result.disclosure is None
 
+    def test_the_sodium_rung_widens_the_ceiling_rather_than_dropping_it(self):
+        # Pins CLAUDE.md's relaxation-ladder addendum directly: rung 1 must
+        # widen sodium's ceiling by the registered 0.50 fraction, not remove
+        # it. A prior implementation dropped the bound outright and every
+        # other test in this file passed anyway, because none of them pinned
+        # the actual widened value -- this one would have failed against that
+        # implementation (ceiling would be None here, not 750.0).
+        step = next(s for s in RELAXATION_ORDER if s.name == "sodium_max_fibre_min")
+        target = simple_target(energy_kcal=600.0, protein_g_min=15.0, sodium_mg_max=500.0)
+        relaxed = step.apply(target, locked_macros(None))
+        assert relaxed.ceiling("sodium_mg") == pytest.approx(750.0)
+
+        # Mutate the registered constant and confirm the widened value moves
+        # with it (CLAUDE.md, "no nutritional number may be hand-duplicated" —
+        # a test that only checks a fixed number against itself cannot catch
+        # a constant drifting from its call site).
+        import dataclasses
+
+        from core.nutrition import citations
+
+        key = "tolerance.sodium_relaxed_fraction"
+        original_constant = citations.constant(key)
+        citations._CONSTANTS[key] = dataclasses.replace(
+            original_constant, value=original_constant.value + 0.10
+        )
+        try:
+            moved = step.apply(target, locked_macros(None))
+            assert moved.ceiling("sodium_mg") == pytest.approx(
+                500.0 * (1.0 + original_constant.value + 0.10)
+            )
+            assert moved.ceiling("sodium_mg") != pytest.approx(relaxed.ceiling("sodium_mg"))
+        finally:
+            citations._CONSTANTS[key] = original_constant
+
+    def test_a_locked_sodium_ceiling_is_never_widened_by_this_rung(self):
+        step = next(s for s in RELAXATION_ORDER if s.name == "sodium_max_fibre_min")
+        target = simple_target(energy_kcal=600.0, protein_g_min=15.0, sodium_mg_max=500.0)
+        relaxed = step.apply(target, frozenset({"sodium_mg"}))
+        assert relaxed.ceiling("sodium_mg") == pytest.approx(500.0)
+
     def test_relaxation_widens_tolerance_and_never_uncertainty(self):
         target = simple_target(energy_kcal=600.0, protein_g_min=15.0, sodium_mg_max=500.0)
         outcome = plan_within_ladder(_combos(), target, ING)

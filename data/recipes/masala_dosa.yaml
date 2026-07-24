@@ -37,7 +37,9 @@ serving_unit:
 # the suite still green. For reference, the derivation the loader performs is
 #   griddle oil 3.5 g x 8.84 kcal/g x 0.20 = 6.188 kcal
 #   temper  oil 3.0 g x 8.84 kcal/g x 0.10 = 2.652 kcal
-#   (6.188 + 2.652) / 223.65 kcal          = 0.0395
+#   (6.188 + 2.652) / 226.614 kcal         = 0.0390
+# (226.614 kcal, not 223.65: rice_milled_raw was corrected to real IFCT 2017
+# values 2026-07-24 — see data/raw/ifct/README.md and citations.py.)
 #
 # Micronutrient retention through fermentation and griddling has not been
 # measured for this dish, so those macros are declared unassessed rather than

@@ -5,3 +5,7 @@ __pycache__/
 venv/
 *.egg-info/
 .env
+
+# Real, mutable per-user account/profile state (api/db.py) -- not a checked-in
+# fixture, unlike everything else under data/.
+data/app.db

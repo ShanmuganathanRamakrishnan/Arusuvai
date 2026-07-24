@@ -23,17 +23,31 @@ def write_csv(tmp_path, *rows):
 class TestFixtureSet:
     def test_every_fixture_row_loads(self, load_report):
         assert load_report.rejected == []
-        assert len(load_report.loaded) == 23
+        assert len(load_report.loaded) == 26
 
     def test_no_ifct_code_is_invented(self, ingredients):
-        # The fixture set is hand-entered. An invented-but-plausible food code
-        # is worse than an absent one: it passes every check while being wrong.
-        assert all(i.ifct_code is None for i in ingredients.values())
+        # Four rows (rice_milled_raw/A015, rajma_raw/B020, toor_dal_raw/B021,
+        # potato_raw/F006) now carry real IFCT 2017 codes, extracted 2026-07-24
+        # from a machine-readable re-publication of the source tables -- see
+        # each row's source_note. Every other row is still hand-entered, and an
+        # invented-but-plausible code would be worse than an absent one: it
+        # passes every check while being wrong. So real codes are limited to
+        # exactly this known set; nothing else may carry one.
+        coded = {"rice_milled_raw": "A015", "rajma_raw": "B020", "toor_dal_raw": "B021", "potato_raw": "F006"}
+        for ingredient_id, ingredient in ingredients.items():
+            if ingredient_id in coded:
+                assert ingredient.ifct_code == coded[ingredient_id]
+            else:
+                assert ingredient.ifct_code is None
 
     def test_unverified_rows_are_reported_not_silently_accepted(self, load_report):
-        # 22 of 23 rows are unverified; only `water` (which has no nutrients to
-        # get wrong) is marked verified.
-        assert len(load_report.warnings) == 22
+        # 25 of 26 rows are unverified; only `water` (which has no nutrients to
+        # get wrong) is marked verified. The four real-IFCT-code rows above are
+        # NOT included: their values were extracted by this build, not opened
+        # by a human against the primary source, so they stay verified=false
+        # pending that review (see CLAUDE.md, "only a human... may flip that
+        # flag").
+        assert len(load_report.warnings) == 25
 
     def test_states_parse(self, ingredients):
         assert ingredients["rice_cooked"].state is RawOrCooked.COOKED
@@ -49,6 +63,44 @@ class TestFixtureSet:
         assert ingredients["potato_boiled"].jain_safe is False
         assert ingredients["tomato_raw"].jain_safe is True
 
+    def test_the_four_ifct_coded_rows_carry_their_real_values(self, ingredients):
+        # Extracted 2026-07-24 from IFCT 2017 (via the Sahu & Sahu
+        # machine-readable re-publication) -- see data/raw/ifct/README.md.
+        # Pinned as literals so a future edit to the fixture must be a
+        # deliberate, visible change to this test, not a silent drift.
+        rice = ingredients["rice_milled_raw"]
+        assert rice.energy_kcal == pytest.approx(356.4)
+        assert rice.protein_g == pytest.approx(7.94)
+
+        rajma = ingredients["rajma_raw"]
+        assert rajma.ifct_code == "B020"
+        assert rajma.fibre_g == pytest.approx(16.57)
+
+        toor = ingredients["toor_dal_raw"]
+        assert toor.ifct_code == "B021"
+        assert toor.protein_g == pytest.approx(21.7)
+
+        potato = ingredients["potato_raw"]
+        assert potato.ifct_code == "F006"
+        assert potato.energy_kcal == pytest.approx(69.8)
+
+        # None of the four are Ingredient.verified -- extraction by this
+        # project's own tooling is not a human opening the primary source.
+        for ing in (rice, rajma, toor, potato):
+            assert ing.verified is False
+
+    def test_new_ifct_coded_rows_still_carry_the_unverified_composition_band(
+        self, ingredients
+    ):
+        # Perturbation check the other way round: having a real ifct_code must
+        # not, by itself, narrow composition_uncertainty -- only
+        # Ingredient.verified does that (see ifct_loader._row_to_ingredient).
+        # A code with no human sign-off must cost exactly as much as no code
+        # at all.
+        for ingredient_id in ("rice_milled_raw", "rajma_raw", "toor_dal_raw", "potato_raw"):
+            ing = ingredients[ingredient_id]
+            assert ing.composition_uncertainty_for("protein_g") == 0.25
+
 
 class TestEnergyReconciliation:
     def test_row_whose_energy_disagrees_with_its_macros_is_rejected(self, tmp_path):
@@ -59,6 +111,55 @@ class TestEnergyReconciliation:
             "bad,Bad,,,,raw,300,5,2,20,1,0,0,0,0,,false,true,,false,",
         )
         report = load_ingredient_file(path)
+        assert report.loaded == {}
+        assert len(report.rejected) == 1
+        assert "energy reconciliation failed" in report.rejected[0].reason
+
+    def test_fibre_is_charged_at_its_own_rate_not_the_carbohydrate_rate(
+        self, tmp_path
+    ):
+        # A real case, not a synthetic one: rajma_raw's actual IFCT 2017
+        # figures (299.2 kcal, 19.91 g protein, 1.77 g fat, 65.18 g total carb,
+        # 16.57 g of it fibre). Charging ALL carbohydrate at 4 kcal/g gives
+        # 4*19.91 + 9*1.77 + 4*65.18 = 79.64 + 15.93 + 260.72 = 356.29, which
+        # disagrees with 299.2 by 19.1% -- past the 15% gate. Charging fibre
+        # separately at 2 kcal/g (its own rate, matching IFCT's own energy
+        # methodology) gives 79.64 + 15.93 + 4*48.61 + 2*16.57 = 79.64 + 15.93
+        # + 194.44 + 33.14 = 323.15, which disagrees by only 8.0% -- comfortably
+        # inside the gate. This is exactly why rajma_raw needed the fix and
+        # not a hand-fudged number: the underlying data was right all along.
+        path = write_csv(
+            tmp_path,
+            "rajma_test,Rajma,,,,raw,299.2,19.91,1.77,65.18,16.57,0,0,0,0,,false,true,,false,",
+        )
+        report = load_ingredient_file(path)
+        assert report.rejected == []
+        assert "rajma_test" in report.loaded
+
+    def test_fibre_charged_at_the_carbohydrate_rate_would_reject_the_same_row(
+        self, tmp_path
+    ):
+        # The perturbation half of the test above. If fibre were still charged
+        # at the general carbohydrate rate (the pre-2026-07-24 behaviour), this
+        # same rajma_raw-shaped row would fail the gate at 19.1%. Proves the
+        # fix is load-bearing, not decorative: a static assertion that the row
+        # loads today cannot catch a regression back to the flat formula.
+        from dataclasses import replace
+
+        from core.nutrition import citations
+
+        original = citations._CONSTANTS["atwater.fibre_kcal_per_g"]
+        flattened = replace(original, value=citations.value_of("atwater.carb_kcal_per_g"))
+        citations._CONSTANTS["atwater.fibre_kcal_per_g"] = flattened
+        try:
+            path = write_csv(
+                tmp_path,
+                "rajma_test,Rajma,,,,raw,299.2,19.91,1.77,65.18,16.57,0,0,0,0,,false,true,,false,",
+            )
+            report = load_ingredient_file(path)
+        finally:
+            citations._CONSTANTS["atwater.fibre_kcal_per_g"] = original
+
         assert report.loaded == {}
         assert len(report.rejected) == 1
         assert "energy reconciliation failed" in report.rejected[0].reason

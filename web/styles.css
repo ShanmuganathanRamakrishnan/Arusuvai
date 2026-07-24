@@ -399,6 +399,14 @@ section.no-rule { border-top: none; }
 .modal .switch button { background: none; border: none; cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--green); padding: 0; white-space: nowrap; }
 .modal .switch button:hover { color: var(--amber-deep); }
 
+/* ---------- accounts (web/onboarding.html, web/dashboard.html) ---------- */
+/* A thin status row, not a new component: reuses .btn-link exactly as the
+   header nav already does, just right-aligned above the progress steps. */
+.ob-authbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: flex-end;
+  font-size: 13px; color: rgba(43, 38, 34, .6); margin: 0 0 4px; }
+.ob-authbar[hidden] { display: none; }
+.ob-save-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 18px; }
+
 /* ---------- onboarding (web/onboarding.html) ---------- */
 .ob-hero { padding: clamp(34px, 5vw, 56px) 0 clamp(20px, 3vw, 32px); }
 .ob-hero .eyebrow { margin-bottom: 14px; }
@@ -468,11 +476,89 @@ section.no-rule { border-top: none; }
 .ob-source-row .verified-no { color: var(--terracotta); }
 .ob-source-row .verified-yes { color: var(--green); }
 
+/* ---------- onboarding wizard (web/onboarding.html, six-step flow) ---------- */
+
+/* Progress: numbered pills, current step green-filled, done steps green-text,
+   future steps muted -- same visual grammar as .tag-diet/.tag-goal rather than
+   a new indicator language. */
+.ob-progress { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: clamp(20px, 3vw, 28px); }
+.ob-progress-step { display: flex; align-items: center; gap: 7px; background: var(--cream-card); border: 1px solid rgba(43, 38, 34, .12); border-radius: 999px; padding: 7px 14px 7px 8px; font-family: var(--sans); font-size: 12.5px; font-weight: 600; color: rgba(43, 38, 34, .45); cursor: default; transition: background .25s, color .25s, border-color .25s; }
+.ob-progress-step .n { display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: rgba(43, 38, 34, .08); color: rgba(43, 38, 34, .5); font-size: 11px; }
+.ob-progress-step.is-done { color: var(--green); border-color: rgba(58, 90, 64, .25); cursor: pointer; }
+.ob-progress-step.is-done .n { background: rgba(58, 90, 64, .14); color: var(--green); }
+.ob-progress-step.is-current { color: var(--ink); border-color: var(--green); background: rgba(58, 90, 64, .06); }
+.ob-progress-step.is-current .n { background: var(--green); color: var(--cream); }
+
+.ob-wizard { padding: 0 0 clamp(60px, 8vw, 100px); }
+.ob-wizard-card { max-width: 640px; margin: 0 auto; }
+
+.ob-step { border: none; margin: 0; padding: 0; }
+.ob-step-title { font-family: var(--serif); font-weight: 500; font-size: 21px; color: var(--ink); margin: 0 0 18px; padding: 0; }
+
+.ob-optional { font-style: normal; font-weight: 400; color: rgba(43, 38, 34, .45); }
+.ob-field-note { font-size: 12.5px; line-height: 1.55; color: rgba(43, 38, 34, .5); margin: 4px 0 0; max-width: 52ch; }
+.ob-check-standalone { margin: 4px 0 14px; }
+
+.ob-goal-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.ob-goal-card { position: relative; display: block; background: var(--cream-sink); border: 1.5px solid rgba(43, 38, 34, .12); border-radius: 14px; padding: 16px; cursor: pointer; transition: border-color .25s, background .25s; }
+.ob-goal-card input { position: absolute; top: 14px; right: 14px; accent-color: var(--green); width: 16px; height: 16px; }
+.ob-goal-card:has(input:checked) { border-color: var(--green); background: rgba(58, 90, 64, .07); }
+.ob-goal-t { display: block; font-family: var(--serif); font-size: 16.5px; color: var(--ink); margin-bottom: 6px; }
+.ob-goal-d { display: block; font-size: 12.5px; line-height: 1.5; color: rgba(43, 38, 34, .6); padding-right: 20px; }
+
+.ob-plate-row { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--rule); margin-bottom: 4px; }
+.ob-plate-picker { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 6px; }
+.ob-plate-opt { display: flex; align-items: center; gap: 7px; background: var(--cream-sink); border: 1.5px solid rgba(43, 38, 34, .12); border-radius: 999px; padding: 8px 14px; font-size: 13px; color: var(--ink); cursor: pointer; transition: border-color .25s, background .25s; }
+.ob-plate-opt:has(input:checked) { border-color: var(--green); background: rgba(58, 90, 64, .09); color: var(--green); font-weight: 600; }
+.ob-plate-opt input { accent-color: var(--green); width: 14px; height: 14px; }
+
+.ob-loading { font-size: 13.5px; color: rgba(43, 38, 34, .5); padding: 18px 0; }
+.ob-loading-inline { padding: 6px 0 0; }
+
+.ob-science-scope { font-size: 12.5px; line-height: 1.55; color: rgba(43, 38, 34, .55); font-style: italic; margin: 12px 0 10px; }
+
+.ob-nav { display: flex; align-items: center; gap: 14px; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--rule); }
+.ob-nav-next { margin-left: auto; padding: 11px 22px; font-size: 14.5px; }
+.ob-nav-back { padding-left: 0; }
+.ob-nav-restart { margin-left: auto; }
+
+.ob-plan-meals { margin-top: 4px; }
+.ob-plan-components { list-style: none; margin: 0 0 14px; padding: 0; }
+.ob-plan-components li { font-size: 14.5px; line-height: 1.6; color: var(--ink); padding: 8px 0; border-bottom: 1px solid var(--rule); display: flex; justify-content: space-between; gap: 12px; }
+.ob-plan-components li:last-child { border-bottom: none; }
+.ob-plan-components .cat { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: rgba(43, 38, 34, .4); font-weight: 600; }
+.ob-plan-components .count { font-variant-numeric: tabular-nums; color: rgba(43, 38, 34, .55); white-space: nowrap; }
+
+/* Honest decline: a designed state, not an error. Deliberately NOT --error
+   (that color is reserved for real API/network failures, e.g. an unreachable
+   server or a 422) -- an amber-tinted card on --cream-sink, matching the
+   dev_mode status pill's vocabulary, says "an expected, disclosed outcome,"
+   not "something broke." New component; add to DESIGN_SYSTEM.md's inventory
+   alongside the other .ob-* pieces. */
+.ob-decline { background: var(--cream-sink); border: 1px solid rgba(224, 165, 38, .3); border-radius: 16px; padding: clamp(20px, 3vw, 26px); }
+.ob-decline-head { display: flex; margin-bottom: 12px; }
+.ob-decline-badge { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; border-radius: 999px; padding: 5px 13px; background: rgba(224, 165, 38, .18); color: var(--amber-deep); }
+.ob-decline-lede { font-family: var(--serif); font-size: 17px; line-height: 1.4; color: var(--ink); margin: 0 0 14px; }
+.ob-decline-violations { margin: 0 0 14px; padding-left: 18px; }
+.ob-decline-violations li { font-size: 13.5px; line-height: 1.6; color: var(--ink); margin-bottom: 8px; }
+.ob-decline-violations li .locked-tag { display: inline-block; margin-left: 6px; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--terracotta); background: rgba(193, 105, 79, .12); border-radius: 999px; padding: 2px 8px; }
+.ob-decline-disclosure { font-size: 13px; line-height: 1.6; color: rgba(43, 38, 34, .62); font-style: italic; margin: 0; }
+
 /* ---------- responsive ---------- */
 @media (max-width: 560px) {
   .nav { gap: 12px; }
   .nav a.hide-sm { display: none; }
   .calc-dock { top: auto; bottom: 16px; transform: none; }
+  .ob-progress { gap: 6px; }
+  .ob-progress-step { padding: 6px 10px 6px 6px; font-size: 0; }
+  .ob-progress-step .n { width: 22px; height: 22px; font-size: 11.5px; }
+  .ob-progress-step .t { display: none; }
+  .ob-wizard-card { padding: 20px; }
+  .ob-nav { flex-wrap: wrap; }
+  .ob-nav-next { width: 100%; margin-left: 0; order: 1; padding: 13px; }
+  .ob-nav-back { order: 2; }
+  .ob-nav-restart { margin-left: 0; order: 2; }
+  .ob-goal-row { grid-template-columns: 1fr; }
 }
 
 /* ---------- reduced motion ---------- */

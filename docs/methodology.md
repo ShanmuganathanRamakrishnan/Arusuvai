@@ -38,6 +38,45 @@ it gets no protection at all — the default ordering applies in full — which 
 the honest state of a portfolio project and the reason the paragraph above
 matters more than the table does.
 
+## Accounts and persistence: scope (2026-07-24)
+
+**Built:** a `User` table (SQLite via SQLAlchemy — `api/db.py`), a real
+`bcrypt` password hash per account (never a homemade scheme, never the
+plaintext), and a signed session cookie
+(`starlette.middleware.sessions.SessionMiddleware`, backed by `itsdangerous`
+— not a heavier auth framework). A `Profile` persists against a `user_id`
+once an account exists, replacing the prior session-storage-only handoff
+between onboarding and the dashboard. `dashboard.html` requires an
+authenticated session; an unauthenticated visitor is sent to onboarding's
+signup/login surface rather than shown dashboard content.
+
+**Deliberately not built, this increment — a named limit, not an oversight:**
+
+- **No email verification.** Signup accepts any syntactically valid email and
+  never confirms the account holder controls it.
+- **No password reset flow.** A forgotten password is currently
+  unrecoverable; there is no "forgot password" link anywhere in the UI.
+- **No OAuth / social login.** Email + password only.
+- **Nothing commerce-shaped.** No orders, no subscriptions, no delivery
+  zones, no pricing — `core/commerce/` is untouched by this increment, and
+  none of it was added as a side effect of "since a database exists now." An
+  account today does exactly two things: it exists, and it holds one profile.
+
+None of these are hard — they're ordinary web-app features — but each is a
+real surface (transactional email, token expiry, a credential-recovery path
+that itself needs to resist abuse, a commerce data model with its own
+integrity constraints) that this increment's brief scoped out explicitly.
+Treat their absence as a stated boundary of what "accounts" currently means
+in this codebase, not as something quietly missing that a future reader has
+to discover by trying it.
+
+**Session secret.** `api/main.py`'s `SessionMiddleware` reads
+`FOODAI_SESSION_SECRET` from the environment and falls back to a fixed,
+publicly-visible dev value if unset. That fallback is exactly as safe as no
+secret at all; it is acceptable for a portfolio project run locally and would
+not be acceptable anywhere a session cookie needs to resist forgery by
+someone who has read this file.
+
 ## Raw versus cooked weight
 
 Recipes store **cooked/finished weights as the primary record**. Rice roughly
@@ -160,9 +199,12 @@ opened IFCT 2017, FAO FNP 77, or the NIN household-measures manual during this
 build.
 
 Separately — `Evidence.verified` and `Ingredient.verified` are distinct flags —
-22 of the 23 ingredient rows are unverified and carry the 0.25 band. The
-exception is `water`, at 0.05, which cannot move any band because all nine of its
-macros are zero. So every recipe's protein uncertainty is 0.25 against an
+25 of the 26 ingredient rows are unverified and carry the 0.25 band (updated
+2026-07-24: four rows now carry real IFCT codes and values but remain
+`Ingredient.verified=False` pending human sign-off — see "Known limitations,
+Phase 1" below — so this count is unchanged in substance). The exception is
+`water`, at 0.05, which cannot move any band because all nine of its macros
+are zero. So every recipe's protein uncertainty is 0.25 against an
 `eligibility.max_protein_uncertainty` ceiling of 0.15.
 
 Protein is target-critical for essentially every profile this product serves. So
@@ -476,13 +518,37 @@ headline numbers — see `web/onboarding.html`.
 
 ## Known limitations, Phase 1
 
-1. **The ingredient data is a hand-entered fixture set, not IFCT.** 22 of 23
-   rows are `verified=False` (the exception is `water`, whose macros are all
-   zero), every `ifct_code` is empty, and the values are
-   approximations of commonly published figures transcribed from memory. Nobody
-   has opened IFCT 2017 during this build. See `data/raw/ifct/README.md` for the
-   real-ingest TODO, and "Nothing can currently ship as validated" above for
-   what that implies for the planner.
+1. **The ingredient data is a hand-entered fixture set, not IFCT — with four
+   exceptions pending human sign-off (2026-07-24).** 25 of 26 rows are
+   `verified=False` (the exception is `water`, whose macros are all zero) and
+   21 of 26 have no `ifct_code`. Four rows — `rice_milled_raw` (A015),
+   `rajma_raw` (B020, new), `toor_dal_raw` (B021, new), `potato_raw` (F006,
+   new) — now carry real IFCT 2017 codes and values, extracted from the Sahu &
+   Sahu machine-readable re-publication of IFCT 2017 (Zenodo DOI
+   10.5281/zenodo.7088653; the primary `IFCT2017.pdf` itself exceeded this
+   build's fetch tooling). Per CLAUDE.md, **this build did not flip
+   `verified` on those four rows** — extraction by this project's own tooling
+   is not the same as a human opening the primary source, and self-attestation
+   of verification is the exact failure mode the round-4 addendum names. They
+   stay `verified=False`, each with a `source_note` recording exactly where
+   the values came from, pending a human cross-checking them against the
+   primary PDF and flipping the flag themselves. The remaining rows are
+   unchanged approximations of commonly published figures transcribed from
+   memory. See `data/raw/ifct/README.md` for the real-ingest TODO, and
+   "Nothing can currently ship as validated" above for what that implies for
+   the planner (composition uncertainty is driven by `Ingredient.verified`,
+   not by whether an `ifct_code` is present, so this changes nothing about
+   eligibility yet).
+
+   The two edible-oil rows (`gingelly_oil`, `sunflower_oil`) are a distinct
+   case, also checked 2026-07-24: IFCT 2017 does carry codes for them (T004,
+   T012), but their tabulated rows report `energy_kcal=0` and every
+   micronutrient at `0` alongside `fat=100g`, i.e. **this source does not
+   tabulate a full nutrient panel for oils**, only a fatty acid profile
+   elsewhere in the tables. IFCT cannot close this gap regardless of who
+   opens it; a different source (e.g. USDA FoodData Central) would be needed,
+   as separately scoped work. Their rows say so explicitly rather than reading
+   as an ordinary unverified gap.
 
 2. **Every process constant in the library is unverified.** Yield factors, oil
    uptake and household measures are all project estimates or
@@ -492,9 +558,19 @@ headline numbers — see `web/onboarding.html`.
 
 3. **The Atwater reconciliation is a coherence check, not a validation of
    truth.** It catches transcription slips and unit confusion; it cannot catch a
-   row that is internally consistent and still wrong. Its 15% tolerance is loose
-   because `carb_g` is total carbohydrate including fibre, and fibre yields well
-   under 4 kcal/g, so high-fibre foods reconcile worst.
+   row that is internally consistent and still wrong. `carb_g` is total
+   carbohydrate including fibre, but — corrected 2026-07-24 — fibre is now
+   charged at its own rate (`atwater.fibre_kcal_per_g`, 2 kcal/g) rather than
+   the general 4 kcal/g carbohydrate rate, matching IFCT 2017's own stated
+   energy methodology (`energies/index.csv` in the same re-publication above).
+   This was found, not theorized: rajma's real IFCT figures (16.57 g
+   fibre/100 g) failed the 15% reconciliation gate at 19% under the old,
+   flat-4-kcal/g formula, and pass at 8% once fibre is charged correctly. One
+   existing hand-entered fixture row, `garam_masala` (25 g fibre/100 g, the
+   highest in the library), crossed the same gate under the corrected formula;
+   its `energy_kcal` was nudged from 379 to 321 kcal — its own fibre-aware
+   reconciliation value — since it was never a sourced number to begin with,
+   only an internally-consistent approximation.
 
 4. **Household measure weights vary by household more than most nutritional
    constants do.** Hence the double-digit uncertainty bands on all of them. A
@@ -504,6 +580,29 @@ headline numbers — see `web/onboarding.html`.
 5. **Three recipes is not a library.** The combination-space arithmetic in
    Phase 2 must be computed against real post-filter recipe counts, not
    asserted from this set.
+
+   Made concrete on 2026-07-24 by wiring `core/planner` end to end
+   (`core/planner/plan.py`, `POST /api/plan`): the real library does not
+   merely produce a *small* combination space — it produces **zero**
+   combinations for all four templates, unconditionally. Each of the three
+   recipes fills exactly one slot of exactly one template (`masala_dosa` ->
+   `south_breakfast.tiffin_item`, `sambar_sadam` -> `south_lunch.rice_base`,
+   `rajma_chawal` -> `north_lunch.legume_curry`), and every *other* required
+   slot in that template — `south_breakfast`'s gravy and chutney,
+   `south_lunch`'s gravy/vegetable/curd, `north_lunch`'s grain base — has no
+   candidate at all. `core/planner/combinations.py::enumerate_combinations`
+   returns `()` the moment any required slot is empty, before the feasibility
+   pre-filter or the solver run and independent of the target or `dev_mode`.
+   So every `/api/plan` call against today's data declines with a
+   `no_candidates` violation, regardless of who is asking — proven for all
+   four templates in
+   `tests/test_planner_plan.py::TestRealLibraryDeclinesEveryTemplate`, and
+   against a live server in this session (see the "Build status" transcript
+   in `CLAUDE.md`). This is stronger and more useful to know than "the
+   combination space is small": adding a fourth recipe in an already-filled
+   category would still produce zero combinations, because the gap is
+   *category breadth* (chutney, gravy, vegetable, curd, plain rice/roti — none
+   exist yet), not recipe *count*.
 
 6. **DIAAS is stored but unused.** `Ingredient.diaas` is populated where a
    commonly cited figure exists and left `None` otherwise. Nothing reads it yet;

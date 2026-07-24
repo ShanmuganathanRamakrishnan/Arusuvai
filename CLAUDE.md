@@ -219,7 +219,20 @@ this order, and only this order, and only the tolerance axis (never the
 uncertainty axis — those don't multiply, because uncertainty is never a knob):
 
 1. Sodium max, fibre min — general health guidance, not the product's core
-   nutritional claim.
+   nutritional claim. **This rung widens the bound by a stated, registered
+   fraction (`tolerance.sodium_relaxed_fraction` / `tolerance.fibre_relaxed_fraction`,
+   both 0.50) — it does not drop the bound to "no ceiling/floor at all."**
+   Dropping it entirely was tried first, reads as the more natural
+   implementation for a one-sided bound with no ideal point to widen a band
+   around, and was caught precisely because it produces a fully unconstrained
+   worst case for an unflagged profile: an unflagged profile's sodium ceiling
+   would vanish the instant this rung fired, meaning the "least load-bearing
+   constraint relaxes first" guidance became "least load-bearing constraint
+   stops existing," which is a materially stronger claim than the ladder is
+   meant to make. "Least load-bearing" is a claim about relaxation order, not
+   about whether a bound applies at all — this ambiguity must not be resolved
+   only inside `core/planner/validator.py`'s implementation, which is why it is
+   stated here explicitly.
 2. Fat/carb tolerance (15% → up to 25%) — least load-bearing macros, they
    absorb whatever energy is left over.
 3. Energy tolerance (5% → up to 10%).
@@ -276,6 +289,10 @@ core/                  Pure logic. No web framework, no I/O beyond file loading.
                        relaxation ladder). Depends on all above.
   commerce/            Plans, orders, zones. Seeded fixtures only.
 api/                   FastAPI. Thin. Translates HTTP to core calls.
+                       api/db.py: SQLite via SQLAlchemy — User + StoredProfile
+                       only (accounts + profile persistence). No nutritional
+                       computation happens here either; it stores the same
+                       fields core.schemas.Profile validates.
 web/                   Next.js. Displays. Never computes nutrition.
 data/                  IFCT subset, recipe YAML (cooked weights), fixtures.
 tests/
@@ -453,15 +470,59 @@ not tighten a target") and its three tests in
 Transcript in the same session: `python -m pytest tests/ -q` ->
 `218 passed in 68.70s`.
 
+Updated 2026-07-24 for wiring `core/planner` end to end
+(`core/nutrition/meal_target.py`, `core/planner/plan.py`, `POST /api/plan`;
+`meal_split.energy_fraction_*` constants in `citations.py`). Transcript in the
+same session, re-derived after the last edit: `python -m pytest tests/ -q` ->
+`229 passed in 74.73s`. Separately verified against a live `uvicorn` instance
+in this session: `POST /api/plan` against the real `data/` library declines
+with an identical, specific disclosure ("No plan could be built for this
+profile: no recipe combination survived filtering for this profile, so there
+was nothing to solve") for all four real templates
+(`south_indian`/breakfast, `south_indian`/lunch, `north_indian`/lunch,
+`north_indian`/dinner) and for a hypertension-flagged profile — see
+`docs/methodology.md`, limitation 5, for why this is the expected outcome of
+today's data, not a bug.
+
+Updated 2026-07-24, same day, for real IFCT 2017 data on four ingredient rows
+(`rice_milled_raw`/A015, `rajma_raw`/B020 new, `toor_dal_raw`/B021 new,
+`potato_raw`/F006 new — see `data/raw/ifct/README.md`) and a correctness fix
+to the energy-reconciliation Atwater check (`atwater.fibre_kcal_per_g` added,
+`core/foods/ifct_loader.py`), found because real rajma data failed the old
+flat-carbohydrate formula at 19% and passes IFCT's own fibre-aware formula at
+8% — see `docs/methodology.md`, "Known limitations, Phase 1" items 1 and 3.
+None of the four rows are `Ingredient.verified`; extraction by this project's
+own tooling is not a human opening the primary source, per CLAUDE.md's
+round-4 addendum on self-attestation. Transcript in the same session,
+re-derived after the last edit: `python -m pytest tests/ -q` -> `233 passed
+in 76.68s`.
+
+Updated 2026-07-24, same day, for real, minimal accounts + profile persistence
+(Tier B: `api/db.py` — SQLite via SQLAlchemy, `User` + `StoredProfile`;
+`api/auth.py` — real `bcrypt` password hashing; `starlette.middleware.sessions.SessionMiddleware`,
+a signed session cookie, added to `api/main.py`; five new endpoints,
+`POST /api/auth/signup`\|`login`\|`logout`, `GET /api/auth/me`,
+`GET`/`PUT /api/profile`). `core/nutrition`, `core/planner`, and the
+`/api/plan` call/decline logic are untouched — `tests/test_api_auth.py::TestPlanEndpointUnaffected`
+asserts `/api/plan` behaves identically with no session. `web/dashboard.html`
+(new) is auth-gated and now owns the plate-picker + `POST /api/plan` call
+that used to live in onboarding's step 6; `web/onboarding.html`'s step 6
+became the account/save hinge instead (steps 1-5 still need no account).
+`docs/methodology.md`, "Accounts and persistence: scope" states what this
+increment explicitly did not build (no email verification, no password
+reset, no OAuth, nothing commerce-shaped) as a named limit. Transcript in the
+same session, re-derived after the last edit: `python -m pytest tests/ -q` ->
+`256 passed in 82.20s`.
+
 | Module                    | State                                                                                                                            |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | `core/schemas/`           | Partial — `common.py` (RawOrCooked, Region, MealSlot, DietPattern, MACRO_KEYS) and `profile.py` (`Profile`, `ClinicalFlag`, `ActivityLevel`, `Goal`, `Sex`). `Profile` now carries `diet: DietPattern` and its body fields ARE read: `core/nutrition/targets.py` turns them into a target, and `clinical_flags` still drives the relaxation ladder. `diet` is read by target derivation (DIAAS protein adjustment), not only by a future candidate filter. |
-| `core/nutrition/`         | Partial — `citations.py` (Evidence with `phenomenon`, Constant registry now including the target-derivation constants: Mifflin-St Jeor, activity/PAL, protein g/kg, per-diet DIAAS, goal energy factors, macro AMDR, fibre, sodium — all `verified=False`), `target.py` (`NutritionTarget`, `simple_target`, `band`; moved here from `core/planner`), and `targets.py` (`derive_target`: Profile→BMR→TDEE→energy/protein/macros, DIAAS-adjusted protein, `dev_mode`-labelled, energy interval). **Nothing derived can ship as validated**, and — because activity/DIAAS/goal factors are `PROJECT_ESTIMATE`/`DECISION` — cannot even in principle until those are replaced, not merely opened; see `docs/methodology.md`. `clinical_flags` does NOT tighten any target value here (no cited clinical-sodium constant exists yet, and `core/nutrition` can't reach `core/planner`'s `LOCKED_CONSTRAINTS` to know what to tighten) — `derive_target` instead emits a mandatory warning when flags are set; see `docs/methodology.md`, "Clinical flags do not tighten a target." LLM ranking/narration not started. |
-| `core/foods/`             | Built — models, templates, ifct_loader, recipe_loader, retention, portions, nutrition_of. Ingredient data is a hand-entered fixture set, not IFCT (22 of 23 rows unverified; `water` is the exception); see `data/raw/ifct/README.md`. Composition uncertainty is modelled and process uncertainty is derived, not pasted — but **nothing can ship as validated**. `docs/audit_log.md` finding 2 (a recipe with no `process:` lines reads as 0% process-uncertain) is still OPEN; `core/planner/candidates.py` gates on the *combined* composition+process band, so today's real library is unaffected in practice — every ingredient's composition uncertainty is mandatory-per-macro and never zero — but finding 2 remains a real gap in `core/foods` and should be closed before a verified ingredient with an undeclared process is added. See `docs/methodology.md`. |
-| `core/planner/`           | Partial — `candidates.py` (hard filters + the uncertainty eligibility filter, gating on the combined band per finding 1 below), `combinations.py` (enumeration, naive-bound logging, the O(1) feasibility pre-filter, the no-repeat variety filter), `solver.py` (exhaustive integer search with a shared point-vector cache, `swap_candidates`), `validator.py` (point-estimate gate, `RELAXATION_ORDER`, `LOCKED_CONSTRAINTS`, `plan_within_ladder`). The target shape moved OUT to `core/nutrition/target.py`; the planner imports `NutritionTarget`/`band` from there (downward). `docs/audit_log.md` finding 1 — "nothing in `core/` reads the eligibility ceiling" — is CLOSED by `candidates.py`; findings 13 and 14 (Phase 3 self-caught) are FIXED; findings 3–6 (interval edge cases in `nutrition_of.py`) remain OPEN. LLM ranking and narration are not started. |
+| `core/nutrition/`         | Partial — `citations.py` (Evidence with `phenomenon`, Constant registry now including the target-derivation constants: Mifflin-St Jeor, activity/PAL, protein g/kg, per-diet DIAAS, goal energy factors, macro AMDR, fibre, sodium — all `verified=False`), `target.py` (`NutritionTarget`, `simple_target`, `band`; moved here from `core/planner`), and `targets.py` (`derive_target`: Profile→BMR→TDEE→energy/protein/macros, DIAAS-adjusted protein, `dev_mode`-labelled, energy interval). **Nothing derived can ship as validated**, and — because activity/DIAAS/goal factors are `PROJECT_ESTIMATE`/`DECISION` — cannot even in principle until those are replaced, not merely opened; see `docs/methodology.md`. `clinical_flags` does NOT tighten any target value here (no cited clinical-sodium constant exists yet, and `core/nutrition` can't reach `core/planner`'s `LOCKED_CONSTRAINTS` to know what to tighten) — `derive_target` instead emits a mandatory warning when flags are set; see `docs/methodology.md`, "Clinical flags do not tighten a target." `meal_target.py` (new) splits a day-level target into one meal's share via the registered `meal_split.energy_fraction_*` constants, proportionally across every floor/ceiling/point — the one place `core/planner` and a day-level target's differing scales are reconciled, so `core/planner/plan.py` never compares a single plate against a whole day's energy floor. LLM ranking/narration not started. |
+| `core/foods/`             | Built — models, templates, ifct_loader, recipe_loader, retention, portions, nutrition_of. Ingredient data is mostly a hand-entered fixture set, not IFCT (25 of 26 rows unverified; `water` is the exception) — updated 2026-07-24: four rows (`rice_milled_raw`/A015, `rajma_raw`/B020, `toor_dal_raw`/B021, `potato_raw`/F006) now carry real IFCT 2017 values but stay `verified=False` pending human sign-off; see `data/raw/ifct/README.md`. Composition uncertainty is modelled and process uncertainty is derived, not pasted — but **nothing can ship as validated**. The energy-reconciliation Atwater check now charges fibre separately (`atwater.fibre_kcal_per_g`, 2 kcal/g) rather than at the general carbohydrate rate — see `docs/methodology.md`, "Known limitations, Phase 1" item 3. `docs/audit_log.md` finding 2 (a recipe with no `process:` lines reads as 0% process-uncertain) is still OPEN; `core/planner/candidates.py` gates on the *combined* composition+process band, so today's real library is unaffected in practice — every ingredient's composition uncertainty is mandatory-per-macro and never zero — but finding 2 remains a real gap in `core/foods` and should be closed before a verified ingredient with an undeclared process is added. See `docs/methodology.md`. |
+| `core/planner/`           | Partial — `candidates.py` (hard filters + the uncertainty eligibility filter, gating on the combined band per finding 1 below), `combinations.py` (enumeration, naive-bound logging, the O(1) feasibility pre-filter, the no-repeat variety filter), `solver.py` (exhaustive integer search with a shared point-vector cache, `swap_candidates`), `validator.py` (point-estimate gate, `RELAXATION_ORDER`, `LOCKED_CONSTRAINTS`, `plan_within_ladder`). The target shape moved OUT to `core/nutrition/target.py`; the planner imports `NutritionTarget`/`band` from there (downward). `docs/audit_log.md` finding 1 — "nothing in `core/` reads the eligibility ceiling" — is CLOSED by `candidates.py`; findings 13 and 14 (Phase 3 self-caught) are FIXED; findings 3–6 (interval edge cases in `nutrition_of.py`) remain OPEN. **`plan.py` (new) wires the whole pipeline end to end**: `load_library`/`default_library` load `data/raw/ifct` + `data/recipes` (once, cached), `plan_meal` picks a template via `template_for(region, meal_slot)`, splits the day target with `core.nutrition.meal_target`, and runs `build_candidate_pool` → `enumerate_combinations` → `plan_within_ladder`. Proven end to end against the real library — every one of the four real templates declines with a specific `no_candidates` violation, for every profile, because each of the three real recipes fills only one slot of one template and no other required slot in that template has any candidate at all (`docs/methodology.md`, limitation 5) — and, separately, against `tests/factories.py`'s richer synthetic library, where the identical wiring produces a passing plan, isolating "the wiring works" from "the data is thin." LLM ranking and narration are not started. |
 | `core/commerce/`          | Not started                                                                                                                      |
-| `api/`                    | Partial — thin FastAPI (`api/main.py`, `api/models.py`): `GET /api/health` and `POST /api/targets` (Profile JSON → `derive_target`, returns targets + energy interval + provenance + `dev_mode` disclosure). Translates HTTP to core calls only; computes no number. Run: `uvicorn api.main:app --reload`. |
-| `web/`                    | Partial — static landing page (`web/index.html/styles.css/app.js`, a documented non-Next.js deviation; see `web/README.md`) plus `web/onboarding.html`/`onboarding.js`: a form that calls the real `POST /api/targets` and renders the response verbatim — no illustrative numbers, unlike the landing page's calculator dock. Verified against a live `uvicorn` instance in this session (CORS preflight, 200 and 422 paths, exact response shape) before shipping, not merely written against the schema. |
+| `api/`                    | Partial — thin FastAPI (`api/main.py`, `api/models.py`): `GET /api/health`, `GET /api/science` (live citation registry), `POST /api/targets` (Profile JSON → `derive_target`, returns targets + energy interval + provenance + `dev_mode` disclosure), and `POST /api/plan` (Profile + region + meal_slot → `core.planner.plan.plan_meal`, returns either a solved plate's components/unit-counts/point-estimate or an honest decline with `relaxation_applied` and a specific `disclosure`) — all four unauthenticated, unchanged by the accounts increment. New this session: `api/db.py` (SQLite via SQLAlchemy, `User`/`StoredProfile`), `api/auth.py` (bcrypt hashing, session helpers), and five auth/profile endpoints (`POST /api/auth/signup`\|`login`\|`logout`, `GET /api/auth/me`, `GET`/`PUT /api/profile`) behind a signed session cookie. Translates HTTP to core calls (or to `api/db.py`'s ORM) only; computes no nutritional number anywhere in this package. Against today's real `data/` library, `/api/plan` always declines (see `core/planner/`, `docs/methodology.md` limitation 5) — verified live in this session for all four templates. Run: `uvicorn api.main:app --reload`. |
+| `web/`                    | Partial — static landing page (`web/index.html/styles.css/app.js`, a documented non-Next.js deviation; see `web/README.md`); `web/onboarding.html`/`onboarding.js`, a six-step wizard — steps 1-5 call the real `POST /api/targets`/`GET /api/science` and need no account, step 6 is the account/save hinge (`POST /api/auth/signup`\|`login`, `PUT /api/profile`); and `web/dashboard.html`/`dashboard.js` (new), auth-gated, owning the plate-picker + `POST /api/plan` call. `web/auth.js` (new) is the session/auth-modal code shared by the latter two pages. No illustrative numbers anywhere outside the landing page's documented calculator-dock deviation. Verified against a live app in this session (signup, profile persistence across logout/login, dashboard auth gate — see the chat transcript for this build) before shipping, not merely written against the schema. |
 | Audit workflow            | Partial — `docs/audit_log.md` exists. `.claude/agents/auditor.md` and `.claude/commands/grill.md` described in "Audit workflow" above **do not exist**; audits currently run via an ad-hoc read-only subagent. |
 
 ## Commands

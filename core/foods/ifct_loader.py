@@ -102,20 +102,28 @@ def _parse_allergens(raw: str | None) -> frozenset[str]:
 
 
 def _energy_disagreement(
-    stated_kcal: float, protein_g: float, fat_g: float, carb_g: float
+    stated_kcal: float, protein_g: float, fat_g: float, carb_g: float, fibre_g: float
 ) -> tuple[float, float]:
     """Return (recomputed kcal, fractional disagreement with the stated value).
 
-    Uses the plain Atwater factors from the citation registry rather than
-    literals, because a conversion factor is a nutritional constant like any
-    other. ``carb_g`` here is total carbohydrate including fibre — see the
-    convention note in ``data/raw/ifct/README.md``.
+    Uses the Atwater factors from the citation registry rather than literals,
+    because a conversion factor is a nutritional constant like any other.
+    ``carb_g`` here is total carbohydrate including fibre — see the convention
+    note in ``data/raw/ifct/README.md`` — but fibre is split out and charged at
+    its own, lower rate (``atwater.fibre_kcal_per_g``) rather than the general
+    carbohydrate rate, matching IFCT 2017's own energy methodology. Charging
+    fibre at the same rate as starch over-estimates energy for high-fibre
+    foods; this is what previously made rajma's real IFCT figures fail this
+    check at 19% even though IFCT's own tabulated energy is internally
+    consistent (see ``atwater.fibre_kcal_per_g``'s note in citations.py).
     """
 
+    available_carb_g = carb_g - fibre_g
     recomputed = (
         protein_g * value_of("atwater.protein_kcal_per_g")
         + fat_g * value_of("atwater.fat_kcal_per_g")
-        + carb_g * value_of("atwater.carb_kcal_per_g")
+        + available_carb_g * value_of("atwater.carb_kcal_per_g")
+        + fibre_g * value_of("atwater.fibre_kcal_per_g")
     )
     if stated_kcal < _ZERO_ENERGY_FLOOR_KCAL:
         # Absolute check: a "0 kcal" row (salt, water) is fine as long as its
@@ -210,6 +218,7 @@ def load_ingredient_file(path: Path, report: LoadReport | None = None) -> LoadRe
                 ingredient.protein_g,
                 ingredient.fat_g,
                 ingredient.carb_g,
+                ingredient.fibre_g,
             )
             if disagreement > tolerance:
                 _reject(

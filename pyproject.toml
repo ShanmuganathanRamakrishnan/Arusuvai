@@ -3,7 +3,19 @@ name = "foodai"
 version = "0.1.0"
 description = "AI meal planner for South and North Indian diets — portfolio project."
 requires-python = ">=3.11"
-dependencies = ["pyyaml>=6.0", "fastapi>=0.110", "pydantic>=2.0"]
+dependencies = [
+    "pyyaml>=6.0",
+    "fastapi>=0.110",
+    "pydantic>=2.0",
+    # Accounts + profile persistence (Tier B auth): a User/Profile table via
+    # SQLAlchemy, real bcrypt password hashing (not a homemade scheme), and a
+    # signed session cookie (starlette.middleware.sessions.SessionMiddleware,
+    # which itsdangerous backs) rather than a heavier auth framework.
+    "sqlalchemy>=2.0",
+    "bcrypt>=4.0",
+    "itsdangerous>=2.0",
+    "email-validator>=2.0",
+]
 
 [project.optional-dependencies]
 # httpx backs fastapi.testclient.TestClient; uvicorn runs the app locally.

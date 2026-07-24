@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Arusuvai · Your targets</title>
-<meta name="description" content="Tell us about your body and goal — get a cited, dev-mode nutritional target from the real Arusuvai engine, not a demo.">
+<title>Arusuvai · Your targets and your plan</title>
+<meta name="description" content="Five quick steps, then a real plate from the real engine — POST /api/targets and POST /api/plan, not a demo.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=Hanken+Grotesk:wght@400;500;600;700&family=Noto+Serif+Tamil:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -31,136 +31,246 @@
 
   <!-- ============ ONBOARDING HEADER ============ -->
   <section class="ob-hero no-rule">
-    <div class="eyebrow">Your targets, computed live</div>
-    <h1 class="ob-title">Tell us about your body.</h1>
-    <p class="ob-sub">This calls the real engine over HTTP — <code>POST /api/targets</code> — the same deterministic
-      Python that would back a plan. Nothing here is illustrative.</p>
+    <div class="eyebrow">Six steps, computed live</div>
+    <h1 class="ob-title">Tell us about you. Get a real target — no account required yet.</h1>
+    <p class="ob-sub">Steps 1–5 call the real engine over HTTP — <code>POST /api/targets</code> — the same
+      deterministic Python that would back a delivered meal, and work for anyone, signed in or not. Step 6 is the
+      only place an account matters: create one (or sign in) to save this profile and generate your actual plate
+      on <code>dashboard.html</code>, which calls <code>POST /api/plan</code> against your saved profile.</p>
   </section>
 
-  <!-- ============ FORM + RESULTS ============ -->
-  <section class="ob-grid no-rule">
+  <!-- ============ AUTH BAR ============ -->
+  <div class="ob-authbar" id="obAuthBar" hidden>
+    <span id="obAuthBarText"></span>
+    <a href="dashboard.html" class="btn btn-link" id="obAuthBarDashboard" hidden>Go to dashboard</a>
+    <button type="button" class="btn btn-link" id="obAuthBarLogout" hidden>Log out</button>
+    <button type="button" class="btn btn-link" id="obAuthBarSignin" hidden>Sign in</button>
+  </div>
 
-    <!-- ---- form ---- -->
-    <form id="obForm" class="ob-card" novalidate>
-      <div class="ob-field-row">
-        <label>
-          <span>Weight (kg)</span>
-          <input type="number" id="fWeight" name="weight_kg" min="1" step="0.1" value="68" required>
-        </label>
-        <label>
-          <span>Height (cm)</span>
-          <input type="number" id="fHeight" name="height_cm" min="1" step="0.1" value="170" required>
-        </label>
-        <label>
-          <span>Age (years)</span>
-          <input type="number" id="fAge" name="age_years" min="1" step="1" value="30" required>
-        </label>
-      </div>
+  <!-- ============ PROGRESS ============ -->
+  <nav class="ob-progress" id="obProgress" aria-label="Onboarding steps">
+    <button type="button" class="ob-progress-step" data-step="1"><span class="n">1</span><span class="t">Body</span></button>
+    <button type="button" class="ob-progress-step" data-step="2"><span class="n">2</span><span class="t">Activity</span></button>
+    <button type="button" class="ob-progress-step" data-step="3"><span class="n">3</span><span class="t">Goal</span></button>
+    <button type="button" class="ob-progress-step" data-step="4"><span class="n">4</span><span class="t">Diet</span></button>
+    <button type="button" class="ob-progress-step" data-step="5"><span class="n">5</span><span class="t">Targets</span></button>
+    <button type="button" class="ob-progress-step" data-step="6"><span class="n">6</span><span class="t">Save</span></button>
+  </nav>
 
-      <div class="ob-field-row">
-        <label>
-          <span>Sex</span>
-          <select id="fSex" name="sex">
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-          </select>
-        </label>
-        <label>
-          <span>Activity</span>
-          <select id="fActivity" name="activity">
-            <option value="sedentary">Sedentary</option>
-            <option value="light">Light</option>
-            <option value="moderate" selected>Moderate</option>
-            <option value="active">Active</option>
-            <option value="very_active">Very active</option>
-          </select>
-        </label>
-      </div>
+  <!-- ============ WIZARD ============ -->
+  <section class="ob-wizard no-rule">
+    <form id="obForm" class="ob-card ob-wizard-card" novalidate>
 
-      <div class="ob-field-row">
-        <label>
-          <span>Goal</span>
-          <select id="fGoal" name="goal">
-            <option value="lose_fat">Lose fat</option>
-            <option value="maintain" selected>Maintain</option>
-            <option value="gain_muscle">Gain muscle</option>
-          </select>
-        </label>
-        <label>
-          <span>Diet</span>
-          <select id="fDiet" name="diet">
-            <option value="non_vegetarian">Non-vegetarian</option>
-            <option value="eggetarian">Eggetarian</option>
-            <option value="vegetarian" selected>Vegetarian</option>
-            <option value="jain">Jain</option>
-            <option value="vegan">Vegan</option>
-          </select>
-        </label>
-      </div>
-
-      <div class="ob-flags">
-        <span class="ob-flags-lbl">Disclosed clinical conditions (optional)</span>
-        <div class="ob-flags-row">
-          <label class="ob-check"><input type="checkbox" name="clinical_flags" value="hypertension"> Hypertension</label>
-          <label class="ob-check"><input type="checkbox" name="clinical_flags" value="chronic_kidney_disease"> Chronic kidney disease</label>
-          <label class="ob-check"><input type="checkbox" name="clinical_flags" value="diabetes"> Diabetes</label>
+      <!-- ---- STEP 1: Body ---- -->
+      <fieldset class="ob-step" data-step="1">
+        <legend class="ob-step-title">Your body</legend>
+        <div class="ob-field-row">
+          <label>
+            <span>Age (years)</span>
+            <input type="number" id="fAge" name="age_years" min="1" step="1" value="30" required>
+          </label>
+          <label>
+            <span>Sex</span>
+            <select id="fSex" name="sex">
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
+          </label>
         </div>
-        <p class="ob-flags-note">These do not change any number below yet — see the disclosure that appears once you
-          submit, and <a href="index.html#faq">docs/methodology.md</a> in the repo for why.</p>
-      </div>
+        <div class="ob-field-row">
+          <label>
+            <span>Weight (kg)</span>
+            <input type="number" id="fWeight" name="weight_kg" min="1" step="0.1" value="68" required>
+          </label>
+          <label>
+            <span>Height (cm)</span>
+            <input type="number" id="fHeight" name="height_cm" min="1" step="0.1" value="170" required>
+          </label>
+        </div>
+        <div class="ob-field-row">
+          <label>
+            <span>Body fat % <em class="ob-optional">(optional)</em></span>
+            <input type="number" id="fBodyFat" name="body_fat_pct" min="1" max="70" step="0.1" placeholder="e.g. 22">
+          </label>
+        </div>
+        <p class="ob-field-note">Body fat % is stored for this session but isn't read by target derivation yet —
+          <code>derive_target</code> currently uses weight/height/age/sex only. Shown honestly here rather than
+          quietly implying it changes a number below.</p>
+      </fieldset>
 
-      <button type="submit" class="btn btn-primary ob-submit" id="obSubmit">Compute my targets</button>
-      <div class="ob-endpoint">Calling <code id="obEndpointLabel">http://localhost:8000/api/targets</code></div>
+      <!-- ---- STEP 2: Activity ---- -->
+      <fieldset class="ob-step" data-step="2" hidden>
+        <legend class="ob-step-title">Your activity</legend>
+        <div class="ob-field-row">
+          <label>
+            <span>Activity level</span>
+            <select id="fActivity" name="activity">
+              <option value="sedentary">Sedentary</option>
+              <option value="light">Light</option>
+              <option value="moderate" selected>Moderate</option>
+              <option value="active">Active</option>
+              <option value="very_active">Very active</option>
+            </select>
+          </label>
+          <label>
+            <span>Training days / week <em class="ob-optional">(optional)</em></span>
+            <input type="number" id="fTrainingDays" name="training_days_per_week" min="0" max="7" step="1" placeholder="e.g. 4">
+          </label>
+        </div>
+        <label class="ob-check ob-check-standalone">
+          <input type="checkbox" id="fResistanceTrained" name="resistance_trained">
+          I regularly do resistance/strength training
+        </label>
+        <p class="ob-field-note">Training days and resistance training are stored for this session but only
+          <strong>activity level</strong> feeds today's energy target (the PAL factor in <code>derive_target</code>).
+          The other two are collected for a future activity-quality refinement, not silently folded into today's
+          number.</p>
+      </fieldset>
+
+      <!-- ---- STEP 3: Goal ---- -->
+      <fieldset class="ob-step" data-step="3" hidden>
+        <legend class="ob-step-title">Your goal</legend>
+        <div class="ob-goal-row">
+          <label class="ob-goal-card">
+            <input type="radio" name="goal" value="lose_fat">
+            <span class="ob-goal-t">Fat loss</span>
+            <span class="ob-goal-d">A calorie deficit, protein held up to protect muscle.</span>
+          </label>
+          <label class="ob-goal-card">
+            <input type="radio" name="goal" value="maintain" checked>
+            <span class="ob-goal-t">Maintain</span>
+            <span class="ob-goal-d">Hold steady at your current weight and composition.</span>
+          </label>
+          <label class="ob-goal-card">
+            <input type="radio" name="goal" value="gain_muscle">
+            <span class="ob-goal-t">Muscle gain</span>
+            <span class="ob-goal-d">A calorie surplus with a higher protein floor.</span>
+          </label>
+        </div>
+      </fieldset>
+
+      <!-- ---- STEP 4: Diet ---- -->
+      <fieldset class="ob-step" data-step="4" hidden>
+        <legend class="ob-step-title">Your diet</legend>
+        <div class="ob-field-row">
+          <label>
+            <span>Diet pattern</span>
+            <select id="fDiet" name="diet">
+              <option value="non_vegetarian">Non-vegetarian</option>
+              <option value="eggetarian">Eggetarian</option>
+              <option value="vegetarian" selected>Vegetarian</option>
+              <option value="vegan">Vegan</option>
+              <option value="jain">Jain</option>
+            </select>
+          </label>
+          <label>
+            <span>Region preference</span>
+            <select id="fRegion" name="region_pref">
+              <option value="south_indian" selected>South Indian</option>
+              <option value="north_indian">North Indian</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="ob-flags">
+          <span class="ob-flags-lbl">Disclosed clinical conditions (optional)</span>
+          <div class="ob-flags-row">
+            <label class="ob-check"><input type="checkbox" name="clinical_flags" value="hypertension"> Hypertension</label>
+            <label class="ob-check"><input type="checkbox" name="clinical_flags" value="chronic_kidney_disease"> Chronic kidney disease</label>
+            <label class="ob-check"><input type="checkbox" name="clinical_flags" value="diabetes"> Diabetes</label>
+          </div>
+          <p class="ob-flags-note">
+            <strong>What checking a box actually does:</strong> it locks the matching constraint out of the
+            planner entirely, so it is <em>never</em> loosened to find you a plan — even if loosening it is the
+            only way to produce one. Hypertension locks your sodium ceiling; chronic kidney disease locks sodium
+            <em>and</em> protein; diabetes locks carbohydrate. If a locked constraint is the reason no plan can be
+            built, the planner will say so by name, plainly, on the final step — never a generic failure. This is
+            a planning safeguard, not medical advice — see the science page for what "locked" does and doesn't
+            mean.
+          </p>
+        </div>
+      </fieldset>
+
+      <!-- ---- STEP 5: Target review ---- -->
+      <fieldset class="ob-step" data-step="5" hidden>
+        <legend class="ob-step-title">Your targets</legend>
+
+        <div id="obTargetsLoading" class="ob-loading">Calling <code>POST /api/targets</code>…</div>
+        <div id="obTargetsError" class="ob-error" hidden></div>
+
+        <div id="obTargetsOutput" hidden>
+          <div class="ob-status-row">
+            <span class="ob-status-pill" id="obStatusPill">dev_mode</span>
+          </div>
+          <p class="ob-disclosure" id="obDisclosure"></p>
+
+          <div class="ob-stat-block">
+            <div class="ob-stat-lbl">Energy</div>
+            <div class="ob-stat-line" id="obEnergy"></div>
+          </div>
+
+          <div class="ob-stat-block">
+            <div class="ob-stat-lbl">Protein — quality-adjusted for your diet</div>
+            <div class="ob-stat-line" id="obProtein"></div>
+          </div>
+
+          <div class="ob-stat-block">
+            <div class="ob-stat-lbl">Fat &amp; carbohydrate</div>
+            <div class="ob-stat-line" id="obMacros"></div>
+          </div>
+
+          <div class="ob-stat-block">
+            <div class="ob-stat-lbl">Fibre &amp; sodium</div>
+            <div class="ob-stat-line" id="obFibreSodium"></div>
+          </div>
+
+          <div class="ob-stat-block" id="obWarningsBlock" hidden>
+            <div class="ob-stat-lbl">Warnings</div>
+            <ul class="ob-warn-list" id="obWarnings"></ul>
+          </div>
+
+          <details class="ob-sources" id="obScienceExpander">
+            <summary>Why these numbers? — every source, fetched live</summary>
+            <div id="obScienceLoading" class="ob-loading ob-loading-inline" hidden>Calling <code>GET /api/science</code>…</div>
+            <p class="ob-science-scope" id="obScienceScope"></p>
+            <div class="ob-sources-list" id="obScienceList"></div>
+          </details>
+        </div>
+      </fieldset>
+
+      <!-- ---- STEP 6: Save & continue (the account hinge) ---- -->
+      <fieldset class="ob-step" data-step="6" hidden>
+        <legend class="ob-step-title">Save your plan</legend>
+
+        <div id="obSaveSignedOut">
+          <p class="ob-sub">Create an account to save this profile and see your plate on your dashboard —
+            the five steps you just filled in aren't lost.</p>
+          <div class="ob-save-actions">
+            <button type="button" class="btn btn-primary" id="obOpenSignup">Create account</button>
+            <button type="button" class="btn btn-link" id="obOpenSignin">I already have an account</button>
+          </div>
+        </div>
+
+        <div id="obSaveSignedIn" hidden>
+          <p class="ob-sub">Signed in as <strong id="obSaveEmail"></strong>. Save this profile and go to your
+            dashboard to generate a plate.</p>
+          <div class="ob-save-actions">
+            <button type="button" class="btn btn-primary" id="obSaveContinue">Save &amp; go to dashboard →</button>
+          </div>
+        </div>
+
+        <div id="obSaveLoading" class="ob-loading" hidden>Saving your profile…</div>
+        <div id="obSaveError" class="ob-error" hidden></div>
+      </fieldset>
+
+      <!-- ---- NAV ---- -->
+      <div class="ob-nav">
+        <button type="button" class="btn btn-link ob-nav-back" id="obBack" hidden>&larr; Back</button>
+        <button type="button" class="btn btn-primary ob-nav-next" id="obNext">Continue</button>
+        <button type="button" class="btn btn-link ob-nav-restart" id="obRestart" hidden>Start over</button>
+      </div>
+      <div class="ob-endpoint" id="obEndpointLabel"></div>
     </form>
-
-    <!-- ---- results ---- -->
-    <div class="ob-card ob-results" id="obResults" aria-live="polite">
-      <div class="ob-results-empty" id="obEmpty">
-        <div class="ob-results-empty-t">Nothing computed yet</div>
-        <p>Fill in the form and submit — the numbers below come straight from <code>derive_target</code>, not the
-          browser.</p>
-      </div>
-
-      <div id="obError" class="ob-error" hidden></div>
-
-      <div id="obOutput" hidden>
-        <div class="ob-status-row">
-          <span class="ob-status-pill" id="obStatusPill">dev_mode</span>
-        </div>
-        <p class="ob-disclosure" id="obDisclosure"></p>
-
-        <div class="ob-stat-block">
-          <div class="ob-stat-lbl">Energy</div>
-          <div class="ob-stat-line" id="obEnergy"></div>
-        </div>
-
-        <div class="ob-stat-block">
-          <div class="ob-stat-lbl">Protein — quality-adjusted for your diet</div>
-          <div class="ob-stat-line" id="obProtein"></div>
-        </div>
-
-        <div class="ob-stat-block">
-          <div class="ob-stat-lbl">Fat &amp; carbohydrate</div>
-          <div class="ob-stat-line" id="obMacros"></div>
-        </div>
-
-        <div class="ob-stat-block">
-          <div class="ob-stat-lbl">Fibre &amp; sodium</div>
-          <div class="ob-stat-line" id="obFibreSodium"></div>
-        </div>
-
-        <div class="ob-stat-block" id="obWarningsBlock" hidden>
-          <div class="ob-stat-lbl">Warnings</div>
-          <ul class="ob-warn-list" id="obWarnings"></ul>
-        </div>
-
-        <details class="ob-sources">
-          <summary>Every number, traced to its source</summary>
-          <div class="ob-sources-list" id="obSources"></div>
-        </details>
-      </div>
-    </div>
-
   </section>
 
   <!-- ============ FOOTER ============ -->
@@ -172,6 +282,39 @@
   </footer>
 </div>
 
+<!-- ============ AUTH MODAL ============ -->
+<!-- Same markup/CSS as index.html's decorative signin/signup modal
+     (DESIGN_SYSTEM.md's "Auth modal" component row) -- reused here, not
+     reinvented, and wired to the real /api/auth endpoints via auth.js. -->
+<div id="authOverlay" class="modal-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <button id="authClose" class="modal-close" aria-label="Close" type="button">×</button>
+    <div class="brand">
+      <span class="brand-ta">அறுசுவை</span>
+      <span class="brand-latin">arusuvai</span>
+    </div>
+    <h2 id="authTitle">Welcome back</h2>
+    <p id="authSub" class="sub">Sign in to pick up your plan where you left off.</p>
+    <p class="ob-error" id="authError" hidden></p>
+    <form class="fields">
+      <label>
+        <span>Email</span>
+        <input type="email" id="authEmail" placeholder="you@email.com" required>
+      </label>
+      <label>
+        <span>Password</span>
+        <input type="password" id="authPassword" placeholder="••••••••" minlength="8" required>
+      </label>
+      <button type="submit" id="authCta" class="submit">Sign in</button>
+    </form>
+    <div class="switch">
+      <span id="authSwitchLabel">New to Arusuvai?</span>
+      <button type="button" id="authSwitch">Create an account</button>
+    </div>
+  </div>
+</div>
+
+<script src="auth.js"></script>
 <script src="onboarding.js"></script>
 </body>
 </html>

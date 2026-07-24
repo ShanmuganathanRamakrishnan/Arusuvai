@@ -26,7 +26,8 @@ serving_unit:
     over rice, not a cup of one thing. Two plates is the honest ceiling.
 
 # Derived at load from the cooking-oil line: 8 g x 8.84 kcal/g x 0.10 band
-# = 7.072 kcal on the plate's 472.9 kcal = 0.0150.
+# = 7.072 kcal on the plate's 471.74 kcal (garam_masala corrected 379->321
+# kcal/100g 2026-07-24, see citations.py) = 0.0150.
 #
 # Rajma is soaked overnight and the soaking water discarded; mineral and
 # folate losses through that step are real and unmeasured here.

@@ -8,19 +8,38 @@ and serialises the result. No number is computed here.
 
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+import os
 
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
+from starlette.middleware.sessions import SessionMiddleware
+
+from api.auth import current_user, hash_password, login_session, logout_session, verify_password
+from api.db import StoredProfile, User, get_db
 from api.models import (
+    AuthOut,
+    ComponentOut,
     EnergyOut,
+    EvidenceOut,
+    LoginIn,
+    PlanEstimateOut,
+    PlanOut,
+    PlanRequestIn,
     ProfileIn,
+    ProfileOut,
     ProteinOut,
+    RejectedCitationOut,
+    ScienceOut,
+    SignupIn,
     SourceOut,
     TargetsOut,
+    UserOut,
 )
 from core.nutrition import citations
 from core.nutrition.targets import DerivedTarget, derive_target
-from core.schemas import Profile
+from core.planner.plan import default_library, plan_meal
+from core.schemas import ClinicalFlag, Profile
 
 app = FastAPI(
     title="Arusuvai targets API",
@@ -37,14 +56,173 @@ app.add_middleware(
         "http://127.0.0.1:8000",
         "http://localhost:3000",
     ],
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PUT"],
     allow_headers=["*"],
+    # Sessions ride a cookie, not a bearer header, so the browser must be
+    # allowed to send/receive it cross-port — which requires an explicit
+    # origin list above (already true) rather than "*", per the CORS spec.
+    allow_credentials=True,
+)
+
+# Signed session cookie (Tier B auth): starlette's SessionMiddleware, backed by
+# itsdangerous, not a heavier session framework or server-side session store —
+# the cookie itself carries the (signed, not encrypted) session dict, so there
+# is nothing to look up per request beyond `request.session`. The secret is a
+# real environment variable in any deployment that matters; the fallback here
+# is a fixed, publicly-visible dev value, which is exactly as safe as no
+# secret at all and is fine for a portfolio project run locally — stated
+# plainly rather than dressed up as production-ready.
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.environ.get("FOODAI_SESSION_SECRET", "dev-only-insecure-secret-do-not-deploy"),
+    session_cookie="foodai_session",
+    same_site="lax",
+    https_only=False,
 )
 
 
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+# --------------------------------------------------------------------------
+# Accounts + profile persistence (Tier B: session cookie, SQLite, bcrypt).
+#
+# No email verification, no password reset, no OAuth, nothing commerce-shaped
+# — see docs/methodology.md's "Accounts and persistence: scope" for the
+# named, deliberate limit. core/nutrition and core/planner are not imported
+# by anything below except to build the same core.schemas.Profile the
+# unauthenticated /api/targets and /api/plan endpoints already build; this
+# section computes no nutritional number of its own.
+# --------------------------------------------------------------------------
+
+
+def _profile_out(sp: StoredProfile) -> ProfileOut:
+    return ProfileOut(
+        weight_kg=sp.weight_kg,
+        height_cm=sp.height_cm,
+        age_years=sp.age_years,
+        sex=sp.sex,
+        activity=sp.activity,
+        goal=sp.goal,
+        diet=sp.diet,
+        clinical_flags=[ClinicalFlag(f) for f in sp.flags_list()],
+        updated_at=sp.updated_at.isoformat(),
+    )
+
+
+def _validate_profile_in(body: ProfileIn) -> Profile:
+    """Build a real core.schemas.Profile purely to let it validate the input.
+
+    Not stored or returned — StoredProfile persists the raw fields, and the
+    frozen dataclass's own __post_init__ (positive weight/height/age, and
+    warnings for implausible-but-valid bodies) is the single source of truth
+    for what a valid profile looks like, so this reuses it rather than
+    re-deriving the same bounds checks in api/db.py.
+    """
+
+    try:
+        return Profile(
+            weight_kg=body.weight_kg,
+            height_cm=body.height_cm,
+            age_years=body.age_years,
+            sex=body.sex,
+            activity=body.activity,
+            goal=body.goal,
+            diet=body.diet,
+            clinical_flags=frozenset(body.clinical_flags),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+def _upsert_profile(db: Session, user: User, body: ProfileIn) -> StoredProfile:
+    _validate_profile_in(body)  # raises 422 on impossible input, discards the result
+    sp = db.query(StoredProfile).filter(StoredProfile.user_id == user.id).one_or_none()
+    if sp is None:
+        sp = StoredProfile(user_id=user.id)
+        db.add(sp)
+    sp.weight_kg = body.weight_kg
+    sp.height_cm = body.height_cm
+    sp.age_years = body.age_years
+    sp.sex = body.sex.value
+    sp.activity = body.activity.value
+    sp.goal = body.goal.value
+    sp.diet = body.diet.value
+    sp.clinical_flags = ",".join(f.value for f in body.clinical_flags)
+    db.commit()
+    db.refresh(sp)
+    return sp
+
+
+@app.post("/api/auth/signup", response_model=AuthOut, status_code=201)
+def signup(body: SignupIn, request: Request, db: Session = Depends(get_db)) -> AuthOut:
+    existing = db.query(User).filter(User.email == body.email).one_or_none()
+    if existing is not None:
+        raise HTTPException(status_code=409, detail="An account with this email already exists.")
+
+    user = User(email=body.email, hashed_password=hash_password(body.password))
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    login_session(request, user.id)
+
+    profile_out: ProfileOut | None = None
+    if body.profile is not None:
+        sp = _upsert_profile(db, user, body.profile)
+        profile_out = _profile_out(sp)
+
+    return AuthOut(
+        user=UserOut(id=user.id, email=user.email, created_at=user.created_at.isoformat()),
+        profile=profile_out,
+    )
+
+
+@app.post("/api/auth/login", response_model=AuthOut)
+def login(body: LoginIn, request: Request, db: Session = Depends(get_db)) -> AuthOut:
+    user = db.query(User).filter(User.email == body.email).one_or_none()
+    # Same 401 for "no such account" and "wrong password": distinguishing them
+    # would tell an attacker which emails have accounts.
+    if user is None or not verify_password(body.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Incorrect email or password.")
+
+    login_session(request, user.id)
+
+    sp = db.query(StoredProfile).filter(StoredProfile.user_id == user.id).one_or_none()
+    return AuthOut(
+        user=UserOut(id=user.id, email=user.email, created_at=user.created_at.isoformat()),
+        profile=_profile_out(sp) if sp is not None else None,
+    )
+
+
+@app.post("/api/auth/logout")
+def logout(request: Request) -> dict[str, str]:
+    logout_session(request)
+    return {"status": "ok"}
+
+
+@app.get("/api/auth/me", response_model=UserOut)
+def me(request: Request, db: Session = Depends(get_db)) -> UserOut:
+    user = current_user(request, db)
+    return UserOut(id=user.id, email=user.email, created_at=user.created_at.isoformat())
+
+
+@app.get("/api/profile", response_model=ProfileOut)
+def get_profile(request: Request, db: Session = Depends(get_db)) -> ProfileOut:
+    user = current_user(request, db)
+    sp = db.query(StoredProfile).filter(StoredProfile.user_id == user.id).one_or_none()
+    if sp is None:
+        raise HTTPException(status_code=404, detail="No profile saved yet.")
+    return _profile_out(sp)
+
+
+@app.put("/api/profile", response_model=ProfileOut)
+def put_profile(body: ProfileIn, request: Request, db: Session = Depends(get_db)) -> ProfileOut:
+    user = current_user(request, db)
+    sp = _upsert_profile(db, user, body)
+    return _profile_out(sp)
 
 
 def _sources_out(dt: DerivedTarget) -> list[SourceOut]:
@@ -66,6 +244,58 @@ def _sources_out(dt: DerivedTarget) -> list[SourceOut]:
             )
         )
     return out
+
+
+@app.get("/api/science", response_model=ScienceOut)
+def science() -> ScienceOut:
+    """The whole citation registry: every ``Evidence`` this build has, verbatim.
+
+    Not scoped to one profile's derivation (``/api/targets``'s own ``sources``
+    already does that) — this is the canonical page a "why these numbers?"
+    expander links to, so it returns everything, including the entries no
+    single derivation happens to touch (e.g. rejected citations, oil-uptake
+    and composition-uncertainty estimates that back ``core/foods`` rather than
+    ``core/nutrition``). No number or citation string here is computed; this
+    endpoint only serialises ``core.nutrition.citations``' own registries.
+    """
+
+    evidence_rows = [
+        EvidenceOut(
+            id=ev.id,
+            summary=ev.summary,
+            phenomenon=ev.phenomenon,
+            source=ev.source,
+            grade=ev.grade.value,
+            doi=ev.doi,
+            url=ev.url,
+            verified=ev.verified,
+            note=ev.note,
+        )
+        for ev in citations.all_evidence()
+    ]
+    rejected_rows = [
+        RejectedCitationOut(
+            for_constant=rc.for_constant,
+            citation=rc.citation,
+            doi=rc.doi,
+            phenomenon_measured=rc.phenomenon_measured,
+            why_rejected=rc.why_rejected,
+        )
+        for rc in citations.REJECTED_CITATIONS
+    ]
+    return ScienceOut(
+        scope_statement=(
+            "This is a portfolio project, not clinical nutrition guidance. "
+            "Every number traces to a source below, graded by how strong that "
+            "source is; project estimates are marked plainly, never dressed up "
+            "as measured data. Nothing here is a substitute for advice from a "
+            "dietitian or a doctor."
+        ),
+        evidence=evidence_rows,
+        rejected_citations=rejected_rows,
+        unverified_count=sum(1 for e in citations.all_evidence() if not e.verified),
+        total_count=len(evidence_rows),
+    )
 
 
 @app.post("/api/targets", response_model=TargetsOut)
@@ -115,4 +345,73 @@ def targets(body: ProfileIn) -> TargetsOut:
         sodium_mg_max=dt.sodium_mg_max,
         warnings=list(dt.warnings),
         sources=_sources_out(dt),
+    )
+
+
+@app.post("/api/plan", response_model=PlanOut)
+def plan(body: PlanRequestIn) -> PlanOut:
+    """Generate one meal's plate for a profile, or decline and say why.
+
+    Thin wiring only: derive the profile's day-level target (same call
+    ``/api/targets`` makes), hand it to ``core.planner.plan.plan_meal``
+    (target -> per-meal split -> candidate pool -> combinations -> relaxation
+    ladder), and serialise whatever ``LadderOutcome`` comes back. No number is
+    computed here — the solved unit counts and the point estimate are read
+    straight off ``outcome.plan``.
+    """
+
+    try:
+        profile = Profile(
+            weight_kg=body.weight_kg,
+            height_cm=body.height_cm,
+            age_years=body.age_years,
+            sex=body.sex,
+            activity=body.activity,
+            goal=body.goal,
+            diet=body.diet,
+            clinical_flags=frozenset(body.clinical_flags),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    dt = derive_target(profile)
+    outcome = plan_meal(
+        default_library(),
+        dt.nutrition_target,
+        region=body.region,
+        meal_slot=body.meal_slot,
+        diet_pattern=body.diet,
+        profile=profile,
+    )
+
+    components: list[ComponentOut] = []
+    estimate: PlanEstimateOut | None = None
+    if outcome.plan is not None:
+        for component in outcome.plan.combination.components:
+            components.append(
+                ComponentOut(
+                    recipe_id=component.recipe.id,
+                    recipe_name=component.recipe.name,
+                    category=component.category,
+                    unit_count=outcome.plan.counts_for(component),
+                    unit_name=component.recipe.serving_unit.name,
+                )
+            )
+        point = outcome.plan.estimate.point
+        estimate = PlanEstimateOut(
+            energy_kcal=point.energy_kcal,
+            protein_g=point.protein_g,
+            fat_g=point.fat_g,
+            carb_g=point.carb_g,
+            fibre_g=point.fibre_g,
+            sodium_mg=point.sodium_mg,
+        )
+
+    return PlanOut(
+        passed=outcome.result.passed,
+        disclosure=outcome.result.disclosure or "",
+        relaxation_applied=list(outcome.result.relaxation_applied),
+        violations=[v.describe() for v in outcome.result.violations],
+        components=components,
+        estimate=estimate,
     )
