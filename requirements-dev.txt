@@ -1,0 +1,1 @@
+playwright>=1.40  # dev-only: visual regression checks for web/, not an app dependency

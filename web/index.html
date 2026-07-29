@@ -57,6 +57,9 @@
       <a href="onboarding.html" class="hide-sm">Get your targets</a>
       <button id="btnSignin" class="btn btn-link">Sign in</button>
       <button id="btnSignup" class="btn btn-primary">Sign up</button>
+      <span id="navUserEmail" class="nav-user-email" hidden></span>
+      <a href="dashboard.html" id="btnDashboard" class="btn btn-link" hidden>Dashboard</a>
+      <button id="btnLogout" class="btn btn-link" hidden>Log out</button>
     </div>
   </div>
   <div class="header-rule" aria-hidden="true"></div>
@@ -323,28 +326,26 @@
     </div>
     <h2 id="authTitle">Welcome back</h2>
     <p id="authSub" class="sub">Sign in to pick up your plan where you left off.</p>
-    <form class="fields" onsubmit="return false">
-      <label class="field-name" id="authNameField" hidden>
-        <span>Name</span>
-        <input type="text" placeholder="Your name">
-      </label>
+    <p class="ob-error" id="authError" hidden></p>
+    <form class="fields">
       <label>
         <span>Email</span>
-        <input type="email" placeholder="you@email.com">
+        <input type="email" id="authEmail" placeholder="you@email.com" required>
       </label>
       <label>
         <span>Password</span>
-        <input type="password" placeholder="••••••••">
+        <input type="password" id="authPassword" placeholder="••••••••" minlength="8" required>
       </label>
       <button type="submit" id="authCta" class="submit">Sign in</button>
     </form>
     <div class="switch">
       <span id="authSwitchLabel">New to Arusuvai?</span>
-      <button id="authSwitch">Create an account</button>
+      <button type="button" id="authSwitch">Create an account</button>
     </div>
   </div>
 </div>
 
+<script src="auth.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

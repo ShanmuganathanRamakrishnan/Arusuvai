@@ -61,6 +61,16 @@ signup/login surface rather than shown dashboard content.
   zones, no pricing — `core/commerce/` is untouched by this increment, and
   none of it was added as a side effect of "since a database exists now." An
   account today does exactly two things: it exists, and it holds one profile.
+- **No rate limiting or brute-force protection on `POST /api/auth/login`.**
+  This is a different category from the four items above — those are missing
+  *features*; this is a missing *safeguard*. Nothing in this codebase throttles
+  repeated login attempts, locks an account after N failures, or slows down a
+  password-guessing script hitting the endpoint. `verify_password` is real
+  bcrypt work (deliberately slow per attempt), which raises the cost of a
+  brute-force run somewhat, but that is a side effect of the hashing choice,
+  not a designed defense — nothing here counts or caps attempts. Named
+  explicitly rather than left for a future reader to discover by writing a
+  credential-stuffing script against a local instance.
 
 None of these are hard — they're ordinary web-app features — but each is a
 real surface (transactional email, token expiry, a credential-recovery path
@@ -71,11 +81,24 @@ in this codebase, not as something quietly missing that a future reader has
 to discover by trying it.
 
 **Session secret.** `api/main.py`'s `SessionMiddleware` reads
-`FOODAI_SESSION_SECRET` from the environment and falls back to a fixed,
-publicly-visible dev value if unset. That fallback is exactly as safe as no
-secret at all; it is acceptable for a portfolio project run locally and would
-not be acceptable anywhere a session cookie needs to resist forgery by
-someone who has read this file.
+`FOODAI_SESSION_SECRET` from the environment. Corrected 2026-07-24: an earlier
+version of this fell back to a fixed string checked into source when the
+variable was unset, which is a real vulnerability, not a style nitpick —
+anyone who read this public repo could forge a valid session cookie against
+any deployment that never set the variable. The fallback now generates a
+random secret (`secrets.token_hex(32)`) at process startup instead, with a
+`warnings.warn` if it fires. That closes the forgeable-cookie hole but trades
+in a disclosed, real limitation: sessions do not survive a process restart
+without the environment variable set, and running this API as multiple
+worker processes without it would give each worker a different secret, so a
+session minted by one worker fails to validate on another.
+`FOODAI_SESSION_SECRET` must be set explicitly for any deployment where
+either of those matters.
+
+**No rate limiting on login.** See "Accounts and persistence: scope" above —
+this is named there as a missing safeguard, not folded into this paragraph,
+because it is a different kind of gap than a session-secret bug: nothing was
+done wrong here, nothing was ever built.
 
 ## Raw versus cooked weight
 

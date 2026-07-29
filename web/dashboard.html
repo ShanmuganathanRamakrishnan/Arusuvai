@@ -10,7 +10,16 @@
 <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=Hanken+Grotesk:wght@400;500;600;700&family=Noto+Serif+Tamil:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<!-- .page-fill: the empty state (signed in, no saved profile) is only a few
+     hundred pixels tall, so without this the footer sits mid-screen with bare
+     cream below it. See styles.css.
+     This page used to add `style="max-width: 1040px"` to its .wrap, which put
+     its content column 110px inside its own header's logo. It now takes
+     --container-max like every other route; no page sets its own width. -->
+<body class="page-fill">
+
+<!-- ============ KOLAM BACKGROUND ============ -->
+<div id="kolam" aria-hidden="true"></div>
 
 <!-- ============ HEADER ============ -->
 <header id="siteHeader" class="site-header">
@@ -19,9 +28,10 @@
       <span class="brand-ta">அறுசுவை</span>
       <span class="brand-latin">arusuvai</span>
     </a>
-    <div class="nav">
-      <a href="onboarding.html" class="hide-sm">Edit profile</a>
-      <a href="index.html">Back home</a>
+    <div class="ob-authbar" id="obAuthBar" hidden>
+      <a href="onboarding.html" class="btn btn-link">Edit profile</a>
+      <span id="obAuthBarText"></span>
+      <button type="button" class="btn btn-link" id="obAuthBarLogout" hidden>Log out</button>
     </div>
   </div>
   <div class="header-rule" aria-hidden="true"></div>
@@ -29,17 +39,11 @@
 
 <div class="wrap">
 
-  <!-- ============ AUTH BAR ============ -->
-  <div class="ob-authbar" id="obAuthBar" hidden>
-    <span id="obAuthBarText"></span>
-    <button type="button" class="btn btn-link" id="obAuthBarLogout" hidden>Log out</button>
-  </div>
-
   <!-- ============ GATE: checking session ============ -->
-  <div id="dashGateLoading" class="ob-loading">Checking your session…</div>
+  <div id="dashGateLoading" class="ob-loading" style="padding-top: clamp(26px, 5vw, 44px);">Checking your session…</div>
 
   <!-- ============ GATE: signed in, no saved profile ============ -->
-  <section id="dashNoProfile" class="ob-hero no-rule" hidden>
+  <section class="ob-hero no-rule" id="dashNoProfile" hidden>
     <div class="eyebrow">No saved profile yet</div>
     <h1 class="ob-title">Complete onboarding to see your dashboard.</h1>
     <p class="ob-sub">You're signed in, but there's no profile saved against this account yet.</p>
@@ -47,68 +51,107 @@
   </section>
 
   <!-- ============ DASHBOARD ============ -->
-  <div id="dashMain" hidden>
+  <div id="dashMain" hidden style="position: relative; z-index: 1; padding: clamp(26px, 5vw, 44px) 0 100px;">
 
-    <section class="ob-hero no-rule">
-      <div class="eyebrow">Your dashboard</div>
-      <h1 class="ob-title">Your saved profile, and a real plate.</h1>
-      <p class="ob-sub">This profile was saved from onboarding against your account
-        (<code>GET /api/profile</code>). Pick a plate below and call <code>POST /api/plan</code> — the same
-        engine, the same honest decline if the library can't build one, unchanged by this account increment.</p>
-    </section>
+    <div class="tag-row" id="dashProfileTags" style="margin-bottom: clamp(20px, 3vw, 28px);"></div>
 
-    <section class="ob-wizard no-rule">
-      <div class="ob-card ob-wizard-card">
-
-        <div class="ob-stat-block">
-          <div class="ob-stat-lbl">Saved profile</div>
-          <div class="ob-stat-line" id="dashProfileLine"></div>
-        </div>
-        <p class="ob-field-note">Not what you expected? <a href="onboarding.html">Edit your profile</a> —
-          onboarding will prefill it from what's saved here.</p>
-
-        <div class="ob-field-row ob-plate-row">
-          <label><span>Which plate should we solve for?</span></label>
-        </div>
-        <div class="ob-plate-picker" id="obPlatePicker">
-          <label class="ob-plate-opt"><input type="radio" name="plate" value="south_indian:breakfast" checked> South Indian breakfast</label>
-          <label class="ob-plate-opt"><input type="radio" name="plate" value="south_indian:lunch"> South Indian lunch</label>
-          <label class="ob-plate-opt"><input type="radio" name="plate" value="north_indian:lunch"> North Indian lunch</label>
-          <label class="ob-plate-opt"><input type="radio" name="plate" value="north_indian:dinner"> North Indian dinner</label>
-        </div>
-        <p class="ob-field-note">These four are the only (region, meal) combinations with a real recipe template
-          today — see CLAUDE.md's "Meal templates" and the build-status table for why the library is this thin
-          right now.</p>
-
-        <div class="ob-save-actions">
-          <button type="button" class="btn btn-primary" id="dashGenerate">Generate my plan →</button>
-        </div>
-        <div class="ob-endpoint" id="dashEndpointLabel"></div>
-
-        <div id="obPlanLoading" class="ob-loading" hidden>Calling <code>POST /api/plan</code>…</div>
-        <div id="obPlanNetworkError" class="ob-error" hidden></div>
-
-        <!-- success -->
-        <div id="obPlanSuccess" hidden>
-          <div class="ob-status-row">
-            <span class="ob-status-pill validated">plan built</span>
-          </div>
-          <div id="obPlanMeals" class="meal-card ob-plan-meals"></div>
-          <p class="ob-disclosure" id="obPlanRelaxationNote"></p>
-        </div>
-
-        <!-- honest decline -->
-        <div id="obPlanDecline" class="ob-decline" hidden>
-          <div class="ob-decline-head">
-            <span class="ob-decline-badge">No plan today</span>
-          </div>
-          <p class="ob-decline-lede" id="obDeclineLede"></p>
-          <ul class="ob-decline-violations" id="obDeclineViolations"></ul>
-          <p class="ob-decline-disclosure" id="obDeclineDisclosure"></p>
-        </div>
-
+    <!-- The same .ob-grid12 the wizard's six steps render into — narrative in
+         columns 1-4, controls in 6-12. Not a dashboard-specific two-track
+         grid: that is what put this column 110px right of its own logo. -->
+    <div class="ob-grid12" style="margin-bottom: clamp(4px, 1vw, 8px);">
+      <div class="ob-col-narrative">
+        <div class="ob-step-eyebrow">Plate picker</div>
+        <div class="ob-step-title" style="font-size: clamp(20px, 3vw, 25px);">Which plate should we solve for?</div>
+        <!-- End-user language. This used to send the reader to "CLAUDE.md's
+             Meal templates and the build-status table" — repo files nobody
+             outside the codebase can open. Same fact, same honesty, addressed
+             to the person using the product. -->
+        <p class="ob-step-sub">These four are the only region-and-meal combinations with verified recipe data
+          today. One plate is solved per request, not a full day.</p>
       </div>
-    </section>
+      <div class="ob-col-controls">
+        <div class="ob-plate-picker" id="obPlatePicker">
+          <label class="ob-plate-opt ob-selectable"><input type="radio" name="plate" value="south_indian:breakfast" checked> South Indian breakfast</label>
+          <label class="ob-plate-opt ob-selectable"><input type="radio" name="plate" value="south_indian:lunch"> South Indian lunch</label>
+          <label class="ob-plate-opt ob-selectable"><input type="radio" name="plate" value="north_indian:lunch"> North Indian lunch</label>
+          <label class="ob-plate-opt ob-selectable"><input type="radio" name="plate" value="north_indian:dinner"> North Indian dinner</label>
+        </div>
+        <div class="ob-save-actions">
+          <button type="button" class="btn btn-primary" id="dashGenerate" style="padding: 14px 26px; font-size: 15px; display: inline-flex; align-items: center; gap: 8px;">
+            Generate my plate
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+          </button>
+        </div>
+        <div class="ob-endpoint" id="dashEndpointLabel" style="text-align: left;"></div>
+      </div>
+    </div>
+
+    <div id="obPlanLoading" class="ob-loading" hidden>Calling <code>POST /api/plan</code>…</div>
+    <div id="obPlanNetworkError" class="ob-error" hidden></div>
+
+    <div style="margin-top: clamp(28px, 4vw, 38px);">
+
+      <!-- ===== SUCCESS ===== -->
+      <section id="obPlanSuccess" hidden>
+        <div class="eyebrow" id="obSuccessEyebrow" style="margin-bottom: 14px;"></div>
+        <h1 class="ob-title" style="max-width: none;">A plate built for you.</h1>
+
+        <!-- Plate (components) beside its summary + actions on desktop; stacks
+             on phones. See styles.css .dash-plan-grid. One plate per call, so
+             this is plate | summary, not a fabricated multi-meal day. -->
+        <div class="dash-plan-grid">
+          <div class="meal-grid">
+            <div class="meal-card" id="obPlanMeals"></div>
+          </div>
+
+          <aside class="dash-plan-side">
+            <p class="ob-target-sentence" id="obSuccessSentence" style="max-width: 46ch;"></p>
+            <div class="day-total" id="obPlanTotal"></div>
+            <div class="illus" id="obPlanRelaxationNote"></div>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: clamp(20px, 3vw, 28px);">
+              <button type="button" class="btn btn-primary" id="dashRegenerate" style="padding: 14px 24px; display: inline-flex; align-items: center; gap: 8px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"></path></svg>
+                Regenerate this plate
+              </button>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ===== HONEST DECLINE ===== -->
+      <!-- A decline is prose, not a grid — capped to a readable column rather
+           than stretched across the wide dashboard. -->
+      <section id="obPlanDecline" hidden style="max-width: 680px;">
+        <div class="eyebrow" id="obDeclineEyebrow" style="color: var(--amber-deep); margin-bottom: 14px;"></div>
+        <h1 class="ob-title" style="max-width: none;">We'd rather not build this one.</h1>
+        <p class="ob-target-sentence" id="obDeclineLede" style="max-width: 56ch;"></p>
+
+        <div class="ob-decline-grid">
+          <div class="ob-callout" style="padding: clamp(20px, 3vw, 26px); margin: 0;">
+            <div class="ob-callout-head">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+              <span>Why we stopped</span>
+            </div>
+            <div class="ob-callout-list" id="obDeclineViolations"></div>
+          </div>
+
+          <div>
+            <div style="font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: rgba(43, 38, 34, .45); font-weight: 600; margin-bottom: 14px;">What you can do</div>
+            <div class="ob-paths" id="obDeclinePaths"></div>
+          </div>
+        </div>
+
+        <p class="ob-decline-disclosure" id="obDeclineDisclosure" style="margin-top: 18px;"></p>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: clamp(24px, 3.5vw, 32px);">
+          <a href="onboarding.html" class="btn btn-primary" style="padding: 14px 24px;">Adjust my profile</a>
+          <button type="button" class="btn btn-link" id="dashTryAnother" style="border: 1px solid rgba(43, 38, 34, .2); border-radius: 999px; padding: 13px 22px;">Try a different plate</button>
+        </div>
+        <p class="ob-field-note" style="margin-top: 20px; max-width: 56ch;">This isn't an error — it's the plan being honest rather than quietly bending a limit you asked it to hold.</p>
+      </section>
+
+    </div>
   </div>
 
   <!-- ============ FOOTER ============ -->

@@ -34,9 +34,21 @@ variable, never a re-typed hex.
 | `--amber`        | `#E0A526`              | **The one accent** — turmeric amber              |
 | `--amber-deep`   | `#B98416`              | Amber for text/links on cream (contrast-safe)    |
 | `--terracotta`   | `#C1694F`              | Secondary/tertiary only (e.g. a third dot)       |
+| `--surface`        | `#FFFFFF`            | **Every** interactive control, whatever its shape |
+| `--surface-page`   | `var(--cream)`       | The page itself                                   |
+| `--surface-panel`  | `var(--cream-sink)`  | Read-only panels only (the citation box)          |
+| `--border`         | `rgba(43,38,34,.16)` | Border on a `--surface` control                   |
+| `--border-selected`| `var(--green)`       | Border on a **chosen** control                    |
+| `--accent-selected`| `rgba(58,90,64,.08)` | Fill on a **chosen** control                      |
+| `--accent-current` | `var(--amber-deep)`  | Stepper current-step marker — nothing else        |
 | `--rule`         | `rgba(43,38,34,.08)`   | Hairline dividers between sections/cards          |
 | `--error`        | `#B3392C`              | Form/API error states (`web/onboarding.html`)    |
 | `--error-bg`     | `rgba(179,57,44,.08)`  | Error message background                         |
+
+`--field` / `--field-border` were **removed 2026-07-29** and folded into
+`--surface` / `--border`. They are listed here only so an old reference is
+recognisable; do not reintroduce them. See "Surface and state are orthogonal"
+below for why the split itself was the bug.
 
 **State / derived colors** (not yet tokenized — see "Known inconsistencies"):
 
@@ -50,14 +62,63 @@ variable, never a re-typed hex.
   still have no validation-error styling; when they get one, reuse these
   tokens rather than inventing a second pair.
 
-**The one-accent rule.** `--amber` is the single primary accent, used
-*sparingly, one thing at a time*. It marks exactly one focal element per
-viewport — the hero credibility dot, the FAQ `+`/`×` sign, the "Notify me"
-button, a dotted underline on one emphasized phrase. It is **not** a fill for
-buttons (those are `--green`), not applied to multiple competing elements on
-one screen. Green is the workhorse action color; amber is the single spark.
-Terracotta is tertiary — it appears only as the third item in a set of three
-(e.g. the third quality-list dot), never as a standalone accent.
+**Surface and state are orthogonal. This is the load-bearing rule.**
+
+Revised 2026-07-29 after the onboarding audit. The previous version of this
+section said "controls sit above the page, cards sit within it" and gave
+controls `--field` while cards kept `--cream-card`/`--cream-sink`. That rule
+was followed exactly, and the flow still ended up with **one fill value
+carrying two different meanings**: cream/tan said *"this is a card"* on the
+activity and goal cards, while a green tint said *"this is selected"* on the
+very same component — and the day picker said *selected* a third way, solid
+green with white text. Three selected dialects on one flow, plus a surface
+colour doing double duty.
+
+The token layer itself encoded the split that caused it: `--field` said "text
+input" specifically, so a radio card was never covered by it and was free to
+pick its own fill — and did. The rule now:
+
+1. **`--surface` (white) is every interactive control**, regardless of shape —
+   text input, radio card, pill, checkbox card, toggle, day button. If a user
+   can click or type in it, it is white.
+2. **Cream/tan survives only on non-interactive panels.** In the wizard that
+   is exactly one element: the "Why these numbers?" citation box
+   (`--surface-panel`).
+3. **Exactly one selected treatment**, everywhere: `--accent-selected` fill +
+   `--border-selected` 1.5px border + the native indicator filled via
+   `accent-color`. Implemented as a single `.ob-selectable` component with one
+   declaration block; a grep for the state returns one class, `.is-selected`.
+   The solid-dark-green-with-white-text treatment is **deleted** — it was
+   heavier than every other selected state and read as a button, not a choice.
+4. **Selection indicators go on the LEFT**, on every selection control in the
+   flow. Circles for single-select, squares only where multi-select is
+   genuinely allowed (the clinical-conditions group). They used to be
+   left-inside on the pills and absolutely positioned top-right on the cards.
+
+The one exception to (1) is `.modal label input`, which stays on
+`--cream-card` because it already sits on a modal card rather than on the
+page. Do not reach for a shadow to separate a control — the border does it,
+per the header-rule restraint below.
+
+**The one-accent rule, and amber's single meaning.** `--amber` is the single
+primary accent, used *sparingly, one thing at a time*. On the landing page it
+marks exactly one focal element per viewport — the hero credibility dot, the
+FAQ `+`/`×` sign, the "Notify me" button, a dotted underline on one emphasized
+phrase.
+
+**In the onboarding wizard, amber has exactly one job: marking the current
+step in the stepper** (`--accent-current`). Tightened 2026-07-29 — it had also
+been tinting the `dev_mode` badge and inline numbers in step 5's prose, so on
+one screen amber meant "you are here", "this data is provisional" and "this
+number matters" at once, which means it signalled none of them. `dev_mode`
+now gets a neutral bordered chip; emphasis inside prose gets **weight, not
+colour**. Do not reintroduce amber anywhere in the flow.
+
+It is **not** a fill for buttons (those are `--green`), not applied to
+multiple competing elements on one screen. Green is the workhorse action
+color; amber is the single spark. Terracotta is tertiary — it appears only as
+the third item in a set of three (e.g. the third quality-list dot), never as a
+standalone accent.
 
 ---
 
@@ -113,9 +174,164 @@ negative only on the largest heading (`-.01em` on H1); positive tracking
 
 ## Spacing and layout
 
-**Container.** `max-width: var(--max)` = **1240px**, centered, with a fluid
-gutter `padding: 0 clamp(18px, 4vw, 44px)` (`.wrap`, `styles.css:47–53`). The
-header inner and footer share the same max + gutter so edges align.
+### The container token — one measure, every route
+
+Revised 2026-07-29 (round 2). **There is exactly one container measure and one
+container inset in this project, and no page, route or component may declare
+its own.**
+
+| Token             | Value                    | Role                                    |
+| ----------------- | ------------------------ | --------------------------------------- |
+| `--container-max` | `1280px`                 | The measure. Header, content and footer |
+| `--container-pad` | `clamp(18px, 4vw, 44px)` | The horizontal inset                    |
+| `--max`           | alias of `--container-max` | Kept as the name the sheet already used |
+
+Derived by `.wrap` (`max-width` + `padding`) and `.header-inner` (same two,
+plus its own vertical padding). Nothing else.
+
+**What this replaced, and why it is a token rather than a per-page value.**
+There were three measures: the landing page at 1240px, the wizard at its own
+`--wizard-max: 1200px`, and the dashboard at `style="max-width: 1040px"` set
+inline on its `.wrap` in `dashboard.html`. Each page was internally consistent,
+so nothing looked wrong in isolation — except the dashboard, whose *header*
+kept the global measure while its *content* took the inline override:
+
+| Route             | Logo left | Content left |
+| ----------------- | --------- | ------------ |
+| Landing           | ~290px    | ~290px       |
+| Onboarding step 1 | —         | ~325px       |
+| Dashboard         | ~305px    | ~415px       |
+
+A 110px misalignment inside a single page, with the brand visibly hanging off
+the left of everything beneath it. Measured after the fix, at 1600px: logo,
+content container and footer all at **x=204** on all three routes, with a
+single container width of 1280px everywhere.
+
+The previous version of this section blessed the wizard's separate measure on
+editorial grounds ("1240px is a reading measure; the wizard places two columns
+at opposite edges") and warned that a *third* value would mean the token had
+stopped meaning anything. That warning was right and the exception was the
+thing that made it come true — a second value is already a value that is not
+the token. A page may change what it puts **inside** the container. It may not
+change the container. Column count, gutters and content alignment inside the
+grid are the levers; width is not.
+
+**Enforcement.** `tests/test_web_wizard_layout.py::test_header_logo_shares_content_left_edge`
+asserts brand-left == content-container-left on `index.html`, `onboarding.html`
+and `dashboard.html`, and `::test_every_route_shares_one_container_width`
+asserts one width across all three and their headers. Both run with JavaScript
+disabled — the assertion is about CSS geometry, and with JS on the dashboard
+redirects an unauthenticated visitor away, which would leave the worst route
+untested. A grep for `--container-max` would have passed on the broken version
+too, since `--max` existed and every page referenced *a* token.
+
+### The wizard layout contract — one grid, six steps
+
+Added 2026-07-29. **Every onboarding step renders into the same grid at the
+same measure and the same vertical offset. No step may override its span, and
+there is no per-step width variable to set.** Tokens:
+
+| Token             | Value                      | Role                                      |
+| ----------------- | -------------------------- | ----------------------------------------- |
+| `--wizard-max`    | alias of `--container-max` | No longer a value of its own (round 2)    |
+| `--wizard-gutter` | `32px`                     | Grid gutter                               |
+| `--wizard-top`    | `72px`                     | Fixed offset below the header             |
+| `--ob-nav-h`      | `76px`                     | Sticky action bar; reserved as step padding |
+
+Classes: `.ob-grid12` (12 columns), `.ob-col-narrative` (columns 1–4),
+`.ob-col-controls` (columns 6–12; column 5 is the optical gutter). Collapse
+point **1100px**, below which the columns stack narrative-above-controls.
+
+**`.ob-grid12` is the only layout grid in this project.** `.ob-step-grid` /
+`.ob-step-intro` / `.ob-step-fields` — a `minmax(0,380px) minmax(0,1fr)` pair
+— were deleted 2026-07-29 (round 2). The wizard had already left them because
+that shape has no fixed column origin; the dashboard was allowed to keep them
+on the reasoning that it is a single page with no step-to-step comparison to
+preserve. That reasoning was wrong: on a single page the comparison that
+matters is between the page and its own header, and the content-or-380px first
+track is what put the dashboard's content column 110px right of its own logo.
+`dashboard.html`'s plate picker now renders into `.ob-grid12` like every
+wizard step, so its narrative column starts where the brand starts.
+
+**Why this is a contract and not a convention.** The six steps were authored
+independently and each sized itself, so two defects emerged that no individual
+step's CSS was responsible for:
+
+- The wizard **vertically centred** its content, which makes each step's Y a
+  function of its own height. Measured: the stepper sat at 269 / 181 / 329 /
+  167 / 122 / 251 px across steps 1–6, so the whole UI jumped on every
+  Continue. Content is now **top-aligned** at `--wizard-top`. Do not
+  reintroduce `justify-content: center` on `.ob-wizard` — that was a previous
+  fix for a footer stranded mid-page, and it caused this. `.page-fill`'s
+  `margin-top: auto` pins the footer without caring how tall a step is.
+- Each step declared its own control-column width, so that column started at
+  1037 / 845 / 975 / 866 / 893 px depending on the step, and the narrative
+  column was a different width each time — which is why it read as dead space
+  on steps 1, 3 and 6 and as a reasonable column on 2 and 4.
+
+A step that needs a different internal shape changes **what it puts in a
+column** (`.ob-two-up`, `.ob-stat-grid`, `.ob-goal-row.is-three`), never which
+columns it spans.
+
+**Enforced, not documented.** `tests/test_web_wizard_layout.py` drives a real
+browser through all six steps and asserts the stepper Y and the control-column
+X are single-valued. Per CLAUDE.md's round-4 addendum, a grep over `styles.css`
+would have passed against both broken versions above; the test perturbs an
+input (navigating between steps) and checks the measured output does not move.
+It skips when playwright or the static server is absent.
+
+**Step 5 renders into the same grid as the rest**, deliberately against the
+letter of the correction brief, which asked for columns 1–5 / 7–12 for that one
+step. That would put its second column at a different origin from every other
+step's control column, contradicting both "no step overrides the span" and the
+acceptance check requiring one control-column left edge across all six. The
+citation panel instead gains width by sitting *under* the numbers in the
+control column rather than beside them — which also removes its nested
+scrollbar.
+
+**Sticky bars must reserve their own height.** `.ob-nav` is
+`position: sticky; bottom: 0` in the same scroll container as the step, so it
+paints over the step's last element once the step is taller than the viewport
+— measured on step 5, where it clipped the "Fibre & sodium" heading. `.ob-step`
+carries `padding-bottom: var(--ob-nav-h)` so the bar floats over reserved space
+instead of over content.
+
+**The action bar is flat, not blurred.** It was
+`rgba(251,246,236,.94)` + `backdrop-filter: blur(12px)`, which rendered as a
+pinkish stripe (~`#FBF0EE`) against the `#FAF6EC` page: `#kolam` is a fixed
+layer of amber dots, and blurring it through a near-opaque cream panel averages
+those dots in as a warm cast. A band four units off the page colour reads as a
+rendering artifact rather than a decision. It is now exactly
+`--surface-page` with a single hairline.
+
+**At most two hairlines in the lower region.** The wizard had three stacked:
+the action bar's `border-top`, `.site-footer`'s, and `.footer-bottom`'s. On
+pages where `.footer-bottom` is the footer's *only* child (onboarding,
+dashboard) its rule is redundant with `.site-footer`'s, so
+`.site-footer > .footer-bottom:only-child` drops it. On `index.html` the
+footer holds a link grid above that row, so there the second rule is doing
+real work and stays.
+
+**Full-viewport pages pin their footer — use `.page-fill`.** A page whose
+content can be shorter than the viewport must claim the height explicitly, not
+pad its way there. `.page-fill` (on `<body>`) sets `min-height: 100dvh` +
+flex column, gives `> .wrap` `flex: 1` **and `width: 100%`**, and pins the
+footer with `margin-top: auto`. Applied to `onboarding.html` and
+`dashboard.html`. Use `100dvh`, not `100vh`, so mobile browser chrome doesn't
+push the footer below the fold.
+
+Two traps this encodes, both measured rather than assumed:
+
+- **Do not solve a mid-page footer with section padding.** Any value that fills
+  a 1080px screen overflows a 720px one, and it must be re-tuned every time
+  content changes. Measured before the fix: footer at y=513 on the signed-in
+  dashboard's empty state, ~570px of bare cream below it.
+- **A flex item with `margin: 0 auto` shrink-wraps to its content.** `.wrap`
+  and `.ob-wizard-card` both centre themselves that way, so making an ancestor
+  a flex column silently drops their `max-width` and collapses them to
+  fit-content — measured at 1007px against a 1400px container, which read as
+  "the page is still centred in a narrow column." Any element that centres with
+  auto margins needs an explicit `width: 100%` once it becomes a flex item.
 
 **Section vertical rhythm.** Most sections use `padding: clamp(50px, 7vw,
 90px) 0`. Denser bands run smaller (`.free-band` `clamp(44px,6vw,72px)`,
@@ -176,6 +392,14 @@ pop-in, no spring overshoot, no attention-seeking loops on content.
   rest), opacity ramping ~`0.03`→`0.18`; deliberately the slowest thing on the
   page and always behind content at low opacity.
 - **Modal:** `ar-fadein .3s ease` on the overlay.
+- **Onboarding step change:** `ob-step-in .3s ease` — opacity plus an 8px
+  upward slide on the incoming `.ob-step`, and nothing else. **A step
+  transition must not animate a box dimension or a scale.** The wizard
+  previously also transitioned its `max-width` (`.45s`) as the per-step width
+  envelope changed; that reflowed the incoming step's text repeatedly over the
+  duration and read as the fields warping into place rather than appearing.
+  Removed 2026-07-29 — the width now snaps and only the fade/slide is
+  animated.
 - **`ar-nudge`:** the only decorative loop — a 5px vertical nudge on the scroll
   cue, `2s ease-in-out infinite`. Reserved for a "scroll" affordance; do not
   apply it to content.
@@ -246,6 +470,113 @@ This is the visual counterpart to CLAUDE.md's uncertainty rule: a false-precise
 boxed stat grid asserts a confidence the data doesn't have. One warm line with
 a `≈` does not. New pages showing nutrition follow the meal-card pattern.
 
+### Rounding policy — displayed precision must not exceed stated uncertainty
+
+Added 2026-07-29. **Displayed macro masses round to the nearest whole gram.
+Ratios (protein g/kg, DIAAS) keep one decimal. Full precision stays in the API
+response and in `core/`; only the display rounds.**
+
+`web/onboarding.js` implements this as `fmtGrams` (integer) and `fmtRatio` (one
+decimal) — the previous single `fmtG` applied one-decimal rounding to both.
+
+This is a correctness-of-presentation rule, not a style preference. Step 5 was
+stating energy as `±14%, so roughly 1,905–2,533 kcal` and then reporting
+`120.9 g protein · 67.8 g fat · 281.3 g carb · 31.1 g fibre` on the same
+screen. A tenth of a gram is four significant figures sitting under a
+two-significant-figure interval: the displayed precision asserts an accuracy
+the page itself has just said the data does not have. That is the same
+false-precision failure the boxed-stat-grid ban exists to prevent, committed
+by the formatter instead of the layout — and it is worse than an unqualified
+number, because it actively asserts the error is small.
+
+Ratios are excluded because rounding them destroys them, not because they are
+exempt from the principle: `1.6 g/kg` to the nearest whole number is `2`, a
+25% error.
+
+---
+
+## Copy register — dev-mode honesty, end-user vocabulary
+
+Added 2026-07-29. This project's disclosure habit is a genuine differentiator
+and stays. But **honesty is about what you disclose, not which vocabulary you
+disclose it in**, and the onboarding flow was mixing two registers: some
+helper text was written for a user ("These set the baseline every target is
+computed from"), and some for a developer.
+
+**Never name an internal identifier in a user-facing string** — no function
+names, no module paths, no repo filenames. Name what the *user* controls, and
+say the same thing:
+
+| Instead of                                       | Say                                                                     |
+| ------------------------------------------------ | ----------------------------------------------------------------------- |
+| `derive_target` currently uses weight/height/age/sex only | Body fat isn't used in today's calculation yet — it's saved for a future refinement. |
+| see CLAUDE.md's "Meal templates"                 | South and North Indian are the two regions with verified recipe data today. |
+| only activity level feeds the PAL factor          | Only your overall activity level changes today's energy target.          |
+| see CLAUDE.md's "Meal templates" and the build-status table for why the library is this thin | These four are the only region-and-meal combinations with verified recipe data today. One plate is solved per request, not a full day. |
+
+**An API enum value is an internal identifier too** (added round 2, 2026-07-29).
+The rule above was applied to hand-written strings only, so the same defect
+survived anywhere a `snake_case` enum member was printed straight from a JSON
+response. Four places, all fixed by a label map beside the render:
+
+| Rendered                                             | Source                          | Now                          |
+| ---------------------------------------------------- | ------------------------------- | ---------------------------- |
+| `dev_mode`                                            | `/api/targets` → `status`        | `Development estimate`       |
+| `chronic_kidney_disease`                              | `/api/profile` → `clinical_flags`| `Chronic kidney disease`     |
+| `primary_measurement`, `national_table`, `project_estimate`, `project_decision` | `/api/science` → `grade` | `Primary measurement`, `National food table`, `Project estimate`, `Project decision` |
+
+Two rules for these maps: the **class** may keep keying off the raw value —
+that is a code-to-code binding and correct; only the text is translated. And
+an unrecognised value must fall through to a cautious label or a `_`→space
+humanisation, **never** to the raw string, so a future enum member cannot leak
+an identifier back onto the screen.
+
+**What stays exactly as it is:** the DOIs, the `unverified` flags and the
+whole citation panel. Those are addressed to a reader evaluating the work
+rather than using the product, and naming a source precisely is the point of
+them. The grade labels above are a strict 1:1 rename and are held to that:
+`Project estimate` makes precisely the claim `project_estimate` made, no
+softer. Abbreviating a weak grade into something that reads stronger would be
+the exact failure the panel exists to prevent, committed in the presentation
+layer.
+
+Note one boundary case, resolved 2026-07-29: the `project_decision` Evidence's
+`source` field read `"CLAUDE.md and BUILD_PROMPTS.md."` and is rendered
+verbatim to end users through `GET /api/science`. It is now `"This project's
+own design documents."` — same provenance claim, same grade, same
+`verified=False`, no number touched, but no longer pointing a reader at two
+files they cannot open. **A citation's `source` is user-facing copy as well as
+a provenance record; it has to satisfy both.**
+
+---
+
+## Button labels
+
+Added 2026-07-29. **Either every step names its destination, or every step
+says `Continue` — the variation itself must be consistent.** The wizard was
+mixing three registers with no rule: `Continue` (steps 1, 2, 3, 6),
+`See my targets` (4), `Looks right` (5).
+
+The rule now: **name the destination on the steps where something meaningful
+is produced, `Continue` everywhere else.**
+
+| Step | Label                             |
+| ---- | --------------------------------- |
+| 1–3  | `Continue`                        |
+| 4    | `See my targets`                  |
+| 5    | `Use these targets`               |
+| 6    | `Save profile & build my plan` (in the panel; no action-bar CTA) |
+
+`Looks right` was replaced because it acknowledges rather than acts — it named
+a judgement about the screen you were on, not the thing about to happen.
+
+**One primary per screen.** Step 6 previously showed `Create account & see my
+plan` in the panel *and* a filled `Continue` in the action bar, two identical
+dark-green buttons with no stated difference. A terminal step gets no
+action-bar CTA at all. `Back`, by contrast, is now available from step 2
+onward **including** the final step — it used to be hidden there, making the
+account step a one-way door.
+
 ---
 
 ## Content redundancy rule
@@ -291,7 +622,7 @@ Reusable pieces already built. Reuse these before building a near-duplicate.
 | **Section heading**  | `.sec-eyebrow` + `.sec-title` serif H2 pair                       | `styles.css:204–206` |
 | **Bloom card**       | 140px taste card, scroll-reveals with stagger (`.bloom-card`)     | `styles.css:215–231`; `startBloom()` `app.js` |
 | **Traditions card**  | Plate image (w/ ring fallback) + name + dishes + note             | `styles.css:238–253`; markup `index.html:123–140` |
-| **Meal card**        | Dish + sentence + inline macro line (the number-display pattern)  | `styles.css:279–283` |
+| **Meal card**        | Dish + sentence + inline macro line (the number-display pattern)  | `styles.css:279–283`; reused verbatim on `web/dashboard.html` for the solved plate's component list as of 2026-07-25 (no new card component for the real dashboard) |
 | **Macro line**       | `≈ … kcal · …g protein · …` inline stat (`.stat` / `.num`)        | `styles.css:283,286` |
 | **Step**             | Numbered how-it-works item (`.step` `.n`/`.t`/`.b`)               | `styles.css:260–263` |
 | **Tag / pill**       | Diet (`.tag-diet`, green tint) & goal (`.tag-goal`, amber tint)   | `styles.css:267–270` |
@@ -299,20 +630,34 @@ Reusable pieces already built. Reuse these before building a near-duplicate.
 | **FAQ item**         | Serif question button + `+`→`×` sign + max-height accordion       | `styles.css:336–347`; `startFaq()` `app.js` |
 | **Quality card**     | Recessed `--cream-sink` panel with colored-dot list               | `styles.css:296–301` |
 | **Early-access card**| Green inset card with pill email input + amber submit             | `styles.css:318–329`; `startEarly()` `app.js` |
-| **Auth modal**       | Centered dialog, blurred overlay, signin/signup toggle            | `styles.css:359–393`; markup `index.html:316–345`; `startAuth()` `app.js` — **decorative only on `index.html`** (unchanged); the identical markup is reused, real, on `onboarding.html`/`dashboard.html`, wired to `POST /api/auth/signup`\|`login` by `web/auth.js`'s `initAuthModal()` (added 2026-07-24) rather than a second modal component |
+| **Auth modal**       | Centered dialog, blurred overlay, signin/signup toggle            | `styles.css:359–393`; markup `index.html:316–345`; `startAuth()` `app.js` — real, `web/auth.js` `initAuthModal()`, on `index.html` only as of 2026-07-25 (was real on `onboarding.html`/`dashboard.html` too from 2026-07-24 until onboarding's redesign that day replaced it there with the inline Account tabs step below; `dashboard.html` never used it directly — its auth gate redirects to `onboarding.html`) |
 | **Calc dock**        | Fixed slide-out illustrative protein calculator                  | `styles.css:118–170`; `startCalc()` `app.js` — **illustrative only**, see CLAUDE.md `web/` note |
-| **Kolam background** | Runtime-generated SVG ambient layer                              | `#kolam` `styles.css:65–73`; `buildKolam()`/`renderKolam()` `app.js` |
+| **Kolam background** | Runtime-generated SVG ambient layer                              | `#kolam` `styles.css:65–73`; `buildKolam()`/`renderKolam()` in `app.js`, duplicated (not shared) in `onboarding.js`/`dashboard.js` as of 2026-07-25 — same per-page-duplication convention as the rest of this component list |
 | **Footer**           | Brand + link columns + illustrative-numbers disclaimer           | `styles.css:350–356`; markup `index.html:281–312` |
-| **Onboarding form**  | Grouped inputs/selects, checkbox flag row (`.ob-field-row`/`.ob-flags`) | `web/onboarding.html`; `.ob-*` `styles.css` (onboarding section) |
-| **Status pill**      | `dev_mode`/`validated` badge, amber vs. green tint (`.ob-status-pill`) | `web/onboarding.html`; `styles.css` (onboarding section) |
+| **Onboarding form**  | Boxed number+unit fields (`.ob-input-unit`), pill radios (`.ob-plate-opt`) for sex/diet/region, checkbox flag row reusing the goal card (`.ob-flags`) | `web/onboarding.html`; `.ob-*` `styles.css` (onboarding section) — reworked 2026-07-25 porting `Arusuvai Onboarding.dc.html`; step 1's two flex rows became `.ob-body-grid`, a fixed **two-up** grid (Age \| Weight, Height \| Body fat, Sex across both), collapsing to one column below 420px. **2026-07-29:** every control moved to `--surface`; `.ob-selectable` now supplies surface + selected state for all of them; body-fat's placeholder is the word "optional", not an em dash; per-field `.ob-field-error` + `.ob-invalid` replaced a `window.alert` on step 1 and a single unanchored message on step 6 |
+| **Step layout**      | `.ob-grid12` — the project's **only** layout grid: 12 columns at `--container-max` (1280px), `--wizard-gutter` (32px). Narrative in `.ob-col-narrative` (cols 1–4), controls in `.ob-col-controls` (cols 6–12), column 5 the optical gutter. **Identical on all six wizard steps and on the dashboard's plate picker; nothing overrides the span, and there is no per-step or per-page width variable.** Top-aligned at `--wizard-top` (72px) — never vertically centred. Collapses to stacked at 1100px | `styles.css` (onboarding section). Replaced the `--step-w`/`--fields-w` per-step system 2026-07-29; `.ob-step-grid`/`.ob-step-intro`/`.ob-step-fields` deleted the same day in round 2 when the dashboard migrated onto this grid. See "The container token" and "The wizard layout contract" above, and `tests/test_web_wizard_layout.py` for the enforcement |
+| **Page container**   | `.wrap` — `max-width: var(--container-max)`, `margin: 0 auto`, `padding: 0 var(--container-pad)`. `.header-inner` uses the same two so the brand shares a left edge with the content. **No page sets its own width** | `styles.css` (shell). See "The container token" — the rule exists because three routes had three measures |
+| **Status pill**      | `dev_mode`/`validated` badge (`.ob-status-pill`). `dev_mode` is a **neutral bordered chip**; `validated` keeps the green tint | `web/onboarding.html`; `styles.css`. De-ambered 2026-07-29 — amber is the stepper's current-step marker and nothing else |
 | **Error message**    | Inline error banner using `--error`/`--error-bg` (`.ob-error`)   | `web/onboarding.html`; `styles.css` (onboarding section) |
 | **Source list**      | Collapsible `<details>` of cited constants (`.ob-sources`)       | `web/onboarding.html`; `styles.css` (onboarding section) |
-| **Progress steps**   | Numbered pill row, current/done/future states (`.ob-progress`, `.ob-progress-step`) | Added 2026-07-24 for the six-step onboarding wizard; `web/onboarding.html`; `styles.css` |
-| **Goal card**        | Radio-as-card picker, green border/tint when selected (`.ob-goal-card`) | Added 2026-07-24; `web/onboarding.html`; `styles.css` |
-| **Plate picker**      | Pill radio group for (region, meal_slot) choice (`.ob-plate-opt`) | Added 2026-07-24; moved to `web/dashboard.html` the same day (accounts increment) — onboarding no longer collects a plate, only a target; `styles.css` |
-| **Decline card**     | Honest-decline state: amber-tinted `--cream-sink` card, **not** `--error` — an expected, disclosed outcome is not styled as a failure (`.ob-decline`) | Added 2026-07-24; moved to `web/dashboard.html` the same day, alongside the plate picker and `POST /api/plan` call it belongs to; `styles.css` |
+| **Progress bar**     | Six-chip stepper, done=green / current=`--accent-current` / future=flat (`.ob-progress2`, `.ob-progress2-seg`) | `web/onboarding.html`; `styles.css`. **2026-07-29:** the `Step N of 6 · Name` sub-line was removed — the chips already show position and name the step, so it was duplicated signposting |
+| **Goal card**        | Radio-as-card picker (`.ob-goal-card` + `.ob-selectable`), white surface, **left-side** indicator, `--accent-selected` fill when chosen; `.is-stacked` for single-column long-copy lists, `.is-three` for exactly-three groups (goal, clinical conditions) | Added 2026-07-24, extended 2026-07-25 to also cover activity level and the clinical-flag checkboxes rather than adding two more card components. **2026-07-29:** surface moved tan→white, indicator moved top-right→left, and `.is-three` added because auto-fit resolved three cards to a 2×2 with an empty fourth cell |
+| **Day picker**       | 0–7 button row for training days/week (`.ob-day-picker`, `.ob-day-btn` + `.ob-selectable`) | Added 2026-07-25 porting `Arusuvai Onboarding.dc.html`. **2026-07-29:** its solid-green/white-text selected state was the heaviest of the flow's three selected dialects and was replaced by the shared one; its value readout renders empty rather than `—` until a day is picked |
+| **Toggle row**       | Full-width card with an inline pill switch, used for "I do resistance training" (`.ob-toggle-row`) | Added 2026-07-25; `web/onboarding.html`; `styles.css` |
+| **Target sentence**  | One flowing serif sentence with named number slots, replacing a stat-grid summary (`.ob-target-sentence`). Emphasis is **weight, not colour**; sized on `--text-lead` | `web/onboarding.html`; `styles.css`. De-ambered and moved onto the shared type scale 2026-07-29 — it had been `clamp(18px,3.4vw,22px)` against every other step's flat 15px |
+| **Callout**          | Recessed `--cream-sink` card with a green eyebrow + dot list, used for the target-review disclosures (`.ob-callout`) | Added 2026-07-25; content is `data.warnings` verbatim from the API, not authored copy — see CLAUDE.md on clinical flags not tightening a target at this stage; `web/onboarding.html`; `styles.css` |
+| **Plate picker**      | Pill radio group for (region, meal_slot) choice (`.ob-plate-opt`) | Added 2026-07-24; moved to `web/dashboard.html` the same day (accounts increment) — onboarding no longer collects a plate, only a target; also reused as the generic pill-radio style for onboarding's sex/diet/region pickers as of 2026-07-25; `styles.css` |
+| **Decline card**     | Honest-decline state: green-eyebrow "why we stopped" callout (`.ob-callout`, reused from onboarding's target-review disclosures) over a serif headline+sentence, **not** styled with `--error` — an expected, disclosed outcome is not styled as a failure | Added 2026-07-24 as `.ob-decline` (amber-tinted `--cream-sink` card); reworked 2026-07-25 porting `Arusuvai Dashboard.dc.html`'s "We'd rather not build this one" layout — the callout's bullet list is `data.violations` verbatim from `POST /api/plan`, never the design canvas's fabricated per-condition copy (e.g. its hardcoded "chronic kidney disease... 0.8 g/kg... 54 g/day" text describes a demo profile, not whatever profile actually declined); `web/dashboard.html`; `styles.css` |
 | **Loading line**      | Plain inline "Calling `POST /api/…`…" text, no spinner (`.ob-loading`) | Added 2026-07-24; `web/onboarding.html`, `web/dashboard.html`; `styles.css` |
-| **Auth status bar**   | Right-aligned "Signed in as … · Log out" / "Sign in" row, reuses `.btn-link` rather than a new button style (`.ob-authbar`) | Added 2026-07-24 (accounts increment); `web/onboarding.html`, `web/dashboard.html`; `styles.css` |
+| **Auth status bar**   | Right-aligned "Signed in as … · Log out" row, reuses `.btn-link` rather than a new button style (`.ob-authbar`) | Added 2026-07-24 (accounts increment); simplified 2026-07-25 to signed-in-only (no "Sign in" trigger — step 6 is now the sign-in entry point on this page, see Account tabs below); `web/onboarding.html`, `web/dashboard.html`; `styles.css` |
+| **Account tabs**      | Pill-tab switch (Create account / Sign in) over inline email+password fields, no popup (`.ob-account-tabs`, `.ob-account-fields`) | Added 2026-07-25 for onboarding step 6, porting `Arusuvai Onboarding.dc.html`'s account hinge; replaces the shared auth modal *on this page only* — `index.html` still uses the modal (see Auth modal row) and `dashboard.html`'s cold-entry gate gets bounced to this step via `onboarding.html?next=dashboard`; fields reuse `.modal label input`'s exact CSS (see that rule's comment); `web/onboarding.html`; `styles.css` |
+| **Header auth state** | `index.html`'s header swaps Sign in/Sign up for a `navUserEmail` span + Dashboard/Log out (`.nav-user-email`), same idea as the auth status bar above but inline in the existing nav row rather than a second bar — no new component | Added 2026-07-25; `web/index.html`; `styles.css` |
+| **Profile tag row**   | `.tag-row`/`.tag.tag-diet`/`.tag.tag-goal` (already used for the landing page's illustrative sample-day tags) reused on `web/dashboard.html` for the *real* saved profile's diet and goal — deliberately **not** a third "region" tag, because `ProfileIn`/`ProfileOut` carry no region-preference field (only the plate picker below picks a region, per plate); inventing one would be an unverified claim about what the profile stores | Added 2026-07-25 porting `Arusuvai Dashboard.dc.html`; `web/dashboard.html`; `styles.css` |
+| **Selectable**        | **The** selection primitive (`.ob-selectable`): white `--surface` + `--border`, and one selected treatment — `--accent-selected` fill + `--border-selected`. Covers goal/activity/condition cards, diet+region pills, day buttons and the resistance toggle. `:has(input:checked)` for native controls, `.is-selected` for the two JS-driven ones, **one declaration block** | Added 2026-07-29 to collapse three competing selected treatments into one; `styles.css` |
+| **Action bar**        | Sticky bottom bar rendered once by the shell, outside every step (`.ob-nav`). Flat `--surface-page` + one hairline (never a backdrop-filter — see the layout contract). Back is an outline button matching Continue's height/padding/radius | `web/onboarding.html`; `styles.css`. Reworked 2026-07-29: Back had no container or hit area, and the blurred band rendered pink over the kolam layer |
+| **Group caption**     | Caption above a control group (`.ob-group-lbl`, `.ob-group-lbl-row` for a caption with a value readout) | Added 2026-07-29; was an inline style repeated per site, which is how step 2's two headings ended up ~6px out of alignment |
+| **Field error**       | Per-field inline error + red border (`.ob-field-error`, `.ob-invalid`) | Added 2026-07-29. Step 1 used a `window.alert` that named no field and vanished; step 6 had one message above the button with neither input marked |
+| **Account confirm**   | Signed-in branch of step 6 (`.ob-account-confirm`): names the account the profile is about to be saved to, in place of the create/sign-in form | Added 2026-07-29. The step used to render the create-account form unconditionally, so a signed-in user saw "Create account" directly under a header reading "Signed in as …" |
 
 Everything currently lives in three static pages (`web/index.html`,
 `web/onboarding.html`, `web/dashboard.html`) sharing `web/styles.css`, plus
@@ -325,10 +670,43 @@ table pointing at wherever it lands.
 
 ---
 
+## Quality floor
+
+Added 2026-07-29 — previously unspecified, which is why none of it existed in
+the onboarding flow. Every interactive page meets all four:
+
+1. **Visible keyboard focus.** A `:focus-visible` ring
+   (`2px solid var(--green)`, `outline-offset: 2px`) on every focusable
+   element, including ones that used to be bare text. `:focus-visible`, not
+   `:focus`, so mouse users don't see outlines. Watch specificity: the shared
+   `.modal label input, .ob-account-fields label input { outline: none }` rule
+   is `(0,1,2)` and silently outranked a bare `input:focus-visible` at
+   `(0,1,1)`, which left step 6's two inputs ringless. Verify by tabbing, not
+   by reading the stylesheet.
+2. **Required-field and error states.** Per-field, never a `window.alert` and
+   never one unanchored message for a whole form — `.ob-field-error` +
+   `.ob-invalid` on the field's own cell, cleared on `input` so a corrected
+   value stops looking wrong.
+3. **A defined collapse point.** A fixed two-column split states where it
+   stacks; the wizard's is **1100px**. Below it, narrative sits above
+   controls. Do not let a two-column grid squeeze itself to unreadable.
+4. **`prefers-reduced-motion` respected.** The global rule in `styles.css`
+   flattens animations and transitions; JS-driven scrolling must opt in too —
+   `onboarding.js` passes `behavior: "auto"` instead of `"smooth"` when the
+   query matches, since a CSS media query cannot reach a `scrollTo` option.
+
+---
+
 ## Known inconsistencies to fix
 
 These are real discrepancies in the shipped pages, flagged rather than silently
 normalized in this doc. Each needs a code fix, not just a doc edit.
+
+0. **The landing page overflows on mobile.** `web/index.html` is 567px wide at
+   a 390px viewport when signed in, traced to `.calc-card` (the fixed
+   calculator dock, left=350 → right=658). Onboarding and the dashboard are
+   clean at that width; this is the landing page's documented calculator-dock
+   deviation and has not been touched. Found 2026-07-29, still open.
 
 1. **Cards don't share one border-radius.** Bloom/meal/calc cards are `16px`,
    quality card `18px`, traditions plate & early-access card `20px`, modal

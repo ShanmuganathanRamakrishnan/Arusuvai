@@ -24,3 +24,8 @@ dev = ["pytest>=8.0", "httpx>=0.27", "uvicorn>=0.29"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+# Browser-backed layout checks for web/. Dev-only (playwright + a static
+# server); they skip themselves when either is absent, so a bare checkout
+# still runs `python -m pytest tests/ -q` clean. Run just those with
+# `-m web`, or exclude them with `-m "not web"`.
+markers = ["web: browser-backed layout checks (needs playwright + a static server)"]

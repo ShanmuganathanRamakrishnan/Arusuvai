@@ -53,9 +53,18 @@ a matchable `Origin` header to the API's CORS check.
   SVG that draws itself in, holds, then unravels on an 11 s loop.
 - **Protein calculator dock** — a slide-out illustrative demo (weight × a
   published g/kg factor). See the note below.
-- **Six-food bloom**, **FAQ accordion**, **auth modal**, **sticky header**.
+- **Six-food bloom**, **FAQ accordion**, **sticky header**.
 - Honours `prefers-reduced-motion`: the kolam settles static, the bloom shows
   immediately, and the headline swaps without a fade.
+- **Auth modal — real, not decorative** (since 2026-07-25). The header's
+  Sign in/Sign up buttons open the same modal onboarding.html/dashboard.html
+  use, wired to the real `POST /api/auth/signup`/`login` via `web/auth.js`.
+  Landing-page signup never attaches a profile (there isn't one to attach),
+  so the destination after auth is chosen by what's actually on file, not a
+  fixed redirect: a fresh signup or a returning account with no saved profile
+  goes to `onboarding.html`; a returning sign-in with a saved profile goes
+  straight to `dashboard.html`. Signed-in visitors see their email plus
+  Dashboard/Log out in the header instead of Sign in/Sign up.
 
 ## `onboarding.html` — the first page that does something real
 
@@ -89,6 +98,20 @@ who returns to `onboarding.html` is prefilled from their saved profile
 (`GET /api/profile`) and dropped straight at step 5 rather than five blank
 steps — see `docs/methodology.md`, "Accounts and persistence: scope".
 
+**Reworked 2026-07-25** to port the visual design from the Claude Design
+canvas `Arusuvai Onboarding.dc.html` (kolam background, a six-segment progress
+bar, card/pill selectors instead of native `<select>`s, a one-sentence target
+summary). The canvas's own `Component.compute()` computes BMR/TDEE/macros in
+the browser — a fine shortcut for a visual mockup, but exactly the thing
+CLAUDE.md's central invariant forbids in this codebase (nutrition computed
+outside `core/`). Only the layout and interaction language were ported; every
+number on the page still comes from a real `POST /api/targets` response,
+and step 6's tabbed "Create account / Sign in" form calls the real
+`/api/auth/*` endpoints directly rather than opening the shared auth modal
+(which `index.html` still uses). A cold `?next=dashboard` visit (bounced back
+by `dashboard.html`'s auth gate) lands directly on step 6 with "Sign in"
+pre-selected instead of popping a modal.
+
 ## `dashboard.html` — the account-gated page
 
 Requires an authenticated session; an unauthenticated visitor is redirected
@@ -98,6 +121,29 @@ Renders the saved profile (`GET /api/profile`) and the plate-picker +
 verbatim, not rewritten, per this increment's brief not to touch the
 plan-call/decline logic. Success and honest-decline are still both real,
 designed states, not an error path either way.
+
+**Reworked 2026-07-25** to port the visual design from the Claude Design
+canvas `Arusuvai Dashboard.dc.html` (kolam background, tag pills for the
+saved profile's diet/goal, a serif headline+sentence, a "why we stopped"
+callout for the decline state). Two things in the canvas were deliberately
+**not** ported, because porting them would have overclaimed what the real
+engine does:
+
+- The canvas mocks a fabricated three-meal day (breakfast/lunch/dinner) with
+  a day total. `core.planner.plan.plan_meal` solves one `(region, meal_slot)`
+  plate per call, not a day, and there is no real template yet for e.g.
+  "north_indian breakfast" — see CLAUDE.md's build-status table. The real
+  page still solves and shows one plate at a time.
+- The canvas's "Plan outcome" pill switcher (toggling between a fabricated
+  success state and a fabricated decline state) is a design-prototyping
+  affordance, not a feature. This page's success/decline state is whichever
+  outcome the real `POST /api/plan` call actually returns.
+
+The decline callout's bullet list is `data.violations` verbatim from that
+response — never the canvas's own hardcoded per-condition copy (its demo
+text about a fictional "priya@email.com" hitting a chronic-kidney-disease
+protein cap describes its mock profile, not whatever profile actually
+declines on this page).
 
 ## `auth.js` — shared by `onboarding.html` and `dashboard.html`
 

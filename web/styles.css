@@ -23,11 +23,82 @@
      --terracotta (a tertiary *accent*, not a status color). */
   --error: #B3392C;
   --error-bg: rgba(179, 57, 44, .08);
+  /* --field / --field-border were removed 2026-07-29 and folded into
+     --surface / --border below. They said "text input" specifically, which is
+     why radio cards and pills were free to use a different fill and did — the
+     token layer itself encoded the split that made surface colour ambiguous.
+     One token now covers every interactive control regardless of its shape. */
   --serif: 'Spectral', Georgia, serif;
   --sans: 'Hanken Grotesk', system-ui, sans-serif;
   --tamil: 'Noto Serif Tamil', serif;
   --rule: rgba(43, 38, 34, .08);
-  --max: 1240px;
+
+  /* ---- THE CONTAINER TOKEN ----
+     Added 2026-07-29. One measure and one inset for every page, every route,
+     header through footer. Before this there were three: the landing page at
+     1240px, the wizard at its own 1200px, and the dashboard at an inline
+     1040px set on .wrap in dashboard.html. That last one is the reason this
+     is a token and not a per-page value: the dashboard's HEADER still used
+     the global measure while its CONTENT used the inline override, so the
+     logo sat at x=305 and the content column beneath it at x=415 — a 110px
+     misalignment inside a single page, with the brand visibly hanging off
+     the left of everything under it.
+
+     A page may change what it puts inside the container. It may not change
+     the container. Nothing below this line, and nothing in any page's markup,
+     may set its own max-width on a layout container; the derived rules are
+     .wrap, .header-inner and the wizard grid, and tests/test_web_wizard_layout.py
+     asserts logo-left == content-left on all three routes rather than
+     trusting that promise. */
+  --container-max: 1280px;
+  --container-pad: clamp(18px, 4vw, 44px);
+  /* Kept as the name the rest of this sheet already uses. It is now an alias,
+     not an independent value — there is one measure. */
+  --max: var(--container-max);
+
+  /* ---- surface / state tokens (single-purpose, one meaning each) ----
+     Added 2026-07-29. Before these, one fill value carried two meanings at
+     once: cream/tan said "this is a card" on the activity and goal cards but
+     a green tint said "this is selected" on the very same component, and the
+     day picker said "selected" with a THIRD treatment (solid green, white
+     text). Three selected languages and a surface colour doing double duty.
+     Surface and state are now orthogonal: --surface answers "is this
+     interactive?", --accent-selected answers "is this chosen?", and neither
+     is ever used for the other's job. Step components must reference these,
+     never a raw hex. */
+  --surface: #FFFFFF;            /* every interactive control, always white */
+  --surface-page: var(--cream);  /* the page itself */
+  --surface-panel: var(--cream-sink); /* read-only panels ONLY (citations) */
+  --border: rgba(43, 38, 34, .16);
+  --border-selected: var(--green);
+  --accent-selected: rgba(58, 90, 64, .08);
+  /* Amber has exactly one job in the wizard: marking the current step in the
+     stepper. It previously also tinted the dev_mode badge and inline numbers
+     in step 5's prose, so "amber" meant three different things on one screen
+     and stopped signalling anything. Numbers get weight instead of colour;
+     dev_mode gets a neutral treatment. */
+  --accent-current: var(--amber-deep);
+
+  /* ---- wizard layout contract (see .ob-shell / .ob-grid12) ----
+     --wizard-max was an independent 1200px until 2026-07-29. That was the
+     narrower version of the same defect as the dashboard's inline 1040px:
+     the wizard's own measure was 40px tighter than the header's, so the
+     onboarding logo and the step content did not share a left edge either.
+     A route-specific measure is exactly what --container-max exists to
+     prevent, so this is now an alias with no value of its own. */
+  --wizard-max: var(--container-max);
+  --wizard-gutter: 32px;  /* one gutter, all six steps */
+  --wizard-top: 72px;     /* fixed offset below the header; NOT centring */
+  --ob-nav-h: 76px;       /* sticky action bar; reserved as step padding */
+
+  /* ---- shared type scale ----
+     Step 5's review prose was set at clamp(18px,3.4vw,22px) with 1.55 leading
+     while every other step's description was a flat 15px/1.6 — the same role
+     rendered two sizes apart depending on which step you were on. */
+  --text-lead: 16.5px;    /* step 5's review sentence (serif, still larger) */
+  --text-body: 15px;      /* every step description */
+  --text-note: 12.5px;    /* helper text under a control group */
+  --text-label: 12.5px;   /* control-group captions */
 }
 
 * { box-sizing: border-box; }
@@ -54,9 +125,9 @@ button { font-family: var(--sans); }
 .wrap {
   position: relative;
   z-index: 1;
-  max-width: var(--max);
+  max-width: var(--container-max);
   margin: 0 auto;
-  padding: 0 clamp(18px, 4vw, 44px);
+  padding: 0 var(--container-pad);
 }
 .eyebrow {
   font-size: 12px;
@@ -92,10 +163,13 @@ section.no-rule { border-top: none; }
   backdrop-filter: blur(16px) saturate(1.4);
   -webkit-backdrop-filter: blur(16px) saturate(1.4);
 }
+/* Same measure and the same horizontal inset as .wrap, from the same tokens.
+   Only the vertical padding is the header's own. This is what makes the logo
+   share a left edge with the content below it on every route. */
 .header-inner {
-  max-width: var(--max);
+  max-width: var(--container-max);
   margin: 0 auto;
-  padding: 14px clamp(18px, 4vw, 44px);
+  padding: 14px var(--container-pad);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -108,6 +182,8 @@ section.no-rule { border-top: none; }
 .nav { display: flex; align-items: center; gap: 18px; }
 .nav a { font-size: 14px; font-weight: 500; color: rgba(43, 38, 34, .7); }
 .nav a:hover { color: var(--green); }
+.nav-user-email { font-size: 13px; color: rgba(43, 38, 34, .55); }
+.nav-user-email[hidden] { display: none; }
 
 /* ---------- buttons ---------- */
 .btn { cursor: pointer; border: none; font-family: var(--sans); white-space: nowrap; transition: background .3s, transform .3s, color .3s, border-color .3s; }
@@ -360,7 +436,17 @@ section.no-rule { border-top: none; }
 .footer-brand p { font-size: 13.5px; line-height: 1.55; color: rgba(43, 38, 34, .55); max-width: 30ch; margin: 12px 0 0; }
 .footer-grid .lbl { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: rgba(43, 38, 34, .4); font-weight: 600; margin-bottom: 14px; }
 .footer-links { display: flex; flex-direction: column; align-items: flex-start; gap: 11px; font-size: 14px; }
-.footer-bottom { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; padding-top: 24px; border-top: 1px solid var(--rule); font-size: 12px; color: rgba(43, 38, 34, .4); }
+.footer-bottom { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px 24px; justify-content: space-between; padding-top: 24px; border-top: 1px solid var(--rule); font-size: 12px; color: rgba(43, 38, 34, .4); }
+.footer-bottom > span { margin: 0; }
+/* One rule, not two. On index.html the footer holds a link grid ABOVE this
+   row, so .footer-bottom's own border-top separates the two — legitimately a
+   second rule. Onboarding and the dashboard have no link grid: .footer-bottom
+   is the footer's only child, so its border-top landed directly under
+   .site-footer's, stacking two hairlines a padding-length apart, and directly
+   under the sticky action bar's third one. When this row is the whole footer,
+   .site-footer's rule is the one that separates it from the page and this
+   one is redundant. */
+.site-footer > .footer-bottom:only-child { border-top: none; padding-top: 0; }
 
 /* ---------- auth modal ---------- */
 .modal-overlay {
@@ -384,17 +470,25 @@ section.no-rule { border-top: none; }
 .modal .brand { margin-bottom: 22px; }
 .modal h2 { font-family: var(--serif); font-weight: 500; font-size: 26px; margin: 0 0 6px; color: var(--ink); }
 .modal .sub { font-size: 14px; color: rgba(43, 38, 34, .6); margin: 0 0 24px; line-height: 1.5; }
-.modal .fields { display: flex; flex-direction: column; gap: 14px; }
-.modal label span { display: block; font-size: 12px; font-weight: 600; color: rgba(43, 38, 34, .6); margin-bottom: 6px; }
-.modal label input {
+/* .ob-account-fields (web/onboarding.html step 6) shares this exact input
+   treatment rather than inventing a second one -- DESIGN_SYSTEM.md, "Known
+   inconsistencies #2" on not multiplying input shapes. */
+.modal .fields, .ob-account-fields { display: flex; flex-direction: column; gap: 14px; }
+.modal label span, .ob-account-fields label span { display: block; font-size: 12px; font-weight: 600; color: rgba(43, 38, 34, .6); margin-bottom: 6px; }
+.modal label input, .ob-account-fields label input {
   width: 100%; background: var(--cream-card); border: 1px solid rgba(43, 38, 34, .16);
   border-radius: 11px; padding: 12px 14px; font-family: var(--sans); font-size: 15px; color: var(--ink); outline: none;
   transition: border-color .25s;
 }
-.modal label input:focus { border-color: var(--green); }
+.modal label input:focus, .ob-account-fields label input:focus { border-color: var(--green); }
+/* The modal's own fields sit on a modal card, so --cream-card still separates
+   them from it. The onboarding account step's fields sit directly on the cream
+   page, where it doesn't — they take the shared field surface instead. */
+.ob-account-fields label input { background: var(--surface); border-color: var(--border); }
 .modal .field-name[hidden] { display: none; }
-.modal .submit { width: 100%; margin-top: 22px; background: var(--green); color: var(--cream); border: none; border-radius: 999px; padding: 14px; font-weight: 700; font-size: 15px; cursor: pointer; transition: background .3s; }
-.modal .submit:hover { background: var(--green-dark); }
+.modal .submit, .ob-account-submit { width: 100%; margin-top: 22px; background: var(--green); color: var(--cream); border: none; border-radius: 999px; padding: 14px; font-weight: 700; font-size: 15px; cursor: pointer; transition: background .3s; }
+.modal .submit:hover, .ob-account-submit:hover { background: var(--green-dark); }
+.ob-account-submit:disabled { opacity: .55; cursor: wait; }
 .modal .switch { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; font-size: 13.5px; color: rgba(43, 38, 34, .6); margin-top: 20px; }
 .modal .switch button { background: none; border: none; cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--green); padding: 0; white-space: nowrap; }
 .modal .switch button:hover { color: var(--amber-deep); }
@@ -402,8 +496,15 @@ section.no-rule { border-top: none; }
 /* ---------- accounts (web/onboarding.html, web/dashboard.html) ---------- */
 /* A thin status row, not a new component: reuses .btn-link exactly as the
    header nav already does, just right-aligned above the progress steps. */
+/* min-width:0 lets this shrink below its content width inside the header flex
+   row; without it the "Signed in as <email>" span holds the bar at its full
+   intrinsic width and the header overflows — measured at 403px against a
+   390px viewport with a 30-character address, which put 13px of horizontal
+   scroll on every signed-in page. The address truncates instead; the full
+   value is still the accessible name of the element. */
 .ob-authbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: flex-end;
-  font-size: 13px; color: rgba(43, 38, 34, .6); margin: 0 0 4px; }
+  font-size: 13px; color: rgba(43, 38, 34, .6); margin: 0 0 4px; min-width: 0; }
+.ob-authbar > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ob-authbar[hidden] { display: none; }
 .ob-save-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 18px; }
 
@@ -426,7 +527,7 @@ section.no-rule { border-top: none; }
 .ob-card label span { display: block; font-size: 12px; font-weight: 600; color: rgba(43, 38, 34, .6); margin-bottom: 6px; }
 .ob-card input[type="number"],
 .ob-card select {
-  width: 100%; background: var(--cream-sink); border: 1px solid rgba(43, 38, 34, .16);
+  width: 100%; background: var(--surface); border: 1px solid var(--border);
   border-radius: 11px; padding: 11px 13px; font-family: var(--sans); font-size: 14.5px; color: var(--ink);
   outline: none; transition: border-color .25s; appearance: none;
 }
@@ -434,7 +535,37 @@ section.no-rule { border-top: none; }
 .ob-card input[type="number"]:focus,
 .ob-card select:focus { border-color: var(--green); }
 
-.ob-flags { margin: 18px 0 20px; padding-top: 16px; border-top: 1px solid var(--rule); }
+/* Boxed number-with-unit field (age/weight/height/body-fat) -- the unit
+   label sits inside the same bordered box as the input, matching
+   Arusuvai Onboarding.dc.html, rather than a bare input with a caption. */
+.ob-input-unit { display: flex; align-items: baseline; gap: 7px; background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 11px 13px; transition: border-color .25s; }
+.ob-input-unit:focus-within { border-color: var(--green); }
+.ob-input-unit input { flex: 1; min-width: 0; background: transparent; border: none; outline: none; font-family: var(--sans); font-size: 15px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.ob-input-unit .unit { flex: none; font-size: 13px; color: rgba(43, 38, 34, .45); }
+
+/* Two equal sub-columns INSIDE the control column (step 2's activity list
+   beside its training-day picker). Splitting within the column, never by
+   spanning different grid columns — the control column's origin is fixed. */
+.ob-two-up { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(20px, 2.4vw, 34px); align-items: start; }
+@media (max-width: 780px) {
+  .ob-two-up { grid-template-columns: 1fr; gap: clamp(22px, 4vw, 30px); }
+}
+
+/* A wrapping row of pills (diet pattern, region). Was an inline flex style
+   repeated at each site. */
+.ob-pill-row { display: flex; flex-wrap: wrap; gap: 9px; }
+
+/* Step 5's four stat blocks. Two-up once the control column is wide enough,
+   so the numbers read as a block rather than a long single-file ladder that
+   pushes the citation panel further down the page. */
+.ob-stat-grid { display: grid; grid-template-columns: 1fr; gap: 4px 28px; }
+@media (min-width: 900px) {
+  .ob-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.ob-account-panel { max-width: 460px; }
+.ob-flags-title { display: block; font-family: var(--serif); font-size: 18px; color: var(--ink); margin-bottom: 8px; }
+.ob-flags { margin: 22px 0 20px; padding-top: 18px; border-top: 1px solid var(--rule); }
 .ob-flags-lbl { display: block; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: rgba(43, 38, 34, .45); font-weight: 600; margin-bottom: 12px; }
 .ob-flags-row { display: flex; flex-wrap: wrap; gap: 10px 18px; }
 .ob-check { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink); cursor: pointer; }
@@ -443,7 +574,10 @@ section.no-rule { border-top: none; }
 
 .ob-submit { width: 100%; padding: 13px; font-size: 15px; border-radius: 999px; }
 .ob-submit:disabled { opacity: .55; cursor: wait; }
-.ob-endpoint { font-size: 11.5px; color: rgba(43, 38, 34, .4); margin-top: 10px; text-align: center; }
+/* Left, with the grid, not centred. It sat under a centred card when the card
+   had its own measure; now that every step is anchored to the container's
+   left edge, a centred caption is the only thing on the page that isn't. */
+.ob-endpoint { font-size: 11.5px; color: rgba(43, 38, 34, .4); margin-top: 10px; text-align: left; }
 .ob-endpoint code { font-size: .95em; }
 
 /* Results — plain inline stat lines per DESIGN_SYSTEM.md's Number display
@@ -457,7 +591,12 @@ section.no-rule { border-top: none; }
 
 .ob-status-row { display: flex; margin-bottom: 10px; }
 .ob-status-pill { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; border-radius: 999px; padding: 5px 13px; }
-.ob-status-pill.dev-mode { background: rgba(224, 165, 38, .16); color: var(--amber-deep); }
+/* Neutral, not amber. Amber's one job in this flow is marking the current
+   step; a dev_mode badge in the same colour made "amber" mean "current step"
+   and "provisional data" on the same screen, so it signalled neither. A
+   bordered neutral chip still reads as a caveat without borrowing the
+   stepper's vocabulary. */
+.ob-status-pill.dev-mode { background: rgba(43, 38, 34, .05); color: rgba(43, 38, 34, .62); border: 1px solid var(--border); }
 .ob-status-pill.validated { background: rgba(58, 90, 64, .13); color: var(--green); }
 .ob-disclosure { font-size: 13px; line-height: 1.6; color: rgba(43, 38, 34, .6); font-style: italic; margin: 0 0 22px; }
 
@@ -466,11 +605,12 @@ section.no-rule { border-top: none; }
 .ob-stat-line { font-size: 15px; line-height: 1.55; color: var(--ink); font-variant-numeric: tabular-nums; }
 
 .ob-warn-list { margin: 0; padding-left: 18px; }
-.ob-warn-list li { font-size: 13px; line-height: 1.55; color: var(--amber-deep); margin-bottom: 6px; }
+/* Ink, not amber — see --accent-current. A disclosure is not the current step. */
+.ob-warn-list li { font-size: 13px; line-height: 1.55; color: rgba(43, 38, 34, .72); margin-bottom: 6px; }
 
 .ob-sources { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--rule); }
 .ob-sources summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--green); }
-.ob-sources-list { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto; }
+.ob-sources-list { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
 .ob-source-row { font-size: 12px; line-height: 1.5; color: rgba(43, 38, 34, .62); border-bottom: 1px solid var(--rule); padding-bottom: 8px; }
 .ob-source-row .k { font-weight: 600; color: var(--ink); }
 .ob-source-row .verified-no { color: var(--terracotta); }
@@ -478,38 +618,386 @@ section.no-rule { border-top: none; }
 
 /* ---------- onboarding wizard (web/onboarding.html, six-step flow) ---------- */
 
-/* Progress: numbered pills, current step green-filled, done steps green-text,
-   future steps muted -- same visual grammar as .tag-diet/.tag-goal rather than
-   a new indicator language. */
-.ob-progress { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: clamp(20px, 3vw, 28px); }
-.ob-progress-step { display: flex; align-items: center; gap: 7px; background: var(--cream-card); border: 1px solid rgba(43, 38, 34, .12); border-radius: 999px; padding: 7px 14px 7px 8px; font-family: var(--sans); font-size: 12.5px; font-weight: 600; color: rgba(43, 38, 34, .45); cursor: default; transition: background .25s, color .25s, border-color .25s; }
-.ob-progress-step .n { display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: rgba(43, 38, 34, .08); color: rgba(43, 38, 34, .5); font-size: 11px; }
-.ob-progress-step.is-done { color: var(--green); border-color: rgba(58, 90, 64, .25); cursor: pointer; }
-.ob-progress-step.is-done .n { background: rgba(58, 90, 64, .14); color: var(--green); }
-.ob-progress-step.is-current { color: var(--ink); border-color: var(--green); background: rgba(58, 90, 64, .06); }
-.ob-progress-step.is-current .n { background: var(--green); color: var(--cream); }
+/* Progress: a segmented bar per step (Arusuvai Onboarding.dc.html's
+   design), not numbered pills -- done steps fill green, the current step
+   fills amber, everything after stays a flat track. */
+/* Progress + card share one width envelope (--step-w) so they stay aligned
+   and the progress bar feels proportionate to the step rather than stranded
+   in a wide viewport. --step-w is set per step on .ob-wizard[data-step] below;
+   both cap at it and centre, so a narrow step reads as a column and a wide
+   one (target review) spreads out. */
+/* No transition on max-width. Animating the envelope width across a step
+   change reflowed the incoming step's text mid-animation — every line broke
+   and re-broke over .45s, which read as the content warping in rather than a
+   clean change. The step-in fade below carries the transition instead; the
+   width just snaps. */
+/* No per-step width left to track: the stepper spans the same measure as the
+   grid below it on every step, so it neither resizes nor re-centres between
+   steps. --step-w is gone; see "THE WIZARD LAYOUT CONTRACT" below. */
+.ob-progress2 { margin-bottom: clamp(20px, 2.6vw, 28px); }
+/* Numbered pills, ported from Arusuvai Onboarding.dc.html's progress nav
+   (a filled number badge + label inside a pill) in place of the earlier flat
+   segmented-bar treatment -- reads as "steps," not just "progress." JS
+   (onboarding.js showStep()) only toggles .is-current/.is-done on
+   .ob-progress2-seg; it doesn't know or care about the markup inside. */
+.ob-progress2-bars { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+.ob-progress2-seg { flex: none; display: flex; align-items: center; gap: 9px; border-radius: 999px; padding: 6px 15px 6px 7px; border: 1.5px solid rgba(43, 38, 34, .12); background: transparent; transition: background .4s ease, border-color .4s ease; }
+.ob-progress2-num { flex: none; width: 22px; height: 22px; border-radius: 50%; background: rgba(43, 38, 34, .14); color: rgba(43, 38, 34, .5); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; transition: background .4s ease, color .4s ease; }
+/* The one place --accent-current is allowed to appear. */
+.ob-progress2-seg.is-current { background: rgba(224, 165, 38, .15); border-color: var(--accent-current); }
+.ob-progress2-seg.is-current .ob-progress2-num { background: var(--accent-current); color: var(--cream); }
+.ob-progress2-seg.is-done { background: rgba(58, 90, 64, .09); border-color: rgba(58, 90, 64, .25); }
+.ob-progress2-seg.is-done .ob-progress2-num { background: var(--green); color: var(--cream); }
+.ob-progress2-label { font-size: 13px; font-weight: 600; color: rgba(43, 38, 34, .45); white-space: nowrap; transition: color .4s ease; }
+.ob-progress2-seg.is-current .ob-progress2-label { color: var(--ink); }
+.ob-progress2-seg.is-done .ob-progress2-label { color: var(--green-dark); }
+/* .ob-progress2-sub ("Step 3 of 6 · Goal") is gone from the markup. The
+   stepper directly above it already showed position and named the step, so
+   the line restated the same two facts in words — duplicated signposting.
+   The stepper keeps its labels; the sentence went. */
 
-.ob-wizard { padding: 0 0 clamp(60px, 8vw, 100px); }
-.ob-wizard-card { max-width: 640px; margin: 0 auto; }
+.ob-wizard { padding: 0 0 clamp(18px, 2.4vw, 30px); }
+.ob-wizard-card { margin: 0 auto; }
+/* The wizard is a single-screen form, not a scrolling page: the footer should
+   land just under the sticky nav rather than after a band of empty cream. */
+.ob-wizard ~ .site-footer { padding: 20px 0 22px; }
 
-.ob-step { border: none; margin: 0; padding: 0; }
-.ob-step-title { font-family: var(--serif); font-weight: 500; font-size: 21px; color: var(--ink); margin: 0 0 18px; padding: 0; }
+/* Footer pinned to the bottom of the viewport, not to the end of the content.
+   Trimming the wizard's padding made the page SHORTER than a desktop viewport,
+   which moved the footer up into the middle of the screen — the padding was
+   the only thing that had been filling the gap. Padding can't fix that (any
+   value that fills a 1080px screen overflows a 720px one); the page has to
+   claim the viewport height and let the wizard absorb the slack. 100dvh, not
+   100vh, so mobile browser chrome doesn't push the footer below the fold.
+   #kolam is position:fixed and stays out of this flex flow. */
+/* .page-fill — for any page whose content can be shorter than the viewport.
+   Without it the footer lands wherever the content happens to end: measured at
+   y=513 on a signed-in dashboard with no saved profile, leaving ~570px of bare
+   cream beneath it, which reads as the footer floating in the middle of the
+   page. The page claims the viewport and the footer takes the bottom edge.
+   100dvh, not 100vh, so mobile browser chrome doesn't push it below the fold. */
+.page-fill { min-height: 100dvh; display: flex; flex-direction: column; }
+/* width:100% is load-bearing, not belt-and-braces. .wrap centres itself with
+   `margin: 0 auto`, and an auto side-margin on a FLEX ITEM absorbs free space
+   by shrink-wrapping the item to its content width — so the moment a page
+   became a flex column, .wrap stopped honouring max-width and collapsed to
+   fit-content (1007px of a 1920px viewport, measured). An explicit width
+   restores "fill the container, cap at --max, centre the remainder". */
+.page-fill > .wrap { flex: 1; width: 100%; display: flex; flex-direction: column; }
+/* margin-top:auto rather than flex:1 on a content element: these pages swap
+   between several top-level siblings (loading / empty state / main), so there
+   is no single element that is always the one to grow. */
+.page-fill .site-footer { margin-top: auto; }
+/* ---------- THE WIZARD LAYOUT CONTRACT ----------
+   One grid origin, one measure, one vertical offset, for all six steps.
+
+   What this replaces, and why a per-screen patch could not have worked: the
+   six steps were authored independently, so each one sized itself. The wizard
+   vertically CENTRED its content, which meant content height drove page
+   position and the stepper landed at a different Y on every step (measured
+   269/181/329/167/122/251px across steps 1-6 — the whole UI jumped on every
+   Continue). Each step also declared its own --fields-w, so the control column
+   started at a different X on every step (1037/845/975/866/893px) and the
+   narrative column was therefore a different width each time — which is why it
+   read as dead space on steps 1, 3 and 6 and as a reasonable column on 2 and 4.
+
+   Both are now structural, not per-step: content is TOP-ALIGNED at a fixed
+   --wizard-top, and every step renders into the same 12-column grid with the
+   narrative in columns 1-4 and the controls in columns 6-12. No step may
+   override the span; there is no per-step width variable left to set.
+   tests/web/test_wizard_layout.py asserts both invariants against a real
+   browser rather than trusting this comment. */
+
+/* Top-aligned, NOT centred. justify-content:center was the previous fix for a
+   footer stranded mid-page; it solved that and caused the stepper jump above,
+   because centring makes every step's Y a function of its own height. The
+   footer stays pinned by .page-fill's margin-top:auto, which does not care
+   how tall the step is. */
+body.ob-page .ob-wizard { flex: 1; padding-top: var(--wizard-top); }
+/* The progress bar and the card centre themselves with `margin: 0 auto`, so a
+   flex-column ancestor shrink-wraps them exactly the way it shrink-wrapped
+   .wrap above — measured at 919px against a 1312px container. Same cause,
+   same fix, one level down: state the width, let max-width cap it. */
+body.ob-page .ob-progress2,
+body.ob-page .ob-wizard-card { width: 100%; }
+/* No per-route --max override any more. The wizard renders inside the same
+   .wrap at the same --container-max as the landing page and the dashboard;
+   this rule stays only as the place where that is stated, and asserts the
+   alias rather than setting a second value. */
+body.ob-page { --max: var(--container-max); }
+
+/* The 12-column grid every step renders into. Narrative 1-4, controls 6-12,
+   column 5 left empty as the optical gutter between them. Declared once here
+   and inherited by every step — a step that wants a different shape changes
+   what it puts IN a column, never which columns it spans. */
+.ob-grid12 {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--wizard-gutter);
+  align-items: start;
+}
+.ob-col-narrative { grid-column: 1 / span 4; min-width: 0; }
+.ob-col-controls { grid-column: 6 / span 7; min-width: 0; }
+/* The collapse point. A fixed two-column split with a ~380px narrative track
+   plus a 32px gutter has no room left for controls below roughly 1100px, so
+   the columns stack and the narrative sits above the controls rather than
+   being squeezed into an unreadable measure. */
+@media (max-width: 1100px) {
+  .ob-grid12 { grid-template-columns: minmax(0, 1fr); gap: clamp(18px, 3vw, 26px); }
+  .ob-col-narrative,
+  .ob-col-controls { grid-column: 1 / -1; }
+  /* The 40ch cap exists to stop the description running the full width of a
+     wide narrative column. Stacked, the column IS the page, so the cap would
+     leave a ragged short paragraph against a full-width control block. */
+  .ob-step-sub { max-width: none; }
+  body.ob-page .ob-wizard { padding-top: clamp(24px, 5vw, 40px); }
+}
+
+/* Step entrance: opacity plus a short upward slide, nothing else. It must not
+   scale or animate any box dimension — a transform that scales, or a width
+   that animates, resamples the text of a form full of numbers and reads as
+   the incoming fields warping into place. Slide ends at translateY(0) so the
+   final paint is on the pixel grid. */
+@keyframes ob-step-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+/* padding-bottom = the sticky action bar's height. The bar is position:sticky
+   at the bottom of the same scroll container, so it paints OVER whatever the
+   step's last element is once the step is taller than the viewport — measured
+   on step 5, where it clipped the "Fibre & sodium" heading and the line under
+   it. Reserving the bar's own height as trailing space is the fix; the bar
+   then floats over empty space instead of over content. */
+.ob-step { border: none; margin: 0; padding: 0 0 var(--ob-nav-h); animation: ob-step-in .3s ease both; }
+.ob-step-eyebrow { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--green); font-weight: 600; margin-bottom: 12px; }
+.ob-step-title { font-family: var(--serif); font-weight: 500; font-size: clamp(24px, 4.4vw, 32px); line-height: 1.14; margin: 0 0 10px; padding: 0; color: var(--ink); }
+.ob-step-sub { font-size: var(--text-body); line-height: 1.6; color: rgba(43, 38, 34, .62); max-width: 40ch; margin: 0; }
+/* legend is display:block and in normal flow here, NOT the fieldset's rendered
+   legend. On step 5 the title was a DIRECT child of the fieldset, where the
+   browser hoists <legend> to the top of the box regardless of source order —
+   which is why that one step rendered its H1 above its eyebrow while the other
+   five rendered eyebrow-first from identical markup order. Every step now
+   nests its title inside .ob-col-narrative, so none of them is a fieldset's
+   direct-child legend and source order is what paints. */
+.ob-step legend.ob-step-title { display: block; float: none; width: auto; }
+
+/* .ob-step-grid / .ob-step-intro / .ob-step-fields were REMOVED 2026-07-29.
+   They were the second grid system: a `minmax(0,380px) minmax(0,1fr)` pair
+   with no fixed column origin, which is why the wizard left it for .ob-grid12
+   in the first place. The dashboard was allowed to keep it on the reasoning
+   that it is a single page with no step-to-step comparison to preserve — and
+   that reasoning was wrong. The comparison that matters on a single page is
+   between the page and its own header: a 380px-or-content first track put the
+   dashboard's content column at x=415 under a logo at x=305. There is now one
+   grid, and its columns start where the header's inset starts.
+
+   Nothing in this sheet declares a layout grid other than .ob-grid12. */
+
+/* Step 1's body fields: a fixed two-up grid — Age | Weight, then Height |
+   Body fat, then Sex across both. Fixed, not auto-fit: auto-fit read the wide
+   fields column and packed all four numeric fields onto one line, which is a
+   dense strip of boxes rather than paired rows. Two columns keeps each field
+   at a legible width and gives the block a shape that matches the intro
+   column's height. Sex spans both tracks so its two pills sit side by side. */
+.ob-body-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; align-items: end; }
+.ob-body-cell { min-width: 0; }
+.ob-body-cell-wide { grid-column: span 2; }
+/* Below ~420px two number fields plus their unit suffixes no longer fit side
+   by side, so the pairs stack. Sex's span drops with them or it would address
+   a second track that no longer exists. */
+@media (max-width: 420px) {
+  .ob-body-grid { grid-template-columns: 1fr; }
+  .ob-body-cell-wide { grid-column: span 1; }
+}
+.ob-body-grid + .ob-field-note { margin-top: 14px; }
+.ob-sex-toggle { display: flex; gap: 8px; }
+.ob-sex-toggle .ob-plate-opt { flex: 1; justify-content: center; }
+
+/* Field caption ("Age", "Weight", …). Was inline-styled per label, which is
+   why some of step 1's captions matched the Sex caption and some didn't. */
+.ob-field-lbl { display: block; font-size: 12px; font-weight: 600; color: rgba(43, 38, 34, .6); margin-bottom: 6px; }
+
+/* Day-count picker (training days/week) and the resistance-training toggle
+   -- new patterns, not covered by an existing component. */
+.ob-day-picker { display: flex; gap: 6px; }
+/* Geometry only — surface and selected state come from .ob-selectable. These
+   used to fill solid green with cream text when chosen, a third selected
+   dialect and the heaviest of the three. */
+.ob-day-btn { flex: 1; min-width: 0; padding: 11px 0; border-radius: 10px; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; color: rgba(43, 38, 34, .7); }
+.ob-day-btn.is-selected { color: var(--green); }
+
+.ob-toggle-row { display: flex; align-items: center; gap: 14px; text-align: left; padding: 15px 16px; border-radius: 14px; width: 100%; }
+.ob-toggle-track { flex: none; width: 44px; height: 26px; border-radius: 999px; background: rgba(43, 38, 34, .22); position: relative; transition: background .25s; }
+.ob-toggle-row.is-selected .ob-toggle-track { background: var(--green); }
+.ob-toggle-knob { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--cream); box-shadow: 0 1px 3px rgba(43, 38, 34, .3); transition: left .25s; }
+.ob-toggle-row.is-selected .ob-toggle-knob { left: 21px; }
+.ob-toggle-t { display: block; font-size: 15px; font-weight: 600; color: var(--ink); }
+.ob-toggle-d { display: block; font-size: 13px; color: rgba(43, 38, 34, .55); line-height: 1.45; margin-top: 2px; }
+
+/* Target-review sentence: the one flowing, human sentence CLAUDE.md's
+   number-display rule prefers over a stat grid. Every value inside is a
+   template slot filled from the real POST /api/targets response in
+   onboarding.js -- never computed here. */
+/* On the shared type scale (--text-lead), not its own. This was
+   clamp(18px,3.4vw,22px)/1.55 while every other step's description was
+   15px/1.6 — the same editorial role rendered up to 7px apart depending on
+   which step you happened to be on. Still serif and still the largest body
+   text in the flow, but a defined step above --text-body rather than an
+   independent ramp. */
+.ob-target-sentence { font-family: var(--serif); font-size: var(--text-lead); line-height: 1.6; color: var(--ink); max-width: 46ch; margin: 0 0 22px; text-wrap: pretty; }
+/* Weight, not colour. These spans were amber, which made a number in a
+   sentence look like the stepper's current-step marker. Emphasis inside prose
+   is a typographic job. */
+.ob-target-sentence .accent { color: var(--ink); font-weight: 600; }
+
+/* A disclosed-warning callout, visually akin to .ob-decline but informational
+   rather than a decline -- reuses --cream-sink/--rule, not a new surface. */
+.ob-callout { background: var(--cream-sink); border: 1px solid rgba(43, 38, 34, .1); border-radius: 14px; padding: 16px 18px; margin: 0 0 22px; }
+.ob-callout-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; color: var(--green); }
+.ob-callout-list { display: flex; flex-direction: column; gap: 8px; }
+.ob-callout-item { display: flex; align-items: flex-start; gap: 9px; font-size: 13.5px; line-height: 1.5; color: rgba(43, 38, 34, .72); }
+.ob-callout-item .dot { flex: none; margin-top: 6px; width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
+
+/* Account hinge (step 6): a tab switch between create/sign-in, inline
+   fields (reusing the modal's field CSS above), no popup -- this step
+   replaces the auth modal on this page entirely. */
+/* The tab TRACK is a recessed groove, not a control surface — the two tabs
+   inside it are the controls, and the selected one lifts to --surface. This is
+   the one place a tinted fill sits under something interactive, and it is
+   doing the "these two belong to one switch" job, not the "this is selected"
+   job. */
+.ob-account-tabs { display: flex; gap: 8px; margin-bottom: 22px; background: rgba(43, 38, 34, .05); border-radius: 999px; padding: 5px; }
+.ob-account-tab { flex: 1; min-width: 0; padding: 11px 0; border-radius: 999px; cursor: pointer; font-size: 14px; font-weight: 600; border: none; background: transparent; color: rgba(43, 38, 34, .55); transition: all .25s; }
+.ob-account-tab.is-selected { background: var(--surface); color: var(--ink); box-shadow: 0 1px 4px rgba(43, 38, 34, .12); }
+.ob-account-note { font-size: 12px; line-height: 1.55; color: rgba(43, 38, 34, .45); margin: 16px 0 0; }
+
+/* Signed-in branch of step 6. A session already exists, so there is nothing
+   to create and nothing to sign into — the step's only remaining job is
+   confirming what is about to be saved and against which account. */
+.ob-account-confirm { background: var(--surface-panel); border: 1px solid var(--rule); border-radius: 16px; padding: clamp(20px, 3vw, 26px); }
+.ob-account-confirm-head { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; color: var(--green); }
+.ob-account-confirm p { font-size: var(--text-body); line-height: 1.6; color: rgba(43, 38, 34, .72); margin: 0 0 6px; }
+.ob-account-confirm .who { font-weight: 600; color: var(--ink); }
 
 .ob-optional { font-style: normal; font-weight: 400; color: rgba(43, 38, 34, .45); }
-.ob-field-note { font-size: 12.5px; line-height: 1.55; color: rgba(43, 38, 34, .5); margin: 4px 0 0; max-width: 52ch; }
+.ob-field-note { font-size: var(--text-note); line-height: 1.55; color: rgba(43, 38, 34, .5); margin: 4px 0 0; max-width: 52ch; }
 .ob-check-standalone { margin: 4px 0 14px; }
 
+/* Caption above a group of controls ("Overall activity level", "Diet
+   pattern", …). Was inline-styled at each site, which is how the two headings
+   on step 2 ended up ~6px out of vertical alignment: one sat in a plain span
+   and the other in a flex row with a value readout, so their margins resolved
+   differently. One class, one margin, one line-height — they share a row
+   because they are the same element. */
+.ob-group-lbl {
+  display: block; margin: 0 0 12px;
+  font-size: var(--text-label); font-weight: 600; line-height: 1.3;
+  color: rgba(43, 38, 34, .6);
+}
+.ob-group-lbl-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+/* Tabular so the readout does not shift the label when it changes width. It
+   renders empty until a day count is chosen — it used to render a lone "—",
+   which looked like a broken value binding stranded at the right of the row
+   rather than an unset optional field. */
+.ob-group-val { font-family: var(--serif); font-size: 18px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* ---------- quality floor: focus, required, error ---------- */
+
+/* :focus-visible, so a ring appears for keyboard users without outlining
+   everything a mouse touches. Applied to the wizard's own controls AND to the
+   bare-text ones that had no container at all until this change (the stepper
+   is not focusable; Back now is a real button with a real hit area). */
+.ob-selectable:has(input:focus-visible),
+.ob-input-unit:focus-within,
+.ob-account-tab:focus-visible,
+.ob-account-submit:focus-visible,
+.ob-nav-next:focus-visible,
+.ob-nav-back:focus-visible,
+.ob-sources summary:focus-visible,
+/* Specificity, not redundancy: `.modal label input, .ob-account-fields label
+   input` sets outline:none at (0,1,2), which outranks a bare
+   `input:focus-visible` at (0,1,1) — so step 6's email and password fields
+   were the two focusable elements in the flow with no ring. Measured. */
+.ob-account-fields label input:focus-visible,
+.btn:focus-visible,
+input:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+/* The native control inside a selectable already shows the ring on its
+   wrapper, so suppress the doubled inner one. */
+.ob-selectable input:focus-visible { outline: none; }
+
+/* Required/error state. Neither step 1 nor step 6 had one: step 1 raised a
+   window.alert (which names no field and vanishes), step 6 showed a single
+   message above the button with nothing marking which input was wrong. */
+.ob-invalid .ob-input-unit,
+.ob-invalid input { border-color: var(--error) !important; }
+.ob-field-error { display: block; font-size: 12px; line-height: 1.45; color: var(--error); margin-top: 6px; font-weight: 500; }
+.ob-field-error[hidden] { display: none; }
+
+/* ---------- THE ONE SELECTED TREATMENT ----------
+   Every selectable control in the wizard — goal cards, activity cards,
+   condition cards, diet pills, region pills, day buttons, the resistance
+   toggle — is an .ob-selectable, and there is exactly one visual definition
+   of "chosen": --accent-selected fill, --border-selected 1.5px border, and
+   the native control indicator filled via accent-color. The three previous
+   dialects (tint-on-tan card, tint-on-white pill, solid green with white
+   text on the day buttons) are gone.
+
+   Two selectors, one declaration block, because the two ways a control can be
+   chosen are not interchangeable: native radio/checkbox controls report it
+   through :has(input:checked) with no JS at all, while the day picker and the
+   resistance toggle have no native equivalent and are driven by .is-selected
+   from onboarding.js. Deliberately NOT two treatments — a grep for the state
+   returns one class name and one rule. */
+.ob-selectable {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  cursor: pointer;
+  transition: border-color .25s, background .25s;
+}
+.ob-selectable:has(input:checked),
+.ob-selectable.is-selected {
+  background: var(--accent-selected);
+  border-color: var(--border-selected);
+}
+
 .ob-goal-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
-.ob-goal-card { position: relative; display: block; background: var(--cream-sink); border: 1.5px solid rgba(43, 38, 34, .12); border-radius: 14px; padding: 16px; cursor: pointer; transition: border-color .25s, background .25s; }
-.ob-goal-card input { position: absolute; top: 14px; right: 14px; accent-color: var(--green); width: 16px; height: 16px; }
-.ob-goal-card:has(input:checked) { border-color: var(--green); background: rgba(58, 90, 64, .07); }
+/* Longer-copy card lists (activity level, clinical flags) read better as one
+   column than auto-fit's multi-column grid -- same card component, a layout
+   modifier, not a new one. */
+.ob-goal-row.is-stacked { grid-template-columns: 1fr; gap: 9px; }
+/* A fixed 3-across row, for card groups that have exactly three members
+   (goal, clinical conditions). auto-fit was resolving these to 2 columns in
+   the control column's width, leaving a three-item grid with an empty fourth
+   cell — a hole where a reader expects a card. */
+.ob-goal-row.is-three { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 700px) {
+  .ob-goal-row.is-three { grid-template-columns: 1fr; }
+}
+/* Indicator on the LEFT, on every selection control in the flow. It used to
+   be left-inside the pill on steps 1 and 4 but absolutely positioned at the
+   top-RIGHT on the cards in steps 2, 3 and 4, so the eye had to look in a
+   different place for the same information depending on the step. Left, in
+   the reading direction, matching the pills that already did it. */
+.ob-goal-card { position: relative; display: block; border-radius: 14px; padding: 16px 16px 16px 44px; }
+.ob-goal-card input { position: absolute; top: 17px; left: 16px; accent-color: var(--green); width: 16px; height: 16px; }
 .ob-goal-t { display: block; font-family: var(--serif); font-size: 16.5px; color: var(--ink); margin-bottom: 6px; }
-.ob-goal-d { display: block; font-size: 12.5px; line-height: 1.5; color: rgba(43, 38, 34, .6); padding-right: 20px; }
+/* Denser card titles (activity levels, clinical conditions) — a modifier, not
+   an inline style repeated on ten elements as it was before. */
+.ob-goal-t.is-compact { font-family: var(--sans); font-size: 14.5px; font-weight: 600; }
+.ob-goal-d { display: block; font-size: var(--text-note); line-height: 1.5; color: rgba(43, 38, 34, .6); }
 
 .ob-plate-row { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--rule); margin-bottom: 4px; }
 .ob-plate-picker { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 6px; }
-.ob-plate-opt { display: flex; align-items: center; gap: 7px; background: var(--cream-sink); border: 1.5px solid rgba(43, 38, 34, .12); border-radius: 999px; padding: 8px 14px; font-size: 13px; color: var(--ink); cursor: pointer; transition: border-color .25s, background .25s; }
-.ob-plate-opt:has(input:checked) { border-color: var(--green); background: rgba(58, 90, 64, .09); color: var(--green); font-weight: 600; }
+/* Pills carry .ob-selectable for their surface and selected state; only the
+   pill-specific geometry lives here. The selected pill gains weight and the
+   green text colour on top of the shared fill — it does NOT get a different
+   fill, which is what the solid dark-green-with-white-text diet pill used to
+   do. That treatment read as a button rather than a choice and was heavier
+   than every other selected state in the flow. */
+.ob-plate-opt { display: flex; align-items: center; gap: 7px; border-radius: 999px; padding: 8px 14px; font-size: 13px; color: var(--ink); }
+.ob-plate-opt:has(input:checked) { color: var(--green); font-weight: 600; }
 .ob-plate-opt input { accent-color: var(--green); width: 14px; height: 14px; }
 
 .ob-loading { font-size: 13.5px; color: rgba(43, 38, 34, .5); padding: 18px 0; }
@@ -517,9 +1005,37 @@ section.no-rule { border-top: none; }
 
 .ob-science-scope { font-size: 12.5px; line-height: 1.55; color: rgba(43, 38, 34, .55); font-style: italic; margin: 12px 0 10px; }
 
-.ob-nav { display: flex; align-items: center; gap: 14px; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--rule); }
-.ob-nav-next { margin-left: auto; padding: 11px 22px; font-size: 14.5px; }
-.ob-nav-back { padding-left: 0; }
+/* Sticky bottom action bar, rendered once by the shell rather than per step.
+
+   The background is now the flat page token, and the backdrop-filter is gone.
+   That blur was the cause of the "pinkish stripe" (~#FBF0EE against a #FAF6EC
+   page): #kolam is a fixed background layer of amber dots, and blurring it
+   through a 94%-opaque cream panel averaged those dots into the panel as a
+   warm cast. A band four units off the page colour reads as a rendering
+   artifact rather than a decision, so the band is now exactly the page colour
+   and a single hairline does the separating. Identical on all six steps —
+   there is one .ob-nav in the document, outside the step fieldsets. */
+.ob-nav {
+  display: flex; align-items: center; gap: 14px;
+  position: sticky; bottom: 0; z-index: 20;
+  margin-top: clamp(16px, 2vw, 22px); padding: 14px 0;
+  background: var(--surface-page);
+  border-top: 1px solid var(--rule);
+}
+/* Back and Continue share one geometry: same height, padding and radius, so
+   they read as one control family at two emphasis levels. Back was bare text
+   with no container and no hit area of its own. */
+.ob-nav-next,
+.ob-nav-back { padding: 13px 24px; border-radius: 999px; font-size: 15px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
+/* An explicit display value beats the `hidden` attribute's UA `display:none`,
+   so the buttons the nav hides per step (Back on step 1, Continue on step 6)
+   kept rendering. Restore it for both. */
+.ob-nav-next[hidden],
+.ob-nav-back[hidden] { display: none; }
+.ob-nav-next { margin-left: auto; }
+.ob-nav-next:not(:disabled):hover { transform: translateY(-1px); }
+.ob-nav-back { background: transparent; border: 1px solid rgba(43, 38, 34, .2); color: var(--ink); }
+.ob-nav-back:hover { border-color: var(--green); color: var(--green); }
 .ob-nav-restart { margin-left: auto; }
 
 .ob-plan-meals { margin-top: 4px; }
@@ -544,15 +1060,78 @@ section.no-rule { border-top: none; }
 .ob-decline-violations li .locked-tag { display: inline-block; margin-left: 6px; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--terracotta); background: rgba(193, 105, 79, .12); border-radius: 999px; padding: 2px 8px; }
 .ob-decline-disclosure { font-size: 13px; line-height: 1.6; color: rgba(43, 38, 34, .62); font-style: italic; margin: 0; }
 
+/* Decline state, two columns -- ported from Arusuvai Dashboard.dc.html:
+   the disclosed violations sit beside a static "what you can do" list
+   (generic guidance copy, not a computed number, so it's safe to hardcode)
+   rather than one long stacked column. */
+.ob-decline-grid { display: grid; grid-template-columns: 1fr; gap: clamp(16px, 2.2vw, 24px); align-items: start; margin: 0 0 18px; }
+@media (min-width: 640px) {
+  .ob-decline-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+}
+.ob-paths { display: flex; flex-direction: column; gap: 12px; }
+.ob-path-item { display: flex; align-items: flex-start; gap: 13px; min-width: 0; }
+.ob-path-num { flex: none; margin-top: 1px; width: 24px; height: 24px; border-radius: 50%; background: rgba(58, 90, 64, .1); color: var(--green); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; }
+.ob-path-text { font-size: 14.5px; line-height: 1.55; color: rgba(43, 38, 34, .72); min-width: 0; }
+
+/* ---------- responsive layout: use width, don't just centre ---------- */
+
+/* Stacked card lists (activity level, goal, clinical flags) are a single
+   column on phones for readability; once there's real horizontal room they
+   fan into a self-fitting multi-column grid so the step reads as one glance
+   instead of a long scroll. Same card component, a layout modifier only. */
+@media (min-width: 680px) {
+  .ob-goal-row.is-stacked { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+}
+
+/* Target review (step 5). This step used to opt out of the wizard's two-column
+   pattern entirely and run its own numbers|sources split at its own measure,
+   which is why its stepper and its content both landed at a different X and Y
+   from every other step. It now renders into .ob-grid12 like the rest:
+   narrative in columns 1-4, and the numbers plus the citation panel stacked
+   inside the control column, 6-12.
+
+   Deviation from the brief, stated rather than buried: the brief asked for
+   cols 1-5 and 7-12 for this one step. That would put step 5's second column
+   at a different origin from every other step's control column, which
+   contradicts both "no step overrides the span" and acceptance check 2 (one
+   control-column left edge across all six). Same grid, no exception, was the
+   reading that satisfies both; the citation panel gains width by sitting
+   under the numbers in the control column rather than beside them. */
+.ob-review-main { min-width: 0; }
+.ob-review-side { min-width: 0; margin-top: clamp(24px, 3vw, 34px); }
+/* No inner scrollbar. The panel used to cap at 260-360px and scroll inside a
+   page that also scrolls — on the one step whose entire purpose is showing
+   sources, the sources were behind a nested scroll most people never find.
+   The panel expands to its content and the page scrolls, which is the only
+   scroll on the screen. */
+.ob-review-side .ob-sources { margin-top: 0; padding: 18px 20px; border-top: none; background: var(--surface-panel); border: 1px solid var(--rule); border-radius: 16px; }
+.ob-review-side .ob-sources-list { max-height: none; overflow: visible; }
+/* Above ~1100px the control column is wide enough to run the citation rows
+   two-up rather than as one long ladder — the page still scrolls, the panel
+   still never does. */
+@media (min-width: 1100px) {
+  .ob-review-side .ob-sources-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 22px; }
+}
+
+/* Dashboard plan view: the solved plate's components on one side, its summary
+   sentence, totals and actions alongside — the same use-the-width move as the
+   landing page's traditions grid, honest to the one-plate-per-call engine
+   (there is only ever one plate, so this is plate | summary, not a fabricated
+   multi-meal day). Stacks on phones. */
+.dash-plan-grid { display: grid; grid-template-columns: 1fr; gap: clamp(20px, 3vw, 30px); align-items: start; margin-top: clamp(20px, 3vw, 28px); }
+.dash-plan-grid .meal-grid { margin-top: 0; }
+.dash-plan-side .ob-target-sentence { margin-top: 0; }
+@media (min-width: 720px) {
+  .dash-plan-grid { grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.92fr); gap: clamp(24px, 3vw, 44px); }
+  .dash-plan-side { position: sticky; top: 88px; }
+}
+
 /* ---------- responsive ---------- */
 @media (max-width: 560px) {
   .nav { gap: 12px; }
   .nav a.hide-sm { display: none; }
   .calc-dock { top: auto; bottom: 16px; transform: none; }
-  .ob-progress { gap: 6px; }
-  .ob-progress-step { padding: 6px 10px 6px 6px; font-size: 0; }
-  .ob-progress-step .n { width: 22px; height: 22px; font-size: 11.5px; }
-  .ob-progress-step .t { display: none; }
+  .ob-progress2-label { font-size: 9px; }
   .ob-wizard-card { padding: 20px; }
   .ob-nav { flex-wrap: wrap; }
   .ob-nav-next { width: 100%; margin-left: 0; order: 1; padding: 13px; }

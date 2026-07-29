@@ -9,6 +9,8 @@ and serialises the result. No number is computed here.
 from __future__ import annotations
 
 import os
+import secrets
+import warnings
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -67,14 +69,48 @@ app.add_middleware(
 # Signed session cookie (Tier B auth): starlette's SessionMiddleware, backed by
 # itsdangerous, not a heavier session framework or server-side session store —
 # the cookie itself carries the (signed, not encrypted) session dict, so there
-# is nothing to look up per request beyond `request.session`. The secret is a
-# real environment variable in any deployment that matters; the fallback here
-# is a fixed, publicly-visible dev value, which is exactly as safe as no
-# secret at all and is fine for a portfolio project run locally — stated
-# plainly rather than dressed up as production-ready.
+# is nothing to look up per request beyond `request.session`.
+#
+# secret_key: read from FOODAI_SESSION_SECRET in any deployment that sets it.
+# An earlier version of this fell back to a fixed string CHECKED INTO SOURCE
+# ("dev-only-insecure-secret-do-not-deploy") when the env var was unset — that
+# is a real vulnerability, not a style nitpick, regardless of how the fallback
+# was named: anyone who reads this file (which is public) could forge a valid
+# session cookie for any user against a deployment that never set the env var.
+# The fallback now generates a random secret with `secrets.token_hex` at
+# process startup instead, which closes that hole at the cost of a real,
+# disclosed tradeoff: every session invalidates on process restart, and
+# running this API as multiple worker processes without setting the env var
+# would give each worker a DIFFERENT random secret, so a session minted by one
+# worker would fail to validate on another. `FOODAI_SESSION_SECRET` must be
+# set for any deployment where either of those matters — see
+# docs/methodology.md, "Accounts and persistence: scope".
+_session_secret = os.environ.get("FOODAI_SESSION_SECRET")
+if _session_secret is None:
+    _session_secret = secrets.token_hex(32)
+    warnings.warn(
+        "FOODAI_SESSION_SECRET is not set. Using a random secret generated for "
+        "this process only: existing sessions will stop validating on restart, "
+        "and running multiple worker processes without this env var set will "
+        "make their sessions mutually invalid. Fine for local, single-process "
+        "dev; set FOODAI_SESSION_SECRET explicitly for anything else.",
+        stacklevel=1,
+    )
+
+# same_site="lax", set deliberately, not left at whatever starlette defaults
+# to: the real CSRF threat model here is a third-party site (attacker.com)
+# submitting a state-changing request (POST /api/profile, POST /api/auth/
+# logout) using a signed-in user's cookie. SameSite=Lax blocks the cookie on
+# exactly that cross-SITE, non-GET request. It does NOT block the cookie
+# between :3000 and :8000 -- browsers classify same-site by registrable
+# domain, not port, so both localhost ports are "same-site" to each other --
+# but that's the legitimate case this app's own frontend needs, not a hole:
+# every state-changing endpoint here is POST/PUT, never GET, so there is no
+# safe-method cross-site request that leaks state. https_only=False because
+# local dev runs over plain HTTP; a real deployment over HTTPS should set it.
 app.add_middleware(
     SessionMiddleware,
-    secret_key=os.environ.get("FOODAI_SESSION_SECRET", "dev-only-insecure-secret-do-not-deploy"),
+    secret_key=_session_secret,
     session_cookie="foodai_session",
     same_site="lax",
     https_only=False,

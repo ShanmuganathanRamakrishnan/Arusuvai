@@ -479,7 +479,15 @@ PROJECT_DECISION = register_evidence(
             "no physical process; a data-quality threshold or policy value "
             "decided by the authors"
         ),
-        source="CLAUDE.md and BUILD_PROMPTS.md.",
+        # Named by role, not by filename. This Evidence's `source` is rendered
+        # verbatim to end users in the onboarding flow's citation panel
+        # (GET /api/science), where two repo filenames identified nothing a
+        # reader outside the codebase could open or check. The provenance
+        # claim is unchanged and no less specific: this constant's authority
+        # is a decision recorded in the project's own design documents, which
+        # is exactly what Grade.PROJECT_DECISION already asserts. Nothing
+        # numeric, no grade and no verified flag was touched.
+        source="This project's own design documents.",
         doi=None,
         grade=Grade.PROJECT_DECISION,
         verified=False,

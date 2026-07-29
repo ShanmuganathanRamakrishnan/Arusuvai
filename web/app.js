@@ -192,39 +192,57 @@
     });
   }
 
-  /* ---------------- auth modal ---------------- */
+  /* ---------------- auth modal — real, wired to /api/auth/* via auth.js ---------------- */
+  //
+  // Was decorative (paint()-only, onsubmit="return false", no backend call).
+  // Now uses the same ArusuvaiAuth.initAuthModal() that onboarding.html and
+  // dashboard.html use (web/auth.js), so there is one signup/login/session
+  // implementation, not three. The landing page collects no profile, so a
+  // signup here never attaches one -- the "correct sequence" below is what
+  // decides where a signed-in visitor lands.
   function startAuth() {
     var overlay = document.getElementById('authOverlay');
+    if (!overlay || !window.ArusuvaiAuth) return;
+
     var openSignin = document.getElementById('btnSignin');
     var openSignup = document.getElementById('btnSignup');
-    var closeBtn = document.getElementById('authClose');
-    var titleEl = document.getElementById('authTitle');
-    var subEl = document.getElementById('authSub');
-    var ctaEl = document.getElementById('authCta');
-    var nameField = document.getElementById('authNameField');
-    var switchLabel = document.getElementById('authSwitchLabel');
-    var switchBtn = document.getElementById('authSwitch');
-    if (!overlay) return;
-    var mode = 'signin';
+    var dashboardBtn = document.getElementById('btnDashboard');
+    var logoutBtn = document.getElementById('btnLogout');
+    var emailLabel = document.getElementById('navUserEmail');
 
-    var paint = function () {
-      var signup = mode === 'signup';
-      titleEl.textContent = signup ? 'Create your account' : 'Welcome back';
-      subEl.textContent = signup ? 'Start planning meals balanced for your body.' : 'Sign in to pick up your plan where you left off.';
-      ctaEl.textContent = signup ? 'Create account' : 'Sign in';
-      switchLabel.textContent = signup ? 'Already have an account?' : 'New to Arusuvai?';
-      switchBtn.textContent = signup ? 'Sign in' : 'Create an account';
-      nameField.hidden = !signup;
-    };
-    var open = function (m) { mode = m; paint(); overlay.hidden = false; };
-    var close = function () { overlay.hidden = true; };
+    function renderSignedIn(user) {
+      openSignin.hidden = !!user;
+      openSignup.hidden = !!user;
+      dashboardBtn.hidden = !user;
+      logoutBtn.hidden = !user;
+      emailLabel.hidden = !user;
+      emailLabel.textContent = user ? user.email : '';
+    }
 
-    if (openSignin) openSignin.addEventListener('click', function () { open('signin'); });
-    if (openSignup) openSignup.addEventListener('click', function () { open('signup'); });
-    if (closeBtn) closeBtn.addEventListener('click', close);
-    switchBtn.addEventListener('click', function () { mode = mode === 'signup' ? 'signin' : 'signup'; paint(); });
-    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !overlay.hidden) close(); });
+    // Correct sequence, not "always go to the same place":
+    //   - a fresh signup has no profile yet -> onboarding.html (the five
+    //     steps that don't need an account, then the save hinge that already
+    //     has one).
+    //   - a returning sign-in with a saved profile -> dashboard.html, skip
+    //     onboarding entirely.
+    //   - a returning sign-in with NO saved profile (account exists,
+    //     onboarding was never finished) -> onboarding.html, same as a fresh
+    //     signup, rather than a dashboard that has nothing to show.
+    var modal = window.ArusuvaiAuth.initAuthModal({
+      onAuthed: function (data) {
+        window.location.href = data.profile ? 'dashboard.html' : 'onboarding.html';
+      },
+    });
+
+    if (openSignin) openSignin.addEventListener('click', function () { modal.open('signin'); });
+    if (openSignup) openSignup.addEventListener('click', function () { modal.open('signup'); });
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', function () {
+        window.ArusuvaiAuth.logout().then(function () { renderSignedIn(null); });
+      });
+    }
+
+    window.ArusuvaiAuth.me().then(renderSignedIn).catch(function () { renderSignedIn(null); });
   }
 
   /* ---------------- early-access form (demo, no backend) ---------------- */
