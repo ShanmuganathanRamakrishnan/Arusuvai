@@ -157,3 +157,66 @@ class TestRetentionModuleHoldsNoNumbers:
         # Stated as a test so that flipping a flag without opening a document
         # breaks something visible rather than passing quietly.
         assert len(retention.unverified_processes()) == len(retention.PROCESSES)
+
+
+# --------------------------------------------------------------------------
+# Reader-facing fields may not name an evidence id (added 2026-07-30).
+#
+# `project_protein_target_policy.source` read "This project's decision,
+# anchored on morton_2018_protein." — a registry key inside a sentence
+# addressed to a user, served verbatim by GET /api/science and printed by
+# web/onboarding.js. The browser sweep in tests/test_web_no_identifiers.py
+# catches it at the far end; these catch it at the near end, where the fix is.
+# --------------------------------------------------------------------------
+
+
+def test_no_rendered_field_names_an_evidence_id():
+    for ev in citations.all_evidence():
+        for field_name in citations.RENDERED_FIELDS:
+            text = getattr(ev, field_name)
+            named = [i for i in {e.id for e in citations.all_evidence()} if i in text]
+            assert not named, (
+                f"Evidence {ev.id!r} field {field_name!r} names {named} — this "
+                "field is rendered to the reader. Cite it as {other_id} and let "
+                "register_evidence substitute that entry's display_ref."
+            )
+
+
+def test_cross_reference_slots_resolve_to_a_display_label():
+    """The Morton reference specifically, end to end."""
+    policy = citations.evidence("project_protein_target_policy")
+    assert "morton_2018_protein" not in policy.source
+    assert citations.evidence("morton_2018_protein").display_ref in policy.source
+
+
+def test_registering_an_id_in_prose_is_rejected():
+    """Perturbation, per CLAUDE.md's round-4 addendum.
+
+    A rule that is merely stated is not a rule. Feed the registry the exact
+    string that shipped and assert it now refuses it, rather than asserting
+    that today's registry happens to be clean.
+    """
+    bad = citations.Evidence(
+        id="test_only_leak_probe",
+        summary="probe",
+        phenomenon="probe",
+        source="This project's decision, anchored on morton_2018_protein.",
+        grade=citations.Grade.PROJECT_DECISION,
+    )
+    with pytest.raises(ValueError, match="raw evidence id"):
+        citations.register_evidence(bad)
+
+
+def test_a_slot_citing_an_entry_without_a_label_is_rejected():
+    """display_ref is not optional the moment someone cites you."""
+    unlabelled = citations.evidence("iom_dri_2005")
+    assert not unlabelled.display_ref, "fixture assumption changed; pick another entry"
+    bad = citations.Evidence(
+        id="test_only_slot_probe",
+        summary="probe",
+        phenomenon="probe",
+        source="Anchored on {iom_dri_2005}.",
+        grade=citations.Grade.PROJECT_DECISION,
+    )
+    with pytest.raises(ValueError, match="no display_ref"):
+        citations.register_evidence(bad)

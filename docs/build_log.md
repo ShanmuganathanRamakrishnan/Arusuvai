@@ -93,3 +93,35 @@ increment explicitly did not build (no email verification, no password
 reset, no OAuth, nothing commerce-shaped) as a named limit. Transcript in the
 same session, re-derived after the last edit: `python -m pytest tests/ -q` ->
 `256 passed in 82.20s`.
+
+Updated 2026-07-30 for the "UI correction" P0 closeout — the round where the
+fix stopped being another label map. `morton_2018_protein` reached the citation
+panel inside a sentence, the third escape of the identifier-in-copy class after
+two closures, each closure verified by grepping for the string it had just
+fixed. That method cannot work: the failing string is by construction the one
+nobody thought to grep for. So: `core/nutrition/citations.py` gained
+`Evidence.display_ref` and `RENDERED_FIELDS`, and `register_evidence` now
+resolves `{other_evidence_id}` slots and REJECTS a raw evidence id left in any
+reader-facing field (`tests/test_citations.py` feeds it the exact string that
+shipped and asserts the refusal, rather than asserting today's registry happens
+to be clean). `tests/test_web_no_identifiers.py` (new) walks the rendered DOM
+of all nine reachable views and fails on any `snake_case`/`SCREAMING_CASE`
+token, allowlist empty; its failure was demonstrated by restoring the round-2
+`chronic_kidney_disease` leak — `3 failed, 8 passed in 15.29s` — and then
+restoring the fix. Applying the "which fields may fall through to `_`->space"
+rule found three more raw-value fallbacks in `web/dashboard.js` (`plateLabel`'s
+region/meal-slot pair and the success sentence's diet/goal) and fixed them;
+evidence grade now falls through to `Ungraded`, never to prettified prose,
+because an unrecognised grade rendered as sentence case is indistinguishable
+from a real one. Measurement, no code change: the control column starts at
+x=714 on all six wizard steps AND the plate picker at 1600x950 (it was ~1037 /
+845 / 975 / 866 / 893 before the `.ob-grid12` refactor), now asserted by
+`test_plate_picker_control_column_matches_the_wizard`. The P1 report's apparent
+contradiction is resolved: at 390px nothing scrolls on any route
+(`scrollWidth == clientWidth == 390`) AND `.calc-card` still overflows to
+x=658 — both true, because `body { overflow-x: clip }` means a scroll check can
+never detect an element hanging off the edge; both facts are now pinned
+separately so neither can be quoted as settling the other. `web/onboarding.html`'s
+brand is a link, the deliberate single exception to a wizard header that renders
+no nav. Transcript in the same session, re-derived after the last edit:
+`python -m pytest tests/ -q` -> `289 passed, 1 warning in 80.48s (0:01:20)`.

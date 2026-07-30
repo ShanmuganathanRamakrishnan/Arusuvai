@@ -473,6 +473,17 @@
     project_decision: "Project decision",
   };
 
+  // An unrecognised grade renders "Ungraded", NOT prettified prose. This is
+  // the one place the dashboard's humanise() fallback would be wrong: a grade
+  // added to core.nutrition.citations.Grade after this file was written would
+  // come out of "_"->space as e.g. "Secondary compilation" — sentence case,
+  // plausible, sitting in the same slot as "Primary measurement", and
+  // asserting an evidence strength this file has no basis to assert. Falling
+  // back to a label that is visibly weaker than every real grade is the only
+  // safe direction to be wrong in. See dashboard.js, above humanise(), for
+  // which fields may take the prettifying fallback and which may not.
+  const gradeLabel = (g) => GRADE_LABELS[g] || "Ungraded";
+
   function renderScience(data) {
     scienceScopeEl.textContent = data.scope_statement;
     scienceListEl.innerHTML = "";
@@ -484,7 +495,7 @@
       const doi = e.doi ? ` · DOI ${e.doi}` : "";
       row.innerHTML =
         `<span class="k">${e.summary}</span> — measures: ${e.phenomenon}. ${e.source} ` +
-        `(${GRADE_LABELS[e.grade] || e.grade.replace(/_/g, " ")}, ` +
+        `(${gradeLabel(e.grade)}, ` +
         `<span class="${verifiedCls}">${verifiedTxt}</span>)${doi}`;
       scienceListEl.appendChild(row);
     }

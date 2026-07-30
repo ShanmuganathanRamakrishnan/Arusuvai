@@ -61,6 +61,19 @@
   // this file was written: "some_new_flag" -> "Some new flag". Not a licence
   // to skip the map above -- it cannot produce a real display name, only stop
   // an identifier reaching the screen looking like an identifier.
+  //
+  // WHICH FIELDS MAY FALL THROUGH TO THIS, AND WHICH MAY NOT.
+  // Eligible: diet, goal, clinical flag, region, meal slot. Every one of these
+  // is a value the USER chose and can already read back; prettifying an
+  // unrecognised one restates their own input in worse words, and restating it
+  // wrongly is a cosmetic failure.
+  // Not eligible: anything that states how much to TRUST a number -- evidence
+  // grade, verification status, claim strength. There, humanise() is actively
+  // harmful: "Some new grade" is typographically indistinguishable from
+  // "Primary measurement", so an unrecognised value would render as a
+  // confident-looking claim this code cannot actually vouch for. Those fall
+  // through to an explicitly cautious label instead (onboarding.js's
+  // GRADE_LABELS -> "Ungraded"), never to prettified prose.
   const humanise = (v) => {
     const s = String(v).replace(/_/g, " ");
     return s.charAt(0).toUpperCase() + s.slice(1);
@@ -265,7 +278,13 @@
   }
 
   function plateLabel(plate) {
-    return PLATE_LABELS[`${plate.region}:${plate.meal_slot}`] || `${plate.region} · ${plate.meal_slot}`;
+    // Both halves go through humanise(): a region or meal slot added to
+    // core/schemas after this map was written would otherwise reach the
+    // eyebrow as "south_indian · breakfast".
+    return (
+      PLATE_LABELS[`${plate.region}:${plate.meal_slot}`] ||
+      `${humanise(plate.region)} · ${humanise(plate.meal_slot).toLowerCase()}`
+    );
   }
 
   function renderPlanSuccess(data, plate) {
@@ -276,7 +295,7 @@
 
     const est = data.estimate;
     document.getElementById("obSuccessSentence").innerHTML = est
-      ? `${DIET_LABELS[profile.diet] || profile.diet} components tuned to your ${(GOAL_LABELS[profile.goal] || profile.goal).toLowerCase()} target — about ` +
+      ? `${DIET_LABELS[profile.diet] || humanise(profile.diet)} components tuned to your ${(GOAL_LABELS[profile.goal] || humanise(profile.goal)).toLowerCase()} target — about ` +
         `<span class="accent">${fmtKcal(est.energy_kcal)} kcal</span> with <span class="accent">${fmtG(est.protein_g)} g protein</span>.`
       : `A validated combination of real components for this plate.`;
 

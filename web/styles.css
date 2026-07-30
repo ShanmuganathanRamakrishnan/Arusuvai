@@ -177,6 +177,15 @@ section.no-rule { border-top: none; }
 }
 .header-rule { height: 1px; background: rgba(43, 38, 34, .1); }
 .brand { display: flex; align-items: baseline; gap: 10px; }
+/* The brand is the only way out of the onboarding wizard for an anonymous
+   visitor: that state deliberately renders no nav items (web/header.js), so
+   without this the sole exit is the browser's back button. It carries no
+   colour of its own, so `a { color: var(--green) }` would tint the wordmark
+   on hover -- the affordance is a cursor and a slight fade, not a colour
+   change. .brand-ta/.brand-latin set their own colours, so opacity is the
+   one property that reaches both. */
+a.brand { cursor: pointer; transition: opacity .25s ease; }
+a.brand:hover { opacity: .62; }
 .brand-ta { font-family: var(--tamil); font-weight: 600; font-size: 22px; color: var(--ink); letter-spacing: .2px; }
 .brand-latin { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: rgba(43, 38, 34, .5); font-weight: 600; }
 /* One nav, for all three header states (see web/header.js). It replaces .nav

@@ -26,7 +26,8 @@ energy factors, macro AMDR, fibre, sodium) live at the end of this file.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, replace
 from enum import Enum
 
 
@@ -63,6 +64,14 @@ class Evidence:
     #: Only a human who has opened the source document may set this True.
     verified: bool = False
     note: str = ""
+    #: How this source is NAMED when another registry entry cites it in prose
+    #: — "Morton et al. (2018)", not ``morton_2018_protein``. ``id`` is a
+    #: lookup key and is not reader-facing; ``summary``/``phenomenon``/
+    #: ``source``/``note`` are all served to the browser by ``GET
+    #: /api/science`` and rendered verbatim. Write a cross-reference as a
+    #: ``{other_evidence_id}`` slot and let ``register_evidence`` substitute
+    #: that entry's label — see RENDERED_FIELDS and _resolve_refs.
+    display_ref: str = ""
 
     def __post_init__(self) -> None:
         if not self.phenomenon.strip():
@@ -120,9 +129,65 @@ _EVIDENCE: dict[str, Evidence] = {}
 _CONSTANTS: dict[str, Constant] = {}
 
 
+#: The Evidence fields that reach a human reader verbatim. ``GET /api/science``
+#: serialises all four and web/onboarding.js prints them into the "Why these
+#: numbers?" panel, so anything written into one of these is copy, not code.
+#: ``id``, by contrast, is a lookup key and must never appear in them — see
+#: _resolve_refs.
+RENDERED_FIELDS = ("summary", "phenomenon", "source", "note")
+
+_REF_SLOT = re.compile(r"\{([a-z0-9_]+)\}")
+
+
+def _resolve_refs(ev: Evidence) -> Evidence:
+    """Substitute ``{evidence_id}`` slots with the referenced entry's label.
+
+    An entry that cites another entry used to do it by writing the other's id
+    into its prose, which put ``morton_2018_protein`` on screen inside a
+    sentence otherwise addressed to a reader. Barring the id by convention did
+    not hold — it was reported closed three times — so the id is barred
+    structurally here instead: a cross-reference can only be written as a slot,
+    the slot can only resolve through the registry, and a raw id left in a
+    rendered field fails registration. The shape is deliberately the same one
+    CLAUDE.md mandates for LLM narration: prose from the author, the identifier
+    substituted by the layer that owns it.
+    """
+
+    patched: dict[str, str] = {}
+    for field_name in RENDERED_FIELDS:
+        text = getattr(ev, field_name)
+        for ref_id in _REF_SLOT.findall(text):
+            target = _EVIDENCE.get(ref_id)
+            if target is None:
+                raise ValueError(
+                    f"Evidence {ev.id!r} field {field_name!r} cites {ref_id!r}, "
+                    "which is not registered (register the cited entry first)"
+                )
+            if not target.display_ref:
+                raise ValueError(
+                    f"Evidence {ev.id!r} cites {ref_id!r}, which has no "
+                    "display_ref to render in its place"
+                )
+            text = text.replace("{" + ref_id + "}", target.display_ref)
+        # After substitution nothing reader-facing may still name an id. This
+        # catches the case the slot syntax cannot: an id simply typed into the
+        # sentence, which is exactly how every escape of this class happened.
+        for known_id in _EVIDENCE:
+            if known_id in text:
+                raise ValueError(
+                    f"Evidence {ev.id!r} field {field_name!r} contains the raw "
+                    f"evidence id {known_id!r}. This field is rendered to the "
+                    f"reader; cite it as {{{known_id}}} instead."
+                )
+        if text != getattr(ev, field_name):
+            patched[field_name] = text
+    return replace(ev, **patched) if patched else ev
+
+
 def register_evidence(ev: Evidence) -> Evidence:
     if ev.id in _EVIDENCE:
         raise ValueError(f"duplicate evidence id {ev.id!r}")
+    ev = _resolve_refs(ev)
     _EVIDENCE[ev.id] = ev
     return ev
 
@@ -327,8 +392,8 @@ IFCT_2017_ENERGY_FACTORS = register_evidence(
             "this tool's fetch size limit); the four-factor table above was "
             "read from the Sahu & Sahu machine-readable re-publication's "
             "energies/index.csv, cross-checked structurally against several "
-            "IFCT food-code rows in the same dataset (see the fibre discussion "
-            "on atwater.fibre_kcal_per_g). A human should confirm this table "
+            "IFCT food-code rows in the same dataset (see the fibre-energy "
+            "factor's own entry). A human should confirm this table "
             "against the primary PDF's own methodology section before flipping "
             "verified."
         ),
@@ -416,7 +481,8 @@ PROJECT_OIL_UPTAKE_ESTIMATE = register_evidence(
         verified=False,
         note=(
             "Searched for and deliberately rejected deep-fry absorption "
-            "literature; see REJECTED_CITATIONS. Oil uptake on a dosa varies "
+            "literature; the rejected sources are listed alongside this "
+            "registry. Oil uptake on a dosa varies "
             "with the cook and the pan, so the band here is wide and the "
             "estimate is on the high side rather than optimistic."
         ),
@@ -972,6 +1038,7 @@ MORTON_2018_PROTEIN = register_evidence(
         grade=Grade.PRIMARY_MEASUREMENT,
         doi="10.1136/bjsports-2017-097608",
         verified=False,
+        display_ref="Morton et al. (2018)",
         note=(
             "The 1.6 g/kg breakpoint is the maintenance/anchor figure. It is the "
             "same source the landing-page calculator cites; the paper has not "
@@ -1096,7 +1163,7 @@ PROJECT_PROTEIN_TARGET_POLICY = register_evidence(
             "phase, set above the Morton maintenance figure — direction supported "
             "by the deficit-protein literature, exact value a project decision"
         ),
-        source="This project's decision, anchored on morton_2018_protein.",
+        source="This project's decision, anchored on {morton_2018_protein}.",
         doi=None,
         grade=Grade.PROJECT_DECISION,
         verified=False,

@@ -446,3 +446,142 @@ def test_header_states_differ_by_route_and_session():
     assert authed_landing["ids"] == [
         "hdrDashboard", "hdrEditProfile", "hdrUserEmail", "hdrLogout",
     ]
+
+
+# --------------------------------------------------------------------------
+# The plate picker is the seventh view of the same grid (added 2026-07-30).
+#
+# ``test_control_column_shares_one_left_edge`` above proves the six wizard
+# steps agree with each other. It cannot prove the dashboard agrees with them,
+# because it never loads that route -- and the dashboard is where the original
+# defect was worst (its .wrap carried an inline 1040px). The container check
+# measures the wrap; this measures the CONTROL COLUMN inside it, which is the
+# number the original brief named: it landed at roughly 1037 / 845 / 975 /
+# 866 / 893 px across steps before the .ob-grid12 fix.
+#
+# The plate picker renders into .ob-grid12 too, so this ought to hold "by
+# construction" -- which is exactly the round-4 addendum's warning. Measure it.
+# --------------------------------------------------------------------------
+
+
+def test_plate_picker_control_column_matches_the_wizard(measurements):
+    """The dashboard's control column starts where the wizard's does."""
+    playwright = pytest.importorskip(
+        "playwright.sync_api",
+        reason="playwright is a dev-only dependency; see requirements-dev.txt",
+    )
+    if not _listening("localhost", 3000):
+        pytest.skip(f"no static server on {WEB_ORIGIN}")
+    if not _listening("localhost", 8000):
+        pytest.skip(f"no API on {API_ORIGIN}; the dashboard needs a session")
+
+    wizard_xs = {m["controls"]["x"] for m in measurements["steps"]}
+    assert len(wizard_xs) == 1, f"wizard control column already disagrees: {wizard_xs}"
+    wizard_x = wizard_xs.pop()
+
+    probe = """() => {
+      const g = document.querySelector('.ob-grid12');
+      const col = g && g.querySelector('.ob-col-controls');
+      const nar = g && g.querySelector('.ob-col-narrative');
+      if (!col) return null;
+      return { controlsX: Math.round(col.getBoundingClientRect().x),
+               narrativeX: Math.round(nar.getBoundingClientRect().x) };
+    }"""
+
+    email = "layout-platepicker@example.com"
+    with playwright.sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 1600, "height": 950})
+        page.goto(f"{WEB_ORIGIN}/index.html", wait_until="networkidle")
+        # A session AND a saved profile: without the profile the dashboard
+        # renders its "complete onboarding first" gate, which has no grid.
+        page.evaluate(
+            """async ([email, password]) => {
+              const j = {'Content-Type': 'application/json'};
+              let r = await fetch('http://localhost:8000/api/auth/signup', {method: 'POST',
+                credentials: 'include', headers: j, body: JSON.stringify({email, password})});
+              if (!r.ok) await fetch('http://localhost:8000/api/auth/login', {method: 'POST',
+                credentials: 'include', headers: j, body: JSON.stringify({email, password})});
+              await fetch('http://localhost:8000/api/profile', {method: 'PUT',
+                credentials: 'include', headers: j, body: JSON.stringify({
+                  age_years: 31, sex: 'male', weight_kg: 74, height_cm: 176,
+                  activity: 'moderate', goal: 'maintain', diet: 'vegetarian',
+                  clinical_flags: []})});
+            }""",
+            [email, "layout-pw-77213"],
+        )
+        page.goto(f"{WEB_ORIGIN}/dashboard.html", wait_until="networkidle")
+        page.wait_for_timeout(1200)
+        picker = page.evaluate(probe)
+        browser.close()
+
+    assert picker is not None, "no .ob-grid12 on the dashboard — is the gate still loading?"
+    assert picker["controlsX"] == wizard_x, (
+        "the plate picker's control column starts at "
+        f"x={picker['controlsX']} but the wizard's starts at x={wizard_x}. "
+        "One of the two routes is sizing its own column again."
+    )
+
+
+# --------------------------------------------------------------------------
+# Item 4's resolution, pinned (added 2026-07-30).
+#
+# The P1 report claimed "zero horizontal scroll at 390px" and, in the same
+# breath, listed .calc-card as overflowing at 390px. Both were true, and that
+# is the problem: `body { overflow-x: clip }` means NO amount of overflow can
+# ever produce a scrollbar, so "no horizontal scroll" is not evidence that
+# nothing overflows -- it is evidence that overflow is being hidden.
+#
+# Measured at 390px: .calc-card is 308px wide starting at x=350, i.e. its right
+# edge is at 658 against a 390px viewport, and its parent .calc-panel is 0px
+# wide with overflow-x: hidden. Roughly 40px of a 308px card is on screen.
+#
+# This test does not assert the card is fixed -- the landing page's calculator
+# dock is out of scope. It asserts the two facts SEPARATELY so neither can be
+# quoted as though it settled the other.
+# --------------------------------------------------------------------------
+
+
+def test_scroll_absence_at_390_is_not_evidence_of_fitting():
+    playwright = pytest.importorskip(
+        "playwright.sync_api",
+        reason="playwright is a dev-only dependency; see requirements-dev.txt",
+    )
+    if not _listening("localhost", 3000):
+        pytest.skip(f"no static server on {WEB_ORIGIN}")
+
+    probe = """() => {
+      const de = document.documentElement;
+      const card = document.querySelector('.calc-card');
+      const r = card && card.getBoundingClientRect();
+      return {
+        hScroll: de.scrollWidth > de.clientWidth,
+        clip: getComputedStyle(document.body).overflowX,
+        clientWidth: de.clientWidth,
+        cardRight: r ? Math.round(r.right) : null,
+      };
+    }"""
+
+    with playwright.sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 390, "height": 844})
+        page.goto(f"{WEB_ORIGIN}/index.html", wait_until="networkidle")
+        page.wait_for_timeout(900)
+        g = page.evaluate(probe)
+        browser.close()
+
+    # Fact 1: no scrollbar. This is what the P1 report measured.
+    assert not g["hScroll"], "the landing page scrolls horizontally at 390px"
+    # Fact 2: and it cannot, because overflow is clipped -- so fact 1 was never
+    # capable of detecting an element hanging off the right edge.
+    assert g["clip"] in ("clip", "hidden"), (
+        f"body overflow-x is {g['clip']!r}; if that ever becomes 'visible' the "
+        "assertion above starts meaning something different and this comment "
+        "needs rewriting"
+    )
+    # Fact 3: something IS hanging off the right edge, and it is .calc-card.
+    # Flip this to <= clientWidth on the day the dock is made responsive.
+    assert g["cardRight"] > g["clientWidth"], (
+        "the calculator dock now fits at 390px — good. Update this test and "
+        "DESIGN_SYSTEM.md's known-inconsistency 0 rather than deleting it."
+    )

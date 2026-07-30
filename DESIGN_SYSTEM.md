@@ -548,6 +548,47 @@ own design documents."` — same provenance claim, same grade, same
 files they cannot open. **A citation's `source` is user-facing copy as well as
 a provenance record; it has to satisfy both.**
 
+### Round 3, 2026-07-30: the class escaped a third time, so stop patching it
+
+`project_protein_target_policy.source` read `"This project's decision, anchored
+on morton_2018_protein."` — one registry entry citing another *by key*, inside
+a sentence, served verbatim to the browser. That is the third escape of this
+class after two closures, and each closure was verified by grepping for the
+string that had just been fixed. **That verification cannot work: the failing
+string is always the one nobody thought to grep for.** Three changes, none of
+which are another label map:
+
+1. **Cross-references are now slots, resolved by the registry.**
+   `core/nutrition/citations.py` gained `Evidence.display_ref` ("Morton et al.
+   (2018)") and `RENDERED_FIELDS = (summary, phenomenon, source, note)` — the
+   four fields `GET /api/science` serves verbatim. A citation of another entry
+   is written `{morton_2018_protein}` and substituted at registration; a raw id
+   left in any of those four fields **fails registration**. Same shape CLAUDE.md
+   mandates for LLM narration: prose from the author, identifier substituted by
+   the layer that owns it.
+2. **Which fields may take the `_`→space fallback, and which may not.** The
+   round-2 rule said "a cautious label *or* a `_`→space humanisation" and left
+   the choice open. It is not open:
+
+   | Field | Fallback | Why |
+   | ----- | -------- | --- |
+   | diet, goal, clinical flag, region, meal slot | `humanise()` — `some_new_flag` → `Some new flag` | The user chose this value and can already read it back. Restating their own input in worse words is a cosmetic failure. |
+   | evidence grade — and anything else stating how far to trust a number | **`Ungraded`**, never humanised | `Some new grade` is typographically indistinguishable from `Primary measurement`. Prettifying an unrecognised grade asserts an evidence strength the code cannot vouch for; the only safe direction to be wrong in is visibly weaker than every real grade. |
+
+   Applying that rule found three more raw-value fallbacks in `dashboard.js`
+   that the round-2 sweep missed — `plateLabel()`'s `${region} · ${meal_slot}`
+   and the success sentence's `|| profile.diet` / `|| profile.goal` — each of
+   which would have printed `south_indian` on a screen the moment an enum
+   member was added. All now go through `humanise()`.
+3. **Detection instead of another grep.** `tests/test_web_no_identifiers.py`
+   walks the rendered DOM of all nine views (landing, wizard steps 1-6,
+   dashboard before and after a plan call), takes every visible text node, and
+   fails on any `snake_case` / `SCREAMING_CASE` token, with an allowlist that
+   is currently empty. It cannot be satisfied by knowing which key leaked —
+   only by no key leaking. Proven by restoring the round-2
+   `chronic_kidney_disease` leak and watching it fail, then restoring; the
+   transcript is in the closeout commit.
+
 ---
 
 ## Button labels
@@ -641,6 +682,18 @@ flow doesn't already reach — step 6 *is* the sign-in point, so an anonymous
 visitor needs no `Sign in` link. `Log out` is the single exception: being
 signed into an account with no visible way out is worse than the escape-hatch
 risk it introduces.
+
+**The brand is the wizard's exit, and is therefore a link** (`a.brand`, added
+2026-07-30). The reasoning above holds — every nav link is a way to lose a
+half-filled form — but it argues for *no nav items*, not for *no way out*. An
+anonymous visitor mid-wizard would otherwise have only the browser's back
+button, and a logo that returns to the home page is the convention a user
+already expects rather than a new escape hatch. It carries no colour of its
+own (`.brand-ta` / `.brand-latin` set theirs), so the global
+`a:hover { color: var(--amber-deep) }` would recolour the wordmark; the
+affordance is a cursor plus `opacity: .62`, which is the one property that
+reaches both spans. On `index.html` the brand stays a `<div>` — it is the
+current page.
 
 **The brand stays in each page's static HTML**, not in `header.js`. It must
 not depend on JavaScript, and `test_header_logo_shares_content_left_edge`
@@ -793,11 +846,22 @@ the onboarding flow. Every interactive page meets all four:
 These are real discrepancies in the shipped pages, flagged rather than silently
 normalized in this doc. Each needs a code fix, not just a doc edit.
 
-0. **The landing page overflows on mobile.** `web/index.html` is 567px wide at
-   a 390px viewport when signed in, traced to `.calc-card` (the fixed
-   calculator dock, left=350 → right=658). Onboarding and the dashboard are
-   clean at that width; this is the landing page's documented calculator-dock
-   deviation and has not been touched. Found 2026-07-29, still open.
+0. **The landing page overflows on mobile — clipped, not scrolling.** At a
+   390px viewport `.calc-card` (the fixed calculator dock) is 308px wide
+   starting at x=350, so its right edge sits at 658 against a 390px document.
+   Roughly 40px of a 308px card is on screen. Found 2026-07-29, still open.
+
+   **Read the "no horizontal scroll at 390px" measurement carefully — it does
+   not contradict this.** Measured 2026-07-30 across all three routes:
+   `clientWidth` 390, `scrollWidth` 390, no scrollbar anywhere. That is true
+   *and* compatible with the overflow above, because `body { overflow-x: clip }`
+   and `.calc-panel { overflow-x: hidden }` mean no amount of overflow can ever
+   produce a scrollbar. A scroll check is therefore not evidence that content
+   fits; it is evidence that content which doesn't fit is being hidden. Both
+   facts are now pinned separately by
+   `tests/test_web_wizard_layout.py::test_scroll_absence_at_390_is_not_evidence_of_fitting`,
+   so neither can be quoted as settling the other. The mobile evidence on
+   record is: nothing scrolls, and one element is cut off.
 
 1. **Cards don't share one border-radius.** Bloom/meal/calc cards are `16px`,
    quality card `18px`, traditions plate & early-access card `20px`, modal
