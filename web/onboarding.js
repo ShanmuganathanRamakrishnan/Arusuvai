@@ -491,33 +491,30 @@
   }
 
   // ------------------------------------------------------------------
-  // Auth bar — shown only when a session cookie is currently valid (real
-  // state via GET /api/auth/me), so a returning signed-in user can log out
-  // or see who they are without needing to reach step 6.
+  // Header — the shared one (web/header.js), in its "onboarding" state: the
+  // logo, plus "Signed in as <email>" and Log out when a session cookie is
+  // currently valid (real state via GET /api/auth/me), and nothing else.
+  // That omission is the deliberate part; header.js states why.
   // ------------------------------------------------------------------
-
-  const authBar = document.getElementById("obAuthBar");
-  const authBarText = document.getElementById("obAuthBarText");
-  const authBarLogout = document.getElementById("obAuthBarLogout");
 
   let currentUser = null;
 
   function renderAuthBar() {
-    authBar.hidden = !currentUser;
-    if (currentUser) {
-      authBarText.textContent = `Signed in as ${currentUser.email}`;
-      authBarLogout.hidden = false;
-    }
+    ArusuvaiHeader.render("onboarding", currentUser);
   }
 
-  authBarLogout.addEventListener("click", async () => {
-    await ArusuvaiAuth.logout();
-    currentUser = null;
-    renderAuthBar();
-    // Step 6 branches on the session, so logging out mid-flow has to swap it
-    // back to the create/sign-in shape rather than leave a confirmation panel
-    // naming an account nobody is signed into any more.
-    paintAccountStep();
+  ArusuvaiHeader.init({
+    state: "onboarding",
+    current: "onboarding",
+    onLogout: async () => {
+      await ArusuvaiAuth.logout();
+      currentUser = null;
+      renderAuthBar();
+      // Step 6 branches on the session, so logging out mid-flow has to swap it
+      // back to the create/sign-in shape rather than leave a confirmation panel
+      // naming an account nobody is signed into any more.
+      paintAccountStep();
+    },
   });
 
   // ------------------------------------------------------------------

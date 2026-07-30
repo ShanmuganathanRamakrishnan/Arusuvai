@@ -269,3 +269,180 @@ def test_every_route_shares_one_container_width(container_geometry):
     assert len(distinct) == 1, (
         f"more than one container width across routes and their headers: {widths}"
     )
+
+
+# --------------------------------------------------------------------------
+# The header contract: one nav, three named states (added 2026-07-30).
+#
+# Measured before the fix, with a session cookie set: the landing page showed
+# four nav items, the dashboard showed three, and onboarding showed NOTHING —
+# a signed-in user midway through the wizard could not reach Log out, because
+# each page hand-wrote its own header and the wizard's version only appeared
+# under conditions that page never rendered under.
+#
+# Both checks below are about agreement between routes, which is the only
+# place this class of defect is visible: every one of the three headers was
+# internally consistent and looked fine on its own screen.
+# --------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def header_markup():
+    """Static (JS-off) header shape per route: one brand, one empty nav."""
+    playwright = pytest.importorskip(
+        "playwright.sync_api",
+        reason="playwright is a dev-only dependency; see requirements-dev.txt",
+    )
+    if not _listening("localhost", 3000):
+        pytest.skip(f"no static server on {WEB_ORIGIN}")
+
+    probe = """() => {
+      const nav = document.getElementById('appNav');
+      return {
+        // Scoped to the header: the landing page also uses .brand in its
+        // footer and its auth modal, which is fine and not what this counts.
+        brands: document.querySelectorAll('#siteHeader .brand').length,
+        navs: document.querySelectorAll('#appNav').length,
+        // Written by header.js, so JS-off it must be empty: no route may
+        // hand-write a nav item into its own markup.
+        staticNavChildren: nav ? nav.children.length : -1,
+        actions: [...document.querySelectorAll('.btn-action')].map(b => {
+          const s = getComputedStyle(b);
+          return [s.paddingTop, s.paddingBottom, s.paddingLeft, s.paddingRight,
+                  s.fontSize, s.fontWeight, s.borderTopLeftRadius, s.lineHeight,
+                  s.boxSizing].join(' ');
+        }),
+        inlineSizedActions: [...document.querySelectorAll('.btn-action[style]')]
+          .map(b => b.id || b.textContent.trim().slice(0, 24))
+          .filter(() => true),
+      };
+    }"""
+
+    out = {}
+    with playwright.sync_playwright() as p:
+        browser = p.chromium.launch()
+        context = browser.new_context(
+            viewport={"width": 1600, "height": 950}, java_script_enabled=False
+        )
+        page = context.new_page()
+        for route in ROUTES:
+            page.goto(f"{WEB_ORIGIN}/{route}", wait_until="load")
+            out[route] = page.evaluate(probe)
+        browser.close()
+    return out
+
+
+@pytest.mark.parametrize("route", ROUTES)
+def test_no_route_hand_writes_its_own_nav(header_markup, route):
+    """One nav element, empty until web/header.js fills it.
+
+    The brand deliberately stays in static markup (the container check above
+    measures it with JS off); the nav deliberately does not, because a nav
+    item written into a page is a nav item that can disagree with the other
+    two pages, which is exactly what happened.
+    """
+    m = header_markup[route]
+    assert m["brands"] == 1, f"{route}: expected one .brand, found {m['brands']}"
+    assert m["navs"] == 1, f"{route}: expected one #appNav, found {m['navs']}"
+    assert m["staticNavChildren"] == 0, (
+        f"{route}: #appNav has {m['staticNavChildren']} hand-written children. "
+        "Nav items belong in web/header.js's three states, not in page markup."
+    )
+
+
+def test_one_action_button_geometry_across_routes(header_markup):
+    """P1-3: the placement of the advancing action may differ; the button may not.
+
+    Measured before the fix: the wizard's Continue was 13px/24px at 15px from
+    a rule, the dashboard's Generate 14px/26px at 15px from an inline style,
+    its Regenerate 14px/24px from another, and the filled and outlined
+    variants rendered 46 / 48 / 48px tall.
+    """
+    seen = {}
+    for route, m in header_markup.items():
+        for spec in m["actions"]:
+            seen.setdefault(spec, []).append(route)
+        assert not m["inlineSizedActions"], (
+            f"{route}: .btn-action carrying its own inline style: "
+            f"{m['inlineSizedActions']}. The geometry lives in .btn-action."
+        )
+    assert len(seen) == 1, f"more than one .btn-action geometry: {seen}"
+
+
+def test_header_states_differ_by_route_and_session():
+    """The three states, asserted live — including the one that was empty.
+
+    This needs JS (the header is rendered) and a real session for the
+    authenticated states, so it skips rather than fails when the API is down.
+    """
+    playwright = pytest.importorskip(
+        "playwright.sync_api",
+        reason="playwright is a dev-only dependency; see requirements-dev.txt",
+    )
+    if not _listening("localhost", 3000):
+        pytest.skip(f"no static server on {WEB_ORIGIN}")
+    if not _listening("localhost", 8000):
+        pytest.skip(f"no API on {API_ORIGIN}; the signed-in states need a session")
+
+    email, password = "headerstate@example.com", "header-state-pw-8823"
+    read = """() => {
+      const hdr = document.getElementById('siteHeader');
+      const nav = document.getElementById('appNav');
+      return {state: hdr.dataset.headerState,
+              ids: [...nav.children].map(e => e.id)};
+    }"""
+
+    with playwright.sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 1600, "height": 950})
+
+        page.goto(f"{WEB_ORIGIN}/index.html", wait_until="networkidle")
+        page.wait_for_timeout(700)
+        anon_landing = page.evaluate(read)
+
+        page.goto(f"{WEB_ORIGIN}/onboarding.html", wait_until="networkidle")
+        page.wait_for_timeout(700)
+        anon_wizard = page.evaluate(read)
+
+        page.evaluate(
+            """async ([email, password]) => {
+              let r = await fetch('http://localhost:8000/api/auth/signup', {method: 'POST',
+                credentials: 'include', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email, password})});
+              if (!r.ok) await fetch('http://localhost:8000/api/auth/login', {method: 'POST',
+                credentials: 'include', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email, password})});
+            }""",
+            [email, password],
+        )
+
+        page.goto(f"{WEB_ORIGIN}/onboarding.html", wait_until="networkidle")
+        page.wait_for_timeout(1000)
+        authed_wizard = page.evaluate(read)
+
+        page.goto(f"{WEB_ORIGIN}/index.html", wait_until="networkidle")
+        page.wait_for_timeout(1000)
+        authed_landing = page.evaluate(read)
+        browser.close()
+
+    assert anon_landing["state"] == "anonymous"
+    assert anon_landing["ids"] == ["hdrHow", "hdrTargets", "hdrSignin", "hdrSignup"]
+
+    # The wizard is in its own state whether or not a session exists -- it does
+    # NOT fall back to the marketing nav, which would put "Get your targets"
+    # in front of someone already filling that form in.
+    assert anon_wizard["state"] == "onboarding"
+    assert anon_wizard["ids"] == []
+
+    # This is the defect: before the fix this list was also empty, and the only
+    # way out of the account was to leave the page.
+    assert authed_wizard["state"] == "onboarding"
+    assert authed_wizard["ids"] == ["hdrUserEmail", "hdrLogout"], (
+        "a signed-in user mid-wizard must be able to see who they are and log "
+        f"out; got {authed_wizard['ids']}"
+    )
+
+    assert authed_landing["state"] == "authenticated"
+    assert authed_landing["ids"] == [
+        "hdrDashboard", "hdrEditProfile", "hdrUserEmail", "hdrLogout",
+    ]

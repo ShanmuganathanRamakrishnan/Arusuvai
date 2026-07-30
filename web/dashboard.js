@@ -112,13 +112,15 @@
   const noProfileEl = document.getElementById("dashNoProfile");
   const mainEl = document.getElementById("dashMain");
 
-  const authBar = document.getElementById("obAuthBar");
-  const authBarText = document.getElementById("obAuthBarText");
-  const authBarLogout = document.getElementById("obAuthBarLogout");
-
-  authBarLogout.addEventListener("click", async () => {
-    await ArusuvaiAuth.logout();
-    window.location.href = "onboarding.html";
+  // Shared header (web/header.js), "authenticated" state. `current` drops
+  // the Dashboard self-link; this page is it.
+  ArusuvaiHeader.init({
+    state: "authenticated",
+    current: "dashboard",
+    onLogout: async () => {
+      await ArusuvaiAuth.logout();
+      window.location.href = "onboarding.html";
+    },
   });
 
   let profile = null; // the saved profile this page renders and plans against
@@ -132,11 +134,11 @@
   function renderProfileTags(p) {
     const wrap = document.getElementById("dashProfileTags");
     wrap.innerHTML =
-      `<span class="tag tag-diet">${DIET_LABELS[p.diet] || humanise(p.diet)}</span>` +
-      `<span class="tag tag-goal">${GOAL_LABELS[p.goal] || humanise(p.goal)}</span>`;
+      `<span class="tag">${DIET_LABELS[p.diet] || humanise(p.diet)}</span>` +
+      `<span class="tag">${GOAL_LABELS[p.goal] || humanise(p.goal)}</span>`;
     if (p.clinical_flags.length) {
       const flags = p.clinical_flags.map((f) => FLAG_LABELS[f] || humanise(f)).join(", ");
-      wrap.innerHTML += `<span class="tag tag-diet">${flags}</span>`;
+      wrap.innerHTML += `<span class="tag">${flags}</span>`;
     }
   }
 
@@ -161,9 +163,7 @@
       return;
     }
 
-    authBar.hidden = false;
-    authBarText.textContent = `Signed in as ${user.email}`;
-    authBarLogout.hidden = false;
+    ArusuvaiHeader.render("authenticated", user);
 
     try {
       profile = await ArusuvaiAuth.getProfile();

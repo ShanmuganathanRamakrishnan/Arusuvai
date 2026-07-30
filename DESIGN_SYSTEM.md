@@ -577,6 +577,95 @@ action-bar CTA at all. `Back`, by contrast, is now available from step 2
 onward **including** the final step — it used to be hidden there, making the
 account step a one-way door.
 
+### Where the advancing action lives — and why the button must not care
+
+Added 2026-07-30. Two placements were live and neither was a decision: the
+wizard put its primary in a sticky bottom bar above a hairline; the dashboard
+put `Generate my plate` inline, directly under the option grid, with no bar
+and no rule. Both are defensible in isolation. Together they teach two places
+to look.
+
+**The rule:**
+
+| Page shape             | Placement                                     | Why |
+| ---------------------- | --------------------------------------------- | --- |
+| Multi-step flow        | Sticky bottom action bar (`.ob-nav`)          | Progression is the mental model; the eye learns one spot and Continue never moves between steps |
+| Single-purpose page    | Inline, directly beneath the controls it acts on (`.ob-save-actions`) | There is no progression to anchor, and a sticky bar around one button is chrome |
+
+**The placements differ because the pages differ. The buttons must not.**
+Before this, the same act was a slightly different control depending on where
+you met it — the wizard's `Continue` at 13px/24px from a rule, the dashboard's
+`Generate my plate` at 14px/26px from an inline style, its `Regenerate` at
+14px/24px from a third — rendering **46 / 48 / 48px** tall. `.btn-action` now
+carries that geometry, `.is-quiet` is its outlined emphasis, and **neither
+placement may set its own size**. `box-sizing: border-box` plus a transparent
+border keeps the outlined variant from being 2px taller than the filled one,
+and an explicit `line-height` keeps an `<a class="btn btn-action">` from being
+taller than a `<button>` inheriting the body's 1.6.
+
+Enforced by `test_one_action_button_geometry_across_routes` in
+`tests/test_web_wizard_layout.py`, which measures computed geometry across all
+three routes and fails on any `.btn-action[style]`.
+
+---
+
+## Header — one nav, three named states
+
+Added 2026-07-30. Three routes had three hand-written headers, and the result
+was three navs nobody had decided on:
+
+| Route             | What it showed                                             |
+| ----------------- | ---------------------------------------------------------- |
+| `index.html`      | How it works · Get your targets · Sign in · Sign up        |
+| `onboarding.html` | *nothing at all*                                            |
+| `dashboard.html`  | Edit profile · Signed in as `<email>` · Log out            |
+
+The onboarding row is what marks this as drift rather than design: a signed-in
+user midway through the wizard had **no way to reach Log out, or anything
+else**. Its auth bar only rendered when a session existed, and the page had no
+other nav to fall back on.
+
+`web/header.js` now owns the nav for all three routes, in three explicit
+states. Each page declares which state it is in; none writes a nav item.
+
+| State             | Contents                                                   | Used by |
+| ----------------- | ---------------------------------------------------------- | ------- |
+| `anonymous`       | How it works · Get your targets · Sign in · Sign up         | `index.html`, no session |
+| `onboarding`      | Logo, plus `Signed in as <email>` · Log out when a session exists — **and nothing else, ever** | `onboarding.html`, always |
+| `authenticated`   | Dashboard · Edit profile · `<email>` · Log out (self-link dropped via `current`) | `index.html` with a session, `dashboard.html` |
+
+**Why the onboarding state is deliberately near-empty.** The wizard holds
+unsaved profile state in memory across six steps. Every nav link is a way to
+lose a half-filled form to a stray click, and none of them lead anywhere the
+flow doesn't already reach — step 6 *is* the sign-in point, so an anonymous
+visitor needs no `Sign in` link. `Log out` is the single exception: being
+signed into an account with no visible way out is worse than the escape-hatch
+risk it introduces.
+
+**The brand stays in each page's static HTML**, not in `header.js`. It must
+not depend on JavaScript, and `test_header_logo_shares_content_left_edge`
+measures it with JS disabled — a JS-rendered brand would make the route it
+most needed to check unmeasurable.
+
+**Below 560px, three things drop, in this order — and `Log out` survives all
+three.** Measured at 390px, where `.header-inner` is 390px wide: the brand took
+210 of it and left the nav 128 against 139px of items, so the authenticated
+nav wrapped to three rows and the header grew to **160px** tall.
+
+| Drop | What goes | Why it is the one to lose |
+| ---- | --------- | ------------------------- |
+| 1 | `.hdr-email` | Identity, not navigation; the account step states it anyway |
+| 2 | `.brand-latin` | The Tamil `அறுசுவை` is the mark; `arusuvai` is its gloss |
+| 3 | `Edit profile`, **only where a `Dashboard` link is also present** (`#hdrDashboard ~ #hdrEditProfile`) | One tap past Dashboard. The sibling combinator is the condition: `dashboard.html` has no Dashboard link (it is the self-link `header.js` drops), so `Edit profile` survives there — the one page where it is the only route to the wizard |
+
+All three routes are 64px — a single row — at 390px and at 1600px after this.
+
+Enforced by `test_no_route_hand_writes_its_own_nav` (JS off: exactly one
+`.brand` in the header, exactly one empty `#appNav`) and
+`test_header_states_differ_by_route_and_session` (JS on, real session: the
+exact ID list per state, including the assertion that a signed-in wizard
+visitor gets `hdrUserEmail` + `hdrLogout`).
+
 ---
 
 ## Content redundancy rule
@@ -612,10 +701,11 @@ Reusable pieces already built. Reuse these before building a near-duplicate.
 
 | Component            | What it is                                                        | Defined in |
 | -------------------- | ----------------------------------------------------------------- | ---------- |
-| **Header**           | Sticky cream bar, blur-on-scroll, 1px hairline, brand + nav       | `index.html:49–62`; `.site-header` `styles.css:76–103`; `startHeader()` `app.js` |
+| **Header**           | Sticky cream bar, blur-on-scroll, 1px hairline, brand + `#appNav`  | `.site-header` `styles.css` (shell); `startHeader()` `app.js`. **Identical markup on all three routes as of 2026-07-30** — the brand static, the nav rendered by `web/header.js`. See "Header — one nav, three named states" |
 | **Brand wordmark**   | Tamil `அறுசுவை` + uppercase latin `arusuvai`, baseline-aligned    | `.brand`/`.brand-ta`/`.brand-latin` `styles.css:98–100` |
-| **Button — primary** | Green pill, cream text (`.btn-primary`)                           | `styles.css:109–110` |
-| **Button — link**    | Text-only green action (`.btn-link`)                              | `styles.css:107–108` |
+| **Button — primary** | Green pill, cream text (`.btn-primary`)                           | `styles.css` (buttons) |
+| **Button — link**    | Text-only green action (`.btn-link`)                              | `styles.css` (buttons) |
+| **Button — action** | `.btn-action` — **the** page-advancing button geometry: 13px/24px, 15px/600, full pill, `border-box` + transparent 1px border so the outlined `.is-quiet` variant is the same height. Used by the wizard's Back/Continue **and** the dashboard's Generate/Regenerate/Adjust/Try-another | Added 2026-07-30 to collapse three separately-sized versions of the same act (46/48/48px tall). See "Where the advancing action lives"; `styles.css` (buttons) |
 | **CTA — solid**      | Large green pill, lifts 1px on hover (`.cta.cta-solid`)           | `styles.css:111–113` |
 | **CTA — ghost**      | Outlined pill, greens on hover (`.cta.cta-ghost`)                 | `styles.css:114–115` |
 | **Eyebrow**          | Uppercase tracked green kicker above headings (`.eyebrow`)        | `styles.css:54–60` |
@@ -625,7 +715,7 @@ Reusable pieces already built. Reuse these before building a near-duplicate.
 | **Meal card**        | Dish + sentence + inline macro line (the number-display pattern)  | `styles.css:279–283`; reused verbatim on `web/dashboard.html` for the solved plate's component list as of 2026-07-25 (no new card component for the real dashboard) |
 | **Macro line**       | `≈ … kcal · …g protein · …` inline stat (`.stat` / `.num`)        | `styles.css:283,286` |
 | **Step**             | Numbered how-it-works item (`.step` `.n`/`.t`/`.b`)               | `styles.css:260–263` |
-| **Tag / pill**       | Diet (`.tag-diet`, green tint) & goal (`.tag-goal`, amber tint)   | `styles.css:267–270` |
+| **Tag / pill**       | Read-only summary chip, **one fill** (`.tag`, neutral ink tint)    | `styles.css`. **2026-07-30:** `.tag-diet` (sage) and `.tag-goal` (amber) were deleted — same class of element, same saved profile, two colours carrying nothing the label wasn't already carrying. Neutral rather than sage on purpose: these sit directly above the plate picker, whose chosen pill is `--accent-selected`, and a read-only chip in the selected colour invites the reading that it is selectable |
 | **City pill**        | `.city.live` (green) / `.city.soon` (dashed muted)                | `styles.css:315–317` |
 | **FAQ item**         | Serif question button + `+`→`×` sign + max-height accordion       | `styles.css:336–347`; `startFaq()` `app.js` |
 | **Quality card**     | Recessed `--cream-sink` panel with colored-dot list               | `styles.css:296–301` |
@@ -649,22 +739,23 @@ Reusable pieces already built. Reuse these before building a near-duplicate.
 | **Plate picker**      | Pill radio group for (region, meal_slot) choice (`.ob-plate-opt`) | Added 2026-07-24; moved to `web/dashboard.html` the same day (accounts increment) — onboarding no longer collects a plate, only a target; also reused as the generic pill-radio style for onboarding's sex/diet/region pickers as of 2026-07-25; `styles.css` |
 | **Decline card**     | Honest-decline state: green-eyebrow "why we stopped" callout (`.ob-callout`, reused from onboarding's target-review disclosures) over a serif headline+sentence, **not** styled with `--error` — an expected, disclosed outcome is not styled as a failure | Added 2026-07-24 as `.ob-decline` (amber-tinted `--cream-sink` card); reworked 2026-07-25 porting `Arusuvai Dashboard.dc.html`'s "We'd rather not build this one" layout — the callout's bullet list is `data.violations` verbatim from `POST /api/plan`, never the design canvas's fabricated per-condition copy (e.g. its hardcoded "chronic kidney disease... 0.8 g/kg... 54 g/day" text describes a demo profile, not whatever profile actually declined); `web/dashboard.html`; `styles.css` |
 | **Loading line**      | Plain inline "Calling `POST /api/…`…" text, no spinner (`.ob-loading`) | Added 2026-07-24; `web/onboarding.html`, `web/dashboard.html`; `styles.css` |
-| **Auth status bar**   | Right-aligned "Signed in as … · Log out" row, reuses `.btn-link` rather than a new button style (`.ob-authbar`) | Added 2026-07-24 (accounts increment); simplified 2026-07-25 to signed-in-only (no "Sign in" trigger — step 6 is now the sign-in entry point on this page, see Account tabs below); `web/onboarding.html`, `web/dashboard.html`; `styles.css` |
+| **Site nav**          | `.app-nav` — **the** header nav strip, filled by `web/header.js` in one of three states (`anonymous` / `onboarding` / `authenticated`); `.hdr-email` truncates the address rather than forcing horizontal scroll | Added 2026-07-30, replacing `.ob-authbar` and `.nav`, which were two layouts for the same strip (18px gap left-aligned vs 10px gap right-aligned) and had drifted into three different headers. See "Header — one nav, three named states" |
 | **Account tabs**      | Pill-tab switch (Create account / Sign in) over inline email+password fields, no popup (`.ob-account-tabs`, `.ob-account-fields`) | Added 2026-07-25 for onboarding step 6, porting `Arusuvai Onboarding.dc.html`'s account hinge; replaces the shared auth modal *on this page only* — `index.html` still uses the modal (see Auth modal row) and `dashboard.html`'s cold-entry gate gets bounced to this step via `onboarding.html?next=dashboard`; fields reuse `.modal label input`'s exact CSS (see that rule's comment); `web/onboarding.html`; `styles.css` |
-| **Header auth state** | `index.html`'s header swaps Sign in/Sign up for a `navUserEmail` span + Dashboard/Log out (`.nav-user-email`), same idea as the auth status bar above but inline in the existing nav row rather than a second bar — no new component | Added 2026-07-25; `web/index.html`; `styles.css` |
-| **Profile tag row**   | `.tag-row`/`.tag.tag-diet`/`.tag.tag-goal` (already used for the landing page's illustrative sample-day tags) reused on `web/dashboard.html` for the *real* saved profile's diet and goal — deliberately **not** a third "region" tag, because `ProfileIn`/`ProfileOut` carry no region-preference field (only the plate picker below picks a region, per plate); inventing one would be an unverified claim about what the profile stores | Added 2026-07-25 porting `Arusuvai Dashboard.dc.html`; `web/dashboard.html`; `styles.css` |
+| ~~**Auth status bar**~~ / ~~**Header auth state**~~ | Both folded into **Site nav** above on 2026-07-30. `.ob-authbar` (`onboarding.html`/`dashboard.html`, added 2026-07-24) and `index.html`'s `navUserEmail`/Dashboard/Log out swap (added 2026-07-25) were the same idea implemented twice, which is precisely how onboarding ended up with no signed-in nav at all | Listed only so an old reference is recognisable; do not reintroduce either |
+| **Profile tag row**   | `.tag-row`/`.tag` (shared with the landing page's illustrative sample-day tags) on `web/dashboard.html`, for the *real* saved profile's diet, goal and any disclosed clinical flags — deliberately **not** a "region" tag, because `ProfileIn`/`ProfileOut` carry no region-preference field (only the plate picker picks a region, per plate); inventing one would be an unverified claim about what the profile stores | Added 2026-07-25 porting `Arusuvai Dashboard.dc.html`; the per-kind colour fork was removed 2026-07-30 (see **Tag / pill**); `web/dashboard.html`; `styles.css` |
 | **Selectable**        | **The** selection primitive (`.ob-selectable`): white `--surface` + `--border`, and one selected treatment — `--accent-selected` fill + `--border-selected`. Covers goal/activity/condition cards, diet+region pills, day buttons and the resistance toggle. `:has(input:checked)` for native controls, `.is-selected` for the two JS-driven ones, **one declaration block** | Added 2026-07-29 to collapse three competing selected treatments into one; `styles.css` |
-| **Action bar**        | Sticky bottom bar rendered once by the shell, outside every step (`.ob-nav`). Flat `--surface-page` + one hairline (never a backdrop-filter — see the layout contract). Back is an outline button matching Continue's height/padding/radius | `web/onboarding.html`; `styles.css`. Reworked 2026-07-29: Back had no container or hit area, and the blurred band rendered pink over the kolam layer |
+| **Action bar**        | Sticky bottom bar rendered once by the shell, outside every step (`.ob-nav`). Flat `--surface-page` + one hairline (never a backdrop-filter — see the layout contract). **The bar is a placement, not a button style** — Back and Continue carry `.btn-action` like every other advancing action | `web/onboarding.html`; `styles.css`. Reworked 2026-07-29: Back had no container or hit area, and the blurred band rendered pink over the kolam layer. 2026-07-30: geometry moved out to `.btn-action` |
 | **Group caption**     | Caption above a control group (`.ob-group-lbl`, `.ob-group-lbl-row` for a caption with a value readout) | Added 2026-07-29; was an inline style repeated per site, which is how step 2's two headings ended up ~6px out of alignment |
 | **Field error**       | Per-field inline error + red border (`.ob-field-error`, `.ob-invalid`) | Added 2026-07-29. Step 1 used a `window.alert` that named no field and vanished; step 6 had one message above the button with neither input marked |
 | **Account confirm**   | Signed-in branch of step 6 (`.ob-account-confirm`): names the account the profile is about to be saved to, in place of the create/sign-in form | Added 2026-07-29. The step used to render the create-account form unconditionally, so a signed-in user saw "Create account" directly under a header reading "Signed in as …" |
 
 Everything currently lives in three static pages (`web/index.html`,
 `web/onboarding.html`, `web/dashboard.html`) sharing `web/styles.css`, plus
-page-specific `web/app.js` / `web/onboarding.js` / `web/dashboard.js` and one
-shared `web/auth.js` (session calls + the auth-modal wiring, used by both
-`onboarding.html` and `dashboard.html` — added 2026-07-24 rather than
-duplicating the fetch/modal logic per page). When this migrates to Next.js
+page-specific `web/app.js` / `web/onboarding.js` / `web/dashboard.js` and two
+shared files: `web/auth.js` (session calls + the auth-modal wiring, used by
+both `onboarding.html` and `dashboard.html` — added 2026-07-24 rather than
+duplicating the fetch/modal logic per page) and `web/header.js` (the nav's
+three states, added 2026-07-30, loaded by all three pages). When this migrates to Next.js
 (per CLAUDE.md's `web/` scope), each row above becomes a component; keep this
 table pointing at wherever it lands.
 

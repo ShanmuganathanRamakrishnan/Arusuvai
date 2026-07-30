@@ -204,19 +204,13 @@
     var overlay = document.getElementById('authOverlay');
     if (!overlay || !window.ArusuvaiAuth) return;
 
-    var openSignin = document.getElementById('btnSignin');
-    var openSignup = document.getElementById('btnSignup');
-    var dashboardBtn = document.getElementById('btnDashboard');
-    var logoutBtn = document.getElementById('btnLogout');
-    var emailLabel = document.getElementById('navUserEmail');
-
+    // The nav is no longer five hand-written elements toggled by `hidden` --
+    // web/header.js renders one of three named states, and this page only
+    // says which one it is in. Before, "signed in" meant remembering to flip
+    // five booleans the same way on three pages, which is how onboarding
+    // ended up with no nav at all.
     function renderSignedIn(user) {
-      openSignin.hidden = !!user;
-      openSignup.hidden = !!user;
-      dashboardBtn.hidden = !user;
-      logoutBtn.hidden = !user;
-      emailLabel.hidden = !user;
-      emailLabel.textContent = user ? user.email : '';
+      window.ArusuvaiHeader.render(user ? 'authenticated' : 'anonymous', user);
     }
 
     // Correct sequence, not "always go to the same place":
@@ -234,13 +228,15 @@
       },
     });
 
-    if (openSignin) openSignin.addEventListener('click', function () { modal.open('signin'); });
-    if (openSignup) openSignup.addEventListener('click', function () { modal.open('signup'); });
-    if (logoutBtn) {
-      logoutBtn.addEventListener('click', function () {
+    window.ArusuvaiHeader.init({
+      state: 'anonymous',   // repainted below once /api/auth/me answers
+      current: 'landing',
+      onSignin: function () { modal.open('signin'); },
+      onSignup: function () { modal.open('signup'); },
+      onLogout: function () {
         window.ArusuvaiAuth.logout().then(function () { renderSignedIn(null); });
-      });
-    }
+      },
+    });
 
     window.ArusuvaiAuth.me().then(renderSignedIn).catch(function () { renderSignedIn(null); });
   }

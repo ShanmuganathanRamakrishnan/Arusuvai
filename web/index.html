@@ -52,15 +52,10 @@
       <span class="brand-ta">அறுசுவை</span>
       <span class="brand-latin">arusuvai</span>
     </div>
-    <div class="nav">
-      <a href="#how" class="hide-sm">How it works</a>
-      <a href="onboarding.html" class="hide-sm">Get your targets</a>
-      <button id="btnSignin" class="btn btn-link">Sign in</button>
-      <button id="btnSignup" class="btn btn-primary">Sign up</button>
-      <span id="navUserEmail" class="nav-user-email" hidden></span>
-      <a href="dashboard.html" id="btnDashboard" class="btn btn-link" hidden>Dashboard</a>
-      <button id="btnLogout" class="btn btn-link" hidden>Log out</button>
-    </div>
+    <!-- Rendered by web/header.js, which owns the anonymous/onboarding/
+         authenticated states for all three routes. Empty in static markup so
+         there is exactly one place a nav item can be written. -->
+    <nav class="app-nav" id="appNav" aria-label="Primary"></nav>
   </div>
   <div class="header-rule" aria-hidden="true"></div>
 </header>
@@ -160,20 +155,20 @@
       <div class="col">
         <div class="lbl">Diets supported</div>
         <div class="tag-row">
-          <span class="tag tag-diet">Vegetarian</span>
-          <span class="tag tag-diet">Eggetarian</span>
-          <span class="tag tag-diet">Non-vegetarian</span>
-          <span class="tag tag-diet">Vegan</span>
-          <span class="tag tag-diet">Jain</span>
+          <span class="tag">Vegetarian</span>
+          <span class="tag">Eggetarian</span>
+          <span class="tag">Non-vegetarian</span>
+          <span class="tag">Vegan</span>
+          <span class="tag">Jain</span>
         </div>
         <div class="fine">Jain plans skip onion, garlic and root vegetables — most planners don't handle it.</div>
       </div>
       <div class="col">
         <div class="lbl">Goals</div>
         <div class="tag-row">
-          <span class="tag tag-goal">Fat loss</span>
-          <span class="tag tag-goal">Muscle gain</span>
-          <span class="tag tag-goal">Maintain</span>
+          <span class="tag">Fat loss</span>
+          <span class="tag">Muscle gain</span>
+          <span class="tag">Maintain</span>
         </div>
       </div>
     </div>
@@ -346,6 +341,7 @@
 </div>
 
 <script src="auth.js"></script>
+<script src="header.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

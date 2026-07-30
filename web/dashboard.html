@@ -28,11 +28,8 @@
       <span class="brand-ta">அறுசுவை</span>
       <span class="brand-latin">arusuvai</span>
     </a>
-    <div class="ob-authbar" id="obAuthBar" hidden>
-      <a href="onboarding.html" class="btn btn-link">Edit profile</a>
-      <span id="obAuthBarText"></span>
-      <button type="button" class="btn btn-link" id="obAuthBarLogout" hidden>Log out</button>
-    </div>
+    <!-- See web/header.js: the "authenticated" state, minus its self-link. -->
+    <nav class="app-nav" id="appNav" aria-label="Primary"></nav>
   </div>
   <div class="header-rule" aria-hidden="true"></div>
 </header>
@@ -77,7 +74,12 @@
           <label class="ob-plate-opt ob-selectable"><input type="radio" name="plate" value="north_indian:dinner"> North Indian dinner</label>
         </div>
         <div class="ob-save-actions">
-          <button type="button" class="btn btn-primary" id="dashGenerate" style="padding: 14px 26px; font-size: 15px; display: inline-flex; align-items: center; gap: 8px;">
+          <!-- .btn-action, not an inline size: this is the same act as the
+               wizard's Continue and must be the same control. Placement
+               differs (inline, not a sticky bar) because this is a
+               single-purpose page — see styles.css, "the page-advancing
+               action", for the rule. -->
+          <button type="button" class="btn btn-primary btn-action" id="dashGenerate">
             Generate my plate
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
           </button>
@@ -110,7 +112,7 @@
             <div class="illus" id="obPlanRelaxationNote"></div>
 
             <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: clamp(20px, 3vw, 28px);">
-              <button type="button" class="btn btn-primary" id="dashRegenerate" style="padding: 14px 24px; display: inline-flex; align-items: center; gap: 8px;">
+              <button type="button" class="btn btn-primary btn-action" id="dashRegenerate">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"></path></svg>
                 Regenerate this plate
               </button>
@@ -145,8 +147,8 @@
         <p class="ob-decline-disclosure" id="obDeclineDisclosure" style="margin-top: 18px;"></p>
 
         <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: clamp(24px, 3.5vw, 32px);">
-          <a href="onboarding.html" class="btn btn-primary" style="padding: 14px 24px;">Adjust my profile</a>
-          <button type="button" class="btn btn-link" id="dashTryAnother" style="border: 1px solid rgba(43, 38, 34, .2); border-radius: 999px; padding: 13px 22px;">Try a different plate</button>
+          <a href="onboarding.html" class="btn btn-primary btn-action">Adjust my profile</a>
+          <button type="button" class="btn btn-action is-quiet" id="dashTryAnother">Try a different plate</button>
         </div>
         <p class="ob-field-note" style="margin-top: 20px; max-width: 56ch;">This isn't an error — it's the plan being honest rather than quietly bending a limit you asked it to hold.</p>
       </section>
@@ -164,6 +166,7 @@
 </div>
 
 <script src="auth.js"></script>
+<script src="header.js"></script>
 <script src="dashboard.js"></script>
 </body>
 </html>

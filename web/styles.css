@@ -179,17 +179,59 @@ section.no-rule { border-top: none; }
 .brand { display: flex; align-items: baseline; gap: 10px; }
 .brand-ta { font-family: var(--tamil); font-weight: 600; font-size: 22px; color: var(--ink); letter-spacing: .2px; }
 .brand-latin { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: rgba(43, 38, 34, .5); font-weight: 600; }
-.nav { display: flex; align-items: center; gap: 18px; }
-.nav a { font-size: 14px; font-weight: 500; color: rgba(43, 38, 34, .7); }
-.nav a:hover { color: var(--green); }
-.nav-user-email { font-size: 13px; color: rgba(43, 38, 34, .55); }
-.nav-user-email[hidden] { display: none; }
+/* One nav, for all three header states (see web/header.js). It replaces .nav
+   on the landing page and .ob-authbar on the two app pages, which were two
+   layouts for the same strip: .nav laid out left-to-right with an 18px gap,
+   .ob-authbar right-aligned with a 10px gap and its own wrapping rules, so
+   the same "Log out" button sat at a different height and spacing depending
+   on which page you were on. */
+.app-nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 18px; min-width: 0; }
+.app-nav a { font-size: 14px; font-weight: 500; color: rgba(43, 38, 34, .7); }
+.app-nav a:hover { color: var(--green); }
+.app-nav .btn-link { font-size: 14px; }
+/* The address truncates rather than forcing a horizontal scroll on every
+   signed-in page; the full value stays the element's text content. */
+.hdr-email { font-size: 13px; color: rgba(43, 38, 34, .55); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---------- buttons ---------- */
 .btn { cursor: pointer; border: none; font-family: var(--sans); white-space: nowrap; transition: background .3s, transform .3s, color .3s, border-color .3s; }
 .btn-link { font-size: 14px; font-weight: 600; color: var(--green); background: none; padding: 9px 6px; }
 .btn-link:hover { color: var(--green-dark); }
 .btn-primary { font-size: 14px; font-weight: 600; color: var(--cream); background: var(--green); padding: 9px 16px; border-radius: 999px; }
+
+/* ---------- the page-advancing action ----------
+   THE RULE, so that this is a decision rather than an accident:
+
+     A multi-step flow puts its advancing action in the sticky bottom bar
+     (.ob-nav). Progression is the mental model there — the reader's eye
+     learns one place and Continue never moves between steps.
+
+     A single-purpose page puts its action inline, directly beneath the
+     controls it acts on (.ob-save-actions). There is no progression to
+     anchor, and a sticky bar for one button is chrome around a single act.
+
+   The placements differ because the pages differ; the BUTTONS must not. Both
+   were separately sized before — the wizard's Continue at 13px/24px from a
+   rule, the dashboard's Generate at 14px/26px from an inline style, its
+   Regenerate at 14px/24px from another — so the same act looked like a
+   slightly different control depending on where you met it. One class now
+   carries that geometry, and neither placement may set its own.
+
+   .is-quiet is the secondary emphasis (wizard Back, "Try a different plate"):
+   same geometry, outlined instead of filled. */
+/* box-sizing + a transparent border, so the outlined variant is not 2px
+   taller than the filled one; an explicit line-height, so an <a class="btn
+   btn-action"> is not taller than a <button> with the same class inheriting
+   the body's 1.6. Measured: 46 / 48 / 48px across the three before this. */
+.btn-action { box-sizing: border-box; padding: 13px 24px; border: 1px solid transparent; border-radius: 999px;
+  font-size: 15px; font-weight: 600; line-height: 1.25; display: inline-flex; align-items: center; gap: 8px; }
+/* An explicit display value beats the `hidden` attribute's UA `display:none`,
+   so buttons hidden per step (Back on step 1, Continue on step 6) kept
+   rendering until this existed. */
+.btn-action[hidden] { display: none; }
+.btn-primary.btn-action:not(:disabled):hover { transform: translateY(-1px); }
+.btn-action.is-quiet { background: transparent; border-color: rgba(43, 38, 34, .2); color: var(--ink); }
+.btn-action.is-quiet:hover { border-color: var(--green); color: var(--green); }
 .btn-primary:hover { background: var(--green-dark); }
 .cta { font-family: var(--sans); font-size: 15px; font-weight: 600; padding: 14px 24px; border-radius: 999px; display: inline-block; }
 .cta-solid { color: var(--cream); background: var(--green); }
@@ -348,9 +390,19 @@ section.no-rule { border-top: none; }
 .facts .col { min-width: 0; }
 .facts .lbl { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: rgba(43, 38, 34, .45); font-weight: 600; margin-bottom: 14px; }
 .tag-row { display: flex; flex-wrap: wrap; gap: 8px; }
-.tag { font-size: 13.5px; color: var(--ink); border-radius: 999px; padding: 6px 15px; }
-.tag-diet { background: rgba(58, 90, 64, .09); }
-.tag-goal { background: rgba(224, 165, 38, .13); }
+/* ONE fill, because .tag has exactly one job: a read-only summary of a value
+   the user already chose. It used to fork on what the value was ABOUT --
+   .tag-diet sage, .tag-goal amber -- which on the dashboard put "Vegetarian"
+   and "Maintain" side by side in two different colours while being the same
+   class of element read out of the same saved profile. The colour was
+   carrying no information the label wasn't already carrying.
+
+   Neutral rather than sage, deliberately: these sit directly above the plate
+   picker, whose chosen pill is --accent-selected (a sage tint). A read-only
+   chip in the selected colour, inches from a control where that colour means
+   "you picked this", invites the reading that the chips are selectable too.
+   Different job, different surface. */
+.tag { font-size: 13.5px; color: var(--ink); border-radius: 999px; padding: 6px 15px; background: rgba(43, 38, 34, .06); }
 .facts .fine { font-size: 12.5px; line-height: 1.55; color: rgba(43, 38, 34, .5); margin-top: 13px; max-width: 42ch; }
 
 /* ---------- sample day ---------- */
@@ -494,18 +546,9 @@ section.no-rule { border-top: none; }
 .modal .switch button:hover { color: var(--amber-deep); }
 
 /* ---------- accounts (web/onboarding.html, web/dashboard.html) ---------- */
-/* A thin status row, not a new component: reuses .btn-link exactly as the
-   header nav already does, just right-aligned above the progress steps. */
-/* min-width:0 lets this shrink below its content width inside the header flex
-   row; without it the "Signed in as <email>" span holds the bar at its full
-   intrinsic width and the header overflows — measured at 403px against a
-   390px viewport with a 30-character address, which put 13px of horizontal
-   scroll on every signed-in page. The address truncates instead; the full
-   value is still the accessible name of the element. */
-.ob-authbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: flex-end;
-  font-size: 13px; color: rgba(43, 38, 34, .6); margin: 0 0 4px; min-width: 0; }
-.ob-authbar > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ob-authbar[hidden] { display: none; }
+/* .ob-authbar is gone: it was a second header-nav layout for the same strip
+   of account controls, and the two drifted. See .app-nav above, and
+   web/header.js for the three states that strip can be in. */
 .ob-save-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 18px; }
 
 /* ---------- onboarding (web/onboarding.html) ---------- */
@@ -1022,20 +1065,10 @@ a:focus-visible {
   background: var(--surface-page);
   border-top: 1px solid var(--rule);
 }
-/* Back and Continue share one geometry: same height, padding and radius, so
-   they read as one control family at two emphasis levels. Back was bare text
-   with no container and no hit area of its own. */
-.ob-nav-next,
-.ob-nav-back { padding: 13px 24px; border-radius: 999px; font-size: 15px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
-/* An explicit display value beats the `hidden` attribute's UA `display:none`,
-   so the buttons the nav hides per step (Back on step 1, Continue on step 6)
-   kept rendering. Restore it for both. */
-.ob-nav-next[hidden],
-.ob-nav-back[hidden] { display: none; }
+/* Back and Continue carry .btn-action for their geometry (see "the
+   page-advancing action" above); only their position in the bar lives here. */
 .ob-nav-next { margin-left: auto; }
-.ob-nav-next:not(:disabled):hover { transform: translateY(-1px); }
-.ob-nav-back { background: transparent; border: 1px solid rgba(43, 38, 34, .2); color: var(--ink); }
-.ob-nav-back:hover { border-color: var(--green); color: var(--green); }
+.ob-nav-restart { margin-left: auto; }
 .ob-nav-restart { margin-left: auto; }
 
 .ob-plan-meals { margin-top: 4px; }
@@ -1128,8 +1161,24 @@ a:focus-visible {
 
 /* ---------- responsive ---------- */
 @media (max-width: 560px) {
-  .nav { gap: 12px; }
-  .nav a.hide-sm { display: none; }
+  .app-nav { gap: 12px; }
+  .app-nav a.hide-sm { display: none; }
+  /* Two drops, in priority order, measured at 390px where .header-inner is
+     390px wide: the brand took 210 of it and left the nav 128, against 139 of
+     items — so the authenticated nav wrapped to a second and third row and
+     the header grew to 160px tall.
+     The address goes first (it is identity, not navigation, and the account
+     page states it). The latin half of the wordmark goes second: the Tamil
+     அறுசுவை is the mark, `arusuvai` is its gloss, and a gloss is what a
+     390px viewport can afford to lose. Log out must survive both. */
+  .hdr-email { display: none; }
+  .site-header .brand-latin { display: none; }
+  /* Third drop, and only where it is redundant: on a page that still offers
+     Dashboard, Edit profile is one tap past it. The sibling combinator is the
+     condition -- on dashboard.html there IS no Dashboard link (it is the
+     self-link header.js drops), so Edit profile survives there, which is the
+     one place it is the only way to reach the wizard. */
+  #hdrDashboard ~ #hdrEditProfile { display: none; }
   .calc-dock { top: auto; bottom: 16px; transform: none; }
   .ob-progress2-label { font-size: 9px; }
   .ob-wizard-card { padding: 20px; }
