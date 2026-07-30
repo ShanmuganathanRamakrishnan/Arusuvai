@@ -55,13 +55,27 @@
     host.appendChild(svg);
     pathEls = Array.prototype.slice.call(svg.querySelectorAll('path'));
 
+    // The one place this page may learn how strong the kolam is: the
+    // --kolam-opacity token in styles.css, which onboarding and the dashboard
+    // also render at. Reading it (rather than repeating .06 here) is what
+    // stops the two from drifting apart again -- they were .18-at-peak here
+    // against .06 there, three times stronger on one route than the other two.
+    var kolamPeak = parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--kolam-opacity')
+    ) || 0.06;
+
     if (reduce) {
-      host.style.opacity = '0.16';
+      // No inline opacity at all: the stylesheet's token is already the
+      // settled value, and setting anything here would be a second number.
       pathEls.forEach(function (p) { p.style.strokeDashoffset = '0'; });
       return null;
     }
 
     // Breathing envelope over an 11s cycle: draw in -> hold -> unravel -> rest.
+    // The envelope is 0..1 and MULTIPLIES the token, so the held peak equals
+    // what the other two routes show and nothing on this page exceeds it. The
+    // landing page breathes the kolam in and out; it does not have a louder
+    // kolam than the rest of the product.
     var cycle = 11000, startT = performance.now();
     var smooth = function (t) { return t * t * (3 - 2 * t); };
     var envelope = function (t) {
@@ -73,7 +87,7 @@
     function frame(now) {
       var t = ((now - startT) % cycle) / cycle;
       var lp = envelope(t);
-      host.style.opacity = (Math.round((0.03 + 0.15 * lp) * 100) / 100).toString();
+      host.style.opacity = (Math.round(kolamPeak * lp * 1000) / 1000).toString();
       for (var j = 0; j < pathEls.length; j++) {
         var prog = Math.min(1, Math.max(0, lp * 1.4 - j * 0.012));
         pathEls[j].style.strokeDashoffset = (Math.round((1 - prog) * 1000) / 1000).toString();

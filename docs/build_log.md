@@ -125,3 +125,73 @@ separately so neither can be quoted as settling the other. `web/onboarding.html`
 brand is a link, the deliberate single exception to a wizard header that renders
 no nav. Transcript in the same session, re-derived after the last edit:
 `python -m pytest tests/ -q` -> `289 passed, 1 warning in 80.48s (0:01:20)`.
+
+Updated 2026-07-30 for the P2 landing-page closeout — four values that each
+existed in more than one place, plus one non-defect measured rather than
+assumed.
+
+The hero's `.draft-note` ("Placeholder copy — written for the founder to
+rewrite in his own voice.") is removed, along with the class that styled it.
+
+`--kolam-opacity` (`.06`) is now the single declaration for the background on
+every route. It previously lived in four disagreeing places: `styles.css`'s
+`.06`, `web/app.js`'s inline `0.03 + 0.15 * envelope` peaking at `.18`, a
+reduced-motion `.16` in `app.js`, and a reduced-motion `.16` in a media query —
+so the same element rendered three times stronger on the landing page than on
+onboarding and the dashboard, and the seam showed on navigation. `app.js` now
+reads the token from `getComputedStyle` and multiplies it by a `0..1` envelope,
+so the landing page still breathes but its held peak EQUALS what the other two
+routes show; both reduced-motion overrides are gone, because a second number in
+that path restores the seam for precisely the users who cannot see the
+animation that justified it.
+
+The script cycler's language label is anchored to the word's box
+(`align-items: flex-end` on `.morph-row`, and the hand-tuned
+`padding-bottom: 16px` that compensated for the old baseline drift is gone).
+The word is an inline-block at `line-height: .96`, so its box is exactly
+`.96em` tall whatever script is in it; baseline alignment was wrong because
+Tamil, Telugu, Kannada and Malayalam place their baseline at different heights
+within one font-size, and the label moved every 2.5s as a result. Measured
+across all four scripts after the fix: `labelBottom` 258 and
+`deltaFromWordBox` 0 on every frame.
+
+The calculator rail is in the layout system. It stays anchored to the viewport
+— it is a utility rail, not page content, and is now the single documented
+exception to the container token — but its responsive behaviour, previously
+undefined, is now two rules: width comes from `--calc-panel-w` =
+`min(308px, calc(100vw - 64px))`, read by BOTH the drawer and the card so the
+two can never disagree; and anchoring drops from vertical-centre to bottom at
+1100px, the same width `.ob-grid12` already collapses at rather than a new
+number. Measured open at 1600 / 1280 / 1100 / 768 / 390 / 320px: fully on
+screen at every width (308px card down to 390, 256px at 320).
+
+`DESIGN_SYSTEM.md` known-inconsistency 0 is CLOSED, and its reading corrected
+rather than just satisfied. The original 390px measurement — a 308px card with
+its right edge at 658 — was taken with the drawer CLOSED, where `.calc-panel`
+is 0px wide with `overflow: hidden`, so the card's paint is clipped by its own
+drawer and not by the page. That is the component working. The real gap was the
+OPEN state below ~372px. Both facts are now pinned separately
+(`test_the_closed_dock_paints_nothing_outside_the_viewport` and
+`test_the_open_calculator_dock_fits_the_viewport`) so the conflation cannot
+recur. The durable lesson stands: `body { overflow-x: clip }` means
+`scrollWidth == clientWidth` is evidence overflow is being hidden, not that
+content fits.
+
+The plate picker's large empty region needed no code change, and that was
+established by measurement rather than by reading the markup: `POST /api/plan`
+renders into that space on the same route. Before Generate, content ends at
+y=322 with the footer at y=817; after, the decline section occupies y=375-952
+and the footer moves to y=1052.
+
+Every one of the four fixes was shown to be capable of failing. Perturbing the
+landing three back to their broken form: `3 failed, 1 passed in 34.70s`
+(`test_the_kolam_never_exceeds_its_token_on_the_landing_page` — "peaks at 0.18
+against a --kolam-opacity of 0.06"; `test_the_language_label_holds_position_...`;
+`test_no_placeholder_copy_renders_in_the_hero`). Perturbing `--calc-panel-w`
+back to a bare `308px`: `1 failed, 8 passed in 22.23s` — "at 320px the card
+starts off-screen left, assert -28 >= 0". All four then restored.
+
+Transcript in the same session, after the last edit: `python -m pytest tests/ -q`
+-> `301 passed, 1 warning in 128.95s (0:02:08)`. The suite went 289 -> 301; the
+single warning is the pre-existing `FOODAI_SESSION_SECRET is not set` notice
+from `api/main.py:91`.

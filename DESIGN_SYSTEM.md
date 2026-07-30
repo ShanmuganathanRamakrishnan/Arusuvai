@@ -368,6 +368,36 @@ screen edge). See "Known inconsistencies": cards do **not** currently share one
 radius, and inputs use two different ones. Until that's resolved, match the
 nearest existing component rather than picking a fresh number.
 
+### The calculator dock — the one element anchored to the viewport, and its rules
+
+The landing page's protein rail (`.calc-dock`) is **deliberately outside the
+container token**. It is a persistent utility rail, not page content, and the
+container rule ("a page may change what it puts inside the container, not the
+container") is about content columns. This is the single documented exception;
+anything else that wants to sit outside the container is a defect until it is
+listed here.
+
+What was undefined until 2026-07-30 was its *responsive* behaviour, which is
+how it ended up as known-inconsistency 0. Three rules now:
+
+1. **Width comes from `--calc-panel-w`** = `min(308px, calc(100vw - 64px))`.
+   Both `.calc-panel` (the animating drawer) and `.calc-card` (its contents)
+   read it. They must never be given widths separately — the card sized
+   independently of the drawer is exactly the disagreement that produced the
+   clipped state. The `64px` reserves room for the toggle tab.
+2. **The card keeps an explicit width, not `100%`.** The drawer collapses to
+   `0` to animate; a percentage card would reflow its own text through the
+   transition instead of sliding out from behind the edge.
+3. **Anchoring changes at 1100px** — the same width `.ob-grid12` collapses at,
+   not a new number. Above it the dock sits at the vertical centre beside the
+   content; at or below it the dock is bottom-anchored, so an open drawer
+   covers the end of the page rather than the middle of the paragraph being
+   read.
+
+Measured open at 1600 / 1280 / 1100 / 768 / 390 / 320px and pinned by
+`tests/test_web_wizard_layout.py::test_the_open_calculator_dock_fits_the_viewport`
+and `::test_the_dock_drops_out_of_the_reading_column_below_1100`.
+
 ---
 
 ## Motion
@@ -385,12 +415,27 @@ pop-in, no spring overshoot, no attention-seeking loops on content.
 - **Bloom stagger:** cards reveal in sequence at **80ms** steps
   (`nth-child` delays 0→400ms), one after another — never all at once.
 - **Morph headline:** opacity cross-fade `.5s ease`, swapping every 2.5s.
+  **The language label is anchored to the word's box, not to its baseline.**
+  `.morph-row` is `align-items: flex-end`; the word is an inline-block at
+  `line-height: .96`, which makes its box exactly `.96em` tall whatever script
+  is in it, so the label's position is script-independent by construction.
+  Baseline alignment was tried and is wrong here: Tamil, Telugu, Kannada and
+  Malayalam place their baseline at different heights within one font-size, so
+  the label moved every 2.5s — mid-glyph on the Malayalam frame, lower on the
+  Kannada one — and the `padding-bottom: 16px` that used to sit on it was
+  hand-tuned compensation for exactly that drift. **Any slot that cycles
+  scripts follows this rule**: align to a box the type system controls, never
+  to a metric the font file controls. Pinned across all four scripts by
+  `tests/test_web_landing_geometry.py::test_the_language_label_holds_position_across_all_four_scripts`,
+  which samples several frames — one sample would have passed on the old
+  version.
 - **FAQ accordion:** `max-height`/opacity `.4s ease`; the `+`→`×` sign rotates
   `.3s`.
 - **Chevron on calc toggle:** rotate `.4s ease`.
 - **Kolam background:** an 11s breathing cycle (draw-in → hold → unravel →
-  rest), opacity ramping ~`0.03`→`0.18`; deliberately the slowest thing on the
-  page and always behind content at low opacity.
+  rest); deliberately the slowest thing on the page and always behind content
+  at low opacity. The envelope is `0..1` and multiplies `--kolam-opacity` — it
+  has **no opacity range of its own**. See "The kolam-dot motif".
 - **Modal:** `ar-fadein .3s ease` on the overlay.
 - **Onboarding step change:** `ob-step-in .3s ease` — opacity plus an 8px
   upward slide on the incoming `.ob-step`, and nothing else. **A step
@@ -406,9 +451,13 @@ pop-in, no spring overshoot, no attention-seeking loops on content.
 
 **`prefers-reduced-motion: reduce`** (`styles.css:403–408`) is mandatory on
 every page: it collapses all animation/transition to `.001ms`, shows bloom
-cards immediately, settles the kolam to a static `opacity: .16`, and (in
-`app.js`) swaps the headline without a fade and freezes the kolam. Any new
-motion must have a reduced-motion resting state.
+cards immediately, and (in `app.js`) swaps the headline without a fade and
+freezes the kolam. The kolam's resting state is simply `--kolam-opacity` — the
+two `.16` overrides that used to pin it here were removed 2026-07-30, because a
+second number in the reduced-motion path puts the route seam back on precisely
+the users who cannot see the animation that justified it. Any new motion must
+have a reduced-motion resting state, and that state must be a token already in
+use, not a value invented for it.
 
 **Header rule — the reference example of restraint over decoration.** The
 sticky header (`.site-header`, `styles.css:76–103`) is **solid cream at rest**
@@ -430,8 +479,27 @@ what shipped is a plain solid rule — see "Known inconsistencies.")
 r=4.6) at loop centres, green sinusoidal threads (`#3A5A40`, 1.5px) drawn with
 `stroke-dasharray` so they can animate in. It lives in a single fixed,
 full-viewport, `pointer-events:none`, `aria-hidden` layer (`#kolam`,
-`styles.css:65–73`) at `z-index:0`, base opacity `.06`, behind all content
-(`.wrap` is `z-index:1`).
+`styles.css:65–73`) at `z-index:0`, behind all content (`.wrap` is
+`z-index:1`).
+
+**One strength, one token: `--kolam-opacity` (`.06`).** Added 2026-07-30. The
+value was previously in four places that disagreed: this sheet's `.06`,
+`app.js`'s inline `0.03 + 0.15 × envelope` (peaking at `.18`), a reduced-motion
+`.16` in `app.js`, and a reduced-motion `.16` in a media query. The landing
+page therefore rendered the same background element three times stronger than
+onboarding and the dashboard, and the seam was visible on navigation.
+
+The landing page still breathes — that is the motif — but its envelope is
+`0..1` and **multiplies the token**, so its held peak *equals* what the other
+two routes show and no route ever exceeds it. `app.js` reads the token from
+`getComputedStyle`; it does not carry a number of its own, and the
+reduced-motion overrides are gone (the settled value is already the shared
+one). Change this one declaration to change the background everywhere.
+
+Pinned by `tests/test_web_landing_geometry.py`: one test samples a full 11s
+cycle on the landing page and asserts the peak equals the token, the other
+asserts all three routes render one value with JS off. A single sample would
+have passed on the broken version, so the sampling window is part of the check.
 
 **Where it's allowed:** as the whole-page background *rhythm* (the one place it
 appears now), and — if ever needed — as a section divider or the header
@@ -846,22 +914,29 @@ the onboarding flow. Every interactive page meets all four:
 These are real discrepancies in the shipped pages, flagged rather than silently
 normalized in this doc. Each needs a code fix, not just a doc edit.
 
-0. **The landing page overflows on mobile — clipped, not scrolling.** At a
-   390px viewport `.calc-card` (the fixed calculator dock) is 308px wide
-   starting at x=350, so its right edge sits at 658 against a 390px document.
-   Roughly 40px of a 308px card is on screen. Found 2026-07-29, still open.
+0. ~~**The landing page overflows on mobile — clipped, not scrolling.**~~
+   **CLOSED 2026-07-30**, and the entry was partly measuring the wrong thing.
+   Two separate facts were folded into one:
 
-   **Read the "no horizontal scroll at 390px" measurement carefully — it does
-   not contradict this.** Measured 2026-07-30 across all three routes:
-   `clientWidth` 390, `scrollWidth` 390, no scrollbar anywhere. That is true
-   *and* compatible with the overflow above, because `body { overflow-x: clip }`
-   and `.calc-panel { overflow-x: hidden }` mean no amount of overflow can ever
-   produce a scrollbar. A scroll check is therefore not evidence that content
-   fits; it is evidence that content which doesn't fit is being hidden. Both
-   facts are now pinned separately by
-   `tests/test_web_wizard_layout.py::test_scroll_absence_at_390_is_not_evidence_of_fitting`,
-   so neither can be quoted as settling the other. The mobile evidence on
-   record is: nothing scrolls, and one element is cut off.
+   - *The reading itself was taken with the drawer CLOSED.* At 390px,
+     `.calc-card` sits 308px wide with its right edge at 658 — but its parent
+     `.calc-panel` is then 0px wide with `overflow: hidden`, so the card's
+     paint is clipped by its own drawer, not by the page. A closed slide-out
+     whose contents sit off-screen is the component working. Pinned by
+     `tests/test_web_wizard_layout.py::test_the_closed_dock_paints_nothing_outside_the_viewport`,
+     which asserts both halves so the two cannot be conflated again.
+   - *The real gap was the OPEN state below ~372px*, where a fixed 308px card
+     plus the toggle no longer fits the viewport. `--calc-panel-w` is now
+     `min(308px, calc(100vw - 64px))` and both the panel and the card read it,
+     so the open drawer fits at every width. Measured open at 1600 / 1280 /
+     1100 / 768 / 390 / 320px: the card is 308px down to 390 and 256px at 320,
+     always fully on screen.
+
+   **The scroll-versus-fit distinction stands and is the durable lesson.**
+   `body { overflow-x: clip }` means no amount of overflow can ever produce a
+   scrollbar, so `scrollWidth == clientWidth` is evidence that overflow is
+   being hidden, not that content fits. Every mobile fit claim in this doc must
+   measure the element, not the document.
 
 1. **Cards don't share one border-radius.** Bloom/meal/calc cards are `16px`,
    quality card `18px`, traditions plate & early-access card `20px`, modal

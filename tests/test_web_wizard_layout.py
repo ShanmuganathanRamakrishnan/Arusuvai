@@ -536,13 +536,25 @@ def test_plate_picker_control_column_matches_the_wizard(measurements):
 # edge is at 658 against a 390px viewport, and its parent .calc-panel is 0px
 # wide with overflow-x: hidden. Roughly 40px of a 308px card is on screen.
 #
-# This test does not assert the card is fixed -- the landing page's calculator
-# dock is out of scope. It asserts the two facts SEPARATELY so neither can be
-# quoted as though it settled the other.
+# The two facts are asserted SEPARATELY below so neither can be quoted as
+# though it settled the other, and fact 3 -- which used to assert the card
+# overflowed -- was flipped on 2026-07-30 when the dock was brought into the
+# layout system (P2 item 2): both the panel and the card now take their width
+# from --calc-panel-w, which is min(308px, 100vw - 64px). The test stays in
+# place with its history rather than being deleted, because the useful part is
+# fact 2: the clip means the page's own scroll geometry can never report this
+# class of defect, on this element or any future one.
 # --------------------------------------------------------------------------
 
+#: Widths worth checking: either side of the dock's 1100px anchoring change,
+#: the two common phone widths, and 320px, where the viewport is narrower than
+#: the card's natural 308px plus the toggle and the min() actually binds.
+DOCK_WIDTHS = (1600, 1280, 1100, 768, 390, 320)
 
-def test_scroll_absence_at_390_is_not_evidence_of_fitting():
+
+@pytest.fixture(scope="module")
+def calc_dock_geometry():
+    """The dock measured OPEN at each width — closed it cannot overflow."""
     playwright = pytest.importorskip(
         "playwright.sync_api",
         reason="playwright is a dev-only dependency; see requirements-dev.txt",
@@ -553,12 +565,100 @@ def test_scroll_absence_at_390_is_not_evidence_of_fitting():
     probe = """() => {
       const de = document.documentElement;
       const card = document.querySelector('.calc-card');
-      const r = card && card.getBoundingClientRect();
+      const dock = document.getElementById('calcDock');
+      const r = card.getBoundingClientRect();
+      const d = dock.getBoundingClientRect();
       return {
         hScroll: de.scrollWidth > de.clientWidth,
         clip: getComputedStyle(document.body).overflowX,
         clientWidth: de.clientWidth,
-        cardRight: r ? Math.round(r.right) : null,
+        cardLeft: Math.round(r.left),
+        cardRight: Math.round(r.right),
+        cardWidth: Math.round(r.width),
+        panelWidth: Math.round(document.querySelector('.calc-panel')
+                                       .getBoundingClientRect().width),
+        dockCentred: Math.abs((d.top + d.bottom) / 2 - de.clientHeight / 2) < 24,
+      };
+    }"""
+
+    out = {}
+    with playwright.sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 1600, "height": 900})
+        for width in DOCK_WIDTHS:
+            page.set_viewport_size({"width": width, "height": 900})
+            page.goto(f"{WEB_ORIGIN}/index.html", wait_until="networkidle")
+            page.wait_for_timeout(500)
+            page.click("#calcToggle")
+            page.wait_for_timeout(700)   # the panel's width transition is 420ms
+            out[width] = page.evaluate(probe)
+        browser.close()
+    return out
+
+
+@pytest.mark.parametrize("width", DOCK_WIDTHS)
+def test_the_open_calculator_dock_fits_the_viewport(calc_dock_geometry, width):
+    """Fact 3, flipped. Measured at 390px BEFORE the fix: a 308px card starting
+    at x=350, right edge 658 against a 390px viewport — roughly 40px of it on
+    screen, inside a 0px-wide `overflow-x: hidden` panel."""
+    g = calc_dock_geometry[width]
+    assert g["cardRight"] <= g["clientWidth"], (
+        f"at {width}px the open calculator card's right edge is at "
+        f"{g['cardRight']} against a {g['clientWidth']}px viewport — it is "
+        "being clipped, not laid out. --calc-panel-w is what bounds this."
+    )
+    assert g["cardLeft"] >= 0, f"at {width}px the card starts off-screen left"
+    assert g["cardWidth"] == g["panelWidth"], (
+        f"at {width}px the card is {g['cardWidth']}px inside a "
+        f"{g['panelWidth']}px panel. Both must read --calc-panel-w; their "
+        "disagreement is exactly what produced the clipped state."
+    )
+
+
+def test_the_dock_drops_out_of_the_reading_column_below_1100(calc_dock_geometry):
+    """The behaviour that was undefined: what the rail does as the page narrows.
+
+    Above 1100px — the same width .ob-grid12 collapses at — the dock sits at
+    the vertical centre, beside the content. At or below it the dock is bottom
+    anchored, so an open panel covers the end of the page rather than the
+    middle of the paragraph being read.
+    """
+    centred = {w: g["dockCentred"] for w, g in calc_dock_geometry.items()}
+    offenders = {w: c for w, c in centred.items() if c != (w > 1100)}
+    assert not offenders, (
+        f"the dock's anchoring does not change at 1100px: {centred}"
+    )
+
+
+def test_the_closed_dock_paints_nothing_outside_the_viewport():
+    """What known-inconsistency 0 was actually measuring, stated correctly.
+
+    The 390px reading behind that entry — a 308px ``.calc-card`` with its right
+    edge at 658 — was taken with the dock CLOSED. Closed, ``.calc-panel`` is
+    0px wide with ``overflow: hidden``, so the card's rect sits off the right
+    edge but its paint is clipped by its own parent, not by the page. That is a
+    slide-out drawer working as designed, and it is a different fact from an
+    element the page has to hide with ``overflow-x: clip``.
+
+    Both halves are asserted, because the entry conflated them: the card is
+    off-viewport by rect, AND its clipping parent has zero visible width.
+    """
+    playwright = pytest.importorskip(
+        "playwright.sync_api",
+        reason="playwright is a dev-only dependency; see requirements-dev.txt",
+    )
+    if not _listening("localhost", 3000):
+        pytest.skip(f"no static server on {WEB_ORIGIN}")
+
+    probe = """() => {
+      const panel = document.querySelector('.calc-panel');
+      const card = document.querySelector('.calc-card');
+      return {
+        open: document.getElementById('calcDock').classList.contains('open'),
+        panelWidth: Math.round(panel.getBoundingClientRect().width),
+        panelOverflow: getComputedStyle(panel).overflow,
+        cardRight: Math.round(card.getBoundingClientRect().right),
+        clientWidth: document.documentElement.clientWidth,
       };
     }"""
 
@@ -566,22 +666,31 @@ def test_scroll_absence_at_390_is_not_evidence_of_fitting():
         browser = p.chromium.launch()
         page = browser.new_page(viewport={"width": 390, "height": 844})
         page.goto(f"{WEB_ORIGIN}/index.html", wait_until="networkidle")
-        page.wait_for_timeout(900)
+        page.wait_for_timeout(800)
         g = page.evaluate(probe)
         browser.close()
 
-    # Fact 1: no scrollbar. This is what the P1 report measured.
-    assert not g["hScroll"], "the landing page scrolls horizontally at 390px"
-    # Fact 2: and it cannot, because overflow is clipped -- so fact 1 was never
-    # capable of detecting an element hanging off the right edge.
-    assert g["clip"] in ("clip", "hidden"), (
-        f"body overflow-x is {g['clip']!r}; if that ever becomes 'visible' the "
-        "assertion above starts meaning something different and this comment "
-        "needs rewriting"
+    assert not g["open"], "the dock should start closed"
+    assert g["panelWidth"] == 0, (
+        f"the closed panel is {g['panelWidth']}px wide, so the card it holds "
+        "is no longer clipped by it and the reasoning below does not apply"
     )
-    # Fact 3: something IS hanging off the right edge, and it is .calc-card.
-    # Flip this to <= clientWidth on the day the dock is made responsive.
+    assert g["panelOverflow"] == "hidden", (
+        f"the closed panel's overflow is {g['panelOverflow']!r}; the card is "
+        "only invisible because the panel hides it"
+    )
     assert g["cardRight"] > g["clientWidth"], (
-        "the calculator dock now fits at 390px — good. Update this test and "
-        "DESIGN_SYSTEM.md's known-inconsistency 0 rather than deleting it."
+        "the closed card no longer sits past the right edge — if the drawer "
+        "stopped being a drawer, retire this test rather than adjusting it"
     )
+
+
+def test_no_horizontal_scroll_but_that_was_never_the_evidence(calc_dock_geometry):
+    """Facts 1 and 2, kept: the clip is why fact 3 needed measuring at all."""
+    for width, g in calc_dock_geometry.items():
+        assert not g["hScroll"], f"the landing page scrolls horizontally at {width}px"
+        assert g["clip"] in ("clip", "hidden"), (
+            f"body overflow-x is {g['clip']!r} at {width}px. While it is clipped, "
+            "'no horizontal scroll' cannot detect an element hanging off the "
+            "right edge — which is why the test above measures the element."
+        )

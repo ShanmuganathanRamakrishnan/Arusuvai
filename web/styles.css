@@ -99,6 +99,30 @@
   --text-body: 15px;      /* every step description */
   --text-note: 12.5px;    /* helper text under a control group */
   --text-label: 12.5px;   /* control-group captions */
+
+  /* ---- kolam background ----
+     ONE value for the woven dot grid, on every route. Added 2026-07-30: the
+     landing page animated its own inline opacity between .03 and .18 while
+     onboarding and the dashboard sat at a flat .06 from this sheet, so the
+     same background element was three times stronger on one route than the
+     other two and the seam showed on navigation. The landing page still
+     breathes — web/app.js multiplies an envelope by this token — but it now
+     breathes UP TO the shared value rather than past it, so no route ever
+     renders the kolam at a strength another route does not. Change this one
+     number to change the background everywhere, including reduced motion. */
+  --kolam-opacity: .06;
+
+  /* ---- protein calculator dock (landing page only) ----
+     The dock is deliberately anchored to the viewport edge, not to the
+     container: it is a persistent utility rail, the one element on the page
+     that is not page content. What was NOT defined was what happens when the
+     viewport is narrower than the panel it slides open, and the answer used
+     to be "the card overflows and is clipped" — at 390px, 308px of card with
+     roughly 40px on screen (DESIGN_SYSTEM.md, known inconsistency 0). The
+     panel and the card now take their width from this one value, which never
+     exceeds the viewport minus room for the toggle, so the open state fits at
+     every width instead of being hidden by `overflow-x: clip`. */
+  --calc-panel-w: min(308px, calc(100vw - 64px));
 }
 
 * { box-sizing: border-box; }
@@ -146,7 +170,7 @@ section.no-rule { border-top: none; }
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
-  opacity: .06;
+  opacity: var(--kolam-opacity);
 }
 #kolam svg { width: 100%; height: 100%; }
 
@@ -259,9 +283,14 @@ a.brand:hover { opacity: .62; }
   align-items: stretch;
 }
 .calc-panel { width: 0; overflow: hidden; transition: width .42s cubic-bezier(.22, .61, .36, 1); }
-.calc-dock.open .calc-panel { width: 308px; }
+.calc-dock.open .calc-panel { width: var(--calc-panel-w); }
+/* The card keeps an explicit width rather than 100%: the panel collapses to
+   0 to animate, and a percentage card would squeeze its own text during the
+   transition instead of sliding out from behind the edge. Same token as the
+   panel, so the two can never disagree -- that disagreement is what let the
+   card sit 308px wide inside a 40px-visible panel at 390px. */
 .calc-card {
-  width: 308px;
+  width: var(--calc-panel-w);
   background: var(--cream-card);
   border: 1px solid rgba(43, 38, 34, .12);
   border-right: none;
@@ -302,6 +331,18 @@ a.brand:hover { opacity: .62; }
 .calc-toggle .lbl { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; font-weight: 600; }
 .calc-toggle .chev { transition: transform .4s ease; }
 .calc-dock.open .calc-toggle .chev { transform: rotate(180deg); }
+/* Behaviour below the point where the open panel would cover the reading
+   column, which was previously undefined. 1100px is not a new number: it is
+   the same collapse point .ob-grid12 uses, the width at which this project
+   already decided a two-track layout stops fitting. Above it the dock sits at
+   the vertical centre, beside the content. At or below it the dock drops to
+   the bottom corner, so an open panel overlaps the end of the page rather
+   than the middle of the paragraph the reader is in. The ≤560px rule further
+   down only repeats the anchoring; the width is handled by --calc-panel-w at
+   every size, so there is no width at which the card is clipped. */
+@media (max-width: 1100px) {
+  .calc-dock { top: auto; bottom: 16px; transform: none; }
+}
 
 /* ---------- hero ---------- */
 .hero {
@@ -312,20 +353,28 @@ a.brand:hover { opacity: .62; }
   align-items: center;
 }
 .hero .eyebrow { margin-bottom: 34px; }
-.morph-row { display: flex; align-items: baseline; justify-content: center; gap: 16px; flex-wrap: wrap; margin-bottom: 2px; min-height: 1.05em; }
+/* align-items: flex-end, NOT baseline. The row cycles Tamil, Telugu, Kannada
+   and Malayalam through one slot, and those four fonts put their baseline at
+   different heights within the same font-size — so a baseline-aligned label
+   moved every 2.5s, sitting mid-glyph on the Malayalam frame and lower on the
+   Kannada one. The word is an inline-block with line-height .96, which makes
+   its box exactly .96em tall whatever script is in it; aligning to the bottom
+   of that box is therefore script-independent by construction. The old
+   `padding-bottom: 16px` on the label was the hand-tuned compensation for the
+   baseline drift and is gone with the cause. */
+.morph-row { display: flex; align-items: flex-end; justify-content: center; gap: 16px; flex-wrap: wrap; margin-bottom: 2px; min-height: 1.05em; }
 .morph-word {
   display: inline-block; line-height: .96;
   font-size: clamp(44px, 7vw, 74px); color: var(--ink); font-weight: 600;
   font-family: var(--tamil);
   transition: opacity .5s ease;
 }
-.morph-lang { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: rgba(43, 38, 34, .4); font-weight: 600; padding-bottom: 16px; transition: opacity .5s ease; }
+.morph-lang { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: rgba(43, 38, 34, .4); font-weight: 600; padding-bottom: 4px; transition: opacity .5s ease; }
 .hero-title { font-family: var(--serif); font-weight: 500; font-size: clamp(30px, 4.8vw, 50px); line-height: 1.08; letter-spacing: -.01em; margin: 14px 0 0; color: var(--ink); max-width: 22ch; }
 .hero-sub { font-size: clamp(16px, 1.7vw, 18px); line-height: 1.6; color: rgba(43, 38, 34, .72); max-width: 52ch; margin: 20px 0 0; text-wrap: pretty; }
 .cred-line { display: flex; align-items: center; justify-content: center; gap: 9px; margin: 22px 0 0; }
 .cred-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); flex: none; }
 .cred-line span:last-child { font-size: 14px; font-weight: 500; color: var(--ink); }
-.draft-note { font-size: 11.5px; color: rgba(43, 38, 34, .4); margin-top: 10px; font-style: italic; }
 .cta-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; margin-top: 30px; }
 .free-line { font-size: 14.5px; color: var(--ink); margin-top: 22px; }
 .free-line strong { color: var(--green); }
@@ -1188,7 +1237,9 @@ a:focus-visible {
      self-link header.js drops), so Edit profile survives there, which is the
      one place it is the only way to reach the wizard. */
   #hdrDashboard ~ #hdrEditProfile { display: none; }
-  .calc-dock { top: auto; bottom: 16px; transform: none; }
+  /* The calc dock's bottom anchoring moved up to its own ≤1100px rule beside
+     the component. Repeating it here said the behaviour started at 560px,
+     which was never true of anything but this declaration. */
   .ob-progress2-label { font-size: 9px; }
   .ob-wizard-card { padding: 20px; }
   .ob-nav { flex-wrap: wrap; }
@@ -1203,5 +1254,9 @@ a:focus-visible {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
   .bloom-card { opacity: 1; transform: none; }
-  #kolam { opacity: .16; }
+  /* No override any more. This used to force .16 so the landing page's
+     stopped animation was still visible against its own .03-.18 breath; with
+     one token the settled value IS the shared value, and pinning a second
+     number here would put the seam back on exactly the users who cannot see
+     the animation that justified it. */
 }
