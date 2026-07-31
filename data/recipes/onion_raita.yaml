@@ -1,0 +1,84 @@
+# Onion raita — whisked curd with raw onion, tomato and chilli.
+#
+# Fills the optional `salad_or_raita` slot in both NORTH_LUNCH and
+# NORTH_DINNER. Optional slots earn their place by being small: this is about
+# 90 kcal, which is the right size for the solver to close a modest energy gap
+# without distorting the plate — the reason core/foods/templates.py models
+# these extras as optional slots rather than leaving them out.
+#
+# It is also the library's first dish that is not cooked at all, and that is
+# worth stating explicitly rather than leaving to be inferred from the absence
+# of a `process:` line. Nothing here is heated, drained, griddled or fried:
+# the curd is set, the vegetables go in raw. So every macro's process
+# uncertainty derives to a computed 0.0 and NOTHING is declared unassessed,
+# because there is no cooking step whose effect went unmeasured.
+#
+# That collides with two open items in docs/audit_log.md, in opposite
+# directions, and neither is resolved here:
+#
+#   * Finding 2 says a recipe with no `process:` lines reads as fully
+#     process-certain and 0% unverified. For a raw dish that reading is
+#     correct — which is precisely why finding 2 is hard: the loader cannot
+#     currently tell "raw, so genuinely zero" from "cooked, but the author
+#     didn't do the work." This file is the first honest instance of the
+#     former, and it makes the two indistinguishable in the library rather
+#     than only in principle.
+#   * The cross-reference logged 2026-07-31 concerns
+#     test_declared_uncertainty_is_backed_by_registered_constants, which
+#     asserts that any recipe carrying process_uncertainty also carries
+#     process_constants. This recipe carries a fully-populated
+#     process_uncertainty map of computed zeros and no constants, so it fails
+#     that test too — a second instance of the same open question, not a new
+#     one. The test stays red by instruction.
+#
+# The composition uncertainty is untouched by any of this and remains wide:
+# every ingredient here is an unverified hand-entered fixture row.
+id: onion_raita
+name: Onion raita
+name_ta: வெங்காய தயிர் பச்சடி
+name_hi: प्याज़ रायता
+
+region: north_indian
+diet_patterns: [vegetarian]
+# Not vegan: curd. Not jain: onion.
+
+category: raita
+prep_minutes: 10
+tags: [cooling, no_cook, lunch, dinner]
+
+serving_unit:
+  measure: katori
+  grams_per_unit: 150.0
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    One katori, the generic katori weight — no override. Two is the ceiling: a
+    raita is an accompaniment, and a plate carrying three katoris of it is one
+    the solver invented to reach a protein floor, not one anyone was served.
+
+ingredients:
+  - id: curd_dahi
+    quantity_g: 128.0
+    state: as_used
+    note: Whisked smooth. Set curd, not hung — hung curd is a different composition.
+  - id: onion_raw
+    quantity_g: 15.0
+    state: raw
+    note: Finely chopped, raw. No sautéing step anywhere in this dish.
+  - id: tomato_raw
+    quantity_g: 5.0
+    state: raw
+  - id: green_chilli
+    quantity_g: 1.0
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.5
+    state: as_used
+    note: >-
+      About 0.33% of the finished weight. A raita is salted more lightly than
+      a dal because it is eaten alongside dishes that are already salted.
+  - id: water
+    quantity_g: 0.5
+    state: as_used
+    note: The splash used to loosen the whisked curd; listed so the masses sum.

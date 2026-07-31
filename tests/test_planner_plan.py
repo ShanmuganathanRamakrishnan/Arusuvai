@@ -3,14 +3,20 @@
 Two things are tested, deliberately kept apart so a failure in one cannot be
 mistaken for the other:
 
-1. **The real library, every template.** ``data/recipes/`` has one recipe per
-   category and, per ``core/planner/plan.py``'s module docstring, no template
-   has candidates for its *other* required slots. Every real template must
-   therefore decline with a ``no_candidates`` violation, regardless of the
-   profile asking or of ``dev_mode``. This is the thin-library case the
-   product will hit almost by default with today's data, and the point of
-   this test is to confirm the decline is specific and correct — not merely
-   that the call doesn't crash.
+1. **The real library, per template.** ``data/recipes/`` is thin, and for
+   three of the four templates at least one required slot still has no
+   candidate at all; those must decline with a ``no_candidates`` violation,
+   regardless of the profile asking or of ``dev_mode``. This is the
+   thin-library case the product will hit almost by default with today's
+   data, and the point of the test is to confirm the decline is specific and
+   correct — not merely that the call doesn't crash.
+
+   ``north_lunch`` left that group on 2026-07-31: ``phulka`` filled
+   ``grain_base``, the last empty required slot, so the template now always
+   has something to solve. Its claim is therefore a different one —
+   ``no_candidates`` must *not* appear, and a decline must name the macro
+   that blocked it and show a walked relaxation ladder. See
+   ``TestNorthLunchIsPopulated``.
 2. **The wiring itself, against a richer synthetic library.** If (1) were the
    *only* test, a bug in ``plan_meal``'s own wiring could hide behind "well,
    the library is thin anyway." ``TestHappyPathAgainstSyntheticLibrary`` reuses
@@ -41,13 +47,22 @@ def _real_library(ingredients, library: RecipeLibrary) -> Library:
     return Library(ingredients=ingredients, recipes=library)
 
 
+#: The templates that still have at least one required slot with no candidate
+#: at all. Derived by subtraction rather than listed, so adding a template
+#: puts it in this group by default -- the group whose claim is the weaker one.
+#: ``NORTH_LUNCH`` left this set on 2026-07-31 when ``data/recipes/phulka.yaml``
+#: filled ``grain_base``; it now has a candidate in every required slot and is
+#: covered by ``TestNorthLunchIsPopulated`` below instead.
+UNPOPULATED_TEMPLATES = tuple(t for t in ALL_TEMPLATES if t.id != "north_lunch")
+
+
 class TestRealLibraryDeclinesEveryTemplate:
-    """The thin-library case: proven for all four templates, not asserted."""
+    """The thin-library case: proven per template, not asserted."""
 
     @pytest.mark.parametrize(
         "template",
-        ALL_TEMPLATES,
-        ids=[t.id for t in ALL_TEMPLATES],
+        UNPOPULATED_TEMPLATES,
+        ids=[t.id for t in UNPOPULATED_TEMPLATES],
     )
     def test_declines_with_a_specific_no_candidates_violation(
         self, template, ingredients, library
@@ -55,7 +70,7 @@ class TestRealLibraryDeclinesEveryTemplate:
         lib = _real_library(ingredients, library)
         # A deliberately loose day target: if this template declined because
         # the target was hard to hit, a loose target like this would still
-        # pass. It doesn't, for any of the four — confirming the decline is
+        # pass. It doesn't, for any of these — confirming the decline is
         # about missing candidates, not about target tightness.
         day_target = simple_target(energy_kcal=2000.0, protein_g_min=10.0)
 
@@ -76,6 +91,80 @@ class TestRealLibraryDeclinesEveryTemplate:
         assert outcome.result.disclosure is not None
         assert "No plan could be built for this profile" in outcome.result.disclosure
         assert "nothing to solve" in outcome.result.disclosure
+
+
+class TestNorthLunchIsPopulated:
+    """north_lunch has a candidate in every required slot, so it never declines
+    for want of one.
+
+    This is the claim that changed on 2026-07-31, and it is deliberately a
+    claim about the *kind* of answer the template can give, not about the
+    numbers today's three-recipe library happens to produce. Asserting the
+    current actuals would be a snapshot: it would go red on any recipe added
+    to this template and would not, on its own, say anything was wrong.
+    """
+
+    def _lib(self, ingredients, library) -> Library:
+        return _real_library(ingredients, library)
+
+    def test_no_candidates_never_appears_whatever_the_verdict(
+        self, ingredients, library
+    ):
+        # The durable invariant: with every required slot populated, the
+        # solver always has something to hand the validator. Whether it then
+        # passes or declines is a fact about the target, and this test takes
+        # no position on it -- deliberately, because that is exactly the part
+        # that moves as recipes land.
+        day_target = simple_target(energy_kcal=2000.0, protein_g_min=10.0)
+        outcome = plan_meal(
+            self._lib(ingredients, library),
+            day_target,
+            region=Region.NORTH_INDIAN,
+            meal_slot=MealSlot.LUNCH,
+            diet_pattern=DietPattern.VEGETARIAN,
+        )
+
+        assert all(v.kind != "no_candidates" for v in outcome.result.violations)
+
+    def test_an_unreachable_target_declines_on_a_named_macro_and_the_full_ladder(
+        self, ingredients, library
+    ):
+        # A protein floor no combination of breads and legume dishes in this
+        # library can reach at a lunch-sized portion. The decline must name
+        # protein_g with an actual and a bound, and must have walked all four
+        # rungs to get there -- i.e. it is a real relaxation failure, not the
+        # empty-pool shortcut that used to be this template's only answer.
+        day_target = simple_target(energy_kcal=2000.0, protein_g_min=500.0 / 0.35)
+        outcome = plan_meal(
+            self._lib(ingredients, library),
+            day_target,
+            region=Region.NORTH_INDIAN,
+            meal_slot=MealSlot.LUNCH,
+            diet_pattern=DietPattern.VEGETARIAN,
+        )
+
+        assert outcome.plan is None
+        assert outcome.result.passed is False
+        assert outcome.result.violations != ()
+        assert all(v.kind != "no_candidates" for v in outcome.result.violations)
+        assert outcome.result.relaxation_applied == (
+            "sodium_max_fibre_min",
+            "fat_carb_tolerance",
+            "energy_tolerance",
+            "protein_tolerance",
+        )
+
+        protein = [v for v in outcome.result.violations if v.macro == "protein_g"]
+        assert protein, "the blocking macro must be named, not left generic"
+        (shortfall,) = protein
+        assert shortfall.kind == "below_floor"
+        # Named with real quantities on both sides, whatever they are today.
+        assert shortfall.actual < shortfall.bound
+
+        disclosure = outcome.result.disclosure or ""
+        assert "No plan could be built for this profile" in disclosure
+        assert "protein_g" in disclosure
+        assert "nothing to solve" not in disclosure
 
     def test_dev_mode_does_not_change_the_verdict(self, ingredients, library):
         # dev_mode only suspends the *eligibility* filter (uncertainty too

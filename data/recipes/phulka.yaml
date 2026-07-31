@@ -1,0 +1,71 @@
+# Phulka — the plain dry-griddled wholewheat roti.
+#
+# Written as a `roti` rather than as a plain `rice` because that category fills
+# two templates' base slots, not one: NORTH_LUNCH.grain_base accepts
+# {rice, roti} and NORTH_DINNER.bread accepts {roti, paratha}. A plain steamed
+# rice would fill only the former, and NORTH_DINNER deliberately has no rice
+# slot at all (see the note on NORTH_LUNCH in core/foods/templates.py).
+#
+# There is no oil line, and that is the point of choosing a phulka over a
+# paratha or a ghee roti as the library's first bread: a phulka is cooked dry
+# on a tawa and puffed over a flame, so no oil-uptake constant applies and no
+# process-uncertainty term enters the energy figure. The library's other two
+# process constants (oil_uptake.dosa_griddled, oil_uptake.vegetable_tempering)
+# are both `verified=False` project estimates, so a bread that needs neither
+# adds a base-slot candidate without adding unverified energy to the plate.
+#
+# The atta is recorded on a raw basis with the dough water listed explicitly,
+# the same shape masala_dosa uses for its batter: there is no cooked-basis
+# composition entry for a griddled wholewheat bread, and inventing one would
+# hide a moisture-basis error inside a single number. The masses still sum to
+# the finished phulka.
+id: phulka
+name: Phulka
+name_ta: ஃபுல்கா
+name_hi: फुल्का
+
+region: north_indian
+diet_patterns: [vegetarian, vegan, jain]
+# Jain-safe: flour, water and salt only — no onion, no garlic, no root vegetable.
+
+category: roti
+prep_minutes: 20
+tags: [bread, lunch, dinner, everyday]
+
+serving_unit:
+  measure: roti
+  grams_per_unit: 45.0
+  min_count: 1
+  default_count: 3
+  max_count: 6
+  note: >-
+    The generic measure.roti_g weight, not an override — a phulka is the dish
+    that weight was registered for. Six is a large but real North Indian meal;
+    the ceiling is what stops the solver closing an energy gap by serving ten.
+
+# Moisture is driven off during griddling, and how much depends on the tawa
+# and the cook — the same class of variation as oil uptake on a dosa, and with
+# as little Indian-specific literature behind it. No constant is registered for
+# it, so the macros that a moisture-basis shift would move are declared
+# unassessed rather than deriving to a computed 0.0 nobody has earned.
+# Energy, protein, fat and carb are NOT listed: nothing process-sensitive
+# touches them here (no oil, no drained cooking water, no leaching step), so
+# they derive to a computed zero, which is a different claim from an
+# undeclared one.
+process_uncertainty_unassessed: [fibre_g, iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: wheat_atta_raw
+    quantity_g: 29.0
+    state: raw
+    note: One phulka's worth of atta; kneaded, not cooked, so the raw basis is correct.
+  - id: water
+    quantity_g: 15.85
+    state: as_used
+    note: >-
+      Dough water retained in the finished bread. Listed explicitly so the
+      masses sum to the 45 g phulka without a yield factor applied inline.
+  - id: salt_iodised
+    quantity_g: 0.15
+    state: as_used
+    note: About 0.5% of the flour weight, the everyday dough proportion.

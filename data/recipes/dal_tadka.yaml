@@ -1,0 +1,93 @@
+# Dal tadka — toor dal, boiled soft and finished with a tempering.
+#
+# Written as category `dal`, not `legume_curry` and emphatically not
+# `combo_rice_legume`: the category is the whole point of this file. A `dal`
+# fills NORTH_LUNCH.legume_curry *and* NORTH_DINNER.dal, so one recipe reaches
+# two templates — and, unlike rajma chawal, it brings no grain with it. The
+# only combination north_lunch could previously enumerate was
+# phulka + rajma_chawal, i.e. a roti served beside a plate of rice-and-rajma
+# (docs/audit_log.md finding 15, 2026-07-31). This dish is the legume half of
+# that plate without the rice half. It does not fix finding 15 — nothing here
+# stops the combo component being enumerated — it just gives the enumerator a
+# second option that is a plate someone would actually eat.
+#
+# The dal is boiled in water that is then served with it rather than drained,
+# which is why the finished mass is mostly water and why the leaching losses
+# are smaller than sambar's. They are not zero, and no constant is registered
+# for them, so the minerals are declared unassessed rather than deriving to a
+# computed zero.
+id: dal_tadka
+name: Dal tadka
+name_ta: பருப்பு தாளிப்பு
+name_hi: दाल तड़का
+
+region: north_indian
+diet_patterns: [vegetarian, vegan]
+# Not jain: onion and ginger-garlic.
+
+category: dal
+prep_minutes: 35
+tags: [everyday, lunch, dinner, high_protein]
+
+serving_unit:
+  measure: katori
+  grams_per_unit: 150.0
+  min_count: 1
+  default_count: 1
+  max_count: 3
+  note: >-
+    One katori of pourable dal, the generic katori weight — no override. Three
+    katoris is a lot of dal but not an impossible one; the ceiling is what
+    stops the solver closing a protein gap by serving six.
+
+# Boiled with the cooking water retained rather than drained, so leaching is
+# smaller here than in a sambar — but it is not nothing, and no constant is
+# registered for it. Energy, protein, fat and carb are not listed: the only
+# process-sensitive line touching them is the tempering oil, which carries a
+# registered constant and therefore derives a real figure rather than needing
+# this list.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: toor_dal_cooked
+    quantity_g: 95.0
+    state: cooked
+    note: About 38 g dry toor dal, via yield.toor_dal_boiled.
+  - id: water
+    quantity_g: 20.2
+    state: as_used
+    note: >-
+      Added after boiling to bring the dal to a pourable consistency. Listed
+      explicitly so the masses sum to the katori.
+  - id: onion_raw
+    quantity_g: 12.0
+    state: raw
+  - id: tomato_raw
+    quantity_g: 12.0
+    state: raw
+  - id: sunflower_oil
+    quantity_g: 5.0
+    state: as_used
+    process: oil_uptake.vegetable_tempering
+    note: >-
+      Retained oil. About 5.3 g goes into the tadka pan and is poured over the
+      dal whole, so nearly all of it lands in the bowl
+      (oil_uptake.vegetable_tempering = 0.95).
+  - id: ginger_garlic_paste
+    quantity_g: 3.0
+    state: as_used
+  - id: garam_masala
+    quantity_g: 1.0
+    state: as_used
+  - id: green_chilli
+    quantity_g: 1.0
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.8
+    state: as_used
+    note: >-
+      About 0.53% of the finished weight — the ordinary domestic proportion
+      for a dal, chosen from how dal is salted rather than from what the
+      sodium ceiling would like it to be. A salt line is the easiest number in
+      a recipe file to quietly tune until a plan passes, which is exactly why
+      it is stated as a proportion with a reason attached.
