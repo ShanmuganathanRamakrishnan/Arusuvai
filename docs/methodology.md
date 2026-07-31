@@ -357,6 +357,25 @@ being viewed without surrounding context. A boolean on a dataclass does not. Any
 rendered plan, any `demo.py` stdout, and any README transcript produced in
 `dev_mode` must carry that label in the artifact itself.
 
+`demo.py` now exists (2026-07-31, closing `docs/audit_log.md` finding 11 — it
+was referenced here and in CLAUDE.md's Commands block for months without being
+in the repo). It satisfies the requirement above structurally rather than by
+convention: it prints `STATUS: DEV_MODE` plus the derivation's own disclosure
+before any number, and repeats the status on its last line, so a truncated
+paste still carries the caveat. The status is read from
+`DerivedTarget.status`, not hard-coded, so the banner flips on its own the day
+a human verifies the last source constant — a hard-coded label would itself
+become a false claim about the project's state.
+
+It is also the **reproducibility boundary**. Every transcript in
+`docs/audit_log.md` from 2026-07-31 onward must be regenerable by a documented
+`demo.py` invocation. Before that date, several results — the library's first
+end-to-end plan, the sodium decline, the rung-by-rung ladder table — were
+produced by an untracked scratch script and could not be reproduced by anyone
+else. Those results have since been reproduced through `demo.py` and matched
+(see the finding 11 entry in `docs/audit_log.md`), but the general point stands
+and is the reason this file names a command rather than a procedure.
+
 ## Validation and the relaxation ladder (2026-07-22, Phase 3)
 
 `core/planner/validator.py`.

@@ -449,9 +449,21 @@ Append new entries there, and update the table below in the same commit.
 
 ```bash
 python -m pytest tests/ -q          # run before trusting any status claim
+python demo.py                      # reproduce the evidence: library, slot
+                                    #   coverage, enumeration, plan_meal
+python demo.py plan --region north_indian --meal-slot lunch --weight-kg 70
+python demo.py --help               # profile and template are flags, not edits
 uvicorn api.main:app --reload       # the targets API; POST /api/targets
 ollama serve && ollama pull qwen2.5:7b-instruct
 ```
+
+`demo.py` is the tracked entry point for every transcript in
+`docs/audit_log.md`. Before pasting a result anywhere, regenerate it with a
+command in this block — a finding that only a scratch script can produce is
+exactly the unverifiable claim about the project's own state that the process
+rule above forbids. It prints the **unrelaxed** target and the target the
+ladder **stopped on**, separately labelled; reading one for the other caused a
+miscalibrated prediction once already.
 
 ## Things that have gone wrong before
 
