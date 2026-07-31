@@ -114,12 +114,17 @@ class TestRajmaChawal:
         assert v.fat_g == pytest.approx(9.489)
 
     def test_sodium_is_dominated_by_added_salt(self, library, ingredients):
-        #   salt 387.58 mg/g x 2 g = 775.16
+        #   salt 393.39 mg/g x 2 g = 786.78
         #   rice 0.01 x 183 = 1.83 ; rajma 0.04 x 110 = 4.40 ; onion 0.80 ;
         #   tomato 1.00 ; gg 0.75 ; garam 1.20  -> 9.98
-        #   total = 785.14
+        #   total = 796.76
+        # Rederived 2026-07-31: salt_iodised moved 38758 -> 39339 mg/100g, the
+        # stoichiometric figure its own note already claimed (22.99/58.44).
+        # The expectation is recomputed from the new constant, not snapshotted
+        # from output -- 98.7% of this dish's sodium is the salt line, so a
+        # change to that row must move this number and be seen to.
         v = nutrition_of_recipe(library.recipes["rajma_chawal"], 1, ingredients)
-        assert v.sodium_mg == pytest.approx(785.14)
+        assert v.sodium_mg == pytest.approx(796.76)
 
 
 class TestMasalaDosa:
@@ -183,10 +188,33 @@ class TestMasalaDosa:
 
 
 class TestRecipeLoaderRules:
-    def test_all_three_recipes_load_with_no_warnings(self, library):
-        assert set(library.recipes) == {"sambar_sadam", "rajma_chawal", "masala_dosa"}
+    def test_every_recipe_in_the_library_loads_with_no_warnings(self, library):
+        # Deliberately not a hardcoded id set. The previous version of this
+        # test named the three recipes that existed when it was written, so
+        # adding a fourth failed it -- reporting "a recipe was added" as though
+        # it were a defect, and saying nothing about whether that recipe loaded
+        # cleanly. The claim worth pinning is that *whatever* is in
+        # data/recipes/ loads: nothing rejected, nothing warned, and the count
+        # is whatever the directory holds.
+        assert library.recipes, "the recipe library must not be empty"
         assert library.rejected == []
         assert library.warnings == []
+
+    def test_every_recipe_file_on_disk_is_present_in_the_loaded_library(
+        self, library
+    ):
+        # The companion to the above: "nothing was rejected" is only
+        # meaningful alongside "nothing was skipped". A file that never
+        # reached the loader at all produces an empty `rejected` list too, so
+        # the count is checked against the directory rather than assumed.
+        from tests.conftest import RECIPE_DIR
+
+        # schema.yaml is the format specification, not a recipe. Counted
+        # rather than matched by name: nothing requires a recipe's id to equal
+        # its filename, so asserting that would invent a rule schema.yaml does
+        # not state.
+        on_disk = [p for p in RECIPE_DIR.glob("*.yaml") if p.stem != "schema"]
+        assert len(library.recipes) == len(on_disk)
 
     def test_every_recipe_category_is_plannable(self, library):
         from core.foods.templates import ALL_TEMPLATES
