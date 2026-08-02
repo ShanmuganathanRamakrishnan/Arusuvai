@@ -8,6 +8,89 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-02 — finding 21, and a correction to finding 19's own explanation
+
+### Finding 21 — two constants in permanent contradiction, neither wrong alone — **OPEN**
+
+**What.** `composition.verified_primary` (0.05) and `tolerance.energy_default`
+(0.05) are the same number. The first is how wrong a verified composition value
+is; the second is how far a plan's energy may sit from its target. One is checked
+against the other every time a band is compared with the room a target leaves,
+and they have never been compared with each other by anybody.
+
+Neither is wrong on its own terms. `0.05` is a defensible estimate of analytical
+spread; `±5%` is a defensible energy tolerance. Together they make the top
+confidence state unreachable, and they do it permanently — no amount of
+verification changes it, because verification changes who read the number, not
+how variable the food is.
+
+**Measured** (`docs/design/probes/t3b_propagation.py`), reference plate, process
+term forced to zero so the composition term is isolated:
+
+```
+point     702.130   midpoint  691.445   point/midpoint 1.015454
+h          35.106   room       34.572   h/room         1.015454
+identical to 6 dp: True
+```
+
+When the two constants are equal the comparison collapses to **point versus
+target midpoint**. So:
+
+- With no process term, `confident` is granted exactly when the plate's energy
+  lands at or below the centre of its own window — a fact about solver rounding
+  over integer serving counts, carrying no nutritional meaning. A label decided
+  that way is worse than one that never fires, because it looks like it means
+  something.
+- With the library's real process term (0.0689 on energy), the plate would need
+  to sit 27% below centre, which is below its own energy floor. Unreachable.
+
+**Scope, narrower than finding 19 stated.** This is energy-only.
+`tolerance.fat_carb_default` is 0.15 against the same 0.05 band and has three
+times the room it needs. Protein also exceeds its room on the reference plate
+(h=1.46 vs 1.21) but that room is `point − floor`, a solver-slack fact about one
+plate, not a constant-versus-constant contradiction.
+
+**Same class as the salt-note defect.** A value that cannot do what its
+neighbours assume it does, where every individual check passes. Nothing in the
+registry can express "these two are compared against each other" — they sit four
+entries apart in `citations.py` (positions 12 and 16 of 63) and no mechanism
+noticed.
+
+**Disposition.** OPEN. Options laid out in
+`docs/design/tolerance_versus_band.md`; **no constant moved and none chosen** —
+T3b was a decision task that deliberately ends without a decision. Note for
+whoever picks: widening the tolerance to make the label move is the perverse
+incentive CLAUDE.md documents, wearing a different hat, and 0.10 is already the
+value rung 3 relaxes *to*, so it would make that rung a no-op.
+
+### Correction — finding 19's explanation was wrong, its conclusion was not
+
+Finding 19 (and `docs/design/recipe_quantity_uncertainty.md` §6) says a 5%
+composition band "produces a ~7% band on plate energy". The figure is right. The
+reason given — that errors accumulate across the components of a plate — is
+wrong, and the wrong reason was load-bearing: it made this look like a scaling
+problem that worsens with bigger plates, and it is what T3b was commissioned to
+investigate ("at what component count does it stabilise?").
+
+Composition uncertainty is applied per line and weighted by that line's share of
+the macro, then summed, so a uniform `u` sums to exactly `u` at any component
+count. Measured, process terms zeroed:
+
+```
+u = 0.05, 1 through 6 components: 0.0500 on every macro, every count
+u = 0.25, 1 through 6 components: 0.2500 on every macro, every count
+```
+
+Flat. It never accumulates and there is no count at which it stabilises. The
+extra 1.89 points on energy is the **process** term — dal_tadka's tempering oil —
+which is per-recipe and does not scale with plate size either. Protein, carb and
+sodium carry no process term at all, because oil has none of them.
+
+Corrected in place in the design doc rather than silently edited. The correction
+makes the problem smaller and sharper: not a scaling law, two equal numbers.
+
+---
+
 ## 2026-08-02 — two findings from the T3 design measurement
 
 Both found while designing `docs/design/recipe_quantity_uncertainty.md` against

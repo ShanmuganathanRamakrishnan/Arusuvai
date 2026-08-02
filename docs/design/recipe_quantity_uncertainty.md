@@ -256,6 +256,26 @@ produces a ~7% band on plate energy, and the energy tolerance is 5%. The three
 buckets are not three buckets — they are one bucket and two that nothing can
 enter.
 
+> **Amended 2026-08-02 (T3b).** The paragraph above is right about the outcome
+> and **wrong about the mechanism**, and the wrong mechanism was doing work — it
+> made this look like a scaling problem that worsens with bigger plates.
+> Composition uncertainty does not accumulate across components: applied per line
+> and weighted by that line's share of the macro, a uniform `u` sums to exactly
+> `u` at any component count (measured, 1 through 6 components, flat at 0.0500
+> and 0.2500). The extra ~2 points on energy is the *process* term, which is
+> per-recipe and does not scale either.
+>
+> The amended statement is narrower and worse. The two constants are **equal** —
+> `composition.verified_primary` 0.05 and `tolerance.energy_default` 0.05 — so
+> with a zero process term the comparison collapses to *point versus target
+> midpoint*, and `confident` would be granted whenever a plate lands below the
+> centre of its own window. Not unreachable: a coin flip on solver rounding, with
+> no nutritional meaning. Only the real process term makes it unreachable.
+>
+> The contradiction is also **energy-only**: `tolerance.fat_carb_default` (0.15)
+> has three times the room it needs against the same band. See
+> `docs/design/tolerance_versus_band.md` and `docs/audit_log.md` finding 21.
+
 That is not an argument against the label. It is an argument for reporting it
 honestly and for recording what would have to change: the energy tolerance and
 the composition band are the same order of magnitude, and until one of them

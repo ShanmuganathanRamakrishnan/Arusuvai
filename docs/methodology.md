@@ -344,6 +344,16 @@ So verification is a threshold crossing with a specific, small target set, not a
 general improvement. Until someone opens the source, the status below stands
 unchanged.
 
+**Which macro that work does and does not fix (2026-08-02).** Measured: verifying
+every row would take the reference plate's energy band from 27% to 6.89% and its
+protein band from 25% to 5%, which clears the eligibility ceilings and is the
+whole point. It does **not** improve the energy *confidence* picture at all,
+because `composition.verified_primary` (0.05) and `tolerance.energy_default`
+(0.05) are the same number and the band stays wider than the room the tolerance
+leaves. Fat, carb, fibre and sodium do clear their tolerances after verification.
+`docs/audit_log.md` finding 21; options in
+`docs/design/tolerance_versus_band.md`, none chosen.
+
 ### `dev_mode` versus `validated`
 
 `core/planner` therefore carries two distinct designations, implemented as of

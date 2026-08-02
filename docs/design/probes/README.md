@@ -21,6 +21,7 @@ PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/t3_shares.py
 | `t3_sweep.py` | the 45 kg profile used as the reference plate: the nearest north_lunch that solves with zero relaxation rungs |
 | `t3_capped.py` | §4 — per-line bands under the mass-check cap, per-recipe and per-plate bands, and §8's unverified-energy figure |
 | `t3_future.py` | §6 — the confidence label today and under a simulation of Task 6 (every ingredient verified) |
+| `t3b_propagation.py` | all of `tolerance_versus_band.md` — that the composition band does not accumulate with component count, which macro each propagated band exceeds, and the point-versus-midpoint identity behind finding 21 |
 
 These pin figures at one moment. They are not tests and nothing runs them in
 CI; if the library changes they will report different numbers, which is the
