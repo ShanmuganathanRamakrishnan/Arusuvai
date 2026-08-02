@@ -60,7 +60,7 @@ from core.nutrition.target import NutritionTarget
 from core.planner.candidates import build_candidate_pool
 from core.planner.combinations import enumerate_combinations
 from core.planner.validator import LadderOutcome, plan_within_ladder
-from core.schemas import DietPattern, MealSlot, Profile, Region
+from core.schemas import DayLedger, DietPattern, MealSlot, Profile, Region
 
 __all__ = ["Library", "load_library", "default_library", "plan_meal"]
 
@@ -112,8 +112,17 @@ def plan_meal(
     profile: Profile | None = None,
     dev_mode: bool = True,
     allergens: frozenset[str] = frozenset(),
+    ledger: DayLedger | None = None,
 ) -> LadderOutcome:
     """Solve one meal against its share of ``day_target``.
+
+    ``ledger`` is what the rest of the day has already spent, for the nutrients
+    budgeted per day rather than apportioned by energy fraction. ``None`` means
+    a day with nothing planned yet. It is deliberately an *input* and not an
+    output: this function returns a plate, and the caller decides whether that
+    plate happened — composing the result with ``DayLedger.with_meal`` — because
+    ``core/`` owns no state and must not decide that offering a plan is the same
+    as eating it.
 
     ``dev_mode`` defaults ``True`` here (the opposite of
     ``build_candidate_pool``'s own default) because every ingredient in
@@ -126,7 +135,7 @@ def plan_meal(
     """
 
     template = template_for(region, meal_slot)
-    single_meal_target = meal_target(day_target, meal_slot)
+    single_meal_target = meal_target(day_target, meal_slot, ledger=ledger)
     pool = build_candidate_pool(
         library.components(),
         library.ingredients,

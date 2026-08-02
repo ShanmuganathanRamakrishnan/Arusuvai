@@ -98,3 +98,16 @@ class TestArgumentsNotEdits:
     def test_an_unknown_choice_is_rejected_rather_than_defaulted(self, capsys):
         with pytest.raises(SystemExit):
             demo.main(["plan", "--sex", "not_a_sex"])
+
+    def test_the_day_so_far_is_reported_even_when_it_is_empty(self, capsys):
+        # A transcript must say which day-state produced its numbers. Silence
+        # would read as "no ledger exists" rather than "the ledger was empty",
+        # and those become different claims once sodium is budgeted.
+        out = _run(capsys, ["plan"])
+        assert "day so far" in out
+        assert "nothing planned yet" in out
+
+    def test_sodium_already_spent_reaches_the_ledger(self, capsys):
+        out = _run(capsys, ["plan", "--sodium-spent-mg", "1200"])
+        assert "1200.0mg spent" in out
+        assert "nothing planned yet" not in out

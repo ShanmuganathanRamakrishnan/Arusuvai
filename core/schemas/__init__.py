@@ -9,6 +9,7 @@ from core.schemas.common import (
     RawOrCooked,
     Region,
 )
+from core.schemas.day_ledger import DayLedger
 from core.schemas.profile import (
     ActivityLevel,
     ClinicalFlag,
@@ -21,6 +22,7 @@ __all__ = [
     "MACRO_KEYS",
     "ActivityLevel",
     "ClinicalFlag",
+    "DayLedger",
     "DietPattern",
     "Goal",
     "MealSlot",

@@ -26,7 +26,22 @@ from typing import Mapping
 
 from core.nutrition import citations
 
-__all__ = ["NutritionTarget", "band", "simple_target"]
+__all__ = ["BOUND_SOURCES", "NutritionTarget", "band", "simple_target"]
+
+
+#: Every rule that can produce a ceiling, as stable tokens. These cross the API
+#: boundary (``api/models.py``'s violation shape) so a client can tell a plate
+#: problem from a day problem; they are identifiers and must never be rendered
+#: to a reader verbatim — ``tests/test_web_no_identifiers.py`` fails any
+#: ``snake_case`` string reaching a visible text node.
+BOUND_SOURCES: tuple[str, ...] = (
+    #: A registered fraction of the day's bound. The only rule in use today.
+    "meal_share",
+    #: The day's bound minus what other meals have already spent.
+    "day_remaining",
+    #: The per-plate plausibility cap on a day-budgeted nutrient.
+    "absurdity_guard",
+)
 
 
 @dataclass(frozen=True)
@@ -50,16 +65,55 @@ class NutritionTarget:
     floors: Mapping[str, float] = field(default_factory=dict)
     ceilings: Mapping[str, float] = field(default_factory=dict)
     points: Mapping[str, float] = field(default_factory=dict)
+    #: A ceiling no relaxation rung may widen past. Distinct from ``ceilings``,
+    #: which every rung is free to loosen: this is the bound that stays put
+    #: while the tolerance around it moves. Empty for every target built from a
+    #: tolerance alone — it exists for the day-budget guard, which is a
+    #: plausibility limit on one plate's share of a day rather than a tolerance
+    #: (``core/nutrition/meal_target.py``). A macro may appear here without
+    #: appearing in ``ceilings``; the reverse is the normal case.
+    hard_ceilings: Mapping[str, float] = field(default_factory=dict)
+    #: Per macro, which rule produced its ceiling: ``"meal_share"`` (a fraction
+    #: of the day, the default and the only value today), ``"day_remaining"``
+    #: (what the day has left) or ``"absurdity_guard"`` (the per-plate cap).
+    #: Carried rather than re-derived downstream, because deriving it would mean
+    #: comparing floats to guess which term won. It is provenance, not a bound:
+    #: nothing in ``core/planner`` may gate on it, and a decline reads it only to
+    #: choose which sentence to write — "this plate is too salty" and "your day
+    #: is already spent" are different messages and the user is owed the right
+    #: one.
+    bound_sources: Mapping[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "floors", MappingProxyType(dict(self.floors)))
         object.__setattr__(self, "ceilings", MappingProxyType(dict(self.ceilings)))
         object.__setattr__(self, "points", MappingProxyType(dict(self.points)))
+        object.__setattr__(
+            self, "hard_ceilings", MappingProxyType(dict(self.hard_ceilings))
+        )
+        object.__setattr__(
+            self, "bound_sources", MappingProxyType(dict(self.bound_sources))
+        )
+        unknown = sorted(set(self.bound_sources.values()) - set(BOUND_SOURCES))
+        if unknown:
+            raise ValueError(
+                f"target: unknown bound_source(s) {unknown}. Allowed: "
+                f"{list(BOUND_SOURCES)}. These reach the API as stable tokens a "
+                "client switches on, so a typo would silently fall through to "
+                "the default message rather than fail."
+            )
         for macro, lo in self.floors.items():
             hi = self.ceilings.get(macro)
             if hi is not None and lo > hi:
                 raise ValueError(
                     f"target: floor for {macro!r} ({lo}) exceeds its own ceiling ({hi})"
+                )
+            hard = self.hard_ceilings.get(macro)
+            if hard is not None and lo > hard:
+                raise ValueError(
+                    f"target: floor for {macro!r} ({lo}) exceeds its hard ceiling "
+                    f"({hard}), which no relaxation can widen — this target can "
+                    "never be satisfied"
                 )
 
     def floor(self, macro: str) -> float | None:
@@ -70,6 +124,11 @@ class NutritionTarget:
 
     def point(self, macro: str) -> float | None:
         return self.points.get(macro)
+
+    def hard_ceiling(self, macro: str) -> float | None:
+        """The bound relaxation may not widen past, if this macro has one."""
+
+        return self.hard_ceilings.get(macro)
 
     def bounded_macros(self) -> frozenset[str]:
         """Every macro this target constrains, floor or ceiling or both."""

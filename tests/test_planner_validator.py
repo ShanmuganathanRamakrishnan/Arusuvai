@@ -271,6 +271,61 @@ class TestLadderFires:
         relaxed = step.apply(target, frozenset({"sodium_mg"}))
         assert relaxed.ceiling("sodium_mg") == pytest.approx(500.0)
 
+
+class TestAHardCeilingIsNeverWidened:
+    """``NutritionTarget.hard_ceilings`` — the mechanism the day budget needs.
+
+    Rule (ii) of the day-budget design: a per-plate guard on a day-budgeted
+    nutrient is a plausibility limit, not a tolerance, so no rung may widen past
+    it. Measured motivation: rung 1 widens sodium by 0.50, so a guard at 0.70 of
+    a day that *is* widenable permits one plate to carry 105% of a whole day's
+    sodium -- the exact outcome the guard was introduced to prevent. Asserted
+    here, in slice 1a, before any policy sets a hard ceiling, so the clamp is
+    known to work before anything depends on it.
+    """
+
+    def _target(self, hard: float | None) -> NutritionTarget:
+        base = simple_target(energy_kcal=600.0, protein_g_min=15.0, sodium_mg_max=500.0)
+        return NutritionTarget(
+            floors=base.floors,
+            ceilings=base.ceilings,
+            points=base.points,
+            hard_ceilings={} if hard is None else {"sodium_mg": hard},
+        )
+
+    def test_rung_one_stops_at_the_hard_ceiling(self):
+        # Unclamped the rung gives 500 * 1.50 = 750; the hard ceiling is 600.
+        step = next(s for s in RELAXATION_ORDER if s.name == "sodium_max_fibre_min")
+        relaxed = step.apply(self._target(600.0), locked_macros(None))
+        assert relaxed.ceiling("sodium_mg") == pytest.approx(600.0)
+
+    def test_a_widening_below_the_hard_ceiling_is_untouched(self):
+        # 500 * 1.50 = 750, hard ceiling 2000 -> the clamp must not bite.
+        step = next(s for s in RELAXATION_ORDER if s.name == "sodium_max_fibre_min")
+        relaxed = step.apply(self._target(2000.0), locked_macros(None))
+        assert relaxed.ceiling("sodium_mg") == pytest.approx(750.0)
+
+    def test_the_hard_ceiling_survives_every_rung_of_the_ladder(self):
+        # Dropping it in any one rung's NutritionTarget construction would let
+        # a later rung widen freely -- silent, and invisible to a test that only
+        # applies one rung.
+        target = self._target(600.0)
+        for step in RELAXATION_ORDER:
+            target = step.apply(target, locked_macros(None))
+            assert target.hard_ceiling("sodium_mg") == pytest.approx(600.0)
+            assert target.ceiling("sodium_mg") <= 600.0 + 1e-9
+
+    def test_a_target_with_no_hard_ceiling_is_unaffected(self):
+        step = next(s for s in RELAXATION_ORDER if s.name == "sodium_max_fibre_min")
+        relaxed = step.apply(self._target(None), locked_macros(None))
+        assert relaxed.ceiling("sodium_mg") == pytest.approx(750.0)
+        assert relaxed.hard_ceiling("sodium_mg") is None
+
+    def test_a_floor_above_its_own_hard_ceiling_is_refused(self):
+        # Unsatisfiable by construction, and no relaxation could rescue it.
+        with pytest.raises(ValueError, match="hard ceiling"):
+            NutritionTarget(floors={"sodium_mg": 900.0}, hard_ceilings={"sodium_mg": 600.0})
+
     def test_relaxation_widens_tolerance_and_never_uncertainty(self):
         target = simple_target(energy_kcal=600.0, protein_g_min=15.0, sodium_mg_max=500.0)
         outcome = plan_within_ladder(_combos(), target, ING)

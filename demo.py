@@ -56,6 +56,7 @@ from core.planner.plan import Library, default_library, plan_meal
 from core.schemas import (
     ActivityLevel,
     ClinicalFlag,
+    DayLedger,
     DietPattern,
     Goal,
     MealSlot,
@@ -97,6 +98,15 @@ def _banner(derived: DerivedTarget) -> None:
     print()
 
 
+#: How each bound rule reads in a transcript. `BOUND_SOURCES` tokens are
+#: identifiers, so they are mapped to words here rather than printed raw.
+_BOUND_SOURCE_LABEL = {
+    "meal_share": "registered share of the day",
+    "day_remaining": "what the day has left",
+    "absurdity_guard": "per-plate cap on a day's allowance",
+}
+
+
 def _fmt_target(target: NutritionTarget, macros: Sequence[str]) -> Iterable[str]:
     for macro in macros:
         floor = target.floor(macro)
@@ -105,7 +115,14 @@ def _fmt_target(target: NutritionTarget, macros: Sequence[str]) -> Iterable[str]
             continue
         lo = f"{floor:9.1f}" if floor is not None else "        -"
         hi = f"{ceiling:9.1f}" if ceiling is not None else "        -"
-        yield f"      {macro:12s} floor {lo}   ceiling {hi}"
+        line = f"      {macro:12s} floor {lo}   ceiling {hi}"
+        # Which rule produced the ceiling, so a pasted transcript says how the
+        # number was reached and not only what it is. Printed for budgeted
+        # macros only; a plain energy-fraction bound needs no annotation.
+        source = target.bound_sources.get(macro)
+        if source is not None and source != "meal_share":
+            line += f"   [{_BOUND_SOURCE_LABEL.get(source, source)}]"
+        yield line
 
 
 _MACRO_ORDER = (
@@ -177,12 +194,40 @@ def section_library(library: Library, profile: Profile, dev_mode: bool) -> None:
     print()
 
 
+def build_ledger(args: argparse.Namespace, meal_slot: MealSlot) -> DayLedger:
+    """A day with `--sodium-spent-mg` already eaten, booked to another slot.
+
+    A demo affordance, not a model concept: the honest way to populate a ledger
+    is to plan an earlier meal and carry its result forward, and that cannot be
+    demonstrated while three of the four templates enumerate zero combinations
+    (`demo.py library`). Booking the spend to some *other* slot is what makes it
+    count -- `core.nutrition.meal_target.spent_before` excludes the slot being
+    planned, so a figure parked on the slot under test would correctly read as
+    zero and the flag would look broken.
+    """
+
+    if not args.sodium_spent_mg:
+        return DayLedger.empty()
+    elsewhere = next(s for s in MealSlot if s is not meal_slot)
+    return DayLedger.empty().with_meal(
+        elsewhere, {"sodium_mg": float(args.sodium_spent_mg)}
+    )
+
+
+def describe_ledger(ledger: DayLedger) -> str:
+    if ledger.is_empty():
+        return "nothing planned yet (first meal of the day)"
+    slots = ",".join(s.value for s in ledger.planned_slots())
+    return f"sodium_mg {ledger.spent('sodium_mg'):.1f}mg spent across {slots}"
+
+
 def section_plan(
     library: Library,
     profile: Profile,
     region: Region,
     meal_slot: MealSlot,
     dev_mode: bool,
+    ledger: DayLedger,
 ) -> None:
     """Enumeration for the named template, then the full plan_meal result."""
 
@@ -208,6 +253,7 @@ def section_plan(
     print(f"4. plan_meal() -- {region.value} / {meal_slot.value}")
     print(RULE)
     print(f"profile        : {describe_profile(profile)}")
+    print(f"day so far     : {describe_ledger(ledger)}")
     print()
 
     derived = derive_target(profile)
@@ -219,11 +265,12 @@ def section_plan(
         diet_pattern=profile.diet,
         profile=profile,
         dev_mode=dev_mode,
+        ledger=ledger,
     )
 
     # Both targets, always, each labelled. See this module's docstring: showing
     # only `target_used` is what caused the Task 4b miscalibration.
-    unrelaxed = meal_target(derived.nutrition_target, meal_slot)
+    unrelaxed = meal_target(derived.nutrition_target, meal_slot, ledger=ledger)
     print("  TARGET AS ASKED (unrelaxed -- before any relaxation rung fires):")
     for line in _fmt_target(unrelaxed, _MACRO_ORDER):
         print(line)
@@ -299,6 +346,10 @@ def _add_template_args(parser: argparse.ArgumentParser) -> None:
                         default="north_indian")
     parser.add_argument("--meal-slot", choices=[e.value for e in MealSlot],
                         default="lunch")
+    parser.add_argument("--sodium-spent-mg", type=float, default=0.0,
+                        help="sodium already eaten today, booked to another "
+                             "meal slot, so the plate is planned against what "
+                             "the day has left (see build_ledger)")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -349,12 +400,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     if command in {"library", "all"}:
         section_library(library, profile, args.dev_mode)
     if command in {"plan", "all"}:
+        meal_slot = MealSlot(args.meal_slot)
         section_plan(
             library,
             profile,
             Region(args.region),
-            MealSlot(args.meal_slot),
+            meal_slot,
             args.dev_mode,
+            build_ledger(args, meal_slot),
         )
 
     print(DASH)

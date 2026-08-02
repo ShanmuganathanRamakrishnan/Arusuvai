@@ -147,6 +147,23 @@ class RelaxationStep:
         return all(macro in locked for macro in self.macros)
 
 
+def _capped(widened: float, hard_ceiling: float | None) -> float:
+    """A widened ceiling, clipped to the bound relaxation may not pass.
+
+    Rule (ii) of the day-budget design, in one line. Without this clip, a rung
+    widening a day-budget ceiling by ``tolerance.sodium_relaxed_fraction``
+    (0.50) would let a single plate carry 1.5x its whole share of a *daily*
+    guideline — measured at 105% of a day's sodium on one plate for the
+    reference profile, which is why the guard is a hard cap and not another
+    ceiling. Targets built from a tolerance alone register no hard ceiling, so
+    this is the identity function for every one of them.
+    """
+
+    if hard_ceiling is None:
+        return widened
+    return min(widened, hard_ceiling)
+
+
 def _widen_band(
     target: NutritionTarget,
     locked: frozenset[str],
@@ -178,8 +195,14 @@ def _widen_band(
         if macro in floors:
             floors[macro] = lo
         if macro in ceilings:
-            ceilings[macro] = hi
-    return NutritionTarget(floors=floors, ceilings=ceilings, points=target.points)
+            ceilings[macro] = _capped(hi, target.hard_ceiling(macro))
+    return NutritionTarget(
+        floors=floors,
+        ceilings=ceilings,
+        points=target.points,
+        hard_ceilings=target.hard_ceilings,
+        bound_sources=target.bound_sources,
+    )
 
 
 def _relax_sodium_fibre(target: NutritionTarget, locked: frozenset[str]) -> NutritionTarget:
@@ -200,12 +223,21 @@ def _relax_sodium_fibre(target: NutritionTarget, locked: frozenset[str]) -> Nutr
     ceilings = dict(target.ceilings)
     if "sodium_mg" in ceilings and "sodium_mg" not in locked:
         fraction = citations.value_of("tolerance.sodium_relaxed_fraction")
-        ceilings["sodium_mg"] = ceilings["sodium_mg"] * (1.0 + fraction)
+        ceilings["sodium_mg"] = _capped(
+            ceilings["sodium_mg"] * (1.0 + fraction),
+            target.hard_ceiling("sodium_mg"),
+        )
     floors = dict(target.floors)
     if "fibre_g" in floors and "fibre_g" not in locked:
         fraction = citations.value_of("tolerance.fibre_relaxed_fraction")
         floors["fibre_g"] = floors["fibre_g"] * (1.0 - fraction)
-    return NutritionTarget(floors=floors, ceilings=ceilings, points=target.points)
+    return NutritionTarget(
+        floors=floors,
+        ceilings=ceilings,
+        points=target.points,
+        hard_ceilings=target.hard_ceilings,
+        bound_sources=target.bound_sources,
+    )
 
 
 def _relax_fat_carb(target: NutritionTarget, locked: frozenset[str]) -> NutritionTarget:
@@ -243,7 +275,13 @@ def _relax_protein(target: NutritionTarget, locked: frozenset[str]) -> Nutrition
     fraction = citations.value_of("tolerance.protein_relaxed_fraction")
     floors = dict(target.floors)
     floors["protein_g"] = point * (1.0 - fraction)
-    return NutritionTarget(floors=floors, ceilings=target.ceilings, points=target.points)
+    return NutritionTarget(
+        floors=floors,
+        ceilings=target.ceilings,
+        points=target.points,
+        hard_ceilings=target.hard_ceilings,
+        bound_sources=target.bound_sources,
+    )
 
 
 #: CLAUDE.md's ladder, in CLAUDE.md's order. The order is the safety property:
@@ -297,6 +335,12 @@ class Violation:
     #: and "we deliberately refused to try one thing", and the user is owed the
     #: distinction.
     locked_by: tuple[ClinicalFlag, ...] = ()
+    #: Which rule produced ``bound`` — one of ``core.nutrition.target.
+    #: BOUND_SOURCES``. Read off the target rather than inferred here. A stable
+    #: token, not copy: it crosses the API so a client can render "this plate is
+    #: too salty" and "your day is already spent" as the different messages they
+    #: are, and it must never reach a visible text node itself.
+    bound_source: str = "meal_share"
 
     def describe(self) -> str:
         unit = unit_for(self.macro)
@@ -310,6 +354,12 @@ class Violation:
             f"{self.macro} is {self.actual:.1f}{unit}, {direction} "
             f"{self.bound:.1f}{unit}"
         )
+        # Same number, different reason, so different sentence. Without this a
+        # day already spent by other meals reads as a fault in this plate.
+        if self.bound_source == "day_remaining":
+            text += " — what the rest of today has left, not this plate's own limit"
+        elif self.bound_source == "absurdity_guard":
+            text += " — more than one plate may take of a whole day's allowance"
         if self.locked_by:
             names = ", ".join(f.value for f in self.locked_by)
             text += f" (locked by disclosed condition: {names}; never relaxed)"
@@ -370,6 +420,17 @@ class ValidationResult:
 # --------------------------------------------------------------------------
 
 
+def _bound_source(macro: str, target: NutritionTarget) -> str:
+    """Which rule produced this macro's ceiling. Only floors have no source.
+
+    Read off the target, never inferred by comparing the ceiling against the
+    hard ceiling: those are floats, they can coincide for unrelated reasons, and
+    a guess here would put the wrong sentence in front of a user.
+    """
+
+    return target.bound_sources.get(macro, "meal_share")
+
+
 def _violations_for(
     point: NutritionVector, target: NutritionTarget, profile: Profile | None
 ) -> tuple[Violation, ...]:
@@ -384,7 +445,14 @@ def _violations_for(
             )
         if ceiling is not None and value > ceiling:
             out.append(
-                Violation(macro, "above_ceiling", value, ceiling, _flags_locking(macro, profile))
+                Violation(
+                    macro,
+                    "above_ceiling",
+                    value,
+                    ceiling,
+                    _flags_locking(macro, profile),
+                    _bound_source(macro, target),
+                )
             )
     return tuple(out)
 
@@ -523,7 +591,14 @@ def _blocking_violations(
             )
         if ceiling is not None and lowest > ceiling:
             out.append(
-                Violation(macro, "above_ceiling", lowest, ceiling, _flags_locking(macro, profile))
+                Violation(
+                    macro,
+                    "above_ceiling",
+                    lowest,
+                    ceiling,
+                    _flags_locking(macro, profile),
+                    _bound_source(macro, target),
+                )
             )
 
     if out:
