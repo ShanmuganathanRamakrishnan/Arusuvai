@@ -193,6 +193,27 @@ class AuthOut(BaseModel):
     profile: ProfileOut | None = None
 
 
+class ViolationOut(BaseModel):
+    """One bound a plate does not meet, as structure rather than a sentence.
+
+    ``text`` is the prose ``core.planner.validator.Violation.describe`` writes
+    and is what a client renders today. The other three are stable machine
+    tokens, and they exist because "this plate is too salty" and "your day is
+    already spent" are different messages deserving different screens —
+    ``bound_source`` is what lets a client tell them apart without parsing
+    English.
+
+    Those tokens are ``snake_case`` identifiers and must never be rendered to a
+    reader as-is: ``tests/test_web_no_identifiers.py`` sweeps every visible text
+    node and fails on any. A client maps them to its own copy.
+    """
+
+    macro: str
+    kind: str
+    bound_source: str
+    text: str
+
+
 class PlanOut(BaseModel):
     """Either a solved, validated plate or an honest decline.
 
@@ -206,6 +227,10 @@ class PlanOut(BaseModel):
     passed: bool
     disclosure: str
     relaxation_applied: list[str]
+    #: Prose only, one string per violation. Retained unchanged so existing
+    #: clients keep working; ``violation_detail`` is the same list with the
+    #: structure a decline screen needs.
     violations: list[str]
+    violation_detail: list[ViolationOut] = Field(default_factory=list)
     components: list[ComponentOut] = Field(default_factory=list)
     estimate: PlanEstimateOut | None = None

@@ -37,6 +37,7 @@ from api.models import (
     SourceOut,
     TargetsOut,
     UserOut,
+    ViolationOut,
 )
 from core.nutrition import citations
 from core.nutrition.targets import DerivedTarget, derive_target
@@ -448,6 +449,15 @@ def plan(body: PlanRequestIn) -> PlanOut:
         disclosure=outcome.result.disclosure or "",
         relaxation_applied=list(outcome.result.relaxation_applied),
         violations=[v.describe() for v in outcome.result.violations],
+        violation_detail=[
+            ViolationOut(
+                macro=v.macro,
+                kind=v.kind,
+                bound_source=v.bound_source,
+                text=v.describe(),
+            )
+            for v in outcome.result.violations
+        ],
         components=components,
         estimate=estimate,
     )

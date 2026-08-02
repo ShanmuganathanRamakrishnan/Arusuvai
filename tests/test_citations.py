@@ -220,3 +220,48 @@ def test_a_slot_citing_an_entry_without_a_label_is_rejected():
     )
     with pytest.raises(ValueError, match="no display_ref"):
         citations.register_evidence(bad)
+
+
+class TestTheAbsurdityGuardKeepsItsAdmissions:
+    """The 0.70 per-plate sodium guard, and the prose that keeps it honest.
+
+    This class is deliberately brittle, and that is the point. The constant is
+    a number somebody chose, and its `note` carries the three admissions that
+    stop it reading as a finding: that it was picked after its effect was known,
+    that its derivation rests on constants this file itself calls arbitrary, and
+    that it never relaxes. Prose like that does not survive editing passes by
+    being important -- it survives by something failing when it is smoothed
+    away. Nothing else in the codebase would notice.
+
+    If a rewrite trips these, do not delete the assertions to match the new
+    wording. Check that the new wording still makes all three admissions, then
+    update the probes to whatever phrases now carry them.
+    """
+
+    KEY = "day_budget.absurdity_fraction"
+
+    def test_it_is_a_project_decision_and_therefore_never_counts_as_reviewed(self):
+        # CLAUDE.md's round-4 addendum: a self-authored decision is
+        # categorically ineligible to satisfy a mechanism-match or to count as
+        # reviewed, whatever its own checklist says.
+        constant = citations.constant(self.KEY)
+        evidence = citations.evidence(constant.evidence_id)
+        assert evidence.grade is citations.Grade.PROJECT_DECISION
+        assert evidence.verified is False
+
+    def test_applied_to_denies_being_a_nutritional_claim(self):
+        applied = citations.constant(self.KEY).applied_to.lower()
+        assert "plausibility guard" in applied
+        assert "not a nutritional claim" in applied
+
+    def test_the_note_admits_it_was_chosen_after_seeing_its_effect(self):
+        assert "CHOSEN AFTER" in citations.constant(self.KEY).note
+
+    def test_the_note_admits_its_derivation_is_arbitrary(self):
+        note = citations.constant(self.KEY).note
+        assert "A guard derived from an arbitrary constant is arbitrary." in note
+
+    def test_the_note_admits_it_never_relaxes_and_is_stricter_than_what_it_replaced(self):
+        note = citations.constant(self.KEY).note
+        assert "NEVER RELAXES" in note
+        assert "stricter than" in note

@@ -289,6 +289,7 @@ REVIEWED_MECHANISM_MATCHES: dict[str, str] = {
     "tolerance.fat_carb_relaxed": "reviewed: project decision, no physical process claimed",
     "tolerance.protein_relaxed_fraction": "reviewed: project decision, no physical process claimed",
     "tolerance.sodium_relaxed_fraction": "reviewed: project decision, no physical process claimed",
+    "day_budget.absurdity_fraction": "reviewed: project decision, no physical process claimed -- a plausibility guard on one plate's share of a day, explicitly not a nutritional bound",
     "tolerance.fibre_relaxed_fraction": "reviewed: project decision, no physical process claimed",
     "measure.katori_gravy_g": "reviewed: household volume-to-mass measure, applied to serving-unit gram weight",
     "measure.cup_cooked_rice_g": "reviewed: as above",
@@ -933,6 +934,39 @@ TOLERANCE_SODIUM_RELAXED_FRACTION = register_constant(
             "nutritional claim', so it is the one place a large widening is "
             "appropriate -- but 'least load-bearing' is not the same claim as "
             "'unbounded', and dropping the ceiling entirely conflated the two."
+        ),
+    )
+)
+DAY_BUDGET_ABSURDITY_FRACTION = register_constant(
+    Constant(
+        key="day_budget.absurdity_fraction",
+        value=0.70,
+        unit="fraction of a day's budgeted ceiling",
+        evidence_id="project_decision",
+        applied_to=(
+            "the largest share of a day's sodium budget any single plate may "
+            "take, whatever the day has left. A plausibility guard on one "
+            "eating occasion -- NOT a nutritional claim, and not a bound any "
+            "guideline states. It exists because a remaining-budget check alone "
+            "puts no limit at all on the first meal of a day"
+        ),
+        uncertainty=0.0,
+        note=(
+            "Three things about this number, all of which have to stay written "
+            "down for it to be read honestly. (1) It was CHOSEN AFTER seeing "
+            "which plate it excludes: the 1649.3 mg reference plate was already "
+            "known when 0.70 was picked, and a multiplier chosen before would "
+            "have produced a different answer. (2) Its derivation -- twice the "
+            "largest meal split (lunch, 0.35) -- sounds principled and is not, "
+            "because those splits are themselves project decisions this file "
+            "calls 'the customary big lunch shape of an Indian day, nothing "
+            "more'. A guard derived from an arbitrary constant is arbitrary. "
+            "(3) It NEVER RELAXES: it is a hard ceiling the relaxation ladder "
+            "may not widen past, which makes it stricter than the per-meal "
+            "share it replaces, since that share did relax. That was accepted "
+            "deliberately -- unclamped, rung 1's 0.50 widening would let one "
+            "plate carry 0.70 x 1.5 = 105% of a whole day's sodium, which is "
+            "the outcome the guard exists to prevent."
         ),
     )
 )

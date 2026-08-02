@@ -1,7 +1,53 @@
 # Target model v2 — design
 
-**Status: design only. Dated 2026-07-31. Nothing in `core/` implements any of
-this.** The only code/data changes made alongside this document are the two
+**Status: partly implemented. Dated 2026-07-31; amended 2026-08-02.** Slice 5 of
+§7 (sodium as a day budget) is built and shipped — see `docs/methodology.md`,
+"Sodium is a day budget, not a share of one." Everything else below remains
+design only.
+
+> ## Amendments of 2026-08-02 — read before trusting §2 or §3
+>
+> Three claims in this document were wrong or incomplete, found by measuring
+> against the real library while implementing the sodium slice. Corrected here
+> rather than silently edited, because what the errors have in common is worth
+> keeping: each came from reasoning about a bound without running the ladder
+> over it.
+>
+> 1. **The absurdity guard did not survive its own relaxation ladder.** §2 and
+>    §3 say the 1649.3 mg plate "still fails" the 1400 mg guard. It fails the
+>    *unrelaxed* guard; rung 1 widens sodium by 0.50, making it 2100 mg, and the
+>    plate **passed**. Generally, a widenable guard permits one plate to carry
+>    `fraction × 1.5` of a day — 105% at 0.70. Fixed by registering the guard as
+>    a hard ceiling no rung may widen past (`NutritionTarget.hard_ceilings`).
+> 2. **§2 never asks what rung 1 means once the bound is a day budget.** It is a
+>    different act from widening a per-meal share: it loosens a *daily*
+>    guideline. Resolved as "the ladder may widen the remaining budget, never
+>    the guard." Taking sodium off the ladder entirely is more correct and is
+>    deferred; see §7 slice 9.
+> 3. **The 1649.3 mg figure is not a reachability floor.** The library's
+>    cheapest north lunch is 379.6 mg. The decline is a joint
+>    energy-vs-sodium infeasibility, not a sodium wall. §3's "what this does to
+>    today's blocking plate" is right about the arithmetic and wrong about the
+>    diagnosis. Full measurement in `docs/audit_log.md`, 2026-08-02.
+>
+> Two further overstatements, not defects but worth correcting:
+>
+> - §2 contrasts A's "known-arbitrary constant in the chain" with whole-day
+>   planning's clean claim. Whole-day planning keeps all four `meal_split`
+>   constants, since energy and carb stay per-meal by decision 2. The difference
+>   is one constant, not four.
+> - §2 rejects whole-day planning "only because it is a much larger change."
+>   Built as CLAUDE.md prescribes (one day's combinations, then repeat with a
+>   no-repeat variety constraint) it does **not** solve the first-meal problem
+>   either — it relocates it, because meal 1 is still chosen before meal 3 is
+>   known. Only a backtracking joint solve fixes it, and that is a different
+>   algorithm from `solver.py`. Its combination bound also cannot be computed
+>   against today's library, three of whose four templates enumerate zero.
+> - §2 does not note that a **single-meal user is served worse** by a day budget
+>   than by the old per-meal share: 1400 mg where they previously got 700.
+>   Recorded as a limitation in `docs/methodology.md`.
+
+The only code/data changes made alongside the original document are the two
 authorised in its commissioning task (`salt_iodised`'s stored value, and the
 target labelling in the scratch walkthrough script); neither depends on
 anything below.
@@ -706,14 +752,45 @@ Ordered, each independently shippable, each with what would demonstrate it.
    *Demonstrated by:* re-planning the same slot twice leaves the ledger with one
    slot's contribution, not two.
 
-5. **Sodium moves to a day budget, with the absurdity ceiling.** The registered
-   `day_budget.absurdity_fraction`, the `min(remaining, absurdity)` rule, the new
-   violation kind distinguishing "this plate" from "what the day has left."
-   *Demonstrated by:* the reference plate declines as first-meal-of-day at
-   1649.3 mg against the 1400 mg absurdity ceiling, **and** passes at 1649.3
-   against a 2000 mg remaining budget when the absurdity ceiling is lifted — the
-   second assertion is what proves the guard is load-bearing rather than
-   decorative.
+5. **Sodium moves to a day budget, with the absurdity ceiling.** — **DONE
+   2026-08-02**, shipped as two commits: 1a (`DayLedger`,
+   `NutritionTarget.hard_ceilings`/`bound_sources`, `Violation.bound_source`,
+   the `demo.py` flag — no verdict moved) and 1b (the registered
+   `day_budget.absurdity_fraction`, the `min(remaining, guard)` rule, the
+   ladder clamp).
+
+   Two amendments to what this slice said it would do. The guard is a **hard
+   ceiling**, not another ceiling, per amendment 1 at the head of this document.
+   And the "passes when the guard is lifted" assertion was dropped as a test:
+   it asserts the behaviour of a configuration the product does not ship, and
+   the load-bearing proof is better made the other way round — a day with
+   1200 mg already spent gets a **800 mg** ceiling, below the guard, which shows
+   the ledger and not the guard doing the work. Measured:
+
+   ```
+   first meal of day : ceiling 1400.0 [guard]        declines, 1649.3 > 1400.0
+   1200 mg spent     : ceiling  800.0 [day left]     declines, 1649.3 > 1200.0
+                       (800 x 1.5 = 1200 after rung 1, still under the guard)
+   ```
+
+9. **Take sodium off the relaxation ladder.** A day budget is not a tolerance,
+   so arguably no rung should touch it — the ladder would then widen only
+   tolerances, which is what CLAUDE.md says it does. **Deferred, and this is the
+   correct end state.** It makes rung 1 fibre-only and therefore skippable via
+   `RelaxationStep.is_fully_locked`, changing `relaxation_applied` for every
+   profile and breaking two existing assertions — too broad to ride along with
+   the sodium work itself.
+
+10. **Reserve instead of guessing** — the successor to the absurdity guard.
+    `ceiling = day_ceiling - spent - Σ cheapest_reachable(unplanned slots)`,
+    with the reservation computed from the library via
+    `combinations.macro_bounds` rather than chosen. Zero arbitrary constants;
+    it degrades honestly, since a thin library reserves little and correctly
+    admits it does not know what the rest of the day holds. **Inert today**:
+    `south_breakfast` and `north_dinner` enumerate zero combinations, so the
+    reservation is 0 and it degenerates to a bare remaining-budget check, under
+    which the 1649.3 mg plate passes. **Trigger: it becomes live the moment each
+    of those two templates can enumerate at least one combination.**
 
 6. **Quality-source selection.** The DIAAS threshold on components, `None`
    excluded, the aggregation rule for mixtures (with its stated limitation).

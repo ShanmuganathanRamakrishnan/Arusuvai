@@ -221,12 +221,17 @@ def _relax_sodium_fibre(target: NutritionTarget, locked: frozenset[str]) -> Nutr
     """
 
     ceilings = dict(target.ceilings)
+    sources = dict(target.bound_sources)
     if "sodium_mg" in ceilings and "sodium_mg" not in locked:
         fraction = citations.value_of("tolerance.sodium_relaxed_fraction")
-        ceilings["sodium_mg"] = _capped(
-            ceilings["sodium_mg"] * (1.0 + fraction),
-            target.hard_ceiling("sodium_mg"),
-        )
+        widened = ceilings["sodium_mg"] * (1.0 + fraction)
+        hard = target.hard_ceiling("sodium_mg")
+        ceilings["sodium_mg"] = _capped(widened, hard)
+        # The reason must track the number. Once the clamp bites, the bound the
+        # user is being declined against is the guard, not what the day had
+        # left, and reporting the stale reason would explain the wrong bound.
+        if hard is not None and widened > hard:
+            sources["sodium_mg"] = "absurdity_guard"
     floors = dict(target.floors)
     if "fibre_g" in floors and "fibre_g" not in locked:
         fraction = citations.value_of("tolerance.fibre_relaxed_fraction")
@@ -236,7 +241,7 @@ def _relax_sodium_fibre(target: NutritionTarget, locked: frozenset[str]) -> Nutr
         ceilings=ceilings,
         points=target.points,
         hard_ceilings=target.hard_ceilings,
-        bound_sources=target.bound_sources,
+        bound_sources=sources,
     )
 
 
@@ -356,10 +361,15 @@ class Violation:
         )
         # Same number, different reason, so different sentence. Without this a
         # day already spent by other meals reads as a fault in this plate.
+        #
+        # ASCII, deliberately, like every other string this function builds:
+        # these go into `demo.py` transcripts that get pasted into commit
+        # messages and markdown on Windows terminals, where an em-dash arrives
+        # as mojibake and quietly corrupts the evidence it was preserving.
         if self.bound_source == "day_remaining":
-            text += " — what the rest of today has left, not this plate's own limit"
+            text += " (what the rest of today has left, not this plate's own limit)"
         elif self.bound_source == "absurdity_guard":
-            text += " — more than one plate may take of a whole day's allowance"
+            text += " (more than one plate may take of a whole day's allowance)"
         if self.locked_by:
             names = ", ".join(f.value for f in self.locked_by)
             text += f" (locked by disclosed condition: {names}; never relaxed)"

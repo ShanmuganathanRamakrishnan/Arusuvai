@@ -26,11 +26,30 @@ pattern of a salty lunch offset by a plain dinner, and apportions a
 population-level daily figure by calories, which nothing in the guideline
 supports.
 
-``_DAY_BUDGETED`` is the list of macros on the second rule. **It is empty
-today**: this module ships the mechanism (slice 1a) before the policy (slice
-1b), so that when sodium's verdict moves it is attributable to the policy commit
-and not to the plumbing. Everything below therefore behaves exactly as it did
-before the ledger existed, which is that slice's acceptance criterion.
+``_DAY_BUDGETED`` is the list of macros on the second rule. Sodium is on it;
+nothing else is yet. Fibre is deliberately not: its target already derives from
+energy (``nutrient.fibre_g_per_1000kcal``, 14 g per 1000 kcal), so splitting it
+by the energy fraction is self-consistent and destroys no information. Iron,
+calcium and B12 are not budgeted because they have no target at all today — they
+are new work, not a migration.
+
+## The first-meal problem, and the guard
+
+A remaining-budget check alone puts **no limit whatsoever** on the first meal of
+a day: with nothing spent, ``remaining`` is the entire day. Measured, the
+reference profile's blocking 1649.3 mg lunch passes a bare remaining check
+outright. So a plate may never take more than
+``day_budget.absurdity_fraction`` of the day's budget however much is left.
+
+That guard is registered as a hard ceiling, not as another ceiling, and the
+distinction is the whole of it: rung 1 of the relaxation ladder widens a sodium
+ceiling by 0.50, so a *widenable* guard at 0.70 would permit one plate to carry
+105% of a whole day's sodium — the exact outcome the guard was introduced to
+prevent. The bound the ladder may move is ``remaining``; the guard stays put.
+The cost, accepted rather than hidden: this is a never-relaxing per-plate
+fraction of a daily figure, which is stricter than the per-meal share it
+replaces, since that share did relax. ``citations.py``'s note on the constant
+states all of it, including that 0.70 was chosen after its effect was known.
 
 The fractions themselves are registered constants rather than literals here:
 CLAUDE.md's "no magic numbers" rule applies to a meal split exactly as it does
@@ -50,9 +69,9 @@ __all__ = ["meal_energy_fraction", "meal_target", "spent_before"]
 
 
 #: Macros checked against what the day has left rather than a share of it.
-#: Empty until slice 1b adds ``sodium_mg``; see this module's docstring for why
-#: the mechanism lands before the policy.
-_DAY_BUDGETED: frozenset[str] = frozenset()
+#: Sodium only: see this module's docstring for why fibre and the three
+#: micronutrients are each excluded for a different reason.
+_DAY_BUDGETED: frozenset[str] = frozenset({"sodium_mg"})
 
 
 def meal_energy_fraction(meal_slot: MealSlot) -> float:
@@ -107,15 +126,34 @@ def meal_target(
     # share of a day to be divided again.
     hard_ceilings = dict(day_target.hard_ceilings)
 
-    for macro in sorted(_DAY_BUDGETED):  # pragma: no cover - empty until 1b
+    bound_sources: dict[str, str] = {}
+    guard_fraction = citations.value_of("day_budget.absurdity_fraction")
+
+    for macro in sorted(_DAY_BUDGETED):
         day_ceiling = day_target.ceiling(macro)
         if day_ceiling is None:
+            # No day bound to budget against. Not an error: a caller may build a
+            # target without one, and inventing a ceiling here would be a
+            # nutritional number written outside citations.py.
             continue
-        ceilings[macro] = day_ceiling - spent_before(ledger, meal_slot, macro)
+        # Floored at zero: a day already over its budget leaves nothing to
+        # spend, and a negative ceiling would decline with a bound no reader can
+        # interpret. Every plate still fails, which is the correct outcome.
+        remaining = max(0.0, day_ceiling - spent_before(ledger, meal_slot, macro))
+        guard = guard_fraction * day_ceiling
+        ceilings[macro] = min(remaining, guard)
+        hard_ceilings[macro] = guard
+        # Which term won, recorded rather than left to be inferred downstream by
+        # comparing floats. `<=` so a day already spent past the guard reports
+        # the day as the reason, which is the true one and the more useful one.
+        bound_sources[macro] = (
+            "day_remaining" if remaining <= guard else "absurdity_guard"
+        )
 
     return NutritionTarget(
         floors=floors,
         ceilings=ceilings,
         points=points,
         hard_ceilings=hard_ceilings,
+        bound_sources=bound_sources,
     )

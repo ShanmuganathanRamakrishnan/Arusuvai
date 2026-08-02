@@ -407,9 +407,15 @@ target one rung at a time, in this order, re-solving after each. The first rung
 that yields a plan wins; the ladder stops there rather than continuing to the
 loosest target that would also have worked.
 
-1. **`sodium_max_fibre_min`** — drops the sodium ceiling and fibre floor
-   outright. Both are one-sided general-health guidance rather than the
-   product's core nutritional claim. Applied silently.
+1. **`sodium_max_fibre_min`** — **widens** the sodium ceiling by 50% and lowers
+   the fibre floor by 50%; it does not drop either. Both are one-sided
+   general-health guidance rather than the product's core nutritional claim.
+   Applied silently. (This entry said "drops … outright" until 2026-08-02,
+   describing an implementation CLAUDE.md's round-4 addendum had already
+   rejected: an unflagged profile would then be solved against no sodium ceiling
+   at all, which is a materially stronger thing than "the least load-bearing
+   constraint relaxes first.") Since 2026-08-02 the widening is also **clipped
+   to the per-plate sodium guard** — see "Sodium is a day budget" below.
 2. **`fat_carb_tolerance`** — 15% → 25%. Least load-bearing macros; they absorb
    whatever energy is left over. Applied silently.
 3. **`energy_tolerance`** — 5% → 10%. Applied silently.
@@ -451,6 +457,89 @@ target it cleared is looser than it strictly needed to be. Fixing this would
 mean searching rung subsets rather than prefixes, which trades a stated,
 auditable order for a search — not obviously the right trade for a safety
 mechanism, and not made here.
+
+## Sodium is a day budget, not a share of one (2026-08-02)
+
+Until 2026-08-02 every bound in a day target was scaled to a meal by the meal's
+energy fraction, sodium included: `nutrient.sodium_max_mg` (2000 mg/day) ×
+`meal_split.energy_fraction_lunch` (0.35) = a **700 mg per-lunch ceiling**.
+
+That was not a defensible bound and is no longer used. 700 mg is not a figure
+any guideline states. It is a *daily population* guideline apportioned by
+calories — and apportioning it that way forbids the ordinary, entirely healthy
+pattern of a salty lunch offset by a plain dinner. The 0.35 is itself a
+`PROJECT_DECISION` this project's own registry describes as "the customary 'big
+lunch' shape of an Indian day, nothing more."
+
+Sodium is now checked against **what the day has left**:
+
+```
+remaining = 2000 - (sodium already spent by other meals today)
+ceiling   = min(remaining, day_budget.absurdity_fraction x 2000)
+```
+
+Only sodium. Fibre stays proportional because its target already derives from
+energy (14 g/1000 kcal), so splitting it by the energy fraction is
+self-consistent. Iron, calcium and B12 are not budgeted because **they have no
+target at all** — they are computed, displayed, and never gated.
+
+### Three limitations, stated rather than smoothed over
+
+**1. The guard is a chosen number, and it was chosen after its effect was
+known.** `day_budget.absurdity_fraction = 0.70` exists because a
+remaining-budget check alone puts *no limit whatsoever* on the first meal of a
+day — with nothing spent, the whole day is available. Its derivation, "twice the
+largest meal split," sounds principled and is not: those splits are themselves
+project decisions. It is a **plausibility guard on one eating occasion, not a
+nutritional claim**, and it is graded `PROJECT_DECISION`, which makes it
+categorically ineligible to count as reviewed.
+
+**2. The guard never relaxes, which is stricter than what it replaced.** It is
+registered as a *hard ceiling*: the relaxation ladder may widen the remaining
+budget but may not widen past the guard. That is a never-relaxing per-plate
+fraction of a daily figure — the shape this change set out to remove, retained
+deliberately in one place. The alternative was worse and was measured: rung 1
+widens sodium by 50%, so a widenable guard at 0.70 would permit a single plate
+to carry **105% of a whole day's sodium**.
+
+**3. A user who plans one meal and never returns is served worse than before.**
+Under the old model their plate was held to 700 mg. It is now held to 1400. If
+they never plan another meal, the system permitted a saltier plate and can make
+no claim at all about their day. Any statement about a day with unplanned meals
+left in it must be conditional — "within your daily sodium *if* the rest of the
+day stays under N" — never a flat claim. This is a real regression for
+single-meal use, accepted because the 700 mg bound it replaces was not measuring
+anything.
+
+### The day boundary is undecided, and the trigger is recorded
+
+`DayLedger` carries no date and no timezone: `core/` is handed a ledger and
+never asks what day it is, so nothing in the current design needs a day
+boundary. Deferring this assumes exactly two things, both true today: nothing
+persists a ledger, and the ledger a caller sends is authoritative.
+
+**It becomes blocking at the first change that persists a planned meal keyed by
+`(user_id, date)`.** That is where a late dinner starts spending today's or
+tomorrow's sodium, and `core.schemas.Profile` has no timezone field to decide
+with.
+
+### Where this is going
+
+The guard is a stepping stone, not the end state. Two successors are known:
+
+- **Reserve instead of guessing.** Rather than capping at a chosen fraction,
+  subtract what the day's *unplanned* meals must minimally cost:
+  `ceiling = 2000 - spent - Σ cheapest_reachable(unplanned slots)`. That bound is
+  derived from the recipe library rather than chosen, needs no constant at all,
+  and reuses machinery that already exists (`combinations.macro_bounds`). It is
+  **inert today**: `south_breakfast` and `north_dinner` enumerate zero
+  combinations, so the reservation is zero. It becomes live the moment each of
+  those templates can enumerate at least one combination.
+- **Take sodium off the relaxation ladder entirely.** A day budget is not a
+  tolerance, so arguably no rung should touch it. Deferred rather than done:
+  it would make rung 1 fibre-only and therefore skippable, changing
+  `relaxation_applied` for every profile — too broad a change to ride along with
+  the sodium work itself. This is the correct end state.
 
 ## Citations: mechanism must match, not just format
 
