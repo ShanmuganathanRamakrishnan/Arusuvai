@@ -172,6 +172,12 @@ Delivered: `docs/design/tolerance_versus_band.md`, four options plus one the
 brief did not list, none picked. `docs/audit_log.md` finding 21. Probe
 `docs/design/probes/t3b_propagation.py`.
 
+**Decision recorded 2026-08-02: deferred.** The contradiction is permanent but
+inert — the label is not built, so nothing reads either constant against the
+other. **Do not build the confidence label** until this is settled; building it
+first forces the choice from inside an implementation. Reopen when the label is
+scheduled, or when a surface states a "within 5% of your energy target" claim.
+
 **T3b's own premise was wrong and is corrected in the finding.** Composition
 uncertainty does **not** accumulate across components — measured flat at exactly
 `u` for 1 through 6 components — so "at what component count does it stabilise?"

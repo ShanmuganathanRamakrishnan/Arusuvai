@@ -56,12 +56,19 @@ registry can express "these two are compared against each other" — they sit fo
 entries apart in `citations.py` (positions 12 and 16 of 63) and no mechanism
 noticed.
 
-**Disposition.** OPEN. Options laid out in
-`docs/design/tolerance_versus_band.md`; **no constant moved and none chosen** —
-T3b was a decision task that deliberately ends without a decision. Note for
-whoever picks: widening the tolerance to make the label move is the perverse
-incentive CLAUDE.md documents, wearing a different hat, and 0.10 is already the
-value rung 3 relaxes *to*, so it would make that rung a no-op.
+**Disposition.** OPEN, **deferred by decision 2026-08-02.** Options laid out in
+`docs/design/tolerance_versus_band.md`; no constant moved and none chosen. The
+contradiction is permanent but inert — the confidence label is not built, so
+nothing reads either constant against the other today. **The label is not to be
+built until this is settled**, because building it first would force the choice
+from inside an implementation, which is exactly how the sodium ladder ambiguity
+came to be resolved in `validator.py` rather than in a document. Reopen when the
+label is scheduled, or when any user-facing surface states a "within 5% of your
+energy target" claim.
+
+Note for whoever picks: widening the tolerance to make the label move is the
+perverse incentive CLAUDE.md documents, wearing a different hat, and 0.10 is
+already the value rung 3 relaxes *to*, so it would make that rung a no-op.
 
 ### Correction — finding 19's explanation was wrong, its conclusion was not
 

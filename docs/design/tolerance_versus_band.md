@@ -3,6 +3,22 @@
 **Status: decision material, 2026-08-02. Nothing changed. No constant moved.**
 Task T3b in `TASKS.md`. Ends with options; picking one is a separate task.
 
+> **Decision, 2026-08-02: deferred, deliberately.** None of A–E is adopted and no
+> constant moves. The contradiction is real and permanent, but it is inert: the
+> confidence label is not built, so nothing today reads either constant against
+> the other. Recording the deferral rather than picking under no pressure is the
+> point — every option here except D and E buys a new arbitrary number, and the
+> cheapest moment to choose is when something actually depends on the answer.
+>
+> **The label is not to be built** until this is settled. Building it first would
+> force the choice from inside an implementation, which is how the sodium ladder
+> ambiguity got resolved in `validator.py` instead of in a document.
+>
+> **Triggers to reopen**, either one:
+> - the confidence label is scheduled for implementation; or
+> - any user-facing surface states a "within 5% of your energy target" claim —
+>   a decline screen or plan summary is the likely place.
+
 Probe: `docs/design/probes/t3b_propagation.py`. Every figure below comes from it.
 
 ```bash
