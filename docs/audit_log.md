@@ -8,6 +8,39 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-02 — finding 23, a form field with no effect
+
+### Finding 23 — onboarding asks for diet and nothing reads it — **OPEN**
+
+**What.** `web/onboarding.js` collects `diet`, `api/db.py` persists it on
+`StoredProfile`, and as of slice 2 it changes no target value at all. Two
+profiles identical but for diet receive identical energy, protein, fat, carb,
+fibre and sodium targets. The wizard asks a question whose answer is stored and
+then ignored.
+
+**Why it is a finding and not just a gap.** The gap itself is deliberate and
+documented (`docs/methodology.md`, "Protein quality no longer inflates the
+target"): quality moved out of target-inflation and the quality-source rule that
+replaces it is blocked on the ingredient set. What is not deliberate is that a
+**shipped, user-facing surface still presents the question as consequential**. A
+form that collects an answer it does not use is a claim to the user that it
+matters. This project's entire premise is not overstating what it knows; an
+inert form field is that failure on the most visible surface there is.
+
+Distinct from the internal gap in one important way: the internal gap is fixed
+by slice 4, and this is fixed by slice 4 *or* by saying so in the wizard. They
+have different costs and either is defensible.
+
+**Not fixed here.** Three options, none picked, all cheap: label the field in
+the wizard as not yet affecting the plan; remove the step until slice 4; or
+leave it and accept that the honest answer is "we collect this for later". The
+first is the most in keeping with how the rest of this project handles a thing
+it cannot yet do.
+
+**Disposition.** OPEN. Reopens or closes with slice 4.
+
+---
+
 ## 2026-08-02 — finding 22, raised by filling the library (T4)
 
 ### Finding 22 — a multi-dish South Indian plate cannot get under the sodium guard — **OPEN**

@@ -337,6 +337,43 @@ Spec was `docs/design/target_model_v2.md`.
 
 ---
 
+## D1 — Decide finding 22: the sodium guard or the salt figures
+
+**Decision task.** Some South Indian combinations are unplannable at any
+setting: two of `south_lunch`'s three have a sodium floor above the 1400 mg
+guard with every component at its minimum count. Not a demanding-profile
+problem — those plates are impossible.
+
+Both sides of the comparison are unsourced project decisions:
+
+- the guard is `day_budget.absurdity_fraction` (0.70) x `nutrient.sodium_max_mg`
+  (2000), derived from meal-split fractions that are themselves project
+  decisions, and never checked against a plate with four salt lines in it;
+- the salt figures are 0.33–0.67% of finished weight, each with a written
+  reason and none with a source.
+
+So this is a choice between two numbers nobody measured, and saying that plainly
+is part of the decision. **Lowering a salt line until plans pass is not on the
+table** — that is the defect the salt notes exist to prevent.
+
+Worth considering alongside: design slice 10 (reserve instead of guess) replaces
+the guard with a bound derived from the library. Its stated trigger —
+`south_breakfast` and `north_dinner` each enumerating at least one combination —
+**fired with T4**. It may make this decision moot rather than needing an answer.
+
+## D2 — Paneer, tofu and soya rows, then slice 4
+
+Queued together because slice 4 cannot do anything without them: `curd_dahi` is
+the only row above DIAAS 0.62, so the quality-source rule shipped today makes
+every plate decline.
+
+Also closes finding 23 — `web/onboarding.js` asks for diet, stores it, and since
+slice 2 nothing reads it for gating. Either slice 4 lands or the wizard says so;
+both are defensible and the second is nearly free.
+
+Note the ingredient rows are Task 6 territory (evidence grades), so this needs
+sequencing against it rather than being assumed independent.
+
 ## Queued, not yet detailed
 
 - Slice 3 — protein per-meal floor and ceiling. **NEXT.**
