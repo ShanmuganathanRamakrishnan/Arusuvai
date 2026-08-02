@@ -105,13 +105,38 @@ class CandidatePool:
     dev_mode: bool
 
     def for_slot(self, slot) -> tuple[Component, ...]:
+        """Every candidate this slot accepts, **ordered by component id**.
+
+        The sort is not cosmetic and must not be removed as tidying-up.
+        ``TemplateSlot.accepted_categories`` is a ``frozenset``, and Python
+        randomises string hashes per process, so iterating it directly made
+        candidate order -- and therefore the order ``enumerate_combinations``
+        returns combinations in, and therefore every transcript ``demo.py``
+        produces -- depend on ``PYTHONHASHSEED``. Two runs of identical code on
+        one machine gave different output (``docs/audit_log.md``, finding 18).
+
+        Sorting by ``component.id`` rather than by category name: the id is the
+        identity of the thing actually offered, so the order survives a category
+        being renamed or a slot accepting more of them, and it is a total order
+        because this method already deduplicates on that same key. Ordering by
+        category would make the output depend on how the categories happen to be
+        spelled, which is incidental to every caller.
+
+        Order matters beyond reproducibility: ``core/planner/solver.py`` sorts
+        plans by score with Python's stable sort, so among equally-scoring plans
+        the one enumerated first wins. That path is latent today -- no tie was
+        observed across 12 hash seeds on either the real or the synthetic
+        library -- but with a larger library it is which plate a user is served.
+        """
+
         seen: set[str] = set()
         out: list[Component] = []
-        for category in slot.accepted_categories:
+        for category in sorted(slot.accepted_categories):
             for component in self.by_category.get(category, ()):
                 if component.id not in seen:
                     seen.add(component.id)
                     out.append(component)
+        out.sort(key=lambda component: component.id)
         return tuple(out)
 
 

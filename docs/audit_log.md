@@ -8,12 +8,127 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-02 — finding 18 CLOSED, and the reproducibility pattern behind it
+
+### Finding 18 — CLOSED
+
+`CandidatePool.for_slot` now iterates `sorted(slot.accepted_categories)` and
+returns candidates sorted by `component.id`. Sorted by **id, not by category
+name**: the id is the identity of the thing actually offered, so the order
+survives a category rename or a slot accepting more categories, and it is a
+total order because `for_slot` already deduplicates on that key.
+
+**Before fixing, the spread was measured.** `demo.py plan` for the north_lunch
+reference profile, 12 hash seeds:
+
+- **2 distinct enumeration orderings** (5 seeds gave rajma-first, 7 gave
+  dal-first).
+- **Verdict identical in all 12**: `passed: False`,
+  `above_ceiling sodium_mg actual=1649.3 bound=1400.0`.
+
+**The winner does not change with seed.** This was the serious question and the
+answer is no. Checked on a target the real library *can* satisfy, and on
+`tests/factories.py`'s 144-combination synthetic library where ties are far more
+likely, across 12 seeds each:
+
+```
+REAL  plate={'phulka@roti':3,'rajma_chawal@combo_rice_legume':1,'onion_raita@raita':1}
+      score=0.301389  top4=[0.301389, 0.372667, 0.9585, 1.039]
+SYNTH n=144  plate={'rice_b@mixed_rice':2,'gravy_b@rasam':2,'veg_a@poriyal':2,
+                    'veg_c@poriyal':2,'curd_b@buttermilk':1,'crisp_b@pickle':2}
+      score=0.121429  top4=[0.121429, 0.142857, 0.214286, 0.271429]
+```
+
+Identical at every seed. **No tie was ever reached** — top-two scores differ by
+24% (real) and 18% (synthetic) — so `solver.py`'s stable sort never had to break
+one. The tie-break path is **latent, not realised**: published results did not
+depend on a hash seed. Finding 18 is a reproducibility defect, not a correctness
+one.
+
+**After the fix**: one ordering across all 12 seeds; plate, score, verdict and
+violation all unchanged. Note what that last clause is and is not — *nothing
+changed* is a statement about **this library at this size**. With four
+combinations and scores 24% apart there was no tie to resolve. It is not a
+guarantee for a larger library, where the stable sort's input order is exactly
+which plate a user is served.
+
+**Other set-iteration sites, checked rather than assumed.** `candidates.py:110`
+was the only one in the ordering-relevant path. Examined and deliberately not
+changed:
+
+- `core/foods/recipe_loader.py:218` and `ifct_loader.py:270` already
+  `sorted(...)` their globs, so file order was never the problem.
+- `combinations.py` uses `itertools.combinations` / `itertools.product`, both
+  order-preserving given deterministic input — so the one fix propagates.
+- `candidates.py` `recipe_allergens` returns a frozenset, but it is only ever
+  membership-tested, never iterated for order.
+- `len({f.recipe_id for f in flagged})` builds a set for a count only.
+- **`solver.py:214`, `solved.sort(key=lambda p: p.score)` — left alone.**
+  Python's sort is stable, so with deterministic input the winner is now
+  deterministic; the defect is fully closed by the one fix. Adding a secondary
+  sort key would additionally make the winner independent of *enumeration* order,
+  which is a stronger and different property — a decision about tie-break
+  semantics, not a determinism fix, and not made here.
+
+**Disposition: CLOSED.** `tests/test_planner_determinism.py` (new).
+
+### The pattern — second instance, and it should be named as one
+
+This is the **second time a reproducibility rule in this project has been
+satisfied literally while missing its purpose.**
+
+1. **Task 9 (2026-07-31, finding 11).** CLAUDE.md requires a pasted command
+   transcript backing any status claim. Every transcript in this log had one.
+   None could be re-run, because the command lived in an untracked scratch
+   script. The rule was met; its purpose — that anyone can check the claim —
+   was not.
+2. **Finding 18 (today).** `demo.py` was built to close that hole, and slice
+   1a's acceptance criterion asserted byte-identical output against a captured
+   baseline. Both were satisfied. Neither could be *reliably* true while
+   enumeration order was seed-dependent: 1a's byte-diff passed because the
+   baseline and the comparison run happened to draw the same ordering. The
+   check was real, and it was a coin flip.
+
+The shape is the same both times: **a reproducibility check that reproduces
+itself.** A transcript that proves a transcript exists; a byte-diff run twice in
+one shell against one seed. Neither compared across the axis the property was
+actually about — a different machine, a different process.
+
+What follows from it, stated as a rule rather than an intention: **a
+determinism claim has to be checked across the thing it claims independence
+from.** `tests/test_planner_determinism.py` does that by spawning subprocesses
+under different `PYTHONHASHSEED` values, because nothing checkable inside one
+process can.
+
+That is not a hypothetical concern — it was demonstrated while writing the
+tests. The first draft's three fast in-process tests **all passed against the
+defect they were written to catch**, for two separate reasons: one picked
+`north_lunch.grain_base`, which declares two categories but has candidates in
+only one, so permuting it is a no-op; and the sortedness check compares
+frozenset order against sorted order, which coincide often enough to pass under
+many seeds. Both were found by injecting the defect and watching the tests not
+fail. Under the corrected tests the defect fails 3 of 4 at every seed tried
+(0, 1, 5), and the remaining one is documented in its own body as a statement of
+contract rather than a detector.
+
+### Does finding 11's closure claim now hold?
+
+**Yes, and it did not before today.** The 2026-07-31 entry closed finding 11 on
+the claim that the evidence chain is reproducible. As of that entry the
+*substance* reproduced — verdicts, bounds and violations were stable across
+every seed measured — but the artifact did not: two people running the
+documented command got textually different transcripts, and a diff between them
+showed changes that were not changes. With `for_slot` ordered, `demo.py` output
+is byte-stable across 12 hash seeds, and the claim holds as written.
+
+---
+
 ## 2026-08-02 — sodium became a day budget; two findings raised on the way
 
 Build notes for target-model slices 1a and 1b, plus two things measured while
 building them that neither the design doc nor this log had right.
 
-### Finding 18 — combination enumeration order is not deterministic — OPEN
+### Finding 18 — combination enumeration order is not deterministic — **CLOSED 2026-08-02**, see the entry above
 
 `TemplateSlot.accepted_categories` is a `frozenset[str]`, and
 `core/planner/candidates.py:110` iterates it directly. Python randomises string
@@ -51,12 +166,13 @@ four-combination library no tie arises, so the plate served is stable. With a
 richer library, *which plate a user is served* could depend on the hash seed of
 the process that answered their request.
 
-**Disposition: OPEN, deliberately not fixed here.** The fix is small —
-`sorted(slot.accepted_categories)` — but changing enumeration order changes
-`demo.py` output and can change which plate the solver picks among equals. That
-must not ride inside a commit whose acceptance criterion is that no behaviour
-moved. Found while diffing slice 1a's output against its baseline; not caused by
-it.
+**Disposition: was OPEN when written; CLOSED the same day in its own commit —
+see the 2026-08-02 entry above for the measured spread, the winner-stability
+check, and the pattern this is the second instance of.** Deliberately not fixed
+in the slice that found it: changing enumeration order changes `demo.py` output
+and can change which plate the solver picks among equals, and that must not ride
+inside a commit whose acceptance criterion is that no behaviour moved. Found
+while diffing slice 1a's output against its baseline; not caused by it.
 
 ### Correction — the north_lunch decline was never a sodium wall
 

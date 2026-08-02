@@ -458,6 +458,32 @@ mean searching rung subsets rather than prefixes, which trades a stated,
 auditable order for a search — not obviously the right trade for a safety
 mechanism, and not made here.
 
+## Results are reproducible across processes, not just across reruns (2026-08-02)
+
+`CandidatePool.for_slot` returns candidates sorted by `component.id`, and that
+sort is load-bearing rather than cosmetic. `TemplateSlot.accepted_categories` is
+a `frozenset`; Python randomises string hashes per process; iterating it
+directly made candidate order — and therefore combination order, and therefore
+every `demo.py` transcript — depend on `PYTHONHASHSEED`. Two runs of identical
+code on one machine produced different output.
+
+Measured before and after (`docs/audit_log.md`, finding 18): 12 hash seeds gave
+**2 distinct enumeration orderings** before, **1** after. The verdict, the
+selected plate and its score were identical at every seed both before and after
+— checked on the real library and on the 144-combination synthetic fixture — so
+no published result ever depended on a seed. **"Nothing changed" is a statement
+about this library at this size**, not a guarantee: `core/planner/solver.py`
+sorts plans by score with a stable sort, so among equally-scoring plans the one
+enumerated first wins, and today's top-two scores differ by 18–24%. With a
+larger library that path decides which plate a user is served.
+
+`tests/test_planner_determinism.py` checks this by spawning subprocesses under
+different seeds. That is the point of it: a determinism claim has to be checked
+across the thing it claims independence from, and nothing inside one process
+can. The first draft of those tests passed against the defect they were written
+to catch — see the audit log for why, and for the pattern this is the second
+instance of.
+
 ## Sodium is a day budget, not a share of one (2026-08-02)
 
 Until 2026-08-02 every bound in a day target was scaled to a meal by the meal's
