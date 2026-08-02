@@ -312,26 +312,34 @@ axis.
 
 ---
 
-## T5 — Slice 2: the DIAAS reversal — **NEXT**
+## T5 — Slice 2: the DIAAS reversal — **DONE**
 
-**Detail to be filled in when reached.** Spec is in
-`docs/design/target_model_v2.md`.
+**All four predicted figures held exactly**, measured after the change:
+protein day floor 124.4 → 112.00, carb day 341.6 → 354.01, lunch protein
+floor 43.6 → 39.20, lunch carb ceiling 137.5 → 142.49.
 
-Protein quality stops inflating the gram target and becomes a constraint on
-source selection. Prediction already recorded, unrevised: protein day floor
-124.4 → 112.0, carb 341.6 → 354.0, lunch carb ceiling 137.5 → 142.5, lunch
-protein floor 43.6 → 39.2.
+Two consequences beyond the prediction:
 
-**Note in the commit:** slice 2 in isolation makes the artefact plate
-_easier_ to reach — a lower protein floor gives the solver more room to
-answer protein with dal, and the correction only arrives with the
-quality-source rule. This is not a regression.
+- **The carb target is now diet-independent.** `base_g` does not depend on
+  diet, so neither does the energy remainder. A vegan and a non-vegetarian of
+  identical body and goal used to get carb targets ~37 g apart.
+- **`Profile.diet` now changes no target value at all** until slice 4. Stated
+  in `docs/methodology.md` and asserted by two tests that exist to make the
+  gap visible rather than to bless it.
+
+As predicted, the plate got easier: `north_lunch` and `north_dinner` now pass
+for the reference profile — the first plates this system has served for it —
+after four rungs, with the protein shortfall disclosed. Not a validation of
+the change; the plate the quality-source rule is meant to reject is exactly
+the one a lower protein floor makes reachable.
+
+Spec was `docs/design/target_model_v2.md`.
 
 ---
 
 ## Queued, not yet detailed
 
-- Slice 3 — protein per-meal floor and ceiling.
+- Slice 3 — protein per-meal floor and ceiling. **NEXT.**
 - Slice 4 — quality-source rule. Blocked until paneer/tofu/soya rows exist;
   `curd_dahi` is currently the only qualifying row, so shipping early makes
   every plate decline. **Cannot claim** it improves the confidence picture:

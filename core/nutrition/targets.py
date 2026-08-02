@@ -9,9 +9,14 @@ invariant"):
     BMR (Mifflin-St Jeor)
       -> TDEE = BMR * activity PAL
         -> energy target = TDEE * goal factor
-    protein g/kg (by goal) * weight
-      -> quality-adjusted grams = base / DIAAS(diet)   <- why `diet` is here
+    protein g/kg (by goal) * weight    <- the floor, unadjusted for quality
     energy -> fat (AMDR midpoint) + carb (remainder) + fibre + sodium ceiling
+
+``diet`` is still read here, but as of 2026-08-02 (slice 2) it changes no
+target value: DIAAS is computed and reported, never applied. Protein quality
+became a constraint on which sources fill the target rather than a multiplier
+on it, and that constraint (slice 4) is not built. Between the two, ``diet``
+moves nothing — see :class:`ProteinTarget` and ``docs/methodology.md``.
 
 Two rules from CLAUDE.md shape the output:
 
@@ -123,29 +128,52 @@ def _energy_uncertainty(profile: Profile) -> float:
 
 @dataclass(frozen=True)
 class ProteinTarget:
-    """The protein target, before and after quality adjustment.
+    """The protein target. ``base_g`` is the one the planner gates on.
 
-    ``quality_adjusted_g`` is what the plan must actually deliver: a lower-DIAAS
-    diet needs more grams to supply the same utilisable protein, so this is
-    ``base_g / diaas`` and is always >= ``base_g``. It is the floor the planner
-    gates on; ``base_g`` is kept only so the adjustment is inspectable.
+    **Changed 2026-08-02 (slice 2, the DIAAS reversal).** ``base_g`` used to be
+    kept "only so the adjustment is inspectable" and ``quality_adjusted_g``
+    (``base_g / diaas``) was the floor. That is now reversed, and the reasoning
+    is worth keeping because the old shape looked obviously right:
+
+    Inflating the gram target to compensate for a low-DIAAS diet answers a
+    quality problem with volume. It tells a vegetarian to eat 12 g/day more
+    protein of the same limiting-amino-acid profile, which does not supply the
+    missing amino acid — it supplies more of what was already there. Protein
+    quality is a constraint on *which sources* fill the target, not a multiplier
+    on the target. That constraint is the quality-source rule (slice 4), which
+    is blocked on the ingredient set having more than one qualifying row.
+
+    So ``quality_adjusted_g`` survives as an inspectable figure and **nothing
+    gates on it**. It is deliberately not deleted: the number is what makes the
+    reversal legible to a reader, and a silent removal would leave the per-diet
+    ``diaas.*`` constants in the registry with nothing explaining why they no
+    longer move a target.
+
+    Between this slice and slice 4, protein quality influences nothing at all.
+    That is a real gap, stated rather than papered over — see
+    ``docs/methodology.md``.
     """
 
+    #: The floor the planner gates on: weight x g/kg, no quality adjustment.
     base_g: float
+    #: ``base_g / diaas``. Display and inspection only; NOT gated on. Do not
+    #: reintroduce this into ``simple_target`` — see the class docstring.
     quality_adjusted_g: float
     g_per_kg: float
     diaas: float
 
 
 def compute_protein(profile: Profile) -> ProteinTarget:
-    """Protein grams/day, quality-adjusted for the profile's diet pattern."""
+    """Protein grams/day. ``diaas`` is reported, not applied to the target."""
 
     g_per_kg = citations.value_of(_protein_key(profile.goal))
     diaas = citations.value_of(_diaas_key(profile))
     base_g = profile.weight_kg * g_per_kg
-    # Divide, not multiply: DIAAS < 1 means lower-quality protein, so MORE grams
-    # are needed to hit the same utilisable-protein requirement. This is the
-    # "a plant-forward plate must actually deliver" adjustment.
+    # Divide, not multiply: DIAAS < 1 would mean MORE grams to hit the same
+    # utilisable-protein requirement. Computed so the figure stays inspectable
+    # and the per-diet constants stay meaningful, but no longer used as the
+    # target -- see ProteinTarget's docstring for why volume is the wrong
+    # answer to a quality question.
     quality_adjusted_g = base_g / diaas
     return ProteinTarget(
         base_g=base_g,
@@ -323,7 +351,13 @@ def derive_target(profile: Profile) -> DerivedTarget:
     energy_unc = _energy_uncertainty(profile)
 
     protein = compute_protein(profile)
-    fat_g, carb_g, macro_warnings = _compute_macros(energy, protein.quality_adjusted_g)
+    # base_g, not quality_adjusted_g. This feeds carbohydrate as well as the
+    # protein floor -- _compute_macros derives carb as the energy remainder --
+    # so dropping the inflation RAISES the carb target by the energy the
+    # inflated protein was claiming. That side effect is real and intended-by-
+    # implication rather than asked for; see the slice 2 commit and
+    # docs/design/target_model_v2.md.
+    fat_g, carb_g, macro_warnings = _compute_macros(energy, protein.base_g)
 
     fibre_per_1000 = citations.value_of("nutrient.fibre_g_per_1000kcal")
     fibre_g_min = fibre_per_1000 * energy / 1000.0
@@ -331,11 +365,12 @@ def derive_target(profile: Profile) -> DerivedTarget:
 
     # Delegate to simple_target so the floor/ceiling/point band math and the
     # default tolerances live in exactly one place (core.nutrition.target),
-    # shared with the relaxation ladder. The protein FLOOR is the
-    # quality-adjusted grams — the number a plan must actually deliver.
+    # shared with the relaxation ladder. The protein FLOOR is base_g: quality
+    # is a constraint on which sources fill it, not a multiplier on it, and
+    # nothing gates on quality_adjusted_g any more (ProteinTarget's docstring).
     target = simple_target(
         energy_kcal=energy,
-        protein_g_min=protein.quality_adjusted_g,
+        protein_g_min=protein.base_g,
         fat_g=fat_g,
         carb_g=carb_g,
         sodium_mg_max=sodium_mg_max,

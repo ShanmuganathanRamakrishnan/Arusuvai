@@ -385,7 +385,7 @@
     // the same discipline the LLM's narration templates use in core/planner.
     document.getElementById("obTargetSentence").innerHTML =
       `About <span class="accent">${fmtKcal(e.kcal)} kcal</span> a day — around ` +
-      `<span class="accent">${fmtGrams(p.quality_adjusted_g)} g protein · ${fmtGrams(data.fat_g)} g fat · ` +
+      `<span class="accent">${fmtGrams(p.base_g)} g protein · ${fmtGrams(data.fat_g)} g fat · ` +
       `${fmtGrams(data.carb_g)} g carb</span>, with at least ${fmtGrams(data.fibre_g_min)} g fibre and sodium ` +
       `held under ${fmtKcal(data.sodium_mg_max)} mg. ${data.disclosure || ""}`;
 
@@ -409,9 +409,20 @@
       `${fmtKcal(e.low)}–${fmtKcal(e.high)} kcal) · BMR ${fmtKcal(data.bmr_kcal)} kcal · ` +
       `TDEE ${fmtKcal(data.tdee_kcal)} kcal`;
 
+    // base_g, not quality_adjusted_g. Changed 2026-08-02 with the DIAAS
+    // reversal in core/nutrition/targets.py: the planner now gates on base_g,
+    // and this line showed the other number. A displayed target that is not
+    // the target being solved against is the precise failure this project
+    // exists to prevent, so the two must move together.
+    //
+    // quality_adjusted_g is still shown, demoted and labelled, because the
+    // per-diet DIAAS constants are still in the registry and a reader who saw
+    // them in the citation panel with nothing referencing them would
+    // reasonably conclude something was broken.
     document.getElementById("obProtein").textContent =
-      `${fmtGrams(p.quality_adjusted_g)} g/day (${fmtRatio(p.g_per_kg)} g/kg base, ` +
-      `${fmtGrams(p.base_g)} g before quality adjustment, DIAAS ${p.diaas})`;
+      `${fmtGrams(p.base_g)} g/day (${fmtRatio(p.g_per_kg)} g/kg) · protein ` +
+      `quality is not applied to this target: DIAAS ${p.diaas} would imply ` +
+      `${fmtGrams(p.quality_adjusted_g)} g, which is not what the plan is checked against`;
 
     document.getElementById("obMacros").textContent =
       `${fmtGrams(data.fat_g)} g fat · ${fmtGrams(data.carb_g)} g carbohydrate`;

@@ -654,6 +654,92 @@ composition-weighted DIAAS computed from the actual recipes once `core/foods`
 protein data is verified, at which point the estimate can be retired rather than
 verified. `docs/audit_log.md` is where any finding against this reasoning belongs.
 
+## Protein quality no longer inflates the target (2026-08-02, slice 2)
+
+Until this slice, a low-DIAAS diet raised the protein *floor*:
+`quality_adjusted_g = base_g / diaas`, and that inflated figure was what the
+planner gated on. A vegetarian at 70 kg was told to eat 124.4 g/day instead of
+112.0 g.
+
+**That answers a quality problem with volume.** Eating 12 g/day more protein of
+the same limiting-amino-acid profile supplies more of what was already there,
+not the amino acid that was short. Quality is a constraint on *which sources*
+fill a target, not a multiplier on the target. `ProteinTarget.base_g` is now the
+floor; `quality_adjusted_g` is still computed and displayed, and nothing gates
+on it.
+
+Measured, reference profile (70 kg / 175 cm / 28 / male / moderate / maintain /
+vegetarian). All four figures were predicted before the change was made and all
+four held:
+
+| | v1 | v2 |
+| --- | --- | --- |
+| protein day floor | 124.4 g | **112.00 g** |
+| carb day target | 341.6 g | **354.01 g** |
+| lunch protein floor | 43.6 g | **39.20 g** |
+| lunch carb ceiling | 137.5 g | **142.49 g** |
+
+### The carbohydrate side effect, which nobody asked for
+
+`_compute_macros` derives carbohydrate as the energy **remainder** after protein
+and fat. Removing 12.44 g of claimed protein hands 49.8 kcal back, so the carb
+target *rises* by 12.44 g — one gram of carbohydrate per gram of protein no
+longer claimed, which is the 4 kcal/g identity and a usable check on the sign.
+
+It is arguably correct: the old carb figure was the remainder after an inflated
+protein number, so it was understated for the same reason the protein floor was
+overstated. But "arguably correct" is not "intended", and `carb_g` has never
+been examined on its own terms. Pinned by
+`tests/test_nutrition_targets.py::test_the_carb_target_moved_with_the_protein_floor`
+with the arithmetic in comments, because a slice-2 test checking only protein
+would have let this ship unnoticed.
+
+**Second-order, and unpredicted: the carb target is now diet-independent.**
+`base_g` does not depend on diet, so neither does the remainder. Previously a
+vegan and a non-vegetarian of identical body and goal were handed carb targets
+about 37 g apart on the strength of a protein-quality constant.
+
+### The gap this opens, stated rather than papered over
+
+**Between this slice and the quality-source rule (slice 4), `Profile.diet`
+changes no target value at all.** The per-diet `diaas.*` constants are still
+registered and still reported; nothing reads them for gating. Two profiles
+identical but for diet now receive identical targets.
+
+That is a real capability gap, not a cleanup. It is asserted directly by
+`test_diet_pattern_no_longer_moves_the_protein_floor` and
+`test_the_carb_target_is_now_diet_independent_too`, which exist to make it
+visible: when slice 4 lands, quality must start mattering somewhere again, and
+if it does not, those two assertions are the ones that should look wrong to
+whoever reads them next. Slice 4 is blocked on the ingredient set — `curd_dahi`
+is the only row above DIAAS 0.62, so shipping the rule early would make every
+plate decline.
+
+### What it did to the plates
+
+The reference profile gets a plate for the first time. `north_lunch` and
+`north_dinner` now pass; both declined before, on sodium.
+
+```
+north_lunch   phulka x4, dal_tadka x2, onion_raita x2
+              910.0 kcal, 36.8 g protein, 23.4 g fat, 136.9 g carb, 1389.4 mg sodium
+              4 relaxation rungs, protein disclosed:
+              "delivers 36.8g of protein against a 39.2g target, a shortfall of 2.4g"
+north_dinner  phulka x3, dal_tadka x1, aloo_sabzi x1, onion_raita x2
+              794.4 kcal, 28.7 g protein, 1371.7 mg sodium
+```
+
+**This is slice 2 making the plate easier to reach, and that is expected rather
+than good.** A lower protein floor gives the solver more room to answer protein
+with dal — which is precisely the plate the quality-source rule is meant to
+reject. The correction arrives with slice 4. Recording it here so the
+improvement is not mistaken for a validation of the change.
+
+The two South templates still decline, and `south_lunch`'s decline changed
+shape: protein is now reachable, so the solver reaches for a bigger plate and
+blows energy, fat and sodium instead — sodium went from 2441.8 mg to 2836.8 mg.
+See `docs/audit_log.md` finding 22.
+
 ## Clinical flags do not tighten a target (2026-07-23)
 
 `Profile.clinical_flags` is read in exactly one place today:

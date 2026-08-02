@@ -153,13 +153,86 @@ class TestEnergyInterval:
 
 
 class TestDeriveTargetIntegration:
-    def test_protein_floor_is_the_quality_adjusted_grams(self):
+    def test_protein_floor_is_the_base_grams_not_the_quality_adjusted_ones(self):
+        # Inverted 2026-08-02 (slice 2, the DIAAS reversal). This test used to
+        # assert the opposite and its comment read "the number a plan must
+        # actually deliver, not the pre-adjustment base".
+        #
+        # The vegan profile is deliberately the one exercised: DIAAS 0.75 is the
+        # largest adjustment in the registry, so base and quality-adjusted are
+        # 149.33 and 112.0 -- far enough apart that the assertion cannot pass by
+        # coincidence the way it would on a non-vegetarian profile, where DIAAS
+        # is 1.0 and the two figures are equal.
         dt = derive_target(_make(diet=DietPattern.VEGAN))
-        # the number a plan must actually deliver, not the pre-adjustment base
         assert dt.nutrition_target.floor("protein_g") == pytest.approx(
-            dt.protein.quality_adjusted_g
+            dt.protein.base_g
         )
-        assert dt.protein.quality_adjusted_g > dt.protein.base_g
+        assert dt.protein.quality_adjusted_g > dt.protein.base_g, (
+            "the adjustment must still be computed and inspectable; only its "
+            "use as the target was removed"
+        )
+        assert dt.nutrition_target.floor("protein_g") < dt.protein.quality_adjusted_g
+
+    def test_diet_pattern_no_longer_moves_the_protein_floor(self):
+        # The load-bearing consequence, asserted directly rather than left to be
+        # inferred from the test above: between slice 2 and the quality-source
+        # rule (slice 4), protein quality influences nothing. Two profiles
+        # identical but for diet get the same floor.
+        #
+        # This is a real gap and the test exists to make it visible rather than
+        # to bless it -- when slice 4 lands, quality must start mattering again
+        # somewhere, and if it does not, this assertion is the one that should
+        # look wrong to whoever reads it next.
+        floors = {
+            diet: derive_target(_make(diet=diet)).nutrition_target.floor("protein_g")
+            for diet in DietPattern
+        }
+        assert len(set(floors.values())) == 1, floors
+
+    def test_the_carb_target_moved_with_the_protein_floor(self):
+        # The side effect, asserted on its own terms because nobody asked for
+        # it. _compute_macros derives carbohydrate as the energy REMAINDER after
+        # protein and fat, so removing 12.44 g of claimed protein hands 49.8
+        # kcal back to carbohydrate. A slice-2 test that checked only protein
+        # would pass while this shipped unnoticed, which is exactly why
+        # docs/design/target_model_v2.md flags it as the correctness risk.
+        #
+        # Hand-computed for the reference profile (70 kg / 175 cm / 28 / male /
+        # moderate / maintain / vegetarian), energy 2571.1 kcal, fat 707.05 kcal:
+        #
+        #   protein day floor = 70 * 1.6                      = 112.00 g
+        #   carb energy       = 2571.1 - 112.00*4 - 707.05    = 1416.05 kcal
+        #   carb day          = 1416.05 / 4                   = 354.01 g
+        #
+        # Under the old inflated protein (112.0 / 0.9 = 124.44 g) the same
+        # arithmetic gave 1366.29 / 4 = 341.57 g, so the target rose by 12.44 g
+        # -- one gram of carbohydrate per gram of protein no longer claimed,
+        # which is the 4 kcal/g identity and a useful cross-check on the sign.
+        veg = derive_target(_make(diet=DietPattern.VEGETARIAN))
+        assert veg.protein.base_g == pytest.approx(112.00)
+        assert veg.carb_g == pytest.approx(354.01, abs=0.01)
+        # Cross-check on the sign and size: the rise equals the protein no
+        # longer claimed, at 4 kcal/g for both macros.
+        assert veg.carb_g - 341.57 == pytest.approx(
+            veg.protein.quality_adjusted_g - veg.protein.base_g, abs=0.01
+        )
+
+    def test_the_carb_target_is_now_diet_independent_too(self):
+        # A second-order consequence nobody predicted, and the one worth
+        # pinning: carbohydrate used to vary with diet pattern, because it was
+        # the remainder after a DIAAS-inflated protein figure. A vegan and a
+        # non-vegetarian of identical body and goal were handed carb targets
+        # 37 g apart on the strength of a protein-quality constant.
+        #
+        # base_g does not depend on diet, so neither does the remainder. Diet
+        # now changes no target value at all -- see
+        # test_diet_pattern_no_longer_moves_the_protein_floor for the other half
+        # and docs/methodology.md for why that gap is stated rather than fixed
+        # here.
+        carbs = {
+            diet: derive_target(_make(diet=diet)).carb_g for diet in DietPattern
+        }
+        assert len(set(round(c, 6) for c in carbs.values())) == 1, carbs
 
     def test_energy_floor_ceiling_are_the_default_five_percent_band(self):
         # simple_target uses tolerance.energy_default (0.05) for the band.

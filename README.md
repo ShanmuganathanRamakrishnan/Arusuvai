@@ -39,8 +39,12 @@ recipes at servable portions — whole counts of a named unit, 3 phulka rather
 than 1.25× a roti — or **declines and names the exact constraint it could not
 meet, and by how much**.
 
-Today, against its own small recipe library, it mostly declines. That is the
-system working.
+Today, against its own small recipe library, it declines more often than not —
+and when it does serve a plate it says what it could not do. The reference
+profile's North Indian lunch passes only after four relaxation rungs, and
+discloses the cost in the units the target was stated in: *"delivers 36.8g of
+protein against a 39.2g target, a shortfall of 2.4g."* That is the system
+working.
 
 ## How it works
 
@@ -116,7 +120,7 @@ missed its purpose.
 | Ingredients | 26, of which **1** is verified (`water`, whose macros are all zero) |
 | Registered constants | 63, of which **63** rest on unverified evidence |
 | Status | `dev_mode`, permanently, until a human opens IFCT 2017 |
-| Tests | `318 passed, 1 failed` (excluding 3 browser-driven web files) — the failure is deliberate, holding an open finding visible rather than letting it go quiet |
+| Tests | `321 passed, 1 failed` (excluding 3 browser-driven web files) — the failure is deliberate, holding an open finding visible rather than letting it go quiet |
 
 All four templates enumerate as of 2026-08-02 — 1, 3, 8 and 2 combinations
 respectively. The gap that had kept three of them at **zero** was *category
