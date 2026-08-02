@@ -1,0 +1,82 @@
+# Carrot poriyal — the dry vegetable side of a South Indian lunch.
+#
+# Beans or cabbage are the more common poriyal; neither has an ingredient row
+# and carrot does. Stated rather than substituted quietly.
+#
+# The serving unit overrides the generic katori weight downward, which is the
+# point of the override existing: a poriyal is a dry side eaten by the
+# spoonful, not a bowl of gravy, and 150 g of it is not a serving anyone puts
+# on a plate.
+id: carrot_poriyal
+name: Carrot poriyal
+name_ta: கேரட் பொரியல்
+name_hi: गाजर की सब्ज़ी
+
+region: south_indian
+diet_patterns: [vegetarian, vegan]
+# Not jain: onion, and carrot is a root vegetable.
+
+category: poriyal
+prep_minutes: 20
+tags: [lunch, vegetable, quick]
+
+serving_unit:
+  measure: katori
+  name: katori
+  grams_per_unit: 80.0
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    Overrides the generic 150 g katori. A poriyal is a dry side served in a
+    small katori and eaten alongside rice; the generic gravy weight would
+    describe a bowl of it. Two is the realistic ceiling — a third poriyal is
+    a different dish on the plate, not more of this one, which is what
+    south_lunch's variable-length vegetable slot is for.
+
+# Sauteed with a lid rather than boiled and drained, so leaching is small but
+# real and unmeasured. Water-soluble vitamin loss on carrot is not modelled at
+# all — the ingredient set carries no vitamin columns to lose.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: carrot_raw
+    quantity_g: 60.0
+    state: raw
+    note: >-
+      Recorded raw because the ingredient set has no cooked carrot row and a
+      lightly sauteed carrot loses little mass. Following sambar_sadam's
+      precedent rather than inventing a yield factor here.
+  - id: coconut_fresh
+    quantity_g: 8.0
+    state: raw
+    note: Stirred through at the end. What makes a poriyal a poriyal.
+  - id: onion_raw
+    quantity_g: 6.0
+    state: raw
+  - id: gingelly_oil
+    quantity_g: 2.5
+    state: as_used
+    process: oil_uptake.vegetable_tempering
+    note: >-
+      Retained oil. About 2.6 g goes in the pan and stays with the vegetables
+      (oil_uptake.vegetable_tempering = 0.95).
+  - id: water
+    quantity_g: 1.5
+    state: as_used
+    note: A splash to steam the carrot under the lid; most of it stays.
+  - id: mustard_seed
+    quantity_g: 0.5
+    state: as_used
+  - id: curry_leaves
+    quantity_g: 0.5
+    state: raw
+  - id: green_chilli
+    quantity_g: 0.5
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.5
+    state: as_used
+    note: >-
+      0.63% of the finished weight, the ordinary domestic proportion for a dry
+      vegetable side. An authored quantity, not a measurement.

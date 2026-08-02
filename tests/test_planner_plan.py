@@ -3,20 +3,23 @@
 Two things are tested, deliberately kept apart so a failure in one cannot be
 mistaken for the other:
 
-1. **The real library, per template.** ``data/recipes/`` is thin, and for
-   three of the four templates at least one required slot still has no
-   candidate at all; those must decline with a ``no_candidates`` violation,
-   regardless of the profile asking or of ``dev_mode``. This is the
-   thin-library case the product will hit almost by default with today's
-   data, and the point of the test is to confirm the decline is specific and
-   correct — not merely that the call doesn't crash.
+1. **The real library, per template.** Every template now has a candidate in
+   every required slot, so ``no_candidates`` must never appear for any of
+   them: a decline has to name the macro that blocked it and show a walked
+   relaxation ladder. See ``TestEveryTemplateIsPopulated``.
 
-   ``north_lunch`` left that group on 2026-07-31: ``phulka`` filled
-   ``grain_base``, the last empty required slot, so the template now always
-   has something to solve. Its claim is therefore a different one —
-   ``no_candidates`` must *not* appear, and a decline must name the macro
-   that blocked it and show a walked relaxation ladder. See
-   ``TestNorthLunchIsPopulated``.
+   This claim inverted on 2026-08-02 (T4). Until then three of the four
+   templates had at least one required slot with no candidate at all and the
+   test asserted the opposite — that they decline with ``no_candidates``,
+   regardless of profile or ``dev_mode``. ``north_lunch`` left that group
+   first, on 2026-07-31, when ``phulka`` filled ``grain_base``; six recipes
+   closed the remaining gaps (``sambar``, ``coconut_chutney``,
+   ``carrot_poriyal``, ``thayir_plain``, ``aloo_sabzi``, ``carrot_kootu``).
+
+   The tests are deliberately about the *kind* of answer a template can give,
+   not the numbers today's library happens to produce. Asserting current
+   actuals would be a snapshot: it would go red on any recipe added and would
+   not, on its own, say anything was wrong.
 2. **The wiring itself, against a richer synthetic library.** If (1) were the
    *only* test, a bug in ``plan_meal``'s own wiring could hide behind "well,
    the library is thin anyway." ``TestHappyPathAgainstSyntheticLibrary`` reuses
@@ -35,6 +38,7 @@ from core.foods.models import Component
 from core.foods.recipe_loader import RecipeLibrary
 from core.foods.templates import ALL_TEMPLATES
 from core.nutrition.target import simple_target
+from core.planner.candidates import build_candidate_pool
 from core.planner.plan import Library, plan_meal
 from core.schemas import ActivityLevel, DietPattern, Goal, MealSlot, Profile, Region, Sex
 from tests.factories import (
@@ -47,50 +51,55 @@ def _real_library(ingredients, library: RecipeLibrary) -> Library:
     return Library(ingredients=ingredients, recipes=library)
 
 
-#: The templates that still have at least one required slot with no candidate
-#: at all. Derived by subtraction rather than listed, so adding a template
-#: puts it in this group by default -- the group whose claim is the weaker one.
-#: ``NORTH_LUNCH`` left this set on 2026-07-31 when ``data/recipes/phulka.yaml``
-#: filled ``grain_base``; it now has a candidate in every required slot and is
-#: covered by ``TestNorthLunchIsPopulated`` below instead.
-UNPOPULATED_TEMPLATES = tuple(t for t in ALL_TEMPLATES if t.id != "north_lunch")
+class TestEveryTemplateIsPopulated:
+    """No template may answer ``no_candidates`` any more. Proven per template.
 
-
-class TestRealLibraryDeclinesEveryTemplate:
-    """The thin-library case: proven per template, not asserted."""
+    Parametrised over ``ALL_TEMPLATES`` rather than a hand-listed subset, so a
+    template added later joins the *strong* claim by default and fails loudly
+    until something fills its required slots. The previous version derived a
+    weaker group by subtraction, which had the opposite bias: a new template
+    would have silently joined the group that was allowed to have nothing.
+    """
 
     @pytest.mark.parametrize(
-        "template",
-        UNPOPULATED_TEMPLATES,
-        ids=[t.id for t in UNPOPULATED_TEMPLATES],
+        "template", ALL_TEMPLATES, ids=[t.id for t in ALL_TEMPLATES]
     )
-    def test_declines_with_a_specific_no_candidates_violation(
+    def test_every_required_slot_has_a_candidate(
         self, template, ingredients, library
     ):
-        lib = _real_library(ingredients, library)
-        # A deliberately loose day target: if this template declined because
-        # the target was hard to hit, a loose target like this would still
-        # pass. It doesn't, for any of these — confirming the decline is
-        # about missing candidates, not about target tightness.
+        # The structural claim, checked directly rather than inferred from a
+        # verdict: a decline for any other reason would otherwise hide an
+        # empty slot behind a macro violation.
+        pool = build_candidate_pool(
+            library.components.values(),
+            ingredients,
+            template=template,
+            diet_pattern=DietPattern.VEGETARIAN,
+            dev_mode=True,
+        )
+        empty = [s.name for s in template.required_slots if not pool.for_slot(s)]
+        assert empty == [], f"{template.id}: required slots with no candidate: {empty}"
+
+    @pytest.mark.parametrize(
+        "template", ALL_TEMPLATES, ids=[t.id for t in ALL_TEMPLATES]
+    )
+    def test_no_candidates_never_appears(self, template, ingredients, library):
+        # A deliberately loose day target. Whether the template passes or
+        # declines against it is a fact about the data and this test takes no
+        # position on it -- that part moves as recipes land. What may not
+        # happen is the empty-pool shortcut.
         day_target = simple_target(energy_kcal=2000.0, protein_g_min=10.0)
 
         outcome = plan_meal(
-            lib,
+            _real_library(ingredients, library),
             day_target,
             region=template.region,
             meal_slot=template.meal_slot,
             diet_pattern=DietPattern.VEGETARIAN,
         )
 
-        assert outcome.plan is None
-        assert outcome.result.passed is False
-        assert len(outcome.result.violations) == 1
-        (violation,) = outcome.result.violations
-        assert violation.kind == "no_candidates"
-        assert "nothing to solve" in violation.describe()
-        assert outcome.result.disclosure is not None
-        assert "No plan could be built for this profile" in outcome.result.disclosure
-        assert "nothing to solve" in outcome.result.disclosure
+        assert all(v.kind != "no_candidates" for v in outcome.result.violations)
+        assert "nothing to solve" not in (outcome.result.disclosure or "")
 
 
 class TestNorthLunchIsPopulated:
@@ -166,27 +175,49 @@ class TestNorthLunchIsPopulated:
         assert "protein_g" in disclosure
         assert "nothing to solve" not in disclosure
 
-    def test_dev_mode_does_not_change_the_verdict(self, ingredients, library):
-        # dev_mode only suspends the *eligibility* filter (uncertainty too
-        # wide); it cannot manufacture a candidate for a category the library
-        # never populated at all. Checked explicitly so "just flip dev_mode"
-        # is never mistaken for a fix to this specific decline.
+    def test_dev_mode_false_empties_the_pool_on_uncertainty_alone(
+        self, ingredients, library
+    ):
+        # Renamed and inverted on 2026-08-02, because the old version --
+        # "dev_mode does not change the verdict" -- passed for two different
+        # reasons at once and could no longer tell them apart. Before T4 both
+        # settings answered `no_candidates`: dev_mode=True because south_lunch
+        # had unfilled required slots, dev_mode=False because the eligibility
+        # filter emptied the pool. One assertion, two causes, and filling the
+        # slots was always going to break it without saying which had moved.
+        #
+        # Now the two are separable and each is asserted on its own. Every
+        # ingredient row bar `water` is verified=False, so every recipe carries
+        # a 0.25 protein band against a 0.15 ceiling: dev_mode=False must empty
+        # the pool for a protein-critical target, and dev_mode=True must not.
+        # This is the documented behaviour in core/planner/candidates.py, and
+        # it is the reason nothing in this library can ship as validated.
         lib = _real_library(ingredients, library)
         day_target = simple_target(energy_kcal=2000.0, protein_g_min=10.0)
-        for dev_mode in (True, False):
-            outcome = plan_meal(
+
+        def _violations(dev_mode: bool):
+            return plan_meal(
                 lib,
                 day_target,
                 region=Region.SOUTH_INDIAN,
                 meal_slot=MealSlot.LUNCH,
                 diet_pattern=DietPattern.VEGETARIAN,
                 dev_mode=dev_mode,
-            )
-            assert outcome.result.passed is False
-            (violation,) = outcome.result.violations
-            assert violation.kind == "no_candidates"
+            ).result.violations
 
-    def test_a_realistic_onboarding_profile_still_declines(self, ingredients, library):
+        strict = _violations(False)
+        assert [v.kind for v in strict] == ["no_candidates"], (
+            "dev_mode=False must empty the pool: every recipe is over the "
+            "eligibility ceiling on protein"
+        )
+        assert all(v.kind != "no_candidates" for v in _violations(True)), (
+            "dev_mode=True suspends eligibility, and every required slot is "
+            "populated, so there is always something to solve"
+        )
+
+    def test_a_realistic_onboarding_profile_gets_a_specific_answer(
+        self, ingredients, library
+    ):
         # The exact shape of profile the onboarding page now collects end to
         # end: derive_target's real output, not a hand-built loose target.
         from core.nutrition.targets import derive_target
@@ -212,15 +243,26 @@ class TestNorthLunchIsPopulated:
             profile=profile,
         )
 
-        assert outcome.result.passed is False
-        (violation,) = outcome.result.violations
-        assert violation.kind == "no_candidates"
-        # "it ran" is not "it ran correctly": the disclosure must actually
-        # name the reason, not just be present.
-        assert outcome.result.disclosure == (
-            "No plan could be built for this profile: no recipe combination "
-            "survived filtering for this profile, so there was nothing to solve"
-        )
+        # No position taken on the verdict -- that is a fact about the data and
+        # it moved once already, on 2026-08-02, when six recipes turned this
+        # profile's answer from "nothing to solve" into a real plate. What must
+        # hold either way: the answer is specific. A plan names its components,
+        # a decline names the macro that blocked it. "It ran" is not "it ran
+        # correctly", and the empty-pool shortcut is neither.
+        assert all(v.kind != "no_candidates" for v in outcome.result.violations)
+
+        if outcome.plan is None:
+            assert outcome.result.passed is False
+            assert outcome.result.violations != ()
+            disclosure = outcome.result.disclosure or ""
+            assert "No plan could be built for this profile" in disclosure
+            assert "nothing to solve" not in disclosure
+            named = {v.macro for v in outcome.result.violations}
+            assert named, "a decline must name the macro that blocked it"
+        else:
+            assert outcome.result.passed is True
+            assert outcome.plan.unit_counts
+            assert all(n >= 1 for n in outcome.plan.unit_counts.values())
 
 
 class TestHappyPathAgainstSyntheticLibrary:

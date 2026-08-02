@@ -3,6 +3,8 @@ feasibility pre-filter."""
 
 from __future__ import annotations
 
+import dataclasses
+
 import pytest
 
 from core.foods import templates
@@ -65,18 +67,48 @@ class TestEnumeration:
                     assert len(selection) >= 1
                 assert slot.min_selections <= len(selection) <= slot.max_selections
 
-    def test_a_required_slot_with_no_candidates_yields_zero_combinations(self, library, ingredients):
-        # masala_dosa is the only recipe compatible with south_breakfast's
-        # tiffin_item category; nothing in the 3-recipe library satisfies
-        # gravy_accompaniment or chutney, both required. Zero combinations is
-        # the correct, honest answer — not an error.
+    def test_a_required_slot_with_no_candidates_yields_zero_combinations(
+        self, library, ingredients
+    ):
+        # Zero combinations is the correct, honest answer for an unfillable
+        # required slot -- not an error.
+        #
+        # Rewritten 2026-08-02. This used to lean on the real library being
+        # thin: south_breakfast's gravy and chutney slots had no candidates, so
+        # the condition arose by itself. T4 filled both, and a test whose
+        # precondition can be removed by unrelated work was never testing the
+        # rule -- it was observing a coincidence. The condition is now
+        # constructed, so the rule is exercised whatever the library holds.
+        unfillable = dataclasses.replace(
+            templates.SOUTH_BREAKFAST,
+            slots=tuple(
+                dataclasses.replace(
+                    s, accepted_categories=frozenset({"category_no_recipe_declares"})
+                )
+                if s.name == "gravy_accompaniment"
+                else s
+                for s in templates.SOUTH_BREAKFAST.slots
+            ),
+        )
         pool = build_candidate_pool(
+            library.components.values(),
+            ingredients,
+            template=unfillable,
+            diet_pattern=DietPattern.VEGETARIAN,
+            dev_mode=True,
+        )
+        assert pool.for_slot(unfillable.slot("gravy_accompaniment")) == ()
+        # The control: the same library against the real template does
+        # enumerate, so a green result above cannot come from the pool being
+        # empty for some other reason.
+        real = build_candidate_pool(
             library.components.values(),
             ingredients,
             template=templates.SOUTH_BREAKFAST,
             diet_pattern=DietPattern.VEGETARIAN,
             dev_mode=True,
         )
+        assert enumerate_combinations(real) != ()
         assert enumerate_combinations(pool) == ()
 
     def test_no_repeat_window_filters_combinations_reusing_a_recent_recipe(self):

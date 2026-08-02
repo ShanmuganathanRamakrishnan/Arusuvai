@@ -1,0 +1,74 @@
+# Coconut chutney — the condiment beside a dosa or idli.
+#
+# Measured in tablespoons, not katoris. core/foods/templates.py says the
+# chutney slot holds "a condiment measured in tablespoons, not a dish", and the
+# serving unit has to agree with that or the solver will treat a chutney as a
+# course and serve 150 g of it.
+#
+# Roasted chana dal is the usual body alongside the coconut. There is no row
+# for it, so this is the plainer thengai chutney: coconut, chilli, tempering.
+# Named rather than substituted.
+id: coconut_chutney
+name: Coconut chutney
+name_ta: தேங்காய் சட்னி
+name_hi: नारियल की चटनी
+
+region: south_indian
+diet_patterns: [vegetarian, vegan, jain]
+# Jain: no onion, no garlic, no root vegetable. Every line here is jain_safe.
+
+category: chutney
+prep_minutes: 10
+tags: [breakfast, condiment, quick]
+
+serving_unit:
+  measure: tablespoon
+  grams_per_unit: 15.0
+  min_count: 1
+  default_count: 2
+  max_count: 4
+  note: >-
+    One level tablespoon, the generic tablespoon weight — no override. Four is
+    a generous but real amount beside two dosas. The low ceiling matters here:
+    a chutney is roughly a third fat by mass, so an unbounded count would let
+    the solver answer an energy gap with coconut.
+
+# Ground raw and finished with a tempering; nothing is boiled or drained, so
+# there is no leaching term to declare. The tempering oil carries a registered
+# constant and derives a real figure for the macros it touches.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: coconut_fresh
+    quantity_g: 7.5
+    state: raw
+    note: >-
+      Half the tablespoon by mass. This is the whole dish nutritionally — 26
+      of its 32 kcal and nearly all its fat.
+  - id: water
+    quantity_g: 6.0
+    state: as_used
+    note: Ground in, to bring the paste to a spoonable consistency.
+  - id: green_chilli
+    quantity_g: 0.6
+    state: raw
+  - id: gingelly_oil
+    quantity_g: 0.5
+    state: as_used
+    process: oil_uptake.vegetable_tempering
+    note: >-
+      Retained oil. About 0.53 g goes into the tempering pan and is poured over
+      the chutney whole (oil_uptake.vegetable_tempering = 0.95).
+  - id: mustard_seed
+    quantity_g: 0.15
+    state: as_used
+  - id: curry_leaves
+    quantity_g: 0.15
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.1
+    state: as_used
+    note: >-
+      0.67% of the finished weight — a condiment is salted harder than a dish
+      because it is eaten in spoonfuls against something unsalted. An authored
+      quantity, not a measurement.

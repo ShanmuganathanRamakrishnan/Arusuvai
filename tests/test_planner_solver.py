@@ -133,12 +133,17 @@ class TestThinFeasibleSet:
         assert survivors == ()  # the O(1) pre-filter already catches it
         assert solve(combos, target, SOUTH_LUNCH_INGREDIENTS) == ()
 
-    def test_the_real_three_recipe_library_also_yields_nothing(self, library, ingredients):
-        # A second, independent thin case: south_breakfast's gravy and
-        # chutney slots have zero real candidates regardless of any macro, so
-        # this is thin for a different reason (missing categories, not a
-        # protein ceiling) — recorded to show the "zero feasible" outcome is
-        # not an artifact of one specific cause.
+    def test_the_real_library_yields_nothing_for_a_macro_reason_not_an_empty_pool(
+        self, library, ingredients
+    ):
+        # A second, independent thin case, and it changed kind on 2026-08-02.
+        # It used to be thin because south_breakfast's gravy and chutney slots
+        # had no candidates at all, so enumeration returned nothing. T4 filled
+        # both, so the template now enumerates and the "zero feasible" outcome
+        # has to come from the macros instead -- which is the more interesting
+        # version of the same claim, and the one that survives more recipes
+        # landing. 90 g of protein at one breakfast is out of reach for any
+        # combination of a dosa, a sambar and a chutney.
         pool = build_candidate_pool(
             library.components.values(),
             ingredients,
@@ -148,7 +153,8 @@ class TestThinFeasibleSet:
         )
         target = simple_target(energy_kcal=1500.0, protein_g_min=90.0)
         combos = enumerate_combinations(pool)
-        assert combos == ()
+        assert combos != (), "south_breakfast must enumerate; it has been populated"
+        assert feasible_combinations(combos, target, ingredients) == ()
         assert solve(combos, target, ingredients) == ()
 
 

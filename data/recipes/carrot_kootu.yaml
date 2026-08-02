@@ -1,0 +1,87 @@
+# Carrot kootu — vegetable simmered with dal, the second vegetable dish of a
+# South Indian lunch.
+#
+# This is the sixth recipe and the only one not strictly required: five files
+# already make all four templates enumerate. It is here because
+# south_lunch.vegetable is the one genuinely variable-length slot in
+# core/foods/templates.py (min 1, max 2), and enumerate_combinations builds
+# selections with itertools.combinations — no repeats — so a slot with a single
+# candidate can never take two. With only carrot_poriyal in the pool, the
+# variable-length slot behaves exactly like a fixed one and the feature is
+# untestable against real data.
+#
+# A kootu rather than a second poriyal on purpose: it carries dal, so the slot
+# offers the solver a protein-bearing option and a fat-bearing one rather than
+# two dishes of the same shape.
+id: carrot_kootu
+name: Carrot kootu
+name_ta: கேரட் கூட்டு
+name_hi: गाजर कूटू
+
+region: south_indian
+diet_patterns: [vegetarian, vegan]
+# Not jain: carrot is a root vegetable.
+
+category: kootu
+prep_minutes: 30
+tags: [lunch, vegetable, high_protein]
+
+serving_unit:
+  measure: katori
+  grams_per_unit: 150.0
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    One katori, the generic katori weight — no override. A kootu is wetter
+    than a poriyal and is served in a full katori. Two is the ceiling; beyond
+    that it stops being a side.
+
+# Simmered with the cooking water served rather than drained. Leaching is
+# smaller than a drained preparation and is not zero; no constant covers it.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: carrot_raw
+    quantity_g: 55.0
+    state: raw
+    note: >-
+      Recorded raw, as in carrot_poriyal — no cooked carrot row exists and
+      inventing a yield factor here would be a nutritional constant in a data
+      file.
+  - id: water
+    quantity_g: 41.6
+    state: as_used
+    note: >-
+      The simmering water, served with the dish. Listed explicitly so the
+      masses sum to the katori.
+  - id: toor_dal_cooked
+    quantity_g: 40.0
+    state: cooked
+    note: About 16 g dry toor dal, via yield.toor_dal_boiled.
+  - id: coconut_fresh
+    quantity_g: 8.0
+    state: raw
+    note: Ground with the chilli into the paste that thickens a kootu.
+  - id: gingelly_oil
+    quantity_g: 2.5
+    state: as_used
+    process: oil_uptake.vegetable_tempering
+    note: >-
+      Retained oil. About 2.6 g goes into the tempering pan and is poured over
+      the kootu whole (oil_uptake.vegetable_tempering = 0.95).
+  - id: green_chilli
+    quantity_g: 1.0
+    state: raw
+  - id: mustard_seed
+    quantity_g: 0.5
+    state: as_used
+  - id: curry_leaves
+    quantity_g: 0.5
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.9
+    state: as_used
+    note: >-
+      0.60% of the finished weight, the same proportion as the sambar beside
+      it on the same plate. An authored quantity, not a measurement.

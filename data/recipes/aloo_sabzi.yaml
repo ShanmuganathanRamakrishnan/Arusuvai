@@ -1,0 +1,81 @@
+# Aloo sabzi — the dry potato-and-onion sabzi of a North Indian dinner.
+#
+# `sabzi` is required by north_dinner and optional in north_lunch, and nothing
+# in the library was a sabzi, so north_dinner enumerated zero combinations
+# despite having a bread, a dal and a raita already. One file closes it.
+#
+# Jeera aloo is the more common version. There is no cumin row, so this is the
+# onion-tomato-garam masala version instead. Named rather than substituted.
+id: aloo_sabzi
+name: Aloo sabzi
+name_ta: உருளைக்கிழங்கு கறி
+name_hi: आलू की सब्ज़ी
+
+region: north_indian
+diet_patterns: [vegetarian, vegan]
+# Not jain: potato is a root vegetable, and there is onion and garlic.
+
+category: sabzi
+prep_minutes: 25
+tags: [everyday, dinner, vegetable]
+
+serving_unit:
+  measure: katori
+  grams_per_unit: 150.0
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    One katori of dry sabzi, the generic katori weight — no override. Two is
+    the ceiling: this dish is 70% potato by mass and the solver would
+    otherwise reach for it whenever a carb floor was short.
+
+# Boiled first, then sauteed. The potato is boiled in its skin and peeled, so
+# leaching is small; it is not zero and no constant covers it. The tempering
+# oil carries a registered constant and derives a real figure for energy and
+# fat.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: potato_boiled
+    quantity_g: 105.0
+    state: cooked
+    note: >-
+      Boiled in the skin then peeled and cubed. The cooked-basis row is the
+      right one here; using potato_raw against this quantity would be the
+      raw-versus-cooked error the schema exists to prevent.
+  - id: onion_raw
+    quantity_g: 15.0
+    state: raw
+  - id: tomato_raw
+    quantity_g: 15.0
+    state: raw
+  - id: sunflower_oil
+    quantity_g: 5.5
+    state: as_used
+    process: oil_uptake.vegetable_tempering
+    note: >-
+      Retained oil. About 5.8 g goes in the pan and stays with the potato
+      (oil_uptake.vegetable_tempering = 0.95). A sabzi is fried harder than a
+      tempering, which is why this is the largest oil line in the library
+      outside the dosa.
+  - id: water
+    quantity_g: 3.5
+    state: as_used
+  - id: ginger_garlic_paste
+    quantity_g: 3.0
+    state: as_used
+  - id: garam_masala
+    quantity_g: 1.2
+    state: as_used
+  - id: green_chilli
+    quantity_g: 1.0
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.9
+    state: as_used
+    note: >-
+      0.60% of the finished weight. Potato takes salt harder than a gravy does
+      because there is no liquid to carry it; the figure comes from how a sabzi
+      is salted, not from what the sodium ceiling would prefer. An authored
+      quantity, not a measurement.

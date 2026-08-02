@@ -8,6 +8,63 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-02 — finding 22, raised by filling the library (T4)
+
+### Finding 22 — a multi-dish South Indian plate cannot get under the sodium guard — **OPEN**
+
+**What.** Now that every template enumerates, sodium blocks all four of them.
+For `south_lunch` it is not a matter of a demanding profile: two of its three
+combinations have a sodium **floor** above the per-plate guard with every
+component at its minimum serving count, so no profile can ever be served them.
+
+**Measured**, per-combination reach at min and max counts — the diagnosis is
+built on the reach table this time, not read off a single blocking figure, which
+is the mistake made in the other direction earlier the same day:
+
+```
+south_lunch
+  Na  1437.0.. 3654.0   sambar_sadam + sambar + carrot_kootu + thayir_plain
+  Na  1282.1.. 3344.2   sambar_sadam + sambar + carrot_poriyal + thayir_plain
+  Na  1677.1.. 4134.2   sambar_sadam + sambar + carrot_kootu + carrot_poriyal + thayir_plain
+south_breakfast
+  Na  1006.6.. 3060.7   masala_dosa + sambar + coconut_chutney
+```
+
+Guard: 1400.0 mg (`day_budget.absurdity_fraction` 0.70 x 2000). Rows 1 and 3 are
+above it before the solver picks a single unit count.
+
+**Why it happens, and why it is not obviously a recipe defect.** A South Indian
+lunch is four or five separate dishes, each independently salted at the ordinary
+domestic proportion — the salt lines here run 0.33% to 0.67% of finished weight
+and each carries a written reason. Four dishes at one katori each is roughly
+3.3 g of salt before anyone eats a second helping. The arithmetic is not
+disputed; what it means is:
+
+- either the guard is wrong for multi-dish regional plates (it is a
+  `PROJECT_DECISION` plausibility limit derived from meal-split fractions that
+  are themselves project decisions, and it was never checked against a plate
+  with four salt lines in it);
+- or the salt proportions are wrong (but each was authored from how the dish is
+  salted, and tuning them downward until plans pass is precisely the defect the
+  salt notes exist to prevent);
+- or a South Indian lunch genuinely carries this much sodium and the honest
+  answer is to decline and say so.
+
+**Not resolved here, deliberately.** TASKS.md forbids fixing things noticed in
+passing, and each of the three readings above is a different decision with
+different consequences. Lowering a salt line to clear a ceiling would be the
+worst available option and is explicitly not on the table.
+
+**Connects to finding 19/20's territory.** This is the sharpest available
+illustration of `docs/design/recipe_quantity_uncertainty.md` §1: sodium is 77-99%
+attributable to authored quantities, and it is now the single constraint blocking
+every template in the library. The number that decides whether anything can be
+served is one nobody measured.
+
+**Disposition.** OPEN.
+
+---
+
 ## 2026-08-02 — finding 21, and a correction to finding 19's own explanation
 
 ### Finding 21 — two constants in permanent contradiction, neither wrong alone — **OPEN**

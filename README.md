@@ -111,17 +111,24 @@ missed its purpose.
 
 | | |
 |---|---|
-| Recipes | **6** — enough to enumerate 4 combinations for one of four templates |
+| Recipes | **12** — every required slot in all four templates has a candidate |
 | Templates | 4 (`south_breakfast`, `south_lunch`, `north_lunch`, `north_dinner`) |
 | Ingredients | 26, of which **1** is verified (`water`, whose macros are all zero) |
 | Registered constants | 63, of which **63** rest on unverified evidence |
 | Status | `dev_mode`, permanently, until a human opens IFCT 2017 |
-| Tests | `313 passed, 1 failed` (excluding 3 browser-driven web files) — the failure is deliberate, holding an open finding visible rather than letting it go quiet |
+| Tests | `318 passed, 1 failed` (excluding 3 browser-driven web files) — the failure is deliberate, holding an open finding visible rather than letting it go quiet |
 
-Three of the four templates enumerate **zero** combinations, because no recipe
-fills their required chutney/gravy/vegetable/curd slots. That is a gap in
-*category breadth*, not recipe count — a seventh recipe in an already-filled
-category would change nothing.
+All four templates enumerate as of 2026-08-02 — 1, 3, 8 and 2 combinations
+respectively. The gap that had kept three of them at **zero** was *category
+breadth*, not recipe count, and it closed with six files filling chutney, gravy,
+vegetable, curd and sabzi.
+
+All four still decline for the reference profile, and the reason changed rather
+than went away: sodium. A South Indian lunch is four separately salted dishes,
+and two of `south_lunch`'s three combinations sit above the per-plate sodium
+guard at their *minimum* serving counts — unreachable for any profile. Other
+profiles do get plates. That the blocking number is one nobody measured is the
+[open finding](docs/audit_log.md), not a detail.
 
 This is stated, not apologised for. A portfolio project that claims validated
 nutritional output on hand-entered fixture data would be demonstrating the exact

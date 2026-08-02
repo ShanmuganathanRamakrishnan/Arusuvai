@@ -1,0 +1,64 @@
+# Plain curd — the curd course that closes a South Indian lunch.
+#
+# Three lines, and it is still worth a file: south_lunch.curd_course is a
+# required slot and nothing in the library filled it, so this dish alone is the
+# difference between south_lunch enumerating zero combinations and enumerating
+# some. The smallest recipe in the library unblocks the largest template.
+#
+# It is `curd`, not `raita`: onion_raita is a north Indian raita with onion,
+# tomato and chilli in it, and north_lunch/north_dinner accept it in an
+# optional salad_or_raita slot. A South Indian lunch ends with plain thayir.
+# Same dairy, different dish, different slot — which is why the category
+# vocabulary distinguishes them.
+id: thayir_plain
+name: Curd
+name_ta: தயிர்
+name_hi: दही
+
+region: south_indian
+diet_patterns: [vegetarian]
+# Not vegan: dairy. Jain-safe by ingredient, but not declared jain — a jain
+# diet permits curd and this file makes no claim either way about the dairy
+# sourcing that would decide it.
+
+category: curd
+prep_minutes: 2
+tags: [lunch, cooling, quick]
+
+serving_unit:
+  measure: katori
+  grams_per_unit: 150.0
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    One katori of set curd, the generic katori weight — no override. Two is
+    the ceiling because curd is the one component here the solver could
+    otherwise use to answer protein cheaply, and three katoris of curd is not
+    how the meal ends.
+
+# Nothing is cooked. There is no process constant on any line and no macro is
+# process-sensitive, so every macro derives to a computed zero rather than an
+# omitted one. This is the only recipe in the library where that is true, and
+# it is exactly the case docs/audit_log.md finding 2 is about: a recipe with no
+# process lines reads as 0% process-uncertain. Its composition band is
+# untouched at 0.25 and the eligibility filter still excludes it outside
+# dev_mode, so nothing here is safer than it looks — but the finding is now
+# reachable with a real file, which it was not before.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: curd_dahi
+    quantity_g: 145.0
+    state: as_used
+  - id: water
+    quantity_g: 4.5
+    state: as_used
+    note: Whisked in to loosen set curd to a spoonable consistency.
+  - id: salt_iodised
+    quantity_g: 0.5
+    state: as_used
+    note: >-
+      0.33% of the finished weight — half what a cooked dish takes, because
+      curd is salted at the table and lightly. An authored quantity, not a
+      measurement.

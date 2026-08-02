@@ -1,0 +1,95 @@
+# Sambar — the tamarind-and-toor-dal gravy, served beside a tiffin item at
+# breakfast and over rice at lunch.
+#
+# This is the single most load-bearing file in T4: `sambar` is the one category
+# accepted by BOTH south_breakfast.gravy_accompaniment and south_lunch.gravy,
+# so one recipe unblocks a required slot in two templates. That is also why the
+# task's "six recipes, one per gap" framing was one recipe too many — see
+# docs/methodology.md, "Category breadth, not recipe count".
+#
+# Distinct from sambar_sadam, which is sambar and rice already mixed and sits
+# in `mixed_rice`. This one is the gravy alone, so it can accompany a dosa.
+id: sambar
+name: Sambar
+name_ta: சாம்பார்
+name_hi: सांबर
+
+region: south_indian
+diet_patterns: [vegetarian, vegan]
+# Not jain: onion, and carrot is a root vegetable.
+
+category: sambar
+prep_minutes: 35
+tags: [everyday, breakfast, lunch, gravy]
+
+serving_unit:
+  measure: katori
+  grams_per_unit: 150.0
+  min_count: 1
+  default_count: 1
+  max_count: 3
+  note: >-
+    One katori of pourable sambar, the generic katori weight — no override.
+    Three is a lot of sambar and still a real serving over rice; the ceiling
+    stops the solver closing a protein gap by serving six.
+
+# Boiled with the cooking water served rather than drained, so leaching is
+# smaller than a drained preparation but is not nothing, and no constant is
+# registered for it. Energy, protein, fat and carb are absent from this list on
+# purpose: the only process-sensitive line touching them is the tempering oil,
+# which carries a registered constant and therefore derives a real figure.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: toor_dal_cooked
+    quantity_g: 45.0
+    state: cooked
+    note: About 18 g dry toor dal, via yield.toor_dal_boiled.
+  - id: water
+    quantity_g: 55.0
+    state: as_used
+    note: >-
+      Sambar is thinner than dal. Listed explicitly so the masses sum to the
+      katori rather than being absorbed into an unstated yield.
+  - id: carrot_raw
+    quantity_g: 15.0
+    state: raw
+    note: >-
+      Drumstick and ash gourd are the more usual vegetables; neither has a row
+      in the ingredient set, and carrot does. Named here rather than silently
+      substituted.
+  - id: tomato_raw
+    quantity_g: 12.0
+    state: raw
+  - id: onion_raw
+    quantity_g: 12.0
+    state: raw
+    note: Small shallots in practice; the onion row stands in for them.
+  - id: tamarind_pulp
+    quantity_g: 3.0
+    state: as_used
+  - id: sambar_powder
+    quantity_g: 3.0
+    state: as_used
+  - id: gingelly_oil
+    quantity_g: 3.0
+    state: as_used
+    process: oil_uptake.vegetable_tempering
+    note: >-
+      Retained oil. About 3.2 g goes into the tempering pan and is poured over
+      the gravy whole (oil_uptake.vegetable_tempering = 0.95).
+  - id: mustard_seed
+    quantity_g: 0.5
+    state: as_used
+  - id: curry_leaves
+    quantity_g: 0.5
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.9
+    state: as_used
+    note: >-
+      0.60% of the finished weight. Sambar is salted a little harder than a
+      dal because the tamarind needs answering; the figure is chosen from how
+      sambar is salted, not from what the sodium ceiling would prefer. Like
+      every salt line in this library it is an authored quantity, not a
+      measurement — see docs/design/recipe_quantity_uncertainty.md.

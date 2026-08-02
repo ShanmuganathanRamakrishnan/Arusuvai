@@ -270,20 +270,31 @@ longer claim.
 The propagation arithmetic, measured with the command shown. Probes tracked
 in `docs/design/probes/`, not pasted-and-lost.
 
-## T4 — Write six recipes — **NEXT**
+## T4 — Write six recipes — **DONE**
 
-T3 has landed as design only, so **nothing in the recipe file format has
-actually changed yet**. Two options, and this needs a decision before drafting:
-write the six recipes against today's format and let the derived band apply
-retroactively (which is what `docs/design/recipe_quantity_uncertainty.md` §9
-says happens, with no file edit); or implement that design first so the new
-recipes are authored under it. The design deliberately adds no required field —
-`quantity_from` is optional and absence is the wide case — so the first option
-loses nothing.
+Written against today's format, per the design's own §9: the derived band
+applies retroactively with no file edit, so authoring under the unimplemented
+T3 design would have gained nothing.
 
-T3b changes nothing here: finding 21 is about a label that is not built and a
-tolerance nobody compared to anything. No gate, target or recipe format moves.
-Six new recipes will widen no band and narrow none.
+Delivered: `sambar`, `coconut_chutney`, `carrot_poriyal`, `thayir_plain`,
+`aloo_sabzi`, `carrot_kootu`. No new ingredient rows — every dish is built from
+the existing 26, and where the usual ingredient was missing (drumstick, cumin,
+roasted chana dal, beans) the substitution is named in the file rather than made
+silently.
+
+**Five would have sufficed**, not six: `sambar` is accepted by both
+`south_breakfast.gravy_accompaniment` and `south_lunch.gravy`. The sixth,
+`carrot_kootu`, is there because `enumerate_combinations` uses
+`itertools.combinations` and cannot repeat a component, so `south_lunch.vegetable`
+(min 1, max 2) behaved as a fixed-length slot with one candidate — the only
+genuinely variable-length slot in the template module was untestable.
+
+Result: all four templates enumerate (1 / 3 / 8 / 2). `no_candidates` is gone.
+`docs/methodology.md` limitation 5 CLOSED. `north_dinner` produces plates for
+the first time. All four still decline for the reference profile, on named
+macros — **sodium in all four**, with two `south_lunch` combinations above the
+guard at minimum counts: `docs/audit_log.md` finding 22, OPEN, deliberately not
+resolved here.
 
 Scope, fixed now: six recipes, enough to make all four templates enumerate
 — one sabzi (north_dinner), a gravy and a chutney (south_breakfast), a
@@ -301,7 +312,7 @@ axis.
 
 ---
 
-## T5 — Slice 2: the DIAAS reversal
+## T5 — Slice 2: the DIAAS reversal — **NEXT**
 
 **Detail to be filled in when reached.** Spec is in
 `docs/design/target_model_v2.md`.

@@ -791,6 +791,52 @@ headline numbers — see `web/onboarding.html`.
    *category breadth* (chutney, gravy, vegetable, curd, plain rice/roti — none
    exist yet), not recipe *count*.
 
+   **CLOSED 2026-08-02 (T4).** Six recipes filled the missing categories —
+   `sambar`, `coconut_chutney`, `carrot_poriyal`, `thayir_plain` (curd),
+   `aloo_sabzi`, `carrot_kootu` — and every required slot in every template now
+   has a candidate. Measured combination counts: `south_breakfast` 1,
+   `south_lunch` 3, `north_lunch` 8, `north_dinner` 2. `no_candidates` no
+   longer appears for any template, which is now asserted by construction in
+   `tests/test_planner_plan.py::TestEveryTemplateIsPopulated`, parametrised over
+   `ALL_TEMPLATES` so a template added later joins the strong claim by default.
+
+   The category-breadth reading held up exactly: **five** recipes would have
+   sufficed, not six, because `sambar` is accepted by both
+   `south_breakfast.gravy_accompaniment` and `south_lunch.gravy` — one file,
+   two templates. `carrot_kootu` is the sixth and is there for a different
+   reason: `enumerate_combinations` builds selections with
+   `itertools.combinations`, which cannot repeat a component, so
+   `south_lunch.vegetable` (min 1, max 2) behaved exactly like a fixed-length
+   slot while it had a single candidate. A second candidate is what makes the
+   only genuinely variable-length slot in `core/foods/templates.py` testable
+   against real data at all.
+
+### Every template enumerates, and every template still declines (2026-08-02)
+
+Closing limitation 5 did not make the system able to serve a plan for the
+reference profile, and the reason changed rather than went away. All four
+templates decline for the reference profile — but on **named macros** now,
+with a walked relaxation ladder, instead of the empty-pool shortcut:
+
+```
+south_breakfast  fat 24.7 > 24.6 | protein 18.4 < 26.4 | sodium 1790.4 > 1400.0
+south_lunch      protein 32.3 < 37.0 | sodium 2441.8 > 1400.0
+north_lunch      sodium 1649.3 > 1400.0
+north_dinner     energy 942.6 > 848.5 | fat 33.4 > 29.5 | sodium 1891.4 > 1400.0
+```
+
+`north_lunch` and `north_dinner` do solve for other profiles (54 and 28 of a
+192-profile sweep respectively, some with zero relaxation rungs), so the
+pipeline demonstrably produces plates now — `north_dinner` never had before.
+
+**Sodium is the constraint in all four**, and this time the diagnosis is backed
+by per-combination reach rather than read off a single blocking figure — the
+error made on 2026-08-02 in the other direction. Two of `south_lunch`'s three
+combinations have a sodium *floor* above the guard (1437.0 mg and 1677.1 mg
+against 1400 mg) with every component at its minimum count, so those two are
+unreachable for **any** profile, not merely a demanding one. See
+`docs/audit_log.md` finding 22.
+
 6. **DIAAS is stored but unused.** `Ingredient.diaas` is populated where a
    commonly cited figure exists and left `None` otherwise. Nothing reads it yet;
    protein quality scoring is a later phase, and the values carry the same
