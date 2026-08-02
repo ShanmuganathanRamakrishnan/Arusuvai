@@ -8,6 +8,98 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-02 — two findings from the T3 design measurement
+
+Both found while designing `docs/design/recipe_quantity_uncertainty.md` against
+the real library. Neither is caused by that design; both were already true and
+were invisible because nothing had measured them. Design is not implemented, so
+nothing here is fixed.
+
+### Finding 19 — the confidence label saturates: `confident` is unreachable — **OPEN**
+
+**What.** The plain-language confidence label specified in T3 (*confident* /
+*rough* / *very rough*, derived from band half-width against the room a target
+leaves) has one reachable bucket. Every plate the library can produce is already
+*very rough* today, and stays *very rough* under a simulation of Task 6 in which
+every ingredient is verified.
+
+**Measured.** North Indian lunch for a 45 kg / 165 cm / 35 / female / active /
+maintain profile — the nearest profile whose plate solves with **zero**
+relaxation rungs, so the comparison is against the tightest bounds the system
+ever applies. Plate `phulka ×1, dal_tadka ×3, onion_raita ×1`.
+
+```
+                              energy      protein     fat        carb
+band half-width today          h=188.8     h=7.3      h=7.1      h=23.4
+room the target leaves         room=34.6   room=1.2   room=3.2   room=14.6
+                              -> very rough on all four
+
+simulating Task 6 (composition.unverified_secondary 0.25 -> verified 0.05):
+band half-width                h=48.4      h=1.5      h=2.6      (passes)
+room                           room=34.6   room=1.2   room=3.2
+                              -> still very rough on energy and protein
+```
+
+**Why it does not resolve itself.** Energy is the binding case and it is
+structural, not a data problem: a 5% composition band on every ingredient
+produces roughly a 7% band on plate energy, while `tolerance.energy_default` is
+5%. `confident` cannot be reached from any composition data this project could
+plausibly obtain, because the tolerance is narrower than the uncertainty of a
+national food table. The two constants were registered independently and have
+never been compared to each other.
+
+**Why it matters.** The label was specified as counter-pressure against the
+documented perverse incentive (wider bands are easier to satisfy). A label with
+one reachable value exerts none. Separately, the counter-pressure that *does*
+exist — the candidate eligibility filter, which removes a recipe whose band
+exceeds 0.15 protein / 0.20 energy — is also saturated: all four north-lunch
+recipes already breach both (protein 0.250 vs 0.15; energy 0.250–0.276 vs 0.20)
+and survive only under `dev_mode=True`.
+
+**Disposition.** OPEN. Recorded in the design doc §6 and §7 as a stated
+limitation rather than smoothed over. Resolving it means revisiting either
+`tolerance.energy_default` or `composition.verified_primary` **against each
+other**, which is a target-model decision, not a recipe-data one. Do not resolve
+it by widening the tolerance to make the label move — that is the perverse
+incentive wearing a different hat.
+
+### Finding 20 — the unverified-energy fraction is wrong in both directions, measured — **OPEN**
+
+**What.** The round-4 addendum predicted that
+`NutritionEstimate.unverified_energy_kcal` gets its denominator wrong in both
+directions. It does, and the size is now measured rather than argued.
+
+**Measured**, same plate: `unverified_energy_kcal = 519.0 of 702.1 = 73.9%`
+against CLAUDE.md's ~15% shipping threshold.
+
+```
+dal_tadka      process_constants=['oil_uptake.vegetable_tempering']  -> whole 519 kcal charged
+phulka         process_constants=[]                                  -> 0.0 charged
+onion_raita    process_constants=[]                                  -> 0.0 charged
+```
+
+- **Over-charged:** `_depends_on_unverified` charges a recipe's *entire* energy
+  when any process constant is unverified. dal_tadka's 519 kcal is charged
+  because of a 5 g tempering-oil line.
+- **Under-charged:** unverified *composition* never enters the calculation at
+  all. phulka and onion_raita rest entirely on hand-entered, `verified=False`
+  ingredient rows and contribute 0.0.
+
+73.9% is therefore not the true figure. It is two large errors in opposite
+directions that happen not to cancel, and the direction of the net error is
+unknown.
+
+**Disposition.** OPEN. The known over-attribution is already documented in
+`core/foods/nutrition_of.py::_depends_on_unverified`, deliberately left because
+correcting the smaller error alone would move the reported figure *away* from
+the truth. This entry adds the measurement and the consequence: **the 15%
+threshold cannot be trusted against real data until the denominator is fixed**,
+and no work should be measured against it in the meantime. It does not change
+what can ship — nothing can ship as validated for the independent reason that
+every registered constant is `verified=False`.
+
+---
+
 ## 2026-08-02 — finding 18 CLOSED, and the reproducibility pattern behind it
 
 ### Finding 18 — CLOSED

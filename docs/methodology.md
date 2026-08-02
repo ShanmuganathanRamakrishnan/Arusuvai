@@ -212,6 +212,26 @@ recipe-level list cannot express; and `Recipe.process_constants` and
 `process_exposure_g` are derived from the lines, so neither can go stale against
 the ingredients it describes.
 
+### There is no band on the recipe quantities themselves (2026-08-02)
+
+A third source of error exists and is currently modelled as zero: **how wrong
+the gram figure on a recipe line is.** `Ingredient.composition_uncertainty`
+covers the per-100 g row and `Recipe.process_uncertainty` covers the oil-uptake
+and yield constants, but nothing covers the fact that "0.8 g of salt in a dal"
+was authored to be plausible rather than measured. There is no measurand for it;
+no table states how much salt goes in a dal.
+
+Measured, this is the dominant error on exactly the macros that decide plans:
+sodium is 77–99% and fat 88–97% attributable to lines whose quantity is a free
+authoring choice, across all six recipes. Sodium is also the constraint that
+currently declines the reference profile.
+
+Designed, not built: `docs/design/recipe_quantity_uncertainty.md` (2026-08-02),
+including the two findings the measurement produced — the confidence label it
+specifies has only one reachable value, and the unverified-energy fraction is
+wrong in both directions by a measured amount. Both are `docs/audit_log.md`
+findings 19 and 20, OPEN.
+
 ## Nothing can currently ship as validated (2026-07-21)
 
 Stated plainly, because the alternative is discovering it after `core/planner`
