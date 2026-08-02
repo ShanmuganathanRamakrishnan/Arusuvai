@@ -1,0 +1,95 @@
+# Paneer masala — cubed paneer in an onion-tomato gravy.
+#
+# Written for one reason: the library had no high-quality protein source that
+# could reach a slot. `curd_dahi` was the only ingredient row above DIAAS 0.62,
+# and `onion_raita` the only component carrying it — an optional accompaniment
+# capped at two katoris. A quality rule shipped against that library would have
+# declined every North Indian plate (docs/design/target_model_v2.md §3, "no
+# qualifying alternative").
+#
+# `sabzi`, so it fills NORTH_DINNER.sabzi (required) and NORTH_LUNCH.sabzi
+# (optional). That is the widest reach available to a paneer dish without
+# inventing a category, and it puts a qualifying component in a REQUIRED slot
+# of one template rather than only in optional ones.
+#
+# Substitutions, named rather than made silently: the usual gravy is finished
+# with cream or a cashew paste and there is no row for either, so this is the
+# plainer onion-tomato version. There is no cumin, coriander-leaf or
+# kasuri-methi row either; garam masala stands in for the whole spice side.
+# This is a real dish cooked with the ingredients this library has, not a
+# nutritionally-convenient invention.
+id: paneer_masala
+name: Paneer masala
+name_ta: பன்னீர் மசாலா
+name_hi: पनीर मसाला
+
+region: north_indian
+diet_patterns: [vegetarian]
+# Not vegan: paneer is a dairy product. Not jain: onion and ginger-garlic.
+
+category: sabzi
+prep_minutes: 30
+tags: [everyday, lunch, dinner, high_protein]
+
+serving_unit:
+  measure: katori
+  grams_per_unit: 150.0
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    One katori, the generic katori weight — no override. Two is the ceiling and
+    it is deliberately lower than dal_tadka's three: this is the densest
+    protein source in the library, and a wider ceiling would let the solver
+    answer a protein floor with paneer alone, which is the same
+    pile-it-on failure the per-meal protein ceiling exists to stop.
+
+# The paneer is not fried before it goes into the gravy — it is simmered in it —
+# so the only registered process on this dish is the tempering oil, which
+# derives a real figure for energy and fat. Simmering does leach minerals into
+# the gravy, which is served, so the loss is small but not measured and no
+# constant covers it.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: paneer_fresh
+    quantity_g: 70.0
+    state: as_used
+    note: >-
+      Cubed and simmered, not fried. `as_used` because the composition row is
+      already for the finished cheese; paneer is not cooked from a raw state
+      the way rice or dal is.
+  - id: onion_raw
+    quantity_g: 25.0
+    state: raw
+  - id: tomato_raw
+    quantity_g: 35.0
+    state: raw
+  - id: sunflower_oil
+    quantity_g: 5.0
+    state: as_used
+    process: oil_uptake.vegetable_tempering
+    note: >-
+      Retained oil. About 5.3 g goes into the pan for the masala base and stays
+      in the gravy (oil_uptake.vegetable_tempering = 0.95).
+  - id: ginger_garlic_paste
+    quantity_g: 3.0
+    state: as_used
+  - id: garam_masala
+    quantity_g: 1.2
+    state: as_used
+  - id: green_chilli
+    quantity_g: 1.0
+    state: raw
+  - id: water
+    quantity_g: 8.9
+    state: as_used
+    note: The water the gravy is loosened with; listed so the masses sum.
+  - id: salt_iodised
+    quantity_g: 0.9
+    state: as_used
+    note: >-
+      0.60% of the finished weight — the same proportion as aloo_sabzi, and for
+      the same reason: a dish eaten with plain roti carries its own salt. An
+      authored quantity, not a measurement, and chosen from how the dish is
+      salted rather than from what the sodium ceiling would prefer.

@@ -4,8 +4,16 @@
 
 `fixture_ingredients.csv` is mostly a **hand-entered fixture set**, not an
 IFCT extract, plus four rows updated 2026-07-24 with real IFCT 2017 values.
-25 of its 26 rows have `verified` set to `false`; 22 have an empty
+28 of its 29 rows have `verified` set to `false`; 25 have an empty
 `ifct_code`. Both are deliberate:
+
+Three of those rows — `paneer_fresh`, `tofu_firm` and `soya_chunks_dry`, added
+2026-08-02 — deserve a specific warning beyond the general one below. Their
+`diaas` figures are the field the quality-source rule gates on, and all three
+are **authored from recollection at the low end of a wide remembered range**,
+not read from FAO 2013 or any other source. Each row's `source_note` says so.
+Entering the low end is deliberate: a high DIAAS makes a row *qualify*, so the
+cheapest authoring path must not be the most permissive one.
 
 The one *unconditionally* verified exception is `water` (`verified=true`).
 All nine of its macros are zero, and "water contributes no nutrients" is not

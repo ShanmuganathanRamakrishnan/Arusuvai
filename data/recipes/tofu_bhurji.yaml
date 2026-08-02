@@ -1,0 +1,90 @@
+# Tofu bhurji — crumbled tofu scrambled with onion, tomato and masala.
+#
+# `sabzi`, so it fills NORTH_DINNER.sabzi (required) and NORTH_LUNCH.sabzi
+# (optional) — the vegan counterpart to paneer_masala in the same slots.
+#
+# READ THIS BEFORE ASSUMING IT QUALIFIES AS A QUALITY PROTEIN SOURCE: it does
+# not. `tofu_firm` carries an authored DIAAS of 0.65, below the 0.75 threshold,
+# so under the quality-source rule this dish contributes ZERO qualifying
+# protein despite being 57% tofu by mass and the third-densest protein
+# component in the library. The row's own note explains why 0.65 was entered:
+# the recalled published range for soy foods is wide (roughly 0.5 to 0.9) and
+# the low end is entered because a high DIAAS is what makes a row qualify.
+#
+# So this file is deliberately in the library as the case that shows the rule's
+# failure direction. A vegan who cannot eat soya chunks gets no qualifying
+# protein at all from it, and the reason is the confidence of one hand-entered
+# number rather than anything about the food. Deleting it would hide that;
+# raising the DIAAS until it qualified would be tuning a figure until plans
+# pass, which is not on the table.
+id: tofu_bhurji
+name: Tofu bhurji
+name_ta: டோஃபு பூர்ஜி
+name_hi: टोफू भुर्जी
+
+region: north_indian
+diet_patterns: [vegetarian, vegan]
+# Not jain: onion and ginger-garlic.
+
+category: sabzi
+prep_minutes: 20
+tags: [everyday, lunch, dinner, vegan, high_protein]
+
+serving_unit:
+  measure: katori
+  grams_per_unit: 150.0
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    One katori, the generic katori weight — no override. Two, matching
+    paneer_masala: the two dishes play the same role in the same slot at
+    comparable protein density, and giving one a wider ceiling than the other
+    would be a solver preference dressed as a serving convention.
+
+# Crumbled and scrambled in the pan. The only registered process is the
+# tempering oil; the tofu itself is bought set and is not cooked from a raw
+# state. Minerals are declared unassessed because scrambling drives off water
+# that carries some of them and no constant covers it.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: tofu_firm
+    quantity_g: 85.0
+    state: as_used
+    note: >-
+      Crumbled. `as_used` because the composition row is for the finished
+      block, not for a raw constituent that absorbs water in this dish.
+  - id: onion_raw
+    quantity_g: 25.0
+    state: raw
+  - id: tomato_raw
+    quantity_g: 25.0
+    state: raw
+  - id: sunflower_oil
+    quantity_g: 5.0
+    state: as_used
+    process: oil_uptake.vegetable_tempering
+    note: >-
+      Retained oil. About 5.3 g goes into the pan
+      (oil_uptake.vegetable_tempering = 0.95).
+  - id: ginger_garlic_paste
+    quantity_g: 3.0
+    state: as_used
+  - id: garam_masala
+    quantity_g: 1.0
+    state: as_used
+  - id: green_chilli
+    quantity_g: 1.0
+    state: raw
+  - id: water
+    quantity_g: 4.2
+    state: as_used
+    note: The splash added so the masala does not catch; listed so the masses sum.
+  - id: salt_iodised
+    quantity_g: 0.8
+    state: as_used
+    note: >-
+      0.53% of the finished weight. Lighter than aloo_sabzi's 0.60% because
+      tofu is bland rather than starchy — it takes salt readily and does not
+      need the extra. An authored quantity, not a measurement.

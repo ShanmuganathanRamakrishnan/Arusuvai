@@ -363,9 +363,34 @@ the guard with a bound derived from the library. Its stated trigger —
 
 ## D2 — Paneer, tofu and soya rows, then slice 4
 
-Queued together because slice 4 cannot do anything without them: `curd_dahi` is
-the only row above DIAAS 0.62, so the quality-source rule shipped today makes
-every plate decline.
+### D2a — the ingredient rows — **DONE** (2026-08-02)
+
+Three rows (`paneer_fresh` 1.00, `tofu_firm` 0.65, `soya_chunks_dry` 0.85) and
+three recipes (`paneer_masala@sabzi`, `tofu_bhurji@sabzi`,
+`soya_chunk_curry@legume_curry`). No fourth row was needed. All three DIAAS
+figures are **authored at the low end of a recalled range, not sourced**; no
+evidence grade moved and `dev_mode=False` still empties every pool.
+
+Two results that change what follows:
+
+- **Both north templates now pass for the reference profile with zero
+  relaxation** — the first plates it has ever been served on the real library.
+  The cause is sodium, not protein: tofu bhurji fills the `sabzi` slot with
+  less salt per calorie than aloo sabzi. Enumeration is now 1 / 3 / 24 / 12.
+- **Finding 25 raised:** no high-quality source can reach `south_breakfast` at
+  all — its slot grammar accepts `tiffin`, `sambar`/`kuzhambu`,
+  `chutney`/`podi`, `beverage` and nothing else. A per-meal quality floor will
+  make that template unsatisfiable for a structural reason, not a thin-library
+  one.
+
+### D2b — slice 4, the quality-source rule — **NEXT**
+
+Slice 4 cannot do anything without D2a: `curd_dahi` was the only row above
+DIAAS 0.62, so the quality-source rule shipped before it made every plate
+decline. Note what D2a now puts at stake — **both passing plates are carried by
+`tofu_bhurji`, whose 0.65 does not qualify.** Slice 4 is therefore expected to
+take back the two verdicts D2a just produced, and finding 25 says
+`south_breakfast` has no way to satisfy the rule at all.
 
 Also closes finding 23 — `web/onboarding.js` asks for diet, stores it, and since
 slice 2 nothing reads it for gating. Either slice 4 lands or the wizard says so;

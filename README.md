@@ -115,24 +115,25 @@ missed its purpose.
 
 | | |
 |---|---|
-| Recipes | **12** — every required slot in all four templates has a candidate |
+| Recipes | **15** — every required slot in all four templates has a candidate |
 | Templates | 4 (`south_breakfast`, `south_lunch`, `north_lunch`, `north_dinner`) |
-| Ingredients | 26, of which **1** is verified (`water`, whose macros are all zero) |
-| Registered constants | 63, of which **63** rest on unverified evidence |
+| Ingredients | 29, of which **1** is verified (`water`, whose macros are all zero) |
+| Registered constants | 65, of which **65** rest on unverified evidence |
 | Status | `dev_mode`, permanently, until a human opens IFCT 2017 |
-| Tests | `330 passed, 1 failed` (excluding 3 browser-driven web files) — the failure is deliberate, holding an open finding visible rather than letting it go quiet |
+| Tests | `333 passed, 1 failed` (excluding 3 browser-driven web files) — the failure is deliberate, holding an open finding visible rather than letting it go quiet |
 
-All four templates enumerate as of 2026-08-02 — 1, 3, 8 and 2 combinations
-respectively. The gap that had kept three of them at **zero** was *category
-breadth*, not recipe count, and it closed with six files filling chutney, gravy,
-vegetable, curd and sabzi.
+All four templates enumerate as of 2026-08-02. The gap that had kept three of
+them at **zero** was *category breadth*, not recipe count, and it closed with six
+files filling chutney, gravy, vegetable, curd and sabzi. Three further recipes
+carrying paneer, tofu and soya then raised north_lunch to 24 combinations and
+north_dinner to 12.
 
-All four still decline for the reference profile, and the reason changed rather
-than went away: sodium. A South Indian lunch is four separately salted dishes,
-and two of `south_lunch`'s three combinations sit above the per-plate sodium
-guard at their *minimum* serving counts — unreachable for any profile. Other
-profiles do get plates. That the blocking number is one nobody measured is the
-[open finding](docs/audit_log.md), not a detail.
+**The two North Indian templates now serve the reference profile, with no
+relaxation rung fired.** Both south templates still decline, on sodium: a South
+Indian lunch is four separately salted dishes, and two of `south_lunch`'s three
+combinations sit above the per-plate sodium guard at their *minimum* serving
+counts — unreachable for any profile. That the blocking number is one nobody
+measured is the [open finding](docs/audit_log.md), not a detail.
 
 This is stated, not apologised for. A portfolio project that claims validated
 nutritional output on hand-entered fixture data would be demonstrating the exact

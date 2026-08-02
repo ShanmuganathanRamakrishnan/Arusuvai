@@ -1,0 +1,94 @@
+# Soya chunk curry — rehydrated soya chunks in an onion-tomato gravy.
+#
+# The vegan half of the quality-protein problem. Paneer and curd are dairy;
+# tofu's authored DIAAS (0.65) falls below the 0.75 threshold. Soya chunks at
+# an authored 0.85 are, on today's data, the ONLY vegan-eligible qualifying
+# source in the library — which means the quality rule's behaviour for vegan
+# profiles rests on one hand-entered number, and that is stated here rather
+# than left to be discovered.
+#
+# `legume_curry`, so it fills NORTH_LUNCH.legume_curry and NORTH_DINNER.dal —
+# both REQUIRED slots. It reaches further than paneer_masala does, and it is
+# the first component that can displace dal_tadka rather than merely sit
+# beside it.
+#
+# RAW BASIS PLUS EXPLICIT WATER, per data/recipes/schema.yaml rule 1. Dry soya
+# chunks roughly triple in mass on rehydration; no rehydration yield constant
+# is registered, so the dry mass is recorded on its own `raw` row and the
+# absorbed water is listed as a `water` line. Multiplying by an inline yield
+# factor would be the magic-number failure the schema forbids, and registering
+# a yield constant from memory would be worse.
+id: soya_chunk_curry
+name: Soya chunk curry
+name_ta: சோயா குருமா
+name_hi: सोया करी
+
+region: north_indian
+diet_patterns: [vegetarian, vegan]
+# Not jain: onion and ginger-garlic.
+
+category: legume_curry
+prep_minutes: 30
+tags: [everyday, lunch, dinner, high_protein, vegan]
+
+serving_unit:
+  measure: katori
+  grams_per_unit: 150.0
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    One katori, the generic katori weight — no override. Two, not dal_tadka's
+    three: a katori of this carries roughly twice the protein of a katori of
+    dal, so the same ceiling would hand the solver four times the room to
+    close a protein gap by volume.
+
+# The chunks are boiled to rehydrate and the water is retained in the gravy
+# rather than squeezed out, so leaching is small — but real, and unmeasured.
+# The tempering oil carries a registered constant and derives a real figure for
+# energy and fat.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: soya_chunks_dry
+    quantity_g: 28.0
+    state: raw
+    note: >-
+      Dry mass. About 28 g of chunks take up roughly twice their weight in
+      water; that water is the line below rather than a yield multiplication
+      here.
+  - id: water
+    quantity_g: 66.0
+    state: as_used
+    note: >-
+      The water absorbed on rehydration plus what is left as gravy. Listed
+      explicitly so the masses sum to the katori — see the file header.
+  - id: onion_raw
+    quantity_g: 20.0
+    state: raw
+  - id: tomato_raw
+    quantity_g: 25.0
+    state: raw
+  - id: sunflower_oil
+    quantity_g: 5.0
+    state: as_used
+    process: oil_uptake.vegetable_tempering
+    note: >-
+      Retained oil. About 5.3 g goes into the pan
+      (oil_uptake.vegetable_tempering = 0.95).
+  - id: ginger_garlic_paste
+    quantity_g: 3.0
+    state: as_used
+  - id: garam_masala
+    quantity_g: 1.2
+    state: as_used
+  - id: green_chilli
+    quantity_g: 1.0
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.8
+    state: as_used
+    note: >-
+      0.53% of the finished weight — the same proportion as dal_tadka, because
+      this is salted as a gravy is, with liquid to carry it. An authored
+      quantity, not a measurement.

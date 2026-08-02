@@ -8,6 +8,88 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-02 — D2a, the high-quality protein rows
+
+Three ingredient rows (`paneer_fresh`, `tofu_firm`, `soya_chunks_dry`) and three
+recipes (`paneer_masala@sabzi`, `tofu_bhurji@sabzi`,
+`soya_chunk_curry@legume_curry`) were added so the quality-source rule has
+something to select. Four things measured, one of them a finding.
+
+### The reference profile now gets a plate, and it took no relaxation
+
+This is the larger result and it was not the goal of the task. Before D2a all
+four templates declined for the reference profile (see `docs/methodology.md`,
+"Every template enumerates, and every template still declines"). After:
+
+```
+$ PYTHONHASHSEED=0 python demo.py plan --region north_indian --meal-slot lunch
+passed         : True
+relaxation     : ()
+  unit counts  : {'phulka@roti': 4, 'dal_tadka@dal': 2, 'tofu_bhurji@sabzi': 1}
+  point        : 929.8 kcal, 42.6g protein, 25.8g fat, 133.9g carb, 1209.0mg sodium
+
+$ PYTHONHASHSEED=0 python demo.py plan --region north_indian --meal-slot dinner
+passed         : True
+relaxation     : ()
+  unit counts  : {'phulka@roti': 4, 'dal_tadka@dal': 1, 'tofu_bhurji@sabzi': 1}
+  point        : 756.8 kcal, 35.4g protein, 20.2g fat, 111.3g carb, 889.2mg sodium
+```
+
+Both north templates pass **with zero relaxation rungs fired** — the first
+plates this library has served the reference profile without walking the ladder.
+The mechanism is not protein: it is that a 150 g katori of tofu bhurji is a
+low-sodium, moderate-energy way to fill the `sabzi` slot, so the solver can
+reach the energy floor without the salt load that made every previous
+combination breach the 1400 mg guard. The two south templates still decline, on
+sodium among others; finding 22 is untouched.
+
+### Finding 25 — no high-quality protein source can reach south_breakfast — **OPEN**
+
+`SOUTH_BREAKFAST`'s four slots accept `tiffin`, `sambar`/`kuzhambu`,
+`chutney`/`podi` and `beverage`. None of the three new components can be written
+into any of them without either miscategorising the dish or inventing a category,
+and the existing library has no qualifying ingredient in that template either
+(`curd_dahi` reaches only `raita` and `curd`, which south_breakfast does not
+accept).
+
+So when the quality-source rule ships with a per-meal quality floor, **south
+breakfast becomes structurally undeclinable-to-satisfy**: not "the library is
+thin," but "the plate grammar has no slot a quality source could occupy." A
+paneer/soya-stuffed dosa or a milk-based beverage would close it; both are new
+recipes, and inventing one to make a rule pass is the shape of tuning this
+project refuses.
+
+*Disposition:* OPEN. Recorded before slice 4 rather than discovered by it.
+
+### Nothing was upgraded to make the rows work
+
+`dev_mode=False` still empties every pool — the new rows are `verified=false`
+and carry the same 0.25 composition band as every other hand-entered row:
+
+```
+south_breakfast dev_mode True/False candidates: [3, 0]
+south_lunch     dev_mode True/False candidates: [5, 0]
+north_lunch     dev_mode True/False candidates: [8, 0]
+north_dinner    dev_mode True/False candidates: [7, 0]
+```
+
+The three DIAAS figures are **authored, not sourced** — no primary source was
+opened — and each was entered at the low end of its recalled range, because a
+high DIAAS is what makes a row *qualify* and the cheapest authoring path must not
+produce the most permissive output. The visible cost: `tofu_firm` at 0.65 sits
+below the 0.75 threshold, so tofu will not qualify as a quality source. That is a
+statement about this project's confidence, not about tofu.
+
+### Unverified energy fraction: measured, not acted on
+
+The two passing plates report 57.5% and 47.7% of plate energy as unverified,
+against CLAUDE.md's ~15% shipping threshold. Both figures come from the
+denominator finding 20 says is wrong in two directions at once, so they are
+recorded and nothing is concluded from them. Nothing ships as validated either
+way.
+
+---
+
 ## 2026-08-02 — finding 24, raised by slice 3
 
 ### Finding 24 — a decline can name the symptom instead of the cause — **OPEN**

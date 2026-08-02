@@ -23,7 +23,11 @@ def write_csv(tmp_path, *rows):
 class TestFixtureSet:
     def test_every_fixture_row_loads(self, load_report):
         assert load_report.rejected == []
-        assert len(load_report.loaded) == 26
+        # 26 rows until 2026-08-02, when D2a added paneer_fresh, tofu_firm and
+        # soya_chunks_dry -- the library's first ingredients carrying a DIAAS
+        # above 0.62, without which the quality-source rule would decline every
+        # plate.
+        assert len(load_report.loaded) == 29
 
     def test_no_ifct_code_is_invented(self, ingredients):
         # Four rows (rice_milled_raw/A015, rajma_raw/B020, toor_dal_raw/B021,
@@ -41,13 +45,17 @@ class TestFixtureSet:
                 assert ingredient.ifct_code is None
 
     def test_unverified_rows_are_reported_not_silently_accepted(self, load_report):
-        # 25 of 26 rows are unverified; only `water` (which has no nutrients to
-        # get wrong) is marked verified. The four real-IFCT-code rows above are
+        # 28 of 29 rows are unverified; only `water` (which has no nutrients to
+        # get wrong) is marked verified. The three protein rows added 2026-08-02
+        # (paneer_fresh, tofu_firm, soya_chunks_dry) are unverified like the
+        # rest, and their DIAAS figures -- the field the quality-source rule
+        # gates on -- are authored from recollection, which each row's
+        # source_note states. The four real-IFCT-code rows above are
         # NOT included: their values were extracted by this build, not opened
         # by a human against the primary source, so they stay verified=false
         # pending that review (see CLAUDE.md, "only a human... may flip that
         # flag").
-        assert len(load_report.warnings) == 25
+        assert len(load_report.warnings) == 28
 
     def test_states_parse(self, ingredients):
         assert ingredients["rice_cooked"].state is RawOrCooked.COOKED
@@ -100,6 +108,43 @@ class TestFixtureSet:
         for ingredient_id in ("rice_milled_raw", "rajma_raw", "toor_dal_raw", "potato_raw"):
             ing = ingredients[ingredient_id]
             assert ing.composition_uncertainty_for("protein_g") == 0.25
+
+
+class TestHighQualityProteinRows:
+    """D2a, 2026-08-02. The three rows the quality-source rule needs to exist.
+
+    Before them the only ingredient above DIAAS 0.62 was ``curd_dahi``, so a
+    quality floor shipped against the library would have declined every plate
+    (``docs/design/target_model_v2.md`` §3). These tests pin the two properties
+    that make the rows honest rather than convenient: their DIAAS figures are
+    present and load, and nothing about adding them upgraded any confidence.
+    """
+
+    _NEW = ("paneer_fresh", "tofu_firm", "soya_chunks_dry")
+
+    def test_each_row_carries_a_diaas_value(self, ingredients):
+        # A missing DIAAS reads as "does not qualify", so an omission here would
+        # make the rows silently useless to the rule they were added for --
+        # failing in the safe direction, but failing.
+        for ingredient_id in self._NEW:
+            assert ingredients[ingredient_id].diaas is not None
+
+    def test_no_confidence_was_bought_by_adding_them(self, ingredients):
+        # The rows exist to unblock a rule. That is exactly the pressure under
+        # which a `verified` flag gets flipped or a band quietly narrowed, so
+        # both are asserted: unverified, and carrying the same wide composition
+        # band as every other hand-entered row.
+        for ingredient_id in self._NEW:
+            ing = ingredients[ingredient_id]
+            assert ing.verified is False
+            assert ing.composition_uncertainty_for("protein_g") == 0.25
+
+    def test_the_soya_row_is_dry_basis(self, ingredients):
+        # Soya chunks roughly triple on rehydration. Reading a dry composition
+        # against a rehydrated quantity is the 3x raw-versus-cooked error the
+        # recipe schema exists to prevent, and no rehydration yield constant is
+        # registered -- soya_chunk_curry.yaml lists the absorbed water instead.
+        assert ingredients["soya_chunks_dry"].state is RawOrCooked.RAW
 
 
 class TestEnergyReconciliation:

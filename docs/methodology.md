@@ -994,6 +994,50 @@ against 1400 mg) with every component at its minimum count, so those two are
 unreachable for **any** profile, not merely a demanding one. See
 `docs/audit_log.md` finding 22.
 
+#### Superseded the same day for the two north templates (2026-08-02, D2a)
+
+The heading above is left standing because it was true when written, and the
+correction is more informative than an edit would be. After the three
+high-quality protein rows landed, **`north_lunch` and `north_dinner` pass for
+the reference profile with zero relaxation rungs** — the first plates served to
+that profile on the real library without walking the ladder:
+
+```
+north_lunch   phulka x4 + dal_tadka x2 + tofu_bhurji x1
+              929.8 kcal, 42.6 g protein, 25.8 g fat, 133.9 g carb, 1209.0 mg Na
+north_dinner  phulka x4 + dal_tadka x1 + tofu_bhurji x1
+              756.8 kcal, 35.4 g protein, 20.2 g fat, 111.3 g carb, 889.2 mg Na
+```
+
+The cause is sodium, not protein: a katori of tofu bhurji fills the `sabzi` slot
+with less salt per calorie than aloo sabzi, so the solver reaches the energy
+floor without breaching the 1400 mg per-plate guard. The two south templates
+still decline, and finding 22 is untouched — `south_lunch` still has two
+combinations unreachable at their minimum counts.
+
+### DIAAS values are authored, and the quality rule turns on them (2026-08-02)
+
+`paneer_fresh` (1.00), `tofu_firm` (0.65) and `soya_chunks_dry` (0.85) were
+added so the quality-source rule has something to select; `curd_dahi` at 1.09
+was previously the only row above 0.62. **None of the three DIAAS figures comes
+from a source anyone opened.** They are recollections of published ranges, and
+each was entered at the low end of its range rather than the midpoint, because a
+high DIAAS is what makes a row qualify and the cheapest authoring path must not
+produce the most permissive output.
+
+Two consequences are stated rather than left to be found:
+
+- **Tofu does not qualify.** 0.65 is below the 0.75 threshold. That is a
+  statement about how much this project trusts its own number, not a nutritional
+  finding about tofu, and `data/recipes/tofu_bhurji.yaml` says so in the file.
+- **Vegan quality protein rests on one authored number.** `soya_chunks_dry` is
+  the only vegan-eligible row above the threshold. If 0.85 is wrong, every vegan
+  plate's quality verdict is wrong with it.
+
+The rows are `verified=false` and carry the same 0.25 composition band as every
+other hand-entered row: `dev_mode=False` still empties every candidate pool.
+Nothing was upgraded to make the rule work.
+
 6. **DIAAS is stored but unused.** `Ingredient.diaas` is populated where a
    commonly cited figure exists and left `None` otherwise. Nothing reads it yet;
    protein quality scoring is a later phase, and the values carry the same
