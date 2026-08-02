@@ -60,6 +60,24 @@ SOUTH_BREAKFAST = MealTemplate(
             min_selections=1,
             max_selections=2,
         ),
+        # Added 2026-08-02 to close docs/audit_log.md finding 25: none of the
+        # four slots above can accept a high-quality protein source, so a
+        # per-meal quality floor would have made this template unsatisfiable
+        # for a structural reason rather than a thin-library one. A katori of
+        # plain curd beside idli or dosa is an ordinary South Indian breakfast,
+        # so the slot is real food rather than a hole cut to fit a rule.
+        #
+        # Deliberately OPTIONAL, unlike SOUTH_LUNCH.curd_course, which is
+        # required because a South Indian lunch ends with thayir close to
+        # obligatorily. Breakfast does not: idli + sambar + chutney with no
+        # curd must still enumerate, and it does.
+        TemplateSlot(
+            name="curd_course",
+            accepted_categories=frozenset({"curd", "buttermilk"}),
+            required=False,
+            min_selections=0,
+            max_selections=1,
+        ),
         TemplateSlot(
             name="beverage",
             accepted_categories=frozenset({"beverage"}),

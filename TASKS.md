@@ -383,7 +383,15 @@ Two results that change what follows:
   make that template unsatisfiable for a structural reason, not a thin-library
   one.
 
-### D2b — slice 4, the quality-source rule — **NEXT**
+### D2b-i — close finding 25 — **DONE** (2026-08-02)
+
+`SOUTH_BREAKFAST` gains an optional `curd_course` accepting `curd`/`buttermilk`,
+filled by the existing `thayir_plain@curd`. No new recipe, no new ingredient row,
+no eggs. Enumeration 1 → 2 for that template; the other three unchanged. The
+south_breakfast decline reason moved (protein violation gone, sodium worse)
+because the best-scoring combination now carries curd.
+
+### D2b-ii — slice 4, the quality-source rule — **NEXT**
 
 Slice 4 cannot do anything without D2a: `curd_dahi` was the only row above
 DIAAS 0.62, so the quality-source rule shipped before it made every plate

@@ -1,4 +1,5 @@
-# Plain curd — the curd course that closes a South Indian lunch.
+# Plain curd — the curd course that closes a South Indian lunch, and since
+# 2026-08-02 the optional one beside a South Indian breakfast.
 #
 # Three lines, and it is still worth a file: south_lunch.curd_course is a
 # required slot and nothing in the library filled it, so this dish alone is the
@@ -23,7 +24,11 @@ diet_patterns: [vegetarian]
 
 category: curd
 prep_minutes: 2
-tags: [lunch, cooling, quick]
+# `breakfast` added alongside `lunch` when SOUTH_BREAKFAST gained an optional
+# curd_course. Tags are free-form and nothing filters on them, so this is a
+# description catching up with where the component is now planned, not a change
+# in behaviour — the slot's accepted_categories is what selects this dish.
+tags: [lunch, breakfast, cooling, quick]
 
 serving_unit:
   measure: katori

@@ -120,7 +120,7 @@ missed its purpose.
 | Ingredients | 29, of which **1** is verified (`water`, whose macros are all zero) |
 | Registered constants | 65, of which **65** rest on unverified evidence |
 | Status | `dev_mode`, permanently, until a human opens IFCT 2017 |
-| Tests | `333 passed, 1 failed` (excluding 3 browser-driven web files) — the failure is deliberate, holding an open finding visible rather than letting it go quiet |
+| Tests | `335 passed, 1 failed` (excluding 3 browser-driven web files) — the failure is deliberate, holding an open finding visible rather than letting it go quiet |
 
 All four templates enumerate as of 2026-08-02. The gap that had kept three of
 them at **zero** was *category breadth*, not recipe count, and it closed with six

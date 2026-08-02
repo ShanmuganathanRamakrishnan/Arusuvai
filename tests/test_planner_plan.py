@@ -102,6 +102,52 @@ class TestEveryTemplateIsPopulated:
         assert "nothing to solve" not in (outcome.result.disclosure or "")
 
 
+class TestSouthBreakfastCanReachAQualitySource:
+    """Finding 25, closed 2026-08-02 (D2b-i).
+
+    ``SOUTH_BREAKFAST``'s four original slots accept ``tiffin``,
+    ``sambar``/``kuzhambu``, ``chutney``/``podi`` and ``beverage``. No component
+    carrying a high-quality protein source belongs in any of them, so the
+    quality-source rule would have made this template unsatisfiable for a
+    structural reason rather than a thin-library one. An optional
+    ``curd_course`` closes it.
+    """
+
+    def _pool(self, ingredients, library):
+        from core.foods.templates import SOUTH_BREAKFAST
+
+        return SOUTH_BREAKFAST, build_candidate_pool(
+            library.components.values(),
+            ingredients,
+            template=SOUTH_BREAKFAST,
+            diet_pattern=DietPattern.VEGETARIAN,
+            dev_mode=True,
+        )
+
+    def test_the_curd_slot_has_a_candidate(self, ingredients, library):
+        template, pool = self._pool(ingredients, library)
+        assert [c.id for c in pool.for_slot(template.slot("curd_course"))] == [
+            "thayir_plain@curd"
+        ]
+
+    def test_a_breakfast_without_curd_still_enumerates(self, ingredients, library):
+        # The whole point of making the slot optional rather than required, and
+        # the assertion that would fail if a later edit tightened it: idli or
+        # dosa with sambar and chutney is a complete breakfast, and a rule that
+        # needed curd on the plate to be satisfiable would be the same
+        # cut-the-hole-to-fit failure finding 25 describes, committed the other
+        # way round.
+        from core.planner.combinations import enumerate_combinations
+
+        template, pool = self._pool(ingredients, library)
+        shapes = [
+            frozenset(c.id for c in combo.components)
+            for combo in enumerate_combinations(pool)
+        ]
+        assert any("thayir_plain@curd" not in shape for shape in shapes)
+        assert any("thayir_plain@curd" in shape for shape in shapes)
+
+
 class TestNorthLunchIsPopulated:
     """north_lunch has a candidate in every required slot, so it never declines
     for want of one.

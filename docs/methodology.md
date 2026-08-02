@@ -1038,6 +1038,27 @@ The rows are `verified=false` and carry the same 0.25 composition band as every
 other hand-entered row: `dev_mode=False` still empties every candidate pool.
 Nothing was upgraded to make the rule work.
 
+### South breakfast can now reach a quality source (2026-08-02, D2b-i)
+
+`SOUTH_BREAKFAST` originally accepted `tiffin`, `sambar`/`kuzhambu`,
+`chutney`/`podi` and `beverage`, and no high-quality protein source belongs in
+any of them. A per-meal quality floor would therefore have made that template
+unsatisfiable **structurally** — not because the library is thin, but because
+the plate grammar had nowhere to put the thing the rule asks for. That is a
+different and worse failure than a decline, because no amount of recipe writing
+fixes it.
+
+An **optional** `curd_course` slot closes it, filled by the existing
+`thayir_plain@curd`. Optional is the load-bearing word: south lunch's curd
+course is required because a South Indian lunch ends with thayir; a breakfast of
+idli or dosa with sambar and chutney is complete without curd, and a rule that
+needed curd on the plate to be satisfiable would be the same hole-cut-to-fit
+error in the opposite direction. Both combinations enumerate.
+
+Eggs would have been the other obvious answer and are deliberately not used:
+they belong to the deferred non-vegetarian axis, and nothing here may add a
+component a vegetarian profile could be served.
+
 6. **DIAAS is stored but unused.** `Ingredient.diaas` is populated where a
    commonly cited figure exists and left `None` otherwise. Nothing reads it yet;
    protein quality scoring is a later phase, and the values carry the same

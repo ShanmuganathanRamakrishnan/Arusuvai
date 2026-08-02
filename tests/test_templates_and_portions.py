@@ -21,9 +21,21 @@ class TestTemplatesAreNotUniform:
         # No two share a slot list, and none is the five-slot
         # base/protein/curry/vegetable/accompaniment grammar.
         assert len(set(shapes.values())) == 3
-        assert len(shapes["south_breakfast"]) == 4
+        # south_breakfast was 4 slots until 2026-08-02, when it gained an
+        # optional curd_course (audit finding 25). It is now 5, the same COUNT
+        # as south_lunch — so a count comparison no longer carries the claim
+        # this test is making, and the assertion below is what does: the
+        # uniform grammar this module exists to reject is a specific slot LIST,
+        # not a length. Counting was always the weaker check; two templates
+        # arriving at five slots is what exposed that.
+        assert len(shapes["south_breakfast"]) == 5
         assert len(shapes["south_lunch"]) == 5
         assert len(shapes["north_dinner"]) == 4
+        assert shapes["south_breakfast"] != shapes["south_lunch"]
+
+        uniform = ("base", "protein", "curry", "vegetable", "accompaniment")
+        for shape in shapes.values():
+            assert shape != uniform
 
     def test_south_breakfast_has_no_separate_vegetable_slot(self):
         # Idli + sambar + chutney. The sambar is the vegetable and the protein;

@@ -8,6 +8,56 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-02 — D2b-i, finding 25 closed
+
+`SOUTH_BREAKFAST` gains an **optional** `curd_course` slot accepting
+`curd`/`buttermilk`. `thayir_plain@curd` already fills it — no new recipe and no
+new ingredient row were needed, and `curd_dahi` qualifies at DIAAS 1.09.
+
+It follows `SOUTH_LUNCH.curd_course` in category but not in obligation: south
+lunch's is required, because a South Indian lunch ends with thayir close to
+obligatorily; breakfast's is optional, because idli or dosa with sambar and
+chutney is a complete breakfast. That difference is the whole design of the
+slot, and it is asserted rather than commented — a curd-less combination must
+still enumerate.
+
+Slot coverage and enumeration, before → after
+(`PYTHONHASHSEED=0 python demo.py`):
+
+```
+south_breakfast  curd_course slot added, n=1 ['thayir_plain@curd']   1 -> 2
+south_lunch      unchanged                                           3 -> 3
+north_lunch      unchanged                                          24 -> 24
+north_dinner     unchanged                                          12 -> 12
+```
+
+Both breakfast combinations enumerate: with and without the curd.
+
+**A verdict reason moved, and it is worth stating.** `south_breakfast` still
+declines for the reference profile, but on different numbers, because the
+best-scoring combination is now the one carrying curd:
+
+```
+before  fat 24.7 > 24.6 | protein 18.4 < 23.8 | sodium 1790.4 > 1400.0
+after   energy 777.1 > 707.0 | fat 33.2 > 24.6 | sodium 2273.4 > 1400.0
+```
+
+The protein violation is gone and the sodium one is worse — a katori of curd
+carries its own salt line. Nothing was tuned; this is what adding a real option
+to a slot does.
+
+**Eggs are not in this.** They are the deferred non-vegetarian axis (onboarding,
+filtering, schema and library all change), and nothing added here could be
+served to a vegetarian profile that should not be.
+
+*Disposition:* Finding 25 CLOSED. Pinned by
+`tests/test_planner_plan.py::TestSouthBreakfastCanReachAQualitySource`, both
+tests shown red against injected defects — the slot removed (KeyError, and no
+curd-bearing combination), and the slot made required (no curd-less
+combination).
+
+---
+
 ## 2026-08-02 — D2a, the high-quality protein rows
 
 Three ingredient rows (`paneer_fresh`, `tofu_firm`, `soya_chunks_dry`) and three
