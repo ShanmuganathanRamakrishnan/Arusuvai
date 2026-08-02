@@ -376,7 +376,14 @@ sequencing against it rather than being assumed independent.
 
 ## Queued, not yet detailed
 
-- Slice 3 — protein per-meal floor and ceiling. **NEXT.**
+- Slice 3 — protein per-meal floor and ceiling. **DONE.** Two
+  `PROJECT_DECISION` constants (0.15 / 0.50 of the day protein floor). The
+  floor is `max(share, guard)`, a departure from the design's table, which
+  read literally would have dropped the reference lunch floor 39.2 -> 16.8;
+  it binds on the snack slot alone. The ceiling is a backstop the solver
+  cannot reach by its own scoring — it binds only when an energy floor drags
+  protein up. No verdict moved on the real library. Finding 24 raised: when
+  the ceiling empties the set, the decline names energy, not protein.
 - Slice 4 — quality-source rule. Blocked until paneer/tofu/soya rows exist;
   `curd_dahi` is currently the only qualifying row, so shipping early makes
   every plate decline. **Cannot claim** it improves the confidence picture:

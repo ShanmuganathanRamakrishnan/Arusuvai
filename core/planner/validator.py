@@ -264,12 +264,23 @@ def _relax_energy(target: NutritionTarget, locked: frozenset[str]) -> NutritionT
 
 
 def _relax_protein(target: NutritionTarget, locked: frozenset[str]) -> NutritionTarget:
-    """Lower the protein floor partially — never remove it.
+    """Lower the protein floor partially — never remove it, never touch a ceiling.
 
-    Protein has a floor and no ceiling, so ``_widen_band`` is the wrong shape:
-    widening symmetrically would also invent a ceiling. This rung lowers the
-    floor by the registered fraction and stops; the floor still exists, and a
-    plan that cannot reach even the lowered floor is still declined.
+    ``_widen_band`` is the wrong shape here: it widens symmetrically, and this
+    rung must move one bound only. It lowers the floor by the registered
+    fraction and stops; the floor still exists, and a plan that cannot reach
+    even the lowered floor is still declined.
+
+    Updated 2026-08-02 (slice 3). The original reason given was "protein has a
+    floor and no ceiling, so widening symmetrically would *invent* one". That is
+    no longer true — ``meal_target`` now sets a per-meal protein ceiling from
+    ``protein.meal_ceiling_fraction`` — but the behaviour is unchanged and
+    deliberately so. The ceiling is a plausibility bound ("no single meal carries
+    more than half the day's protein"), and a ladder that relaxed a protein floor
+    *downward* while relaxing its ceiling *upward* would be widening the band on
+    both sides to admit a plate the bound exists to reject. Ceilings pass through
+    untouched, which is why the ceiling needs no ``hard_ceilings`` entry: nothing
+    in ``RELAXATION_ORDER`` can move it.
     """
 
     if "protein_g" in locked:

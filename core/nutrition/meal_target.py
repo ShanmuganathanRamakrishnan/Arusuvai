@@ -102,6 +102,49 @@ def spent_before(
     return ledger.without_meal(meal_slot).spent(macro)
 
 
+def _apply_protein_meal_bounds(
+    day_target: NutritionTarget,
+    floors: dict[str, float],
+    ceilings: dict[str, float],
+) -> None:
+    """Add slice 3's per-meal protein bounds. Mutates ``floors``/``ceilings``.
+
+    Both bounds are fractions of the **day protein floor**, so they move with the
+    profile rather than being absolute grams. Protein has no day ceiling — the
+    day target states a minimum and nothing above it — so the ceiling here is
+    half of a floor, not half of a ceiling.
+
+    **The floor is applied as a maximum, not a replacement**, and this is a
+    deliberate departure from `docs/design/target_model_v2.md` §3, whose table
+    reads as though 0.15 replaces the energy-fraction share outright. Taken that
+    way it would move the reference profile's lunch protein floor from 39.2 g to
+    16.8 g — a 22 g loosening nobody asked for, and the same shape of unrequested
+    side effect slice 2 had to be caught for. The purpose of the bound is that no
+    meal is *empty* of protein, which is a guard beneath the share, not a new
+    share. So it binds only where the energy share falls below it, which today is
+    the snack slot alone (0.10 < 0.15) — precisely the case it exists for.
+
+    The ceiling is genuinely new: nothing previously stopped the solver answering
+    a protein floor by piling three katoris of dal onto one plate.
+    """
+
+    day_floor = day_target.floor("protein_g")
+    if day_floor is None:
+        # No day protein floor to take a fraction of. Not an error: a caller may
+        # build a target without one, and inventing a bound here would be a
+        # nutritional number written outside citations.py.
+        return
+
+    guard_floor = citations.value_of("protein.meal_floor_fraction") * day_floor
+    share_floor = floors.get("protein_g")
+    floors["protein_g"] = (
+        guard_floor if share_floor is None else max(share_floor, guard_floor)
+    )
+    ceilings["protein_g"] = (
+        citations.value_of("protein.meal_ceiling_fraction") * day_floor
+    )
+
+
 def meal_target(
     day_target: NutritionTarget,
     meal_slot: MealSlot,
@@ -122,6 +165,8 @@ def meal_target(
     floors = _scaled(day_target.floors)
     ceilings = _scaled(day_target.ceilings)
     points = _scaled(day_target.points)
+
+    _apply_protein_meal_bounds(day_target, floors, ceilings)
     # Carried, not scaled: a hard ceiling is a bound on one plate already, not a
     # share of a day to be divided again.
     hard_ceilings = dict(day_target.hard_ceilings)

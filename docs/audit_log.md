@@ -8,6 +8,51 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-02 — finding 24, raised by slice 3
+
+### Finding 24 — a decline can name the symptom instead of the cause — **OPEN**
+
+**What.** When the new per-meal protein ceiling excludes every energy-dense
+plate, the decline reports **`energy_kcal below_floor`**. The protein ceiling is
+never mentioned, because plates above it are removed before the validator sees
+them, so the only thing left to report is that what survived cannot reach the
+energy floor.
+
+**Measured**, synthetic pool, day protein floor 40 g (meal ceiling 20.0 g),
+energy 2400 kcal — the same target run twice, differing only in the registered
+ceiling fraction:
+
+```
+ceiling 0.50 (real)  declines: energy_kcal below_floor 510.0 vs 756.0
+ceiling 10.0 (off)   returns:  26.5 g protein, 800.0 kcal
+```
+
+The second run proves the first decline is caused by the protein ceiling. The
+first run's message says energy.
+
+**Why it matters.** A user told "energy is unreachable" would reasonably add an
+energy-dense dish, which cannot help — every such dish is already excluded on
+protein. The decline is truthful about what the validator saw and misleading
+about what to do, which is a worse failure than a vague message: it points
+somewhere specific and wrong. `docs/design/target_model_v2.md`'s decline-screen
+work assumes the named macro is actionable.
+
+**Scope.** Not specific to protein. Any bound that empties the feasible set
+before the validator runs will surface as a violation of whatever the survivors
+fail next. The pre-filter and the solver both discard silently.
+
+**Not fixed here.** Slice 3's brief is the two bounds. A fix means the solver or
+pre-filter reporting *why* it discarded, which is a different piece of work with
+its own shape (`solve()` currently returns survivors and nothing about the
+rejected). Pinned by
+`tests/test_planner_plan.py::TestPerMealProteinCeiling::test_the_decline_names_energy_though_the_cause_is_the_protein_ceiling`,
+so the current behaviour is visible and improving it is a deliberate change with
+a red test attached rather than a silent one.
+
+**Disposition.** OPEN.
+
+---
+
 ## 2026-08-02 — finding 23, a form field with no effect
 
 ### Finding 23 — onboarding asks for diet and nothing reads it — **OPEN**

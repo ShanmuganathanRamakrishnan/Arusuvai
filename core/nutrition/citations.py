@@ -1372,6 +1372,68 @@ for _k, _v, _slot in _MEAL_SPLIT:
         uncertainty=0.0,
     ))
 
+# Per-meal protein bounds (slice 3). Both are fractions of the DAY protein
+# floor, so they move with the profile instead of being absolute grams.
+#
+# Both are PROJECT_DECISION and there is no source for either. The per-meal
+# protein-distribution literature that exists (leucine-threshold and per-meal
+# dose work) measures the muscle-protein-synthesis response to a bolus, which
+# is not what this product optimises; citing it here would be the
+# mechanism-mismatch failure the `phenomenon` field exists to prevent. So no
+# citation is attached rather than a real-but-wrong one.
+#
+# 0.15 is chosen below the smallest meal split (snack, 0.10 -- see below for
+# why that ordering matters) so the floor cannot on its own make an ordinary
+# light meal infeasible. 0.50 is "no single meal carries more than half the
+# day's protein".
+PROTEIN_MEAL_FLOOR_FRACTION = register_constant(
+    Constant(
+        key="protein.meal_floor_fraction",
+        value=0.15,
+        unit="fraction of the day protein floor",
+        evidence_id="project_decision",
+        applied_to=(
+            "the minimum protein one meal must carry, as a floor beneath the "
+            "proportional energy-fraction share -- it raises a meal's floor, "
+            "never lowers it, so no meal is empty of protein"
+        ),
+        uncertainty=0.0,
+        note=(
+            "Applied as max(energy share, this), NOT as a replacement for the "
+            "share. Taken literally as a replacement it would LOWER the "
+            "reference lunch floor from 39.2 g to 16.8 g, which is a large "
+            "loosening nobody asked for; the stated purpose of the bound is to "
+            "stop a meal being empty of protein, which is a guard. In practice "
+            "it therefore binds only on the snack slot, whose 0.10 energy share "
+            "is the only one below it -- that is the case it exists for."
+        ),
+    )
+)
+PROTEIN_MEAL_CEILING_FRACTION = register_constant(
+    Constant(
+        key="protein.meal_ceiling_fraction",
+        value=0.50,
+        unit="fraction of the day protein floor",
+        evidence_id="project_decision",
+        applied_to=(
+            "the most protein one meal may carry -- what stops the solver "
+            "answering a protein floor by piling three katoris of dal onto one "
+            "plate"
+        ),
+        uncertainty=0.0,
+        note=(
+            "Derived from the day FLOOR, because protein has no day ceiling: "
+            "the day target states a minimum and nothing above it. So this is "
+            "not half of a ceiling, it is half of the floor, and a day whose "
+            "floor is met exactly could in principle be carried by two meals. "
+            "No relaxation rung widens it, but it is deliberately NOT "
+            "registered as a hard_ceiling: nothing in RELAXATION_ORDER touches "
+            "a protein ceiling at all (_relax_protein only lowers the floor), "
+            "so the machinery would be a concept with no mechanism behind it."
+        ),
+    )
+)
+
 # Mechanism review for every constant registered above. Kept next to the
 # registrations (rather than in the literal near the top) so a reviewer sees
 # the applied_to and its review verdict together. Single-author mechanism
@@ -1408,4 +1470,6 @@ REVIEWED_MECHANISM_MATCHES.update({
     "meal_split.energy_fraction_lunch": "reviewed: project decision, no physical process claimed",
     "meal_split.energy_fraction_dinner": "reviewed: project decision, no physical process claimed",
     "meal_split.energy_fraction_snack": "reviewed: project decision, no physical process claimed",
+    "protein.meal_floor_fraction": "reviewed: project decision, no physical process claimed -- deliberately NOT matched to per-meal dose literature, which measures a different phenomenon",
+    "protein.meal_ceiling_fraction": "reviewed: project decision, no physical process claimed -- a plausibility bound on one plate, not a nutritional maximum",
 })

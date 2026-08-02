@@ -740,6 +740,77 @@ shape: protein is now reachable, so the solver reaches for a bigger plate and
 blows energy, fat and sodium instead — sodium went from 2441.8 mg to 2836.8 mg.
 See `docs/audit_log.md` finding 22.
 
+## Protein has per-meal bounds (2026-08-02, slice 3)
+
+Two registered `PROJECT_DECISION` constants, both fractions of the **day protein
+floor** so they move with the profile instead of being absolute grams:
+
+| Constant | Value | Reference profile (day floor 112 g) |
+| --- | --- | --- |
+| `protein.meal_floor_fraction` | 0.15 | 16.8 g |
+| `protein.meal_ceiling_fraction` | 0.50 | 56.0 g |
+
+Neither has a source and neither should acquire one carelessly. The per-meal
+protein literature that exists (leucine-threshold and per-meal dose work)
+measures the muscle-protein-synthesis response to a bolus, which is not what
+this product optimises; attaching it would be the mechanism-mismatch failure the
+`phenomenon` field exists to prevent.
+
+### The floor is a guard beneath the share, not a replacement for it
+
+`docs/design/target_model_v2.md` §3's table reads as though 0.15 replaces the
+energy-fraction share. Taken that way it would move the reference lunch protein
+floor from 39.2 g down to **16.8 g** — a 22 g loosening nobody asked for, and the
+same shape of unrequested side effect slice 2 had to be caught for.
+
+The bound's purpose is that no meal is *empty* of protein. That is a guard, so it
+is applied as `max(share, guard)`:
+
+```
+breakfast  share 0.25 x 112 = 28.0   guard 16.8   floor 28.0
+lunch      share 0.35 x 112 = 39.2   guard 16.8   floor 39.2
+dinner     share 0.30 x 112 = 33.6   guard 16.8   floor 33.6
+snack      share 0.10 x 112 = 11.2   guard 16.8   floor 16.8   <- the only slot it binds
+```
+
+The snack slot is the only one whose share falls below the guard, which is
+precisely the case the bound exists for.
+
+### The ceiling is a backstop, not a shaper — and it is measurable
+
+The ceiling is derived from the day **floor**, because protein has no day
+ceiling: the day target states a minimum and nothing above it. So it is half of
+a floor, not half of a ceiling.
+
+It cannot be reached by the solver's own preferences. The solver scores by
+deviation from each macro's target *point*, and the protein point is the energy
+share (0.35 × day floor for lunch) while the ceiling is 0.50 × day floor — the
+point sits below the ceiling for every slot. **The ceiling binds only when a
+different constraint drags protein up**, i.e. an energy floor that needs more
+servings. That is exactly the three-katoris-of-dal case it was introduced for.
+
+Measured, synthetic pool, day protein floor 40 g (ceiling 20.0 g), energy 2400
+kcal — the same target twice, differing only in the registered fraction:
+
+```
+ceiling 0.50 (real)  declines: energy_kcal below_floor 510.0 vs 756.0
+ceiling 10.0 (off)   returns:  26.5 g protein, 800.0 kcal
+```
+
+The first draft of the test for this passed vacuously, against a target where
+the collision never occurred; the control run is what caught it.
+
+**No verdict moved on the real library.** All four templates return exactly what
+they returned before slice 3 — `north_lunch` and `north_dinner` pass, the two
+South templates decline unchanged. The ceiling is a guard against a plate this
+library cannot currently build.
+
+### Known limitation carried out of this slice
+
+When the ceiling empties the feasible set, the decline names **energy**, not
+protein — the survivors are reported failing whatever they fail next, because
+the pre-filter and solver discard silently. See `docs/audit_log.md` finding 24.
+
 ## Clinical flags do not tighten a target (2026-07-23)
 
 `Profile.clinical_flags` is read in exactly one place today:

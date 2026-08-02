@@ -340,3 +340,110 @@ class TestHappyPathAgainstSyntheticLibrary:
             outcome.result.disclosure or ""
         )
         assert "protein_g" in (outcome.result.disclosure or "")
+
+
+class TestPerMealProteinCeiling:
+    """Slice 3's genuinely new gate: no meal packed with protein.
+
+    The per-meal protein *floor* is not new -- the energy-fraction share already
+    provided one, and slice 3 only added a guard beneath it that binds on the
+    snack slot. The *ceiling* is new: nothing previously stopped the solver
+    answering a protein floor by piling three katoris of dal onto one plate.
+
+    **When the ceiling can bind at all**, measured, because the first draft of
+    these tests passed vacuously and the control is what caught it: the solver
+    scores by deviation from each macro's target *point*, and the protein point
+    is the energy share (0.35 x day floor) while the ceiling is 0.50 x day
+    floor. The point therefore always sits below the ceiling, for every slot, so
+    the solver is never pulled through it by its own scoring. The ceiling binds
+    only when a *different* constraint drags protein up -- an energy floor that
+    needs more units, which is exactly the three-katoris-of-dal case it was
+    introduced for. It is a backstop, not a shaper, and a test that does not set
+    up that collision is testing nothing.
+    """
+
+    def _synthetic_library(self) -> Library:
+        components = {c.id: c for c in SOUTH_LUNCH_COMPONENTS}
+        return Library(
+            ingredients=SOUTH_LUNCH_INGREDIENTS,
+            recipes=RecipeLibrary(recipes={}, components=components),
+        )
+
+    def _plan(self, day_protein_g: float, energy_kcal: float):
+        return plan_meal(
+            self._synthetic_library(),
+            simple_target(energy_kcal=energy_kcal, protein_g_min=day_protein_g),
+            region=Region.SOUTH_INDIAN,
+            meal_slot=MealSlot.LUNCH,
+            diet_pattern=DietPattern.VEGETARIAN,
+            dev_mode=False,
+        )
+
+    #: Day protein floor 40 g -> meal ceiling 0.50 x 40 = 20.0 g. Energy 2400
+    #: kcal -> lunch floor 0.35 x 2400 x 0.95 = 798 before relaxation. Reaching
+    #: that energy in this pool costs more than 20 g of protein, so the two
+    #: constraints genuinely collide. Measured below rather than argued.
+    _COLLIDING = (40.0, 2400.0)
+
+    def test_the_ceiling_excludes_a_plate_the_solver_would_otherwise_return(self):
+        # The pair, run against the same pool and the same target, differing
+        # only in the registered ceiling fraction:
+        #
+        #   ceiling 0.50 (real) -> declines, energy 510.0 below its 756.0 floor
+        #   ceiling 10.0 (off)  -> returns a 26.5 g / 800.0 kcal plate
+        #
+        # So the bound removes a plate the solver was otherwise willing to
+        # serve. That is the whole claim, and it is why the control below is
+        # part of the test rather than an optional extra.
+        import dataclasses
+
+        from core.nutrition import citations
+
+        blocked = self._plan(*self._COLLIDING)
+        assert blocked.plan is None
+
+        key = "protein.meal_ceiling_fraction"
+        original = citations.constant(key)
+        citations._CONSTANTS[key] = dataclasses.replace(original, value=10.0)
+        try:
+            lifted = self._plan(*self._COLLIDING)
+        finally:
+            citations._CONSTANTS[key] = original
+
+        assert lifted.plan is not None, (
+            "with the ceiling lifted this target must be satisfiable, or the "
+            "blocked case above proves nothing about the ceiling"
+        )
+        assert lifted.plan.estimate.point.protein_g > 20.0, (
+            "the lifted plate must exceed the real ceiling, or the two runs "
+            "differ for some reason other than the bound under test"
+        )
+        # Restored, and proven restored rather than assumed.
+        assert self._plan(*self._COLLIDING).plan is None
+
+    def test_the_decline_names_energy_though_the_cause_is_the_protein_ceiling(self):
+        # Documented, not endorsed. The ceiling excludes protein-rich plates
+        # before scoring, so what survives cannot reach the energy floor and the
+        # violation reported is energy_kcal -- the symptom, not the cause. A
+        # user told "energy is unreachable" would reasonably add an energy-dense
+        # dish, which cannot help.
+        #
+        # Pinned so the current behaviour is visible rather than surprising, and
+        # so that improving it is a deliberate change with a red test attached.
+        # docs/audit_log.md finding 24.
+        blocked = self._plan(*self._COLLIDING)
+        macros = {v.macro for v in blocked.result.violations}
+        assert "energy_kcal" in macros
+        assert "protein_g" not in macros
+
+    def test_a_returned_plate_is_never_above_the_ceiling(self):
+        # The invariant, over the whole grid probed while building this class --
+        # cheap, and it is what would catch the ceiling being dropped from
+        # meal_target entirely while the collision test above still passed for
+        # some unrelated reason.
+        for day_protein in (40.0, 60.0):
+            for energy in (1800.0, 2000.0, 2400.0, 2700.0):
+                outcome = self._plan(day_protein, energy)
+                if outcome.plan is None:
+                    continue
+                assert outcome.plan.estimate.point.protein_g <= 0.50 * day_protein + 1e-9
