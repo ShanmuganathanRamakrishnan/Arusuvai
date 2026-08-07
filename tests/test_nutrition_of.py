@@ -173,8 +173,14 @@ class TestEligibilityConsequence:
         # process term touches this macro on any of the three recipes, and the
         # figure is the composition band alone. A direction-only assertion would
         # survive the band drifting to 0.9 or 0.16; this does not.
+        # min_count, not a hard-coded 1: uncertainty_fraction is scale-invariant
+        # so the count is arbitrary, but nutrition_of_recipe enforces the
+        # serving unit's bounds and idli's floor is 2. Same defect these three
+        # tests shared with core/planner/candidates.py until 2026-08-07.
         for recipe_id, component in library.components.items():
-            est = nutrition_of_components([(component, 1)], ingredients)
+            est = nutrition_of_components(
+                [(component, component.recipe.serving_unit.min_count)], ingredients
+            )
             assert est.uncertainty_fraction("protein_g") == pytest.approx(0.25), (
                 f"{recipe_id}: protein band moved off the unverified-composition "
                 "constant"
@@ -190,7 +196,9 @@ class TestEligibilityConsequence:
         ceiling = citations.value_of("eligibility.max_protein_uncertainty")
         assert ceiling == 0.15
         for recipe_id, component in library.components.items():
-            est = nutrition_of_components([(component, 1)], ingredients)
+            est = nutrition_of_components(
+                [(component, component.recipe.serving_unit.min_count)], ingredients
+            )
             assert est.uncertainty_fraction("protein_g") > ceiling, (
                 f"{recipe_id} unexpectedly clears the ceiling; if this is real "
                 "progress, update docs/methodology.md — the claim that nothing "
@@ -219,7 +227,9 @@ class TestEligibilityConsequence:
         }
         ceiling = citations.value_of("eligibility.max_protein_uncertainty")
         for component in library.components.values():
-            est = nutrition_of_components([(component, 1)], verified)
+            est = nutrition_of_components(
+                [(component, component.recipe.serving_unit.min_count)], verified
+            )
             assert est.uncertainty_fraction("protein_g") == pytest.approx(0.05)
             assert est.uncertainty_fraction("protein_g") < ceiling
 

@@ -1015,6 +1015,16 @@ floor without breaching the 1400 mg per-plate guard. The two south templates
 still decline, and finding 22 is untouched — `south_lunch` still has two
 combinations unreachable at their minimum counts.
 
+#### And superseded for the two south templates on 2026-08-07 (D3)
+
+All four templates now pass for the reference profile: south_breakfast at zero
+rungs, south_lunch at three. The diagnosis in the section above — **sodium is
+the constraint in all four** — is the one that held; D3's fix was two
+low-sodium recipes (`idli`, `steamed_rice`) plus one qualifying protein source.
+Finding 22 is still untouched: `south_lunch`'s two minimum-count-unreachable
+combinations are still unreachable, and the plate that now passes clears the
+guard by 8.9 mg. See "Making the south templates reachable" below.
+
 ### DIAAS values are authored, and the quality rule turns on them (2026-08-02)
 
 `paneer_fresh` (1.00), `tofu_firm` (0.65) and `soya_chunks_dry` (0.85) were
@@ -1144,6 +1154,12 @@ serving unit caps at two katoris — 8.99 g. That is a fact about the library's
 breadth, and no relaxation rung can help, because the quality floor is not on
 the ladder.
 
+> **Superseded the same day by D3** — see "Making the south templates
+> reachable" below. Three recipes were added and both south templates now pass.
+> The paragraph above is left standing because it correctly describes what the
+> rule did to the library *as it stood*, and because the fix was recipe work: no
+> threshold, fraction or DIAAS value moved.
+
 **A cost worth naming:** `north_dinner`'s sodium went 889.2 → 1371.3 mg,
 against a 1400 mg absurdity guard. The rule pushed the solver onto denser
 protein sources, and those carry salt. It passes with 29 mg of headroom.
@@ -1209,12 +1225,14 @@ That last case is pinned in
    wants most of a day's quality protein free to land in one or two meals, and a
    per-slot share would contradict that — but no template exists for the snack
    slot today, so the case is unexercised rather than resolved.
-2. **The decline can now hide the other reasons.** For both south templates the
-   quality floor is *unreachable*, which `_blocking_violations` reports from its
-   first branch and returns immediately. The energy, fat and sodium misses those
-   templates previously reported came from the later best-plate probe and are no
-   longer shown. The user is told the single truest thing and not the whole
-   picture. Recorded in `docs/audit_log.md` as a new observation, not fixed here.
+2. **The decline can now hide the other reasons.** When a bound is *unreachable*,
+   `_blocking_violations` reports it from its first branch and returns
+   immediately, so the energy, fat and sodium misses that came from the later
+   best-plate probe are not shown. The user is told the single truest thing and
+   not the whole picture. Recorded in `docs/audit_log.md` as a new observation,
+   not fixed here. **Still open after D3**, though no longer visible on the two
+   south templates, which now pass — it is a property of `_blocking_violations`,
+   not of those templates.
 3. **The pre-filter's quality check is a pure optimisation.** Removing it changes
    no verdict, because the solver's own gate catches everything it would have.
    No test can therefore detect its removal, and that is correct rather than a
@@ -1247,6 +1265,113 @@ That last case is pinned in
    correcting the smaller one alone would move the reported figure away from the
    truth. The per-line attribution needed to fix both now exists
    (`Recipe.lines_for_process`).
+
+## Making the south templates reachable (2026-08-07, D3)
+
+Slice 4 left both South Indian templates declining for **every** profile. Three
+recipes closed that. No threshold, fraction, DIAAS value or salt line was
+changed — the diagnosis was that the library was too narrow, and the fix is
+entirely in `data/recipes/`.
+
+### The binding constraint was sodium, not quality
+
+This is the part worth reading, because the obvious diagnosis was wrong. The
+quality shortfall was 11.2 − 8.99 = **2.21 g**. The actual blocker was that
+neither south template could reach its *energy floor* under the 1400 mg sodium
+ceiling, which is a `hard_ceiling` no relaxation rung widens — a condition that
+predates the quality rule and would have declined those templates anyway.
+
+Measured, per unit, for the reference profile's breakfast target
+(610.6–674.9 kcal, fat ≤ 22.59 g, sodium ≤ 1400 mg):
+
+| | kcal | Na (mg) | fat (g) | **mg Na / kcal** |
+|---|---|---|---|---|
+| `masala_dosa` | 226.6 | 594.2 | 7.02 | **2.62** |
+| `idli` (new) | 50.4 | 87.1 | 0.11 | **1.73** |
+| `sambar_sadam` | 265.0 | 408.6 | 5.34 | **1.54** |
+| `steamed_rice` (new) | 260.0 | 2.0 | 0.60 | **0.008** |
+
+The cheapest complete breakfast (1 dosa + 1 sambar + 1 chutney) was 373.5 kcal
+at 1006.6 mg — 393 mg of sodium left to buy 237 kcal, when a second dosa costs
+594. Nothing in the library fitted. On the lunch side, `SOUTH_LUNCH.rice_base`
+accepts `{rice, mixed_rice}` and the `rice` category was **empty**, so every
+plate the enumerator could build used a one-pot mixed rice as its base.
+
+### The three recipes, and what each answers
+
+| Recipe | Category → slot | The constraint it answers |
+|---|---|---|
+| `idli` | `tiffin` → south_breakfast `tiffin_item` | Sodium *and* fat. Carries **no** qualifying protein. |
+| `steamed_rice` | `rice` → south_lunch `rice_base` | Sodium. Carries **no** qualifying protein. Plain rice takes no salt — that is how the dish is cooked, not a health choice made here. |
+| `soya_kuzhambu` | `kuzhambu` → both south gravy slots | Quality. 25.0 g dry soya × 52.0/100 = **13.00 g** qualifying protein per katori, clearing the 11.2 g floor in one unit. |
+
+Two of the three exist for salt, not protein. `soya_kuzhambu` is held at the
+library's existing 0.53% salting rate, the same as `sambar`, `dal_tadka` and
+`soya_chunk_curry` — deliberately, since it exists to relieve a sodium-bound
+template and a lower salt line here would be tuning a plate past a ceiling
+rather than filling a slot.
+
+**Zero new ingredient rows**, so no new authored DIAAS value. Filter coffee for
+the still-empty `beverage` slot was considered and not written: it would need
+`milk_whole`, `sugar_white` and a fourth authored DIAAS deciding what people are
+told to eat, and the arithmetic above does not need it.
+
+### `soya_kuzhambu` is not `soya_chunk_curry` relabelled
+
+The risk in adding a South Indian dish to reach a protein was writing a North
+Indian recipe wearing a south label. `soya_chunk_curry` is an onion-tomato gravy
+finished with garam masala and ginger-garlic in sunflower oil — sabzi grammar.
+`soya_kuzhambu` uses tamarind as the acid, sambar powder as the spice, gingelly
+oil as the fat, and a mustard-and-curry-leaf tempering. Meal maker kuzhambu is
+ordinary Tamil home cooking. They share a protein, not a dish.
+
+One consequence is left alone rather than engineered around:
+`SOUTH_BREAKFAST.gravy_accompaniment` accepts `{sambar, kuzhambu}`, so
+`soya_kuzhambu` enumerates beside idli at breakfast. Kuzhambu with idli is real
+food. What decided that was the template's slot vocabulary, written before this
+recipe existed — not a category picked here to reach two slots.
+
+### What it did to the plates
+
+Measured via `python demo.py plan`, reference profile, before and after D3:
+
+| Template | Combinations | Before | After |
+|---|---|---|---|
+| `south_breakfast` | 2 → **8** | declines, 4 rungs, quality 8.99 < 11.2 | **passes, 0 rungs**: idli ×6 + soya_kuzhambu ×1 + coconut_chutney ×2 + thayir_plain ×1 — 623.6 kcal, 1189.8 mg Na, 17.5 g qualifying |
+| `south_lunch` | 3 → **12** | declines, 4 rungs, quality 8.99 < 11.2 | **passes, 3 rungs**: steamed_rice ×1 + soya_kuzhambu ×2 + carrot_poriyal ×2 + thayir_plain ×1 — 848.1 kcal, 1391.1 mg Na |
+| `north_lunch` | 24 → 24 | passes, 0 rungs | **unchanged, byte-identical** |
+| `north_dinner` | 12 → 12 | passes, 0 rungs | **unchanged, byte-identical** |
+
+The north templates could not have moved, and not by luck:
+`core/planner/candidates.py` rejects any recipe whose `region` is neither the
+template's nor `pan_indian`, and all three new recipes are `south_indian`.
+
+**Why south_lunch still needs three rungs, stated rather than smoothed over.**
+It is sodium, not quality. Clearing the 39.2 g protein floor forces two katoris
+of `soya_kuzhambu` (647.0 mg); the *required* curd course adds 261.9 and the
+*required* vegetable 240–395. That leaves roughly 100–250 mg for the base, which
+only unsalted rice fits inside — and the resulting plate lands at 1391.1 mg
+against the 1400 mg hard ceiling, with **8.9 mg of headroom**. Energy tolerance
+is the rung that admits it, at 848.1 kcal against an unrelaxed 854.9 floor: the
+200 g rice cup is a 260 kcal step and there is no assignment that lands inside
+the unrelaxed 854.9–944.9 window while clearing protein under the salt ceiling.
+
+### Known limitations carried out of D3
+
+1. **South lunch passes on 8.9 mg of sodium headroom.** Any future recipe that
+   nudges that plate — or any profile whose day budget leaves less than a full
+   2000 mg for lunch — puts it straight back into decline. This is
+   `docs/audit_log.md` finding 22's territory and is not fixed here.
+2. **`idli` and `steamed_rice` are the second and third recipes with no
+   `process:` line at all**, so every macro derives to a *computed* zero
+   process-uncertainty. That is `docs/audit_log.md` finding 2's shape, still
+   OPEN, now reachable with three real files instead of one.
+3. **`idli` uses `rice_milled_raw` for what is really parboiled idli rice**,
+   which IFCT tabulates separately. Stated in the file; the least accurate thing
+   in it.
+4. **The `beverage` and `crisp` slots are still empty.** Both are optional, so
+   neither blocks anything, but the south templates enumerate a narrower space
+   than their grammar describes.
 
 ## What is not built
 

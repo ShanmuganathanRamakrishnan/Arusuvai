@@ -177,10 +177,18 @@ def _passes_hard_filters(
 def _eligibility_flags(
     component: Component, ingredients: Mapping[str, Ingredient]
 ) -> tuple[EligibilityFlag, ...]:
-    # Count=1 is arbitrary; uncertainty_fraction is scale-invariant (see the
+    # The count is arbitrary; uncertainty_fraction is scale-invariant (see the
     # module docstring), so any count in the unit's domain gives the same
-    # fraction.
-    estimate = nutrition_of_components([(component, 1)], ingredients)
+    # fraction. It must be IN the domain, though: this line read a hard-coded 1
+    # until 2026-08-07, and `nutrition_of_recipe` enforces the serving unit's
+    # bounds, so the first recipe in the library with `min_count > 1` (idli,
+    # min 2 — nobody is served one idli) made `build_candidate_pool` raise
+    # before it could filter anything. The old comment already said "any count
+    # in the unit's domain" and the code then used a count that need not be in
+    # it. min_count is always in the domain by construction.
+    estimate = nutrition_of_components(
+        [(component, component.recipe.serving_unit.min_count)], ingredients
+    )
     flags = []
     for macro, ceiling_key in TARGET_CRITICAL_MACROS.items():
         ceiling = citations.value_of(ceiling_key)

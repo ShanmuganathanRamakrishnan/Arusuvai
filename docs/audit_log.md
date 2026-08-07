@@ -8,6 +8,88 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-07 — D3: making the south templates reachable
+
+Three recipes (`idli`, `steamed_rice`, `soya_kuzhambu`) added so both South
+Indian templates can satisfy the quality floor slice 4 introduced. Full account
+in `docs/methodology.md`, "Making the south templates reachable". One new
+finding, one prediction scorecard.
+
+### The prediction, and it held completely
+
+Written and stated before any file was created, from the per-unit table alone.
+All six calls held, including both exact plates and both sodium figures:
+
+| Prediction | Measured |
+|---|---|
+| south_breakfast passes, **0 rungs**, idli ×6 + soya_kuzhambu ×1 + coconut_chutney ×2 + thayir_plain ×1, 623.8 kcal, 1189.7 mg Na | passes, 0 rungs, that plate, 623.6 kcal, 1189.8 mg Na |
+| south_lunch passes, **3 rungs**, ≈ steamed_rice ×1 + soya_kuzhambu ×2 + vegetable + thayir_plain ×1, ~848 kcal | passes, 3 rungs, steamed_rice ×1 + soya_kuzhambu ×2 + carrot_poriyal ×2 + thayir_plain ×1, 848.1 kcal, 1391.1 mg Na |
+| sodium binds, and it is why two of the three recipes exist | held — see below |
+| north verdicts do not move, because `candidates.py` filters on region | held, byte-identical, 24 and 12 combinations |
+| combinations 2 → 8 and 3 → 12 | held |
+
+Worth recording *why* it held, since the previous session's prediction did not:
+this one was made from a measured per-unit table (`nutrition_of_recipe` over the
+whole library) and hand arithmetic against the printed meal targets, not from
+reasoning about what the rule "should" do. The one thing not predicted was
+finding 27 below, which is a crash rather than a wrong answer.
+
+**The sodium claim is backed by defect injection, not assertion.** Removing
+`steamed_rice.yaml` alone puts south_lunch back into decline with
+`Violation(macro='sodium_mg', kind='above_ceiling')`; removing `idli.yaml` alone
+drops south_breakfast from 0 rungs to 3. Removing `soya_kuzhambu.yaml` is the
+only one of the three that produces a *quality* decline.
+
+### Finding 27 — a serving unit whose floor is above 1 crashed the candidate filter — FIXED in the same commit
+
+`core/planner/candidates.py::_eligibility_flags` priced every candidate at a
+hard-coded count of 1, while `nutrition_of_recipe` enforces the serving unit's
+`[min_count, max_count]` bounds. Every recipe in the library happened to have
+`min_count == 1`, so the two agreed by coincidence for the project's whole life
+so far. `idli` is the first with a floor of 2 — nobody is served one idli — and
+adding it made `build_candidate_pool` raise `ValueError: idli: count 1 outside
+[2, 6]` before it could filter anything, for every template containing it.
+
+The line's own comment already read *"any count in the unit's domain gives the
+same fraction"* while the code used a count that need not be in that domain. The
+comment was right and the code did not implement it — the same class of gap
+CLAUDE.md's round-4 addendum is about, in miniature.
+
+Three tests in `tests/test_nutrition_of.py::TestEligibilityConsequence` carried
+the identical hard-coded 1 and crashed the same way.
+
+**Disposition: FIXED.** `_eligibility_flags` and the three tests now use
+`component.recipe.serving_unit.min_count`, which is in the domain by
+construction. `tests/test_planner_candidates.py::TestServingUnitsWhoseFloorIsAboveOne`
+pins it, with a second test proving the substitution is *safe* rather than
+merely working: the eligibility fraction is identical at every count across
+idli's whole 2–6 domain. Injection: reverting the line to `1` turns 9 tests red
+across three files, including both new ones.
+
+**What this says about coverage.** Nothing detected it because nothing exercised
+it. `ServingUnit.min_count` has been a settable field since `core/foods/models.py`
+was written and every recipe author independently chose 1. A field whose only
+tested value is its default is not tested.
+
+### Disposition of the older findings D3 touched
+
+- **Finding 22** (south_lunch combinations unreachable at minimum counts) —
+  still OPEN and untouched. The two offending combinations are still
+  unreachable; D3 added a third rice_base/gravy pairing that is reachable. The
+  passing south_lunch plate clears the 1400 mg guard by **8.9 mg**.
+- **Finding 2** (a recipe with no `process:` lines reads as 0% process-uncertain)
+  — still OPEN, now reachable with three real files rather than one:
+  `thayir_plain`, `idli`, `steamed_rice`.
+- **The "a decline can now say less" observation** from the slice-4 entry below
+  — still OPEN. It is no longer visible on the south templates, because they
+  pass, but it is a property of `_blocking_violations` and nothing about it
+  changed.
+- `tests/test_recipes.py::TestRecipeLoaderRules::test_declared_uncertainty_is_backed_by_registered_constants`
+  was red before D3 (on `onion_raita`) and is red after (on `idli`, which sorts
+  first). Same assertion, same defect class, deliberately not touched.
+
+---
+
 ## 2026-08-07 — D2b-ii, slice 4: the quality-source rule
 
 A per-meal floor on protein from ingredients clearing

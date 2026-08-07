@@ -1,0 +1,114 @@
+# Soya kuzhambu — "meal maker kuzhambu", rehydrated soya chunks in a
+# tamarind-and-sambar-powder gravy. This is the only one of D3's three recipes
+# that carries qualifying protein, and it carries enough of it that a single
+# katori clears the per-meal floor on its own:
+#
+#   25 g dry soya x 52.0 g protein/100 g = 13.00 g, all of it qualifying
+#   (soya_chunks_dry DIAAS 0.85 >= protein.quality_diaas_threshold 0.75)
+#   against NutritionTarget.quality_protein_floor_g = 11.2 g.
+#
+# THIS IS NOT soya_chunk_curry WEARING A SOUTH LABEL. That was the specific
+# thing D3 was told not to write, so the difference is stated rather than
+# assumed. soya_chunk_curry is an onion-tomato gravy finished with garam
+# masala and ginger-garlic, tempered in sunflower oil — a North Indian sabzi
+# grammar. This is a kuzhambu: tamarind is the acid rather than tomato, sambar
+# powder is the spice rather than garam masala, the fat is gingelly oil, and
+# it is tempered with mustard and curry leaves. Those are different dishes
+# that happen to share a protein. Meal maker kuzhambu is ordinary Tamil home
+# cooking, not a fusion invented to satisfy a rule.
+#
+# `kuzhambu`, so it reaches SOUTH_LUNCH.gravy and also
+# SOUTH_BREAKFAST.gravy_accompaniment, which accepts {sambar, kuzhambu}. It
+# will therefore enumerate beside idli at breakfast. Kuzhambu with idli is
+# real food — kara kuzhambu and vatha kuzhambu are eaten that way — so this is
+# left alone. Note what decided it: the TEMPLATE's slot vocabulary, written
+# before this recipe existed, not a category chosen here to reach two slots.
+id: soya_kuzhambu
+name: Soya kuzhambu
+name_ta: சோயா குழம்பு
+name_hi: सोया कुज़म्बु
+
+region: south_indian
+diet_patterns: [vegetarian, vegan]
+# Not jain: onion.
+
+category: kuzhambu
+prep_minutes: 30
+tags: [lunch, high_protein, vegan, tamarind]
+
+serving_unit:
+  measure: katori
+  grams_per_unit: 150.0
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    One katori, the generic katori weight — no override. Two, not sambar's
+    three, and for soya_chunk_curry's stated reason: a katori of this carries
+    roughly three times the protein of a katori of sambar, so the same ceiling
+    would hand the solver three times the room to close a protein gap by
+    volume.
+
+# RAW BASIS PLUS EXPLICIT WATER, per data/recipes/schema.yaml rule 1, and for
+# the reason soya_chunk_curry gives: dry soya chunks roughly triple in mass on
+# rehydration, no rehydration yield constant is registered, and multiplying by
+# an inline factor would be the magic-number failure the schema forbids.
+#
+# The chunks are boiled to rehydrate and that water stays in the gravy, so
+# leaching is small — real, and unmeasured. The tempering oil carries a
+# registered constant and derives a real energy and fat band.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: soya_chunks_dry
+    quantity_g: 25.0
+    state: raw
+    note: >-
+      Dry mass. About 25 g of chunks take up roughly twice their weight in
+      water; that water is part of the line below rather than a yield
+      multiplication here.
+  - id: water
+    quantity_g: 67.9
+    state: as_used
+    note: >-
+      Rehydration water plus what is left as gravy. Listed explicitly so the
+      masses sum to the katori — see the file header.
+  - id: onion_raw
+    quantity_g: 22.0
+    state: raw
+    note: Small onions (shallots) in practice; the onion composition row stands in.
+  - id: tomato_raw
+    quantity_g: 20.0
+    state: raw
+    note: >-
+      Present, but not the acid — the tamarind below is. A kuzhambu with
+      tomato standing in for tamarind is a different dish.
+  - id: tamarind_pulp
+    quantity_g: 4.0
+    state: as_used
+  - id: sambar_powder
+    quantity_g: 3.5
+    state: as_used
+  - id: gingelly_oil
+    quantity_g: 5.0
+    state: as_used
+    process: oil_uptake.vegetable_tempering
+    note: >-
+      Retained oil. About 5.3 g goes into the tempering pan
+      (oil_uptake.vegetable_tempering = 0.95).
+  - id: mustard_seed
+    quantity_g: 0.8
+    state: as_used
+  - id: curry_leaves
+    quantity_g: 1.0
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.8
+    state: as_used
+    note: >-
+      0.53% of the finished weight — the same proportion as sambar, dal_tadka
+      and soya_chunk_curry, because it is salted as a gravy is, with liquid to
+      carry it. Held at the library's existing rate deliberately: this recipe
+      exists to relieve a sodium-bound template, and a lower salt line here
+      would be tuning the plate past a ceiling rather than filling a slot. An
+      authored quantity, not a measurement.

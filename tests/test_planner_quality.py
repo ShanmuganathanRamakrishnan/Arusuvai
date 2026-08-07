@@ -277,29 +277,89 @@ class TestQualityIsAppliedOnce:
 class TestAgainstTheRealLibrary:
     """Measured verdicts, per template."""
 
-    def test_the_south_templates_cannot_reach_the_floor_at_all(self, real):
-        # thayir_plain is the only qualifying component either south template
-        # can reach, and its serving unit caps at 2 katoris:
+    def test_the_south_templates_now_reach_the_floor(self, real):
+        # REPLACES test_the_south_templates_cannot_reach_the_floor_at_all,
+        # 2026-08-07 (D3). That test pinned a real fact -- thayir_plain was the
+        # only qualifying component either south template could reach, capped at
         #   145.0 g curd_dahi x 3.1/100 x 2 = 8.99 g  <  11.2 g
-        # So the floor is unreachable at every legal count, for every profile,
-        # and no relaxation rung can help. This is a fact about the library's
-        # breadth, not about this target being hard.
+        # -- and D3 made it false on purpose by adding soya_kuzhambu, whose
+        # single katori carries
+        #   25.0 g soya_chunks_dry x 52.0/100 = 13.00 g   (diaas 0.85 >= 0.75)
+        # so the floor is now clearable from the gravy slot alone, in both
+        # templates. Note what did NOT change: no threshold, fraction or DIAAS
+        # value moved. The library got wider.
         for region, slot in (
             (Region.SOUTH_INDIAN, MealSlot.BREAKFAST),
             (Region.SOUTH_INDIAN, MealSlot.LUNCH),
         ):
             outcome = _plan(real, region, slot)
-            assert outcome.plan is None
-            hits = [v for v in outcome.result.violations if v.macro == "quality_protein_g"]
-            assert len(hits) == 1, outcome.result.violations
-            assert hits[0].actual == pytest.approx(8.99, abs=0.01)
-            assert hits[0].bound == pytest.approx(_MEAL_QUALITY_FLOOR_G)
+            assert outcome.plan is not None, outcome.result.violations
+            assert not [
+                v for v in outcome.result.violations if v.macro == "quality_protein_g"
+            ]
+            assert outcome.plan.quality_protein_g >= _MEAL_QUALITY_FLOOR_G
+
+    def test_the_reference_breakfast_plate_is_idli_kuzhambu_chutney_curd(self, real):
+        # The plate, hand-computed before it was measured (see the D3 commit).
+        # Qualifying protein: soya_kuzhambu x1 = 13.00 g, thayir_plain x1 =
+        #   145.0 g curd_dahi x 3.1/100 = 4.495 g;  13.00 + 4.495 = 17.495 g.
+        # Idli and coconut chutney carry none -- idli is in this plate because
+        # it is 1.73 mg sodium per kcal against masala dosa's 2.62, not because
+        # it helps the quality floor.
+        outcome = _plan(real, Region.SOUTH_INDIAN, MealSlot.BREAKFAST)
+        assert outcome.result.relaxation_applied == ()
+        assert outcome.plan.unit_counts == {
+            "idli@tiffin": 6,
+            "soya_kuzhambu@kuzhambu": 1,
+            "coconut_chutney@chutney": 2,
+            "thayir_plain@curd": 1,
+        }
+        assert outcome.plan.quality_protein_g == pytest.approx(17.495, abs=1e-3)
+
+    def test_the_reference_lunch_still_needs_three_rungs_and_why(self, real):
+        # south_lunch passes, but not unrelaxed, and the reason is sodium rather
+        # than quality: clearing the 39.2 g protein floor forces 2 katoris of
+        # soya_kuzhambu (647.0 mg), and the required curd course (261.9) plus
+        # the required vegetable leave the base almost no room -- which is why
+        # the rice_base the solver picks is steamed_rice at 2.0 mg, not
+        # sambar_sadam at 408.6. The plate lands at 1391.1 mg against the
+        # 1400 mg hard ceiling: 8.9 mg of headroom. Energy tolerance is the rung
+        # that lets it in at 848.1 kcal against an unrelaxed 854.9 floor.
+        outcome = _plan(real, Region.SOUTH_INDIAN, MealSlot.LUNCH)
+        assert outcome.result.relaxation_applied == (
+            "sodium_max_fibre_min",
+            "fat_carb_tolerance",
+            "energy_tolerance",
+        )
+        assert outcome.plan.unit_counts == {
+            "steamed_rice@rice": 1,
+            "soya_kuzhambu@kuzhambu": 2,
+            "carrot_poriyal@poriyal": 2,
+            "thayir_plain@curd": 1,
+        }
+        point = nutrition_of_components(
+            [(real.recipes.components[c.split("@")[0]], n)
+             for c, n in outcome.plan.unit_counts.items()],
+            real.ingredients,
+        ).point
+        assert point.sodium_mg == pytest.approx(1391.1, abs=0.5)
 
     def test_the_decline_never_shows_a_reader_the_identifier(self, real):
         # A Violation macro is a stable token crossing the API; the sentence a
         # user reads must not contain it. Same rule tests/test_web_no_identifiers.py
         # enforces on the browser side, checked here at the source.
-        outcome = _plan(real, Region.SOUTH_INDIAN, MealSlot.BREAKFAST)
+        #
+        # Re-homed 2026-08-07 (D3): this used to read the south breakfast
+        # decline, which no longer declines. The vegan north dinner with
+        # soya_chunks_dry disqualified is the same decline for the same reason
+        # -- see test_the_rule_is_not_hard_coded_to_dairy, which pins the
+        # verdict this one reads the prose of.
+        outcome = _plan(
+            _with_diaas(real, "soya_chunks_dry", 0.50),
+            Region.NORTH_INDIAN,
+            MealSlot.DINNER,
+            DietPattern.VEGAN,
+        )
         text = outcome.result.disclosure or ""
         assert "quality_protein_g" not in text
         assert "high-quality source" in text
@@ -415,20 +475,37 @@ class TestTheSolverGateItself:
 class TestThePerturbationTest:
     """CLAUDE.md's round-4 rule: move the input and watch the output move."""
 
-    def test_disqualifying_curd_changes_what_the_south_decline_reports(self, real):
-        # 8.99 g of reachable quality protein comes entirely from curd_dahi.
-        # Drop that row below the threshold and the SAME library reports 0.0 g.
-        # If this were a hard-coded list of dairy foods the figure would not move.
+    def test_disqualifying_curd_moves_the_south_breakfast_figure(self, real):
+        # Rewritten 2026-08-07 (D3): this used to move a DECLINE's reported
+        # figure from 8.99 g to 0.0 g. South breakfast now passes, so the
+        # perturbation moves the PLAN's figure instead -- same axis, same proof
+        # obligation. 17.495 g = soya_kuzhambu 13.00 + thayir_plain 4.495; drop
+        # curd_dahi below the threshold and only the kuzhambu's 13.00 survives.
+        # If the rule were a hard-coded list of dairy foods the figure would not
+        # move at all.
         before = _plan(real, Region.SOUTH_INDIAN, MealSlot.BREAKFAST)
         after = _plan(
             _with_diaas(real, "curd_dahi", 0.50),
             Region.SOUTH_INDIAN,
             MealSlot.BREAKFAST,
         )
-        [b] = [v for v in before.result.violations if v.macro == "quality_protein_g"]
-        [a] = [v for v in after.result.violations if v.macro == "quality_protein_g"]
-        assert b.actual == pytest.approx(8.99, abs=0.01)
-        assert a.actual == pytest.approx(0.0, abs=1e-9)
+        assert before.plan.quality_protein_g == pytest.approx(17.495, abs=1e-3)
+        assert after.plan is not None
+        assert after.plan.quality_protein_g == pytest.approx(13.00, abs=1e-3)
+
+    def test_disqualifying_both_sources_puts_south_breakfast_back_in_decline(self, real):
+        # The stronger half of the same perturbation, and the one that keeps a
+        # quality-named south decline covered by a test at all now that the real
+        # library passes. Disqualify BOTH qualifying rows the template can reach
+        # and the reachable figure is 0.0 g against 11.2 g.
+        stripped = _with_diaas(
+            _with_diaas(real, "curd_dahi", 0.50), "soya_chunks_dry", 0.50
+        )
+        outcome = _plan(stripped, Region.SOUTH_INDIAN, MealSlot.BREAKFAST)
+        assert outcome.plan is None
+        [v] = [v for v in outcome.result.violations if v.macro == "quality_protein_g"]
+        assert v.actual == pytest.approx(0.0, abs=1e-9)
+        assert v.bound == pytest.approx(_MEAL_QUALITY_FLOOR_G)
 
     def test_qualifying_tofu_hands_back_the_pre_slice_4_plate(self, real):
         # The sharpest available proof that the rule is what changed the answer.

@@ -1,0 +1,68 @@
+# Steamed rice — sadam. Plain boiled rice, the thing a South Indian lunch is
+# built on, and the most conspicuous absence in the library until now:
+# SOUTH_LUNCH.rice_base accepts {rice, mixed_rice} and the `rice` category was
+# EMPTY. Every south_lunch plate the enumerator could build was therefore
+# sambar sadam, a one-pot mixed rice, standing in for a course it is not.
+#
+# WHY IT IS PART OF D3, and again it is not about protein — this dish carries
+# no high-quality protein either. It is the only energy in the library that
+# costs no sodium:
+#
+#   sambar_sadam   265.0 kcal   408.6 mg Na  = 1.54 mg Na/kcal
+#   steamed_rice   260.0 kcal     2.0 mg Na  = 0.008 mg Na/kcal
+#
+# South lunch's target is 854.9-944.9 kcal against a HARD 1400 mg sodium
+# ceiling (day_budget.absurdity_fraction; no relaxation rung widens past it).
+# A plate that clears the 39.2 g protein floor must spend ~647 mg on two
+# katoris of a protein-dense gravy, ~262 mg on the required curd course and
+# 240-395 mg on the required vegetable. That leaves on the order of 100-250 mg
+# for the base. Only unsalted rice fits inside it.
+#
+# Plain rice takes NO salt. That is not a health choice made here, it is how
+# the dish is cooked — the salt on a South Indian plate is in the sambar, the
+# poriyal and the pickle, and rice is the neutral thing they are eaten with.
+# The 2 mg below is the rice's own sodium, not a seasoning.
+id: steamed_rice
+name: Steamed rice
+name_ta: சாதம்
+name_hi: चावल
+
+region: south_indian
+diet_patterns: [vegetarian, vegan, jain]
+
+category: rice
+prep_minutes: 20
+tags: [lunch, base, plain, low_sodium]
+
+serving_unit:
+  measure: cup
+  grams_per_unit: 200.0
+  min_count: 1
+  default_count: 2
+  max_count: 3
+  note: >-
+    The generic cup weight — no override, and the same 200 g cup sambar_sadam
+    uses, so the two rice_base candidates are directly comparable at equal unit
+    counts. Three cups is a large lunch and a real one; the ceiling is what
+    stops the solver closing an energy gap with five.
+
+# One ingredient, on a cooked basis, against a fixed 200 g portion — so cooking
+# yield does not enter this file at all, and every macro derives to a COMPUTED
+# zero. Third recipe in the library where that is true; see idli.yaml and
+# thayir_plain for the same note and docs/audit_log.md finding 2.
+#
+# Boiling rice in excess water and draining it (the ordinary South Indian
+# method, as against the absorption method) leaches minerals into water that is
+# thrown away. That is real, unmeasured, and not describable by any constant in
+# citations.py, so those macros are declared unassessed.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: rice_cooked
+    quantity_g: 200.0
+    state: cooked
+    note: >-
+      The whole portion. rice_cooked is a cooked-basis composition row, so the
+      roughly-3x boiling yield is already inside it rather than applied here —
+      see yield.rice_milled_boiled in citations.py for the factor connecting
+      this row to rice_milled_raw.

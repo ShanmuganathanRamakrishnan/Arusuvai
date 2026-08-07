@@ -1,0 +1,98 @@
+# Idli — steamed cakes of the same fermented rice-and-urad batter the dosa is
+# made from. The template docstring in core/foods/templates.py has said
+# "idli + sambar + chutney" since it was written; until now the library could
+# not actually build that plate, because `masala_dosa` was the only `tiffin`
+# in it.
+#
+# WHY THIS IS THE FIRST OF THE THREE D3 RECIPES, and it is not about protein:
+# idli carries no high-quality protein at all. It is here because
+# south_breakfast could not reach its ENERGY FLOOR under the sodium ceiling.
+# Measured against the reference profile's breakfast target
+# (610.6-674.9 kcal, fat <= 22.59 g, sodium <= 1400 mg hard):
+#
+#   masala_dosa   226.6 kcal   594.2 mg Na   7.02 g fat   = 2.62 mg Na/kcal
+#   idli (below)   50.4 kcal    87.1 mg Na   0.11 g fat   = 1.73 mg Na/kcal
+#
+# The cheapest complete plate (1 dosa + 1 sambar + 1 chutney) is 373.5 kcal at
+# 1006.6 mg, leaving 393 mg of sodium to buy 237 kcal. A second dosa costs 594.
+# Nothing in the library fitted, so no profile could be served a South Indian
+# breakfast, whatever the quality rule did. Idli is also very nearly fat-free,
+# which matters independently: coconut chutney is 3.08 g of fat per tablespoon
+# and the fat ceiling is 22.59 g.
+#
+# The batter is recorded as raw rice + raw urad + explicit water, exactly as
+# masala_dosa records it and for the same reason: there is no cooked-basis
+# composition entry for a fermented steamed batter, and inventing one would
+# hide a 3x-class error inside a single number.
+id: idli
+name: Idli
+name_ta: இட்லி
+name_hi: इडली
+
+region: south_indian
+diet_patterns: [vegetarian, vegan, jain]
+# Jain-safe: rice, urad, water and salt. No onion, garlic or root vegetable
+# anywhere in it — the first recipe in the library that can say that.
+
+category: tiffin
+prep_minutes: 20
+tags: [breakfast, fermented, steamed, low_fat]
+
+serving_unit:
+  measure: idli
+  grams_per_unit: 40.0
+  min_count: 2
+  default_count: 3
+  max_count: 6
+  note: >-
+    The generic idli weight — no override, unlike masala_dosa, which overrides
+    because its unit carries a potato filling. min_count is 2 rather than 1:
+    nobody is served one idli. Six is a large breakfast and an ordinary one.
+
+# Steaming adds nothing and removes nothing that any registered constant
+# describes, so there is no `process:` line anywhere below and energy, protein,
+# fat and carb each derive to a COMPUTED zero rather than an omitted one. This
+# is the second recipe in the library where that is true (thayir_plain is the
+# other) and it is docs/audit_log.md finding 2's shape again: a recipe with no
+# process lines reads as 0% process-uncertain. Its composition band is
+# untouched and the eligibility filter still excludes it outside dev_mode.
+#
+# Fermentation changes B-vitamin and mineral availability in ways nobody here
+# has measured, and steaming leaches nothing into water that is thrown away, so
+# those macros are declared unassessed rather than deriving to a zero nobody
+# has earned. Same list masala_dosa declares, for the fermentation half of the
+# same reasoning.
+process_uncertainty_unassessed: [fibre_g, iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: rice_milled_raw
+    quantity_g: 10.7
+    state: raw
+    note: >-
+      Soaked and ground; its absorbed water is the `water` line below. Idli
+      rice is parboiled in practice, which IFCT tabulates separately — this
+      row stands in for it, and that substitution is the least accurate thing
+      in the file.
+  - id: urad_dal_raw
+    quantity_g: 3.6
+    state: raw
+    note: >-
+      About 3:1 rice to urad, the everyday household ratio, the same as
+      masala_dosa's batter.
+  - id: water
+    quantity_g: 25.48
+    state: as_used
+    note: >-
+      Water held in the fermented batter and retained through steaming. An
+      idli holds more of it than a dosa does — 64% of the finished mass here
+      against the dosa's 57% — which is what makes it soft rather than crisp.
+      Listed explicitly so the finished mass adds up without a hidden yield
+      factor.
+  - id: salt_iodised
+    quantity_g: 0.22
+    state: as_used
+    note: >-
+      0.55% of the finished weight, the same salting rate as masala_dosa's
+      batter (0.5 g in its 90 g dosa), because it is the same batter. Chosen
+      to match the library's existing convention rather than picked to place
+      the plate anywhere. An authored quantity, not a measurement.

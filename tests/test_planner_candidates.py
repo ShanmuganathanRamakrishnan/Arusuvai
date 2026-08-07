@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from core.foods import templates
+from core.foods.nutrition_of import nutrition_of_components
 from core.nutrition import citations
 from core.planner.candidates import build_candidate_pool, recipe_allergens
 from core.schemas import DietPattern, Region
@@ -150,3 +151,50 @@ class TestUncertaintyEligibility:
         assert set(TARGET_CRITICAL_MACROS) == {"protein_g", "energy_kcal"}
         for macro, key in TARGET_CRITICAL_MACROS.items():
             assert citations.constant(key)  # raises if the key is stale
+
+
+class TestServingUnitsWhoseFloorIsAboveOne:
+    """Added 2026-08-07 (D3) after a latent crash, not a wrong answer.
+
+    ``_eligibility_flags`` priced each candidate at a hard-coded count of 1
+    while ``nutrition_of_recipe`` enforces the serving unit's bounds. Every
+    recipe in the library happened to have ``min_count == 1``, so the two
+    agreed by coincidence. ``idli`` is the first with a floor of 2 -- nobody is
+    served one idli -- and adding it made ``build_candidate_pool`` raise
+    ``ValueError`` before it could filter anything, for every template
+    containing it. The old comment on the line already said "any count in the
+    unit's domain"; the code then used a count that need not be in it.
+
+    This is deliberately a *unit* test on the pool rather than an assertion
+    about a plate: the failure was a crash, and a plate-level test would report
+    it as some unrelated template going empty.
+    """
+
+    def test_a_recipe_with_min_count_two_can_be_priced(self, library, ingredients):
+        idli = library.component("idli")
+        assert idli.recipe.serving_unit.min_count == 2, (
+            "this test is only meaningful while some recipe has a floor above 1; "
+            "if idli's floor changed, re-point it at another such recipe"
+        )
+        pool = build_candidate_pool(
+            [idli],
+            ingredients,
+            template=templates.SOUTH_BREAKFAST,
+            diet_pattern=DietPattern.VEGETARIAN,
+            dev_mode=True,
+        )
+        assert [c.id for c in pool.by_category["tiffin"]] == ["idli@tiffin"]
+
+    def test_the_flag_it_produces_is_count_independent(self, library, ingredients):
+        # Why min_count is a safe substitute for 1 and not merely a working one:
+        # uncertainty_fraction is scale-invariant, so the flag a recipe earns is
+        # the same at every legal count. Checked across idli's whole domain
+        # rather than asserted from the module docstring.
+        idli = library.component("idli")
+        fractions = set()
+        for count in range(
+            idli.recipe.serving_unit.min_count, idli.recipe.serving_unit.max_count + 1
+        ):
+            est = nutrition_of_components([(idli, count)], ingredients)
+            fractions.add(round(est.uncertainty_fraction("protein_g"), 12))
+        assert len(fractions) == 1

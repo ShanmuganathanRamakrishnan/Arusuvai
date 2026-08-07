@@ -256,3 +256,137 @@ the deliberately-red test that predates this work (`onion_raita` and
 constants — the open cross-reference against finding 2); it is red for the same
 reason and with the same message as before this commit. The warning is the
 pre-existing `FOODAI_SESSION_SECRET is not set` notice from `api/main.py`.
+
+---
+
+## Updated 2026-08-07 for D3 — three recipes make the south templates reachable
+
+Slice 4's quality floor left both South Indian templates declining for every
+profile. D3 closes that with three recipe files and no rule change: no
+threshold, fraction, DIAAS value or salt line moved, and no ingredient row was
+added. See `docs/methodology.md`, "Making the south templates reachable", and
+`docs/audit_log.md`, the 2026-08-07 D3 entry.
+
+The diagnosis is the part worth recording: the quality shortfall was 2.21 g, but
+the binding constraint was **sodium**. Neither south template could reach its
+energy floor under the 1400 mg `hard_ceiling`, which predates the quality rule.
+Two of the three recipes therefore exist for salt, not protein.
+
+Per-unit table, measured from the loaded library:
+
+```
+recipe             unit            g min max    kcal   prot    fat   carb   fib      Na
+idli               idli           40   2   6    50.4   1.71   0.11   10.8   0.7    87.1
+soya_kuzhambu      katori        150   1   2   169.9  14.24   5.96   15.5   4.9   323.5
+steamed_rice       cup           200   1   3   260.0   5.40   0.60   56.4   0.8     2.0
+masala_dosa        dosa          150   1   3   226.6   5.32   7.02   36.5   2.7   594.2
+sambar_sadam       cup           200   1   3   265.0   7.16   5.34   46.1   3.8   408.6
+```
+
+Slot coverage and enumeration, all four templates, after:
+
+```
+south_breakfast:
+    tiffin_item          REQ n=2 ['idli@tiffin', 'masala_dosa@tiffin']
+    gravy_accompaniment  REQ n=2 ['sambar@sambar', 'soya_kuzhambu@kuzhambu']
+    chutney              REQ n=1 ['coconut_chutney@chutney']
+    curd_course          opt n=1 ['thayir_plain@curd']
+    beverage             opt n=0 []
+south_lunch:
+    rice_base            REQ n=2 ['sambar_sadam@mixed_rice', 'steamed_rice@rice']
+    gravy                REQ n=2 ['sambar@sambar', 'soya_kuzhambu@kuzhambu']
+    vegetable            REQ n=2 ['carrot_kootu@kootu', 'carrot_poriyal@poriyal']
+    curd_course          REQ n=1 ['thayir_plain@curd']
+    crisp                opt n=0 []
+north_lunch, north_dinner: unchanged
+
+combinations: south_breakfast 2 -> 8, south_lunch 3 -> 12,
+              north_lunch 24 -> 24, north_dinner 12 -> 12
+```
+
+`python demo.py plan`, reference profile, after:
+
+```
+=== south_indian / breakfast ===
+passed         : True
+relaxation     : ()
+  unit counts  : {'idli@tiffin': 6, 'soya_kuzhambu@kuzhambu': 1,
+                  'coconut_chutney@chutney': 2, 'thayir_plain@curd': 1}
+  point        : 623.6 kcal, 29.6g protein, 18.5g fat, 87.3g carb, 1189.8mg sodium
+=== south_indian / lunch ===
+passed         : True
+relaxation     : ('sodium_max_fibre_min', 'fat_carb_tolerance', 'energy_tolerance')
+  unit counts  : {'steamed_rice@rice': 1, 'soya_kuzhambu@kuzhambu': 2,
+                  'carrot_poriyal@poriyal': 2, 'thayir_plain@curd': 1}
+  point        : 848.1 kcal, 40.4g protein, 29.3g fat, 107.4g carb, 1391.1mg sodium
+=== north_indian / lunch ===
+passed         : True
+relaxation     : ()
+  unit counts  : {'phulka@roti': 5, 'soya_chunk_curry@legume_curry': 1, 'paneer_masala@sabzi': 1}
+  point        : 931.2 kcal, 46.6g protein, 27.7g fat, 123.1g carb, 992.2mg sodium
+=== north_indian / dinner ===
+passed         : True
+relaxation     : ()
+  unit counts  : {'phulka@roti': 3, 'soya_chunk_curry@legume_curry': 1,
+                  'aloo_sabzi@sabzi': 1, 'onion_raita@raita': 2}
+  point        : 782.5 kcal, 36.8g protein, 23.0g fat, 109.0g carb, 1371.3mg sodium
+```
+
+Both north plates are byte-identical to the pre-D3 run. They could not have
+moved: `core/planner/candidates.py` rejects any recipe whose region is neither
+the template's nor `pan_indian`, and all three new recipes are `south_indian`.
+
+### Finding 27, found by the first recipe with `min_count > 1`
+
+`build_candidate_pool` raised `ValueError: idli: count 1 outside [2, 6]` before
+it could filter anything. `_eligibility_flags` priced candidates at a hard-coded
+1 while `nutrition_of_recipe` enforces the unit's bounds; every recipe until now
+had `min_count == 1`. Fixed to `min_count`, with the same fix in three
+`tests/test_nutrition_of.py` tests carrying the same literal.
+
+### Defect injections — four, each red, each restored
+
+```
+1. revert candidates.py min_count -> 1
+   9 failed, 58 passed   (tests/test_planner_candidates.py, _quality.py, _plan.py)
+   ValueError: idli: count 1 outside [2, 6]
+
+2. rm data/recipes/soya_kuzhambu.yaml
+   4 failed, 32 passed
+   FAILED ...TestAgainstTheRealLibrary::test_the_south_templates_now_reach_the_floor
+   FAILED ...test_the_reference_breakfast_plate_is_idli_kuzhambu_chutney_curd
+   FAILED ...test_the_reference_lunch_still_needs_three_rungs_and_why
+   FAILED ...TestThePerturbationTest::test_disqualifying_curd_moves_the_south_breakfast_figure
+
+3. rm data/recipes/steamed_rice.yaml
+   2 failed, 34 passed
+   AssertionError: (Violation(macro='sodium_mg', kind='above_ceiling', ...
+   -- the sodium diagnosis, checked rather than asserted
+
+4. rm data/recipes/idli.yaml
+   4 failed, 44 passed
+   AssertionError: assert ('sodium_max_...gy_tolerance') == ()
+   -- south_breakfast falls from 0 rungs to 3 without it
+```
+
+Restored and proven restored: `48 passed in 1.18s`.
+
+Transcript, after the last edit:
+
+```
+python -m pytest tests/ -q
+1 failed, 374 passed, 40 skipped, 1 warning in 106.91s (0:01:46)
+```
+
+The suite went 370 -> 375 collected: three tests in
+`tests/test_planner_quality.py` were replaced by five (the two south-template
+facts D3 inverted, plus a re-homed decline-prose test and a split perturbation),
+and `tests/test_planner_candidates.py::TestServingUnitsWhoseFloorIsAboveOne`
+added two for finding 27. The
+single failure is
+`tests/test_recipes.py::TestRecipeLoaderRules::test_declared_uncertainty_is_backed_by_registered_constants`,
+the deliberately-red test that predates this work. It was verified red *before*
+D3 with the new files stashed (`git stash -u`), failing on `onion_raita`; it now
+fails on `idli`, which sorts first and carries the same defect. Same assertion,
+same message class, untouched. The warning is the pre-existing
+`FOODAI_SESSION_SECRET is not set` notice from `api/main.py`.
