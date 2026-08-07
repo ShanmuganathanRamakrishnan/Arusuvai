@@ -1059,10 +1059,176 @@ Eggs would have been the other obvious answer and are deliberately not used:
 they belong to the deferred non-vegetarian axis, and nothing here may add a
 component a vegetarian profile could be served.
 
-6. **DIAAS is stored but unused.** `Ingredient.diaas` is populated where a
-   commonly cited figure exists and left `None` otherwise. Nothing reads it yet;
-   protein quality scoring is a later phase, and the values carry the same
-   unverified caveat as everything else in the fixture.
+## Protein quality is a rule about sources (2026-08-07, slice 4)
+
+Slice 2 removed DIAAS from the protein target: answering a protein-*quality*
+problem by demanding more grams of the same limiting amino-acid profile supplies
+more of what was already there. Slice 4 is where quality comes back, as the
+thing it always was — a constraint on **which sources** fill the target.
+
+**The rule.** An ingredient qualifies when its `diaas` is present and at or
+above `protein.quality_diaas_threshold` (0.75). A plate's qualifying protein is
+the protein contributed by qualifying ingredient *lines*, at that plate's actual
+integer unit counts. Every plate must carry at least
+`protein.quality_meal_floor_fraction` (0.10) × the day protein floor — 11.2 g
+for the reference profile, flat on every meal slot.
+
+For the reference library, per serving unit:
+
+| Component | Qualifying protein | From |
+|---|---|---|
+| `soya_chunk_curry` | 14.56 g | 28 g `soya_chunks_dry` × 52.0/100 |
+| `paneer_masala` | 12.81 g | 70 g `paneer_fresh` × 18.3/100 |
+| `thayir_plain` | 4.50 g | 145 g `curd_dahi` × 3.1/100 |
+| `onion_raita` | 3.97 g | 128 g `curd_dahi` × 3.1/100 |
+| everything else, including `tofu_bhurji` | 0 g | — |
+
+### This is a project decision and it is harsh on this exact cuisine
+
+DIAAS is limiting-amino-acid based. A grain-plus-legume plate scores *better*
+than either part, because rice is short of lysine and long on methionine and dal
+is the reverse. This rule aggregates per ingredient line, so a roti-and-dal
+plate gets credit for **neither**. **It understates mixed Indian plates
+specifically, which is the exact food this product plans.**
+
+A protein-weighted mean across the component would not have fixed it: the mean
+of 0.45 and 0.60 lies between them, and no weighted mean of two numbers exceeds
+the larger. Modelling complementarity honestly needs per-amino-acid composition
+data the library does not have. The conservative arm was picked and named rather
+than dressed up.
+
+The constant is graded `PROJECT_DECISION` with no citation. 0.75 is the boundary
+of the band FAO's 2013 DIAAS report is *recalled* as calling "good quality", but
+nobody here has opened it, and attaching that reference to a remembered number
+would be the mismatched-but-real citation failure the registry exists to
+prevent.
+
+### `None` means "does not qualify", and that is the safe answer, not the right one
+
+17 of the 29 ingredient rows carry no DIAAS at all. To this rule, "nobody has
+assessed this food" and "this food scores badly" are the same thing. The
+ordering is deliberate — CLAUDE.md's round-4 addendum requires that the cheapest
+authoring path never produce the most permissive output — but the cost is
+concrete: **adding a protein-dense row and forgetting its DIAAS silently makes
+that food count for nothing**, and the plan that results looks entirely normal.
+
+### The unsourced field this rests on
+
+See "DIAAS values are authored, and the quality rule turns on them" above. That
+section was written before this rule existed; it now describes the most
+load-bearing unsourced data in the project. Twelve hand-entered numbers, none
+read out of a document, decide which foods a user is told to eat. Three of them
+clear the threshold. One of those three (`soya_chunks_dry`, 0.85) carries the
+entire vegan case on its own.
+
+Nothing in this slice moved a DIAAS value, the threshold, a salt line or an
+evidence grade. `tofu_firm` at 0.65 fails its own threshold and was left
+failing.
+
+### What it did to the plates
+
+Measured against the real library for the reference profile
+(70 kg / 175 cm / 28 / male / moderate / maintain / vegetarian), before and
+after, via `python demo.py plan`:
+
+| Template | Before | After |
+|---|---|---|
+| `south_breakfast` | declines, 4 rungs, on energy/fat/sodium | declines, 4 rungs, **on quality protein: 8.99 g reachable against 11.2 g** |
+| `south_lunch` | declines, 4 rungs, on energy/fat/sodium | declines, 4 rungs, **on quality protein: 8.99 g against 11.2 g** |
+| `north_lunch` | passes, 0 rungs: phulka ×4 + dal_tadka ×2 + tofu_bhurji ×1 | passes, 0 rungs: **phulka ×5 + soya_chunk_curry ×1 + paneer_masala ×1** |
+| `north_dinner` | passes, 0 rungs: phulka ×4 + dal_tadka ×1 + tofu_bhurji ×1 | passes, 0 rungs: **phulka ×3 + soya_chunk_curry ×1 + aloo_sabzi ×1 + onion_raita ×2** |
+
+The two south templates cannot reach the floor at any count for any profile:
+`thayir_plain` is the only qualifying component either can accept, and its
+serving unit caps at two katoris — 8.99 g. That is a fact about the library's
+breadth, and no relaxation rung can help, because the quality floor is not on
+the ladder.
+
+**A cost worth naming:** `north_dinner`'s sodium went 889.2 → 1371.3 mg,
+against a 1400 mg absurdity guard. The rule pushed the solver onto denser
+protein sources, and those carry salt. It passes with 29 mg of headroom.
+
+### The rule is outside the relaxation ladder
+
+No rung touches `NutritionTarget.quality_protein_floor_g`. The ladder widens
+*tolerances* — how far a point estimate may sit from a number. "At least this
+much protein came from a qualifying source" is a statement about what the plate
+is made of, and there is no coherent 15%-looser version of it. Relaxing it would
+mean answering "this plate is all lentil" with "then require less of it not to
+be".
+
+The visible consequence: a profile blocked on quality still walks all four
+rungs, is relaxed on sodium, fat, carb, energy and protein, and declines anyway.
+`relaxation_applied` on such a result therefore reports rungs that could not have
+helped. That is reported rather than suppressed, because the target really was
+widened that far.
+
+### The day floor is computed and gates on nothing
+
+`protein.quality_day_fraction` (0.33) × the day protein floor = 36.96 g for the
+reference profile, carried on `ProteinTarget.quality_source_day_g` and shown in
+onboarding. **Nothing enforces it.** Enforcing a day *floor* against a planner
+that solves one meal at a time is a reachability question — can the remaining
+slots still close the gap? — not a remaining-budget subtraction, and that is its
+own slice (`docs/design/target_model_v2.md` §2). This is the second
+computed-but-inert figure on `ProteinTarget`; it is inert for a different reason
+than `quality_adjusted_g`, which is inert because it was found to be the wrong
+answer rather than because the machinery is missing.
+
+### Diet still changes no target number
+
+`Profile.diet` was expected to start moving a target value in this slice. It
+does not, and that is the settled position rather than an outstanding gap.
+
+The rule's two levers are the DIAAS threshold — a property of a food — and the
+per-meal floor fraction, taken off the day protein floor, which is weight × g/kg
+and diet-independent. Making either diet-conditional would mean registering a
+constant to close a checklist item, which is precisely what the registry exists
+to stop.
+
+**What diet changes instead is the outcome.** It decides which components can
+*satisfy* an identical floor:
+
+- Vegetarian north dinner: phulka ×3 + soya_chunk_curry ×1 + aloo_sabzi ×1 +
+  onion_raita ×2.
+- Vegan north dinner, same body and same 11.2 g floor: phulka ×3 +
+  soya_chunk_curry ×2 + tofu_bhurji ×1 — paneer and curd are unavailable, so the
+  whole vegan case rests on soya.
+- Disqualify `soya_chunks_dry` and the vegan profile **declines on quality**
+  while the vegetarian one still passes. Identical targets, opposite verdicts.
+  Before slice 4, diet could not do that, because nothing downstream of the
+  candidate filter cared where a plate's protein came from.
+
+That last case is pinned in
+`tests/test_planner_quality.py::TestDietChangesAnOutcomeNotANumber`.
+
+### Known limitations carried out of this slice
+
+1. **The per-meal floor is flat, not scaled.** Every slot gets 11.2 g, including
+   a snack at a quarter of a lunch's energy. Flat is deliberate — the design
+   wants most of a day's quality protein free to land in one or two meals, and a
+   per-slot share would contradict that — but no template exists for the snack
+   slot today, so the case is unexercised rather than resolved.
+2. **The decline can now hide the other reasons.** For both south templates the
+   quality floor is *unreachable*, which `_blocking_violations` reports from its
+   first branch and returns immediately. The energy, fat and sodium misses those
+   templates previously reported came from the later best-plate probe and are no
+   longer shown. The user is told the single truest thing and not the whole
+   picture. Recorded in `docs/audit_log.md` as a new observation, not fixed here.
+3. **The pre-filter's quality check is a pure optimisation.** Removing it changes
+   no verdict, because the solver's own gate catches everything it would have.
+   No test can therefore detect its removal, and that is correct rather than a
+   coverage hole — but it means the pre-filter check must never be made to carry
+   a rule the gate does not also enforce.
+
+6. **DIAAS is populated unevenly, and it is now load-bearing.** `Ingredient.diaas`
+   is filled where a commonly cited figure was recalled and left `None`
+   otherwise — 17 of 29 rows. **Corrected 2026-08-07:** this item used to read
+   "stored but unused. Nothing reads it yet." `core/foods/quality.py` reads it,
+   and it decides which dishes a plan may contain. `None` means "does not
+   qualify", so the uneven population is no longer a cosmetic gap; see "Protein
+   quality is a rule about sources" above. The values carry the same unverified
+   caveat as everything else in the fixture.
 
 7. **Composition uncertainty is uniform across macros.** Every macro on a row
    gets the same band from its provenance constant, though the real dispersion

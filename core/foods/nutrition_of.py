@@ -76,6 +76,10 @@ _UNITS: dict[str, str] = {
     "iron_mg": "mg",
     "calcium_mg": "mg",
     "b12_ug": "ug",
+    # Not a macro and not in MACRO_KEYS (core/foods/quality.py explains why),
+    # but it is a real quantity in grams that reaches a Violation, and a
+    # missing entry here would render it unitless.
+    "quality_protein_g": "g",
 }
 
 

@@ -175,14 +175,23 @@ class TestDeriveTargetIntegration:
 
     def test_diet_pattern_no_longer_moves_the_protein_floor(self):
         # The load-bearing consequence, asserted directly rather than left to be
-        # inferred from the test above: between slice 2 and the quality-source
-        # rule (slice 4), protein quality influences nothing. Two profiles
-        # identical but for diet get the same floor.
+        # inferred from the test above: two profiles identical but for diet get
+        # the same floor.
         #
-        # This is a real gap and the test exists to make it visible rather than
-        # to bless it -- when slice 4 lands, quality must start mattering again
+        # UPDATED 2026-08-07, slice 4. This test was written to make a gap
+        # visible -- "when slice 4 lands, quality must start mattering again
         # somewhere, and if it does not, this assertion is the one that should
-        # look wrong to whoever reads it next.
+        # look wrong." Slice 4 has landed, quality does matter again, and this
+        # assertion is STILL RIGHT, which is the outcome worth recording:
+        # quality came back as a constraint on which SOURCES fill the floor
+        # (core/foods/quality.py), not as a change to the floor. The floor is
+        # weight x g/kg for every diet, and it should be.
+        #
+        # Where diet now bites is downstream, in which components can satisfy
+        # the per-meal quality floor -- proven in
+        # tests/test_planner_quality.py::TestDietChangesAnOutcomeNotANumber,
+        # where a vegan and a vegetarian with byte-identical targets get
+        # opposite verdicts. Read the two together; neither is the whole story.
         floors = {
             diet: derive_target(_make(diet=diet)).nutrition_target.floor("protein_g")
             for diet in DietPattern
@@ -224,11 +233,17 @@ class TestDeriveTargetIntegration:
         # non-vegetarian of identical body and goal were handed carb targets
         # 37 g apart on the strength of a protein-quality constant.
         #
-        # base_g does not depend on diet, so neither does the remainder. Diet
-        # now changes no target value at all -- see
-        # test_diet_pattern_no_longer_moves_the_protein_floor for the other half
-        # and docs/methodology.md for why that gap is stated rather than fixed
-        # here.
+        # base_g does not depend on diet, so neither does the remainder.
+        #
+        # UPDATED 2026-08-07, slice 4: diet still changes no target value at
+        # all, and that is now a settled position rather than a gap awaiting a
+        # slice. The quality-source rule's two levers -- the DIAAS threshold and
+        # the per-meal floor fraction -- are a property of a food and a fraction
+        # of the (diet-independent) day protein floor respectively. Making
+        # either diet-conditional would be registering a constant to close a
+        # checklist item. See test_diet_pattern_no_longer_moves_the_protein_floor
+        # for the other half and docs/methodology.md, "Diet still changes no
+        # target number", for what diet does change instead.
         carbs = {
             diet: derive_target(_make(diet=diet)).carb_g for diet in DietPattern
         }

@@ -1434,6 +1434,110 @@ PROTEIN_MEAL_CEILING_FRACTION = register_constant(
     )
 )
 
+# The quality-source rule (slice 4). Three PROJECT_DECISION constants that,
+# between them, decide which foods a person is told to eat. Read this block
+# before touching any of the three values.
+#
+# WHAT THE RULE IS NOT. It is not a nutritional finding. DIAAS is
+# limiting-amino-acid based, so a mixed grain-plus-legume plate scores higher
+# than the weighted mean of its parts -- roti and dal complement each other,
+# each supplying the amino acid the other is short of. This rule aggregates
+# per ingredient line and therefore gives that plate credit for NEITHER part.
+# It declines a roti-and-dal plate that complementarity would call adequate.
+# **It understates mixed Indian plates specifically, which is the exact food
+# this product plans.** That sentence is the honest description of the rule's
+# error direction and must not be softened in a later pass.
+#
+# WHAT IT RESTS ON. `Ingredient.diaas` on the fixture rows, every one of which
+# was authored from a recalled range rather than read out of a source
+# (docs/methodology.md, "DIAAS values are authored"). Three rows clear 0.75
+# today: curd_dahi 1.09, paneer_fresh 1.00, soya_chunks_dry 0.85. tofu_firm at
+# 0.65 does not, and 17 of 29 rows carry no DIAAS at all, which this rule reads
+# as "does not qualify" -- missing and low are indistinguishable to it. So the
+# rule's whole behaviour turns on a dozen invented numbers. That is the most
+# load-bearing unsourced field in the project.
+PROTEIN_QUALITY_DIAAS_THRESHOLD = register_constant(
+    Constant(
+        key="protein.quality_diaas_threshold",
+        value=0.75,
+        unit="DIAAS score",
+        evidence_id="project_decision",
+        applied_to=(
+            "the DIAAS at or above which an ingredient's protein counts toward "
+            "a meal's high-quality protein floor -- a cutoff on a score, not a "
+            "measurement of anything"
+        ),
+        uncertainty=0.0,
+        note=(
+            "0.75 is the boundary of the band FAO's 2013 DIAAS report is "
+            "recalled as calling 'good quality' protein, but nobody here has "
+            "opened that report, so it is registered as a project decision and "
+            "NOT as a citation -- attaching the FAO reference to a number "
+            "transcribed from memory is the mismatched-but-real citation "
+            "failure this registry exists to prevent. The value was fixed in "
+            "the D2a recipe headers before any plan was measured against it, "
+            "and it has not been moved since: tofu_firm at an authored 0.65 "
+            "fails its own threshold rather than being quietly admitted, which "
+            "is the failure direction to keep. Raising it to 0.65 to make tofu "
+            "qualify, or to 0.80 to make anything decline, would be tuning a "
+            "threshold until plans pass."
+        ),
+    )
+)
+PROTEIN_QUALITY_DAY_FRACTION = register_constant(
+    Constant(
+        key="protein.quality_day_fraction",
+        value=0.33,
+        unit="fraction of the day protein floor",
+        evidence_id="project_decision",
+        applied_to=(
+            "how much of a day's protein should come from qualifying sources -- "
+            "computed and displayed on the day target, gated on by nothing"
+        ),
+        uncertainty=0.0,
+        note=(
+            "'Roughly a third from quality sources' is a judgement about what a "
+            "plant-forward Indian diet can plausibly reach, not a finding. "
+            "NOTHING ENFORCES IT TODAY: enforcing a day FLOOR against a "
+            "one-meal-at-a-time planner is a reachability question (can the "
+            "remaining slots still close the gap?), not a remaining-budget "
+            "subtraction, and that is its own slice -- see "
+            "docs/design/target_model_v2.md section 2. Registered now because "
+            "the per-meal floor below is stated as a fraction of the same day "
+            "protein floor and the two are meant to be read together."
+        ),
+    )
+)
+PROTEIN_QUALITY_MEAL_FLOOR_FRACTION = register_constant(
+    Constant(
+        key="protein.quality_meal_floor_fraction",
+        value=0.10,
+        unit="fraction of the day protein floor",
+        evidence_id="project_decision",
+        applied_to=(
+            "the minimum qualifying protein one plate must carry -- what makes "
+            "'no meal is pure lentil' a bound rather than an intention"
+        ),
+        uncertainty=0.0,
+        note=(
+            "Deliberately low, and low for a stated reason: the design wants "
+            "most of a day's quality protein to be free to land in one or two "
+            "meals, so this is a floor under every plate rather than an even "
+            "share of the day. At the reference profile it is 11.2 g, which one "
+            "katori of paneer masala (12.8 g) or soya chunk curry (14.6 g) "
+            "clears on its own and two katoris of curd (8.9 g) cannot. "
+            "Applied FLAT, not scaled by the meal's energy share, unlike "
+            "protein.meal_floor_fraction which is a max() guard beneath a "
+            "share: quality protein has no day-level share to be a guard "
+            "beneath, because nothing apportions the day quality floor across "
+            "slots. The cost of flat is real and is not hidden -- a snack slot "
+            "gets the same 11.2 g floor as a lunch, on a quarter of the "
+            "energy. No template exists for the snack slot today, so that "
+            "case is unexercised rather than resolved."
+        ),
+    )
+)
+
 # Mechanism review for every constant registered above. Kept next to the
 # registrations (rather than in the literal near the top) so a reviewer sees
 # the applied_to and its review verdict together. Single-author mechanism
@@ -1472,4 +1576,7 @@ REVIEWED_MECHANISM_MATCHES.update({
     "meal_split.energy_fraction_snack": "reviewed: project decision, no physical process claimed",
     "protein.meal_floor_fraction": "reviewed: project decision, no physical process claimed -- deliberately NOT matched to per-meal dose literature, which measures a different phenomenon",
     "protein.meal_ceiling_fraction": "reviewed: project decision, no physical process claimed -- a plausibility bound on one plate, not a nutritional maximum",
+    "protein.quality_diaas_threshold": "reviewed: project decision, a cutoff on a score; NO matching primary source -- the FAO band it echoes has not been opened, so it is deliberately not cited",
+    "protein.quality_day_fraction": "reviewed: project decision, no physical process claimed -- a judgement about a reachable diet composition, and gated on by nothing today",
+    "protein.quality_meal_floor_fraction": "reviewed: project decision, no physical process claimed -- deliberately NOT matched to amino-acid complementarity literature, which describes the opposite effect to the one this bound assumes",
 })

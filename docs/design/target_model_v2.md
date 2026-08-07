@@ -792,13 +792,33 @@ Ordered, each independently shippable, each with what would demonstrate it.
     which the 1649.3 mg plate passes. **Trigger: it becomes live the moment each
     of those two templates can enumerate at least one combination.**
 
-6. **Quality-source selection.** The DIAAS threshold on components, `None`
-   excluded, the aggregation rule for mixtures (with its stated limitation).
-   *Demonstrated by:* `onion_raita` qualifies and `dal_tadka` does not; the
-   reference plate's quality protein computes to 7.94 g and declines against the
-   11.2 g per-meal floor. And — the perturbation test CLAUDE.md's round-4
-   addendum demands — flipping `curd_dahi`'s DIAAS below the threshold changes
-   the verdict, proving the rule reads the data rather than a hard-coded list.
+6. **Quality-source selection.** — **DONE 2026-08-07.** Threshold 0.75, `None`
+   excluded, aggregation per ingredient *line* (the conservative arm of the
+   unresolved mixture question below, chosen and named). `core/foods/quality.py`,
+   a `quality_protein_floor_g` field on `NutritionTarget` that no relaxation rung
+   touches, and gates in the solver, the pre-filter and the validator.
+
+   Everything this slice said would demonstrate it, did: `onion_raita` qualifies
+   (3.968 g/katori) and `dal_tadka` does not (0 g); the reference plate computes
+   to 7.936 g against the 11.2 g floor; and flipping `curd_dahi` below the
+   threshold moves the reported south-breakfast figure 8.99 → 0.00 g.
+
+   Two things this slice did not predict:
+
+   - **It does not decline every north plate**, because D2a landed first. The
+     §3 warning "v2 does not make north_lunch solvable; it changes which
+     constraint blocks it" was written against a library whose only qualifying
+     component was `onion_raita`. With `paneer_masala` and `soya_chunk_curry` in
+     place, both north templates pass with zero relaxation. The two **south**
+     templates are now the ones in the position §3 described.
+   - **A stronger perturbation than the one specified.** Raising `tofu_firm` to
+     0.80 hands back the exact pre-slice-4 north lunch plate
+     (`phulka ×4 + dal_tadka ×2 + tofu_bhurji ×1`), which proves one authored
+     number is the entire difference between the two answers.
+
+   The `protein.quality_day_fraction` floor (0.33) is registered and displayed
+   and **gates on nothing** — a day floor needs the reachability computation §2
+   defers, not a remaining-budget subtraction.
 
 7. **Resolve fibre and fat** (§1), which is a decision, not a build. Blocks any
    change to relaxation rung 1.
@@ -826,7 +846,12 @@ ingredient library has a qualifying protein source that is not curd.
   plausibly the same piece of work. **The relabelling is done in the scratch
   copy and is not committed.** I have not chosen where it should live.
 - **Fibre and fat categories** (§1) — both arguments given, neither picked.
-- **DIAAS aggregation across a mixture** (§3) — the weighted-mean rule
+- **DIAAS aggregation across a mixture** (§3) — **decided 2026-08-07, not
+  resolved.** Slice 6 aggregates per qualifying ingredient *line*, which
   understates amino-acid complementarity in exactly the rice-and-dal case this
-  product is about.
+  product is about. A protein-weighted mean would not have helped: no weighted
+  mean of two numbers exceeds the larger, so roti+dal would still score below
+  both. Modelling complementarity honestly needs per-amino-acid composition
+  data the library does not have. The conservative arm is implemented and
+  stated in `docs/methodology.md`; the underlying question is still open.
 - **Day boundary timezone** (§2) — `Profile` has no timezone field.

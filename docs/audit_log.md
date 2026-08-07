@@ -8,6 +8,84 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-07 — D2b-ii, slice 4: the quality-source rule
+
+A per-meal floor on protein from ingredients clearing
+`protein.quality_diaas_threshold` (0.75). Full description in
+`docs/methodology.md`, "Protein quality is a rule about sources". Three
+observations recorded here, one of them a defect in this session's own testing.
+
+### The prediction, and where it was wrong
+
+Written before any code was changed. Four of six calls held exactly:
+
+- south_breakfast and south_lunch decline on quality — **held**, at exactly the
+  predicted 8.99 g reachable against 11.2 g.
+- north_lunch and north_dinner still pass with zero rungs, on plates containing
+  soya or paneer instead of tofu — **held**, both.
+- the three-katoris-of-dal plate is rejected on quality at 7.94 g — **held**
+  (measured 7.936 g).
+- `Profile.diet` still moves no target number — **held**.
+
+**Wrong: the shape of the two south declines.** The prediction was that quality
+would be named *alongside* energy, fat and sodium, since all four looked
+individually unreachable. Measured, quality is named **instead of** them. The
+cause is `_blocking_violations`' two-branch structure: energy/fat/sodium were
+never in the unreachable branch at all — their reach spans the bound
+(south_breakfast energy reaches 373.5–1326.8 kcal against a 707.0 ceiling), so
+they were being reported by the later best-plate-probe branch. A genuinely
+unreachable bound returns from the first branch and the probe never runs.
+
+### Observation — a decline can now say less than it used to
+
+Before: *"energy_kcal is 777.1kcal, above its ceiling of 707.0kcal; fat_g is
+33.2g...; sodium_mg is 2273.4mg, above its ceiling of 1400.0mg"*.
+
+After: *"only 9.0g of this plate's protein comes from a high-quality source,
+against a floor of 11.2g"*.
+
+The new sentence is the truest single thing — quality is unreachable at every
+count, whereas the others were one probe plate's misses — but the user no longer
+learns the plate is also 60% over the sodium guard. **Disposition: OPEN,
+recorded, not fixed.** It is the same shape as finding 24 (a decline naming the
+symptom rather than the cause), arriving from the other direction, and the
+commissioning task ruled finding 24 out of scope.
+
+### Finding 24 itself: checked, unmoved
+
+`tests/test_planner_plan.py::TestPerMealProteinCeiling::
+test_the_decline_names_energy_though_the_cause_is_the_protein_ceiling` still
+passes unchanged. The quality rule does not fire on that synthetic case, so the
+finding is neither fixed nor worsened.
+
+### Finding 26 — a defect injection that the whole new test file survived — FIXED in the same commit
+
+Deleting the quality check from `solver._within_target_point` — i.e. removing
+the gate this slice exists to add — left **all 31 new tests green**.
+
+Cause: `feasible_combinations` discards quality-failing combinations before the
+solver runs, so on the real library the solver's own gate never decides
+anything. Every test was reaching the pre-filter and stopping there. This is
+exactly CLAUDE.md's "writing a test that cannot fail on the defect it names",
+and it is the third instance in this repo's log.
+
+Fixed by `TestTheSolverGateItself`, which isolates the gate on the synthetic
+`SOUTH_LUNCH` pool: a combination the pre-filter must admit (`curd_b` reaches
+5.0 g at its maximum count, above a 4.0 g floor) whose best-scoring assignment
+falls short (2.5 g at one unit). With the gate present the solver returns
+`curd_b ×2`; with it deleted, `curd_b ×1`. Both new tests were re-run against the
+re-injected defect and go red.
+
+Five further defects were injected and each turned the suite red: the protein
+rung relaxing the quality floor (4 red), the floor scaled by the energy share
+(9 red), a missing DIAAS reading as qualifying (15 red), the day floor taken off
+the DIAAS-inflated figure instead of `base_g` (2 red), and `_widen_band`
+rebuilding the target with an explicit constructor that drops the new field
+(6 red). That last one is why the ladder's three target rebuilds were converted
+to `dataclasses.replace`.
+
+---
+
 ## 2026-08-02 — D2b-i, finding 25 closed
 
 `SOUTH_BREAKFAST` gains an **optional** `curd_course` slot accepting

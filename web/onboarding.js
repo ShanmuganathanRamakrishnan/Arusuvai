@@ -419,10 +419,19 @@
     // per-diet DIAAS constants are still in the registry and a reader who saw
     // them in the citation panel with nothing referencing them would
     // reasonably conclude something was broken.
+    //
+    // Second half added 2026-08-07 with the quality-source rule. Until then
+    // this line ended at "not what the plan is checked against", which was
+    // true of the target and became misleading the moment protein quality
+    // started deciding which dishes a plan may contain: a reader would have
+    // concluded DIAAS affects nothing at all.
     document.getElementById("obProtein").textContent =
       `${fmtGrams(p.base_g)} g/day (${fmtRatio(p.g_per_kg)} g/kg) · protein ` +
       `quality is not applied to this target: DIAAS ${p.diaas} would imply ` +
-      `${fmtGrams(p.quality_adjusted_g)} g, which is not what the plan is checked against`;
+      `${fmtGrams(p.quality_adjusted_g)} g, which is not what the plan is ` +
+      `checked against · quality is applied to the dishes instead — about ` +
+      `${fmtGrams(p.quality_source_day_g)} g of the day should come from ` +
+      `high-quality sources, and every plate carries a share of that floor`;
 
     document.getElementById("obMacros").textContent =
       `${fmtGrams(data.fat_g)} g fat · ${fmtGrams(data.carb_g)} g carbohydrate`;

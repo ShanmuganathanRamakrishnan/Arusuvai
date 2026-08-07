@@ -195,3 +195,64 @@ Transcript in the same session, after the last edit: `python -m pytest tests/ -q
 -> `301 passed, 1 warning in 128.95s (0:02:08)`. The suite went 289 -> 301; the
 single warning is the pre-existing `FOODAI_SESSION_SECRET is not set` notice
 from `api/main.py:91`.
+
+---
+
+Updated 2026-08-07 for D2b-ii, slice 4 — the quality-source rule.
+
+Per-meal floor on protein from ingredients clearing
+`protein.quality_diaas_threshold` (0.75). New `core/foods/quality.py`; new
+`NutritionTarget.quality_protein_floor_g` set by `core/nutrition/meal_target.py`
+at 0.10 x the day protein floor; gates in `combinations.feasible_combinations`,
+`solver._within_target_point` and `validator._violations_for` /
+`_blocking_violations`. No relaxation rung touches it. Full account in
+`docs/methodology.md`, "Protein quality is a rule about sources".
+
+The prediction was written before any code changed and is quoted in
+`docs/audit_log.md`, 2026-08-07: four of six calls held exactly, and the one
+that missed was the *shape* of the two south declines (quality is named instead
+of energy/fat/sodium, not alongside them).
+
+Measured verdicts, reference profile, via the tracked entry point
+`python demo.py plan --region <r> --meal-slot <s>`:
+
+```
+south_breakfast  before: declines, 4 rungs, energy 777.1>707.0 / fat 33.2>24.6 / sodium 2273.4>1400.0
+                 after : declines, 4 rungs, quality protein 8.99 < 11.20
+south_lunch      before: declines, 4 rungs, energy 1033.1>989.9 / fat 39.7>34.4 / sodium 2836.8>1400.0
+                 after : declines, 4 rungs, quality protein 8.99 < 11.20
+north_lunch      before: passes, 0 rungs, phulka x4 + dal_tadka x2 + tofu_bhurji x1   (929.8 kcal, 1209.0 mg Na)
+                 after : passes, 0 rungs, phulka x5 + soya_chunk_curry x1 + paneer_masala x1 (931.2 kcal, 992.2 mg Na)
+north_dinner     before: passes, 0 rungs, phulka x4 + dal_tadka x1 + tofu_bhurji x1   (756.8 kcal,  889.2 mg Na)
+                 after : passes, 0 rungs, phulka x3 + soya_chunk_curry x1 + aloo_sabzi x1 + onion_raita x2 (782.5 kcal, 1371.3 mg Na)
+```
+
+Six defects were injected and each turned the new test file red. The first
+injection — deleting the gate from `solver._within_target_point` — left all 31
+tests green, because `feasible_combinations` discards quality-failing
+combinations before the solver runs. That is finding 26 in `docs/audit_log.md`
+and it was fixed in the same commit by `TestTheSolverGateItself`, which isolates
+the gate on the synthetic pool. Re-injected afterward:
+
+```
+FAILED tests/test_planner_quality.py::TestTheSolverGateItself::test_the_gate_changes_the_chosen_unit_counts - assert 1 == 2
+FAILED tests/test_planner_quality.py::TestTheSolverGateItself::test_the_gate_can_empty_a_solve_the_pre_filter_admitted
+2 failed, 31 passed in 1.08s
+```
+
+The other five: protein rung relaxing the quality floor (4 failed, 29 passed);
+floor scaled by the energy share (9 failed, 24 passed); a missing DIAAS reading
+as qualifying (15 failed, 18 passed); day floor taken off `quality_adjusted_g`
+instead of `base_g` (2 failed, 31 passed); `_widen_band` rebuilding the target
+with an explicit constructor that drops the new field (6 failed, 27 passed). All
+restored, and proven restored: `33 passed in 1.01s`.
+
+Transcript in the same session, after the last edit: `python -m pytest tests/ -q`
+-> `1 failed, 369 passed, 40 skipped, 1 warning in 109.50s (0:01:49)`. The suite
+went 337 -> 370 collected. The single failure is
+`tests/test_recipes.py::TestRecipeLoaderRules::test_declared_uncertainty_is_backed_by_registered_constants`,
+the deliberately-red test that predates this work (`onion_raita` and
+`thayir_plain` carry a fully-populated map of computed zeros and no process
+constants — the open cross-reference against finding 2); it is red for the same
+reason and with the same message as before this commit. The warning is the
+pre-existing `FOODAI_SESSION_SECRET is not set` notice from `api/main.py`.

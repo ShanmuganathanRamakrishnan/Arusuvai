@@ -35,6 +35,23 @@ ones before it, and the solver is re-run after each. The first step that
 yields a feasible plan wins; the ladder stops there rather than continuing to
 the loosest target that would also work.
 
+## One bound is outside the ladder entirely
+
+``NutritionTarget.quality_protein_floor_g`` (slice 4) is checked by the gate and
+touched by **no** rung. Every macro bound here is a tolerance — how far a point
+estimate may sit from a number — and the ladder's whole job is widening
+tolerances. "At least this many grams came from a source clearing the DIAAS
+threshold" is not a distance from a number; it is a statement about what the
+plate is made of. There is no coherent 15%-looser version of it.
+
+Practically this means a profile blocked on quality walks all four rungs, is
+relaxed on sodium, fat, carb, energy and protein, and still declines. That is
+the intended behaviour and it is not free: the plan it declines may have been
+relaxed further than it needed to be before the decline was reached, so
+``relaxation_applied`` on such a result reports rungs that could not have
+helped. Reported honestly rather than suppressed — the target really was
+widened that far.
+
 ## Clinical flags remove rungs; they do not reorder them
 
 ``LOCKED_CONSTRAINTS`` maps each ``ClinicalFlag`` to the macros it hard-locks.
@@ -52,13 +69,19 @@ the feasible set empty is an outcome to report, not to work around.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Callable, Mapping, Sequence
 
 from core.foods.models import NutritionVector
 from core.foods.nutrition_of import unit_for
+from core.foods.quality import QUALITY_PROTEIN_KEY
 from core.nutrition import citations
-from core.planner.combinations import MealCombination, feasible_combinations, macro_bounds
+from core.planner.combinations import (
+    MealCombination,
+    feasible_combinations,
+    macro_bounds,
+    quality_protein_bounds,
+)
 from core.planner.solver import SolvedPlan, solve
 from core.nutrition.target import NutritionTarget, band
 from core.schemas import ClinicalFlag, Profile
@@ -196,13 +219,12 @@ def _widen_band(
             floors[macro] = lo
         if macro in ceilings:
             ceilings[macro] = _capped(hi, target.hard_ceiling(macro))
-    return NutritionTarget(
-        floors=floors,
-        ceilings=ceilings,
-        points=target.points,
-        hard_ceilings=target.hard_ceilings,
-        bound_sources=target.bound_sources,
-    )
+    # `replace`, not a fresh NutritionTarget: every field this rung does not
+    # touch must survive it, and a hand-written constructor call silently drops
+    # any field added later. That is not hypothetical — slice 4's quality floor
+    # is exactly such a field, and dropping it here would have let the ladder
+    # relax a bound no rung is allowed to touch.
+    return replace(target, floors=floors, ceilings=ceilings)
 
 
 def _relax_sodium_fibre(target: NutritionTarget, locked: frozenset[str]) -> NutritionTarget:
@@ -236,13 +258,7 @@ def _relax_sodium_fibre(target: NutritionTarget, locked: frozenset[str]) -> Nutr
     if "fibre_g" in floors and "fibre_g" not in locked:
         fraction = citations.value_of("tolerance.fibre_relaxed_fraction")
         floors["fibre_g"] = floors["fibre_g"] * (1.0 - fraction)
-    return NutritionTarget(
-        floors=floors,
-        ceilings=ceilings,
-        points=target.points,
-        hard_ceilings=target.hard_ceilings,
-        bound_sources=sources,
-    )
+    return replace(target, floors=floors, ceilings=ceilings, bound_sources=sources)
 
 
 def _relax_fat_carb(target: NutritionTarget, locked: frozenset[str]) -> NutritionTarget:
@@ -281,6 +297,17 @@ def _relax_protein(target: NutritionTarget, locked: frozenset[str]) -> Nutrition
     both sides to admit a plate the bound exists to reject. Ceilings pass through
     untouched, which is why the ceiling needs no ``hard_ceilings`` entry: nothing
     in ``RELAXATION_ORDER`` can move it.
+
+    Updated again 2026-08-07 (slice 4). The **quality-protein floor is not
+    touched by this rung, or by any other.** It is not a tolerance: CLAUDE.md's
+    ladder widens how far a point estimate may sit from a target, and "at least
+    this much of the protein came from a qualifying source" is a statement about
+    composition, not about distance from a number. Relaxing it would mean
+    answering "this plate is all lentil" with "then require less of it not to
+    be", which is not a compromise, it is abandoning the rule. The consequence
+    is stated rather than hidden: when the quality floor is what blocks a
+    profile, the ladder walks all four rungs, changes nothing relevant, and
+    declines — see ``docs/methodology.md``.
     """
 
     if "protein_g" in locked:
@@ -291,13 +318,7 @@ def _relax_protein(target: NutritionTarget, locked: frozenset[str]) -> Nutrition
     fraction = citations.value_of("tolerance.protein_relaxed_fraction")
     floors = dict(target.floors)
     floors["protein_g"] = point * (1.0 - fraction)
-    return NutritionTarget(
-        floors=floors,
-        ceilings=target.ceilings,
-        points=target.points,
-        hard_ceilings=target.hard_ceilings,
-        bound_sources=target.bound_sources,
-    )
+    return replace(target, floors=floors)
 
 
 #: CLAUDE.md's ladder, in CLAUDE.md's order. The order is the safety property:
@@ -364,6 +385,18 @@ class Violation:
             return (
                 "no recipe combination survived filtering for this profile, so "
                 "there was nothing to solve"
+            )
+        if self.macro == QUALITY_PROTEIN_KEY:
+            # Its own sentence, because "quality_protein_g is 7.9g, below its
+            # floor of 11.2g" would tell a reader nothing about what the bound
+            # means, and the identifier must not reach them at all
+            # (tests/test_web_no_identifiers.py).
+            return (
+                f"only {self.actual:.1f}g of this plate's protein comes from a "
+                f"high-quality source, against a floor of {self.bound:.1f}g "
+                "(this is a project rule, not a clinical one, and it judges "
+                "each ingredient on its own rather than crediting the way a "
+                "grain and a legume complement each other)"
             )
         direction = "below its floor of" if self.kind == "below_floor" else "above its ceiling of"
         text = (
@@ -453,9 +486,23 @@ def _bound_source(macro: str, target: NutritionTarget) -> str:
 
 
 def _violations_for(
-    point: NutritionVector, target: NutritionTarget, profile: Profile | None
+    point: NutritionVector,
+    target: NutritionTarget,
+    profile: Profile | None,
+    quality_protein_g: float = 0.0,
 ) -> tuple[Violation, ...]:
     out: list[Violation] = []
+    quality_floor = target.quality_protein_floor()
+    if quality_floor is not None and quality_protein_g < quality_floor:
+        # No `locked_by`: no ClinicalFlag maps to qualifying protein, and this
+        # bound is outside the ladder for every profile rather than locked for
+        # some. Reporting it as locked would claim a disclosed condition is the
+        # reason it did not move.
+        out.append(
+            Violation(
+                QUALITY_PROTEIN_KEY, "below_floor", quality_protein_g, quality_floor
+            )
+        )
     for macro in sorted(target.bounded_macros()):
         value = getattr(point, macro)
         floor = target.floor(macro)
@@ -495,7 +542,9 @@ def validate(
     """
 
     estimate = plan.estimate
-    violations = _violations_for(estimate.point, target, profile)
+    violations = _violations_for(
+        estimate.point, target, profile, plan.quality_protein_g
+    )
     passed = not violations
     if not passed and not (disclosure or "").strip():
         disclosure = (
@@ -602,6 +651,24 @@ def _blocking_violations(
         return (Violation("", "no_candidates", 0.0, 0.0),)
 
     out: list[Violation] = []
+    quality_floor = target.quality_protein_floor()
+    if quality_floor is not None:
+        # Same reach arithmetic as the pre-filter (quality_protein_bounds), so
+        # the decline explains the empty set with the number that produced it.
+        # One-sided, so only the max side is computed.
+        best_quality = max(
+            sum(
+                quality_protein_bounds(component, ingredients)[1]
+                for component in combo.components
+            )
+            for combo in combinations
+        )
+        if best_quality < quality_floor:
+            out.append(
+                Violation(
+                    QUALITY_PROTEIN_KEY, "below_floor", best_quality, quality_floor
+                )
+            )
     for macro in sorted(target.bounded_macros()):
         lowest, highest = _reach(combinations, macro, ingredients)
         floor = target.floor(macro)
@@ -633,7 +700,9 @@ def _blocking_violations(
         loose = solve((combo,), NutritionTarget(points=target.points), ingredients)
         if not loose:
             continue
-        violations = _violations_for(loose[0].estimate.point, target, profile)
+        violations = _violations_for(
+            loose[0].estimate.point, target, profile, loose[0].quality_protein_g
+        )
         score = loose[0].score
         if violations and (best is None or score < best[0]):
             best = (score, violations)

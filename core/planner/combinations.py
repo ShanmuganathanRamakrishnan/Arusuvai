@@ -47,6 +47,7 @@ from typing import Mapping, Sequence
 
 from core.foods.models import Component, Ingredient, MealTemplate, TemplateSlot
 from core.foods.nutrition_of import nutrition_of_recipe
+from core.foods.quality import quality_protein_of_recipe
 from core.planner.candidates import CandidatePool
 from core.nutrition.target import NutritionTarget
 
@@ -58,6 +59,7 @@ __all__ = [
     "combinations_excluding_recent",
     "feasible_combinations",
     "macro_bounds",
+    "quality_protein_bounds",
 ]
 
 
@@ -183,6 +185,26 @@ def macro_bounds(
     return low, high
 
 
+def quality_protein_bounds(
+    component: Component, ingredients: Mapping[str, Ingredient]
+) -> tuple[float, float]:
+    """This component's least and greatest possible qualifying-protein grams.
+
+    The quality analogue of :func:`macro_bounds`, kept as its own function
+    because qualifying protein is not a macro and cannot be read off a
+    ``NutritionVector`` (``core.foods.quality``). Public for the same reason
+    ``macro_bounds`` is: ``core/planner/validator.py`` needs the identical
+    arithmetic to explain a decline, and a second slightly-different reach
+    calculation could contradict the pre-filter that produced the empty set.
+    """
+
+    unit = component.recipe.serving_unit
+    return (
+        quality_protein_of_recipe(component.recipe, unit.min_count, ingredients),
+        quality_protein_of_recipe(component.recipe, unit.max_count, ingredients),
+    )
+
+
 def feasible_combinations(
     combinations: Sequence[MealCombination],
     target: NutritionTarget,
@@ -219,6 +241,17 @@ def feasible_combinations(
             if ceiling is not None and total_low > ceiling:
                 ok = False
                 break
+        quality_floor = target.quality_protein_floor()
+        if ok and quality_floor is not None:
+            # Only the max side is worth computing: a quality floor is one-sided,
+            # so a combination is discardable exactly when every component at its
+            # MAXIMUM count still cannot reach it.
+            reachable = sum(
+                quality_protein_bounds(component, ingredients)[1]
+                for component in combo.components
+            )
+            if reachable < quality_floor:
+                ok = False
         if ok:
             survivors.append(combo)
 

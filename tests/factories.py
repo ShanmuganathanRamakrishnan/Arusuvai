@@ -56,6 +56,7 @@ def make_ingredient(
     iron_mg: float = 0.0,
     calcium_mg: float = 0.0,
     b12_ug: float = 0.0,
+    diaas: float | None = None,
 ) -> Ingredient:
     return Ingredient(
         id=id,
@@ -73,6 +74,7 @@ def make_ingredient(
         calcium_mg=calcium_mg,
         b12_ug=b12_ug,
         state=RawOrCooked.AS_USED,
+        diaas=diaas,
         verified=True,
         composition_uncertainty=_TIGHT_UNCERTAINTY,
     )
@@ -135,9 +137,20 @@ _SPECS = {
     "crisp_b": ("pickle", 20, 0.3, 1.0, 2, 0.5, 400, 0.1, 3, 0),
 }
 
+#: DIAAS for the two dairy rows only, mirroring the real library, where
+#: ``curd_dahi`` is 1.09 and every grain/legume row sits between 0.45 and 0.62.
+#: Added 2026-08-07 with slice 4's quality-source rule: without it this whole
+#: fixture carries zero qualifying protein, and every test built on it would
+#: have started measuring the quality floor instead of the thing it names.
+#: 1.09 is copied from the real fixture row, not chosen to make anything pass —
+#: any value at or above the 0.75 threshold produces identical behaviour, since
+#: the rule is a cutoff and not a weighting.
+_DIAAS: dict[str, float] = {"curd_a": 1.09, "curd_b": 1.09}
+
 SOUTH_LUNCH_INGREDIENTS: dict[str, Ingredient] = {
     id: make_ingredient(
         id,
+        diaas=_DIAAS.get(id),
         energy_kcal=spec[1],
         protein_g=spec[2],
         fat_g=spec[3],

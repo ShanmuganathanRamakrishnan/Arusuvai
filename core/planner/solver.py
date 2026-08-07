@@ -36,6 +36,7 @@ from typing import Mapping, Sequence
 
 from core.foods.models import Component, NutritionVector
 from core.foods.nutrition_of import NutritionEstimate, nutrition_of_components, nutrition_of_recipe
+from core.foods.quality import quality_protein_of_components, quality_protein_of_recipe
 from core.planner.candidates import CandidatePool
 from core.planner.combinations import MealCombination
 from core.nutrition.target import NutritionTarget
@@ -64,12 +65,24 @@ class SolvedPlan:
     unit_counts: Mapping[str, int]  # keyed by Component.id
     estimate: NutritionEstimate
     score: float
+    #: Grams of protein from ingredients clearing the DIAAS threshold
+    #: (``core.foods.quality``). Carried on the plan rather than recomputed by
+    #: the validator, which has no ingredient table to recompute it from — and
+    #: a second derivation could disagree with the one the solver gated on.
+    #:
+    #: Defaults to 0.0, which is the *conservative* default: a plan that does
+    #: not say how much quality protein it has is treated as having none, so it
+    #: fails a quality floor rather than sailing past one. That is the right
+    #: direction for an unset value, per CLAUDE.md's round-4 addendum.
+    quality_protein_g: float = 0.0
 
     def counts_for(self, component: Component) -> int:
         return self.unit_counts[component.id]
 
 
-def _within_target_point(point: NutritionVector, target: NutritionTarget) -> bool:
+def _within_target_point(
+    point: NutritionVector, target: NutritionTarget, quality_protein_g: float = 0.0
+) -> bool:
     for macro in target.bounded_macros():
         value = getattr(point, macro)
         floor = target.floor(macro)
@@ -78,6 +91,12 @@ def _within_target_point(point: NutritionVector, target: NutritionTarget) -> boo
             return False
         if ceiling is not None and value > ceiling:
             return False
+    # Checked separately, and deliberately not by adding "quality_protein_g" to
+    # `floors`: it is not in MACRO_KEYS and not a NutritionVector field, so the
+    # loop above would raise on it. See NutritionTarget.quality_protein_floor_g.
+    quality_floor = target.quality_protein_floor()
+    if quality_floor is not None and quality_protein_g < quality_floor:
+        return False
     return True
 
 
@@ -133,6 +152,40 @@ def _point_vector(
     return total
 
 
+def _quality_protein(
+    items: Sequence[tuple[Component, int]], ingredients: Mapping, cache: dict
+) -> float:
+    """Qualifying-protein total for one candidate assignment.
+
+    Cached on the same ``(component.id, count)`` key as ``_point_vector`` but in
+    its own dict, because the two return different types and sharing one would
+    mean a tuple key collision waiting to be introduced. Same reason for the
+    cache at all: this runs once per candidate integer assignment, up to a few
+    thousand per combination.
+    """
+
+    total = 0.0
+    for component, count in items:
+        key = (component.id, count)
+        grams = cache.get(key)
+        if grams is None:
+            grams = quality_protein_of_recipe(component.recipe, count, ingredients)
+            cache[key] = grams
+        total += grams
+    return total
+
+
+def _new_cache() -> dict:
+    """The two per-``(component id, count)`` caches ``solve`` shares.
+
+    Two sub-dicts rather than one keyed by a discriminator: they hold different
+    types, and a single flat dict is one careless key away from a collision
+    that would silently return a float where a NutritionVector was expected.
+    """
+
+    return {"point": {}, "quality": {}}
+
+
 def solve_combination(
     combination: MealCombination,
     target: NutritionTarget,
@@ -153,25 +206,27 @@ def solve_combination(
     exists.
     """
 
-    cache = {} if _cache is None else _cache
+    cache = _new_cache() if _cache is None else _cache
     components = combination.components
     if not components:
         # An all-optional template with every optional slot at 0 selections.
         # Feasible only if the (all-zero) point estimate already meets the
-        # target, e.g. a target with no floor on anything.
+        # target, e.g. a target with no floor on anything. An empty plate
+        # carries 0 g of qualifying protein, so any quality floor rejects it.
         point = NutritionVector.zero()
-        if not _within_target_point(point, target):
+        if not _within_target_point(point, target, 0.0):
             return None
         estimate = nutrition_of_components([], ingredients)
-        return SolvedPlan(combination, {}, estimate, 0.0)
+        return SolvedPlan(combination, {}, estimate, 0.0, 0.0)
 
     domains = [c.recipe.serving_unit.counts() for c in components]
     best_items: list[tuple[Component, int]] | None = None
     best_score = 0.0
     for counts in itertools.product(*domains):
         items = list(zip(components, counts))
-        point = _point_vector(items, ingredients, cache)
-        if not _within_target_point(point, target):
+        point = _point_vector(items, ingredients, cache["point"])
+        quality = _quality_protein(items, ingredients, cache["quality"])
+        if not _within_target_point(point, target, quality):
             continue
         score = _deviation_point(point, target)
         if best_items is None or score < best_score:
@@ -187,6 +242,7 @@ def solve_combination(
         unit_counts={c.id: n for c, n in best_items},
         estimate=estimate,
         score=best_score,
+        quality_protein_g=quality_protein_of_components(best_items, ingredients),
     )
 
 
@@ -203,7 +259,7 @@ def solve(
     function's job stops at reporting the honest zero, never forcing a match.
     """
 
-    cache: dict = {}
+    cache: dict = _new_cache()
     solved = [
         plan
         for plan in (
@@ -245,7 +301,7 @@ def swap_candidates(
 
     alternatives: list[SolvedPlan] = []
     candidates = pool.for_slot(slot)
-    cache: dict = {}
+    cache: dict = _new_cache()
     for size in range(slot.min_selections, slot.max_selections + 1):
         for selection in itertools.combinations(candidates, size):
             if frozenset(c.id for c in selection) == current_ids:
@@ -257,8 +313,9 @@ def swap_candidates(
             count_space = itertools.product(*domains) if domains else ((),)
             for counts in count_space:
                 items = fixed_items + list(zip(selection, counts))
-                point = _point_vector(items, ingredients, cache)
-                if not _within_target_point(point, target):
+                point = _point_vector(items, ingredients, cache["point"])
+                quality = _quality_protein(items, ingredients, cache["quality"])
+                if not _within_target_point(point, target, quality):
                     continue
                 score = _deviation_point(point, target)
                 if best_items is None or score < best_score:
@@ -279,6 +336,9 @@ def swap_candidates(
                         unit_counts={c.id: n for c, n in best_items},
                         estimate=estimate,
                         score=best_score,
+                        quality_protein_g=quality_protein_of_components(
+                            best_items, ingredients
+                        ),
                     )
                 )
 

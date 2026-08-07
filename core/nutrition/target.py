@@ -83,6 +83,23 @@ class NutritionTarget:
     #: is already spent" are different messages and the user is owed the right
     #: one.
     bound_sources: Mapping[str, str] = field(default_factory=dict)
+    #: Minimum grams of protein from sources clearing the DIAAS threshold
+    #: (``core.foods.quality``). A separate field rather than an entry in
+    #: ``floors`` because it is not a macro: it is absent from ``MACRO_KEYS``
+    #: and from ``NutritionVector``, so every loop that does
+    #: ``getattr(point, macro)`` over ``bounded_macros()`` would raise on it.
+    #: Keeping it out of that mapping means each gate has to opt in explicitly,
+    #: which is the point — a new bound should not appear in four search loops
+    #: by accident.
+    #:
+    #: ``None`` means no quality floor applies, which is what every target built
+    #: before slice 4 gets. That is the permissive default and it is the wrong
+    #: direction on principle; it is accepted here only because the alternative
+    #: (a mandatory floor on every target) would make a bare ``NutritionTarget``
+    #: in a test assert a nutritional rule nobody asked that test to exercise.
+    #: ``derive_target`` and ``meal_target`` both set it, so every target the
+    #: product actually plans against carries one.
+    quality_protein_floor_g: float | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "floors", MappingProxyType(dict(self.floors)))
@@ -102,6 +119,27 @@ class NutritionTarget:
                 "client switches on, so a typo would silently fall through to "
                 "the default message rather than fail."
             )
+        if self.quality_protein_floor_g is not None:
+            if self.quality_protein_floor_g < 0:
+                raise ValueError(
+                    f"target: quality protein floor {self.quality_protein_floor_g} "
+                    "must not be negative"
+                )
+            protein_ceiling = self.ceilings.get("protein_g")
+            if (
+                protein_ceiling is not None
+                and self.quality_protein_floor_g > protein_ceiling
+            ):
+                # Qualifying protein is a subset of total protein, so a quality
+                # floor above the protein ceiling can never be met by any plate.
+                # Caught here rather than left to produce an empty feasible set
+                # that the ladder would then explain as an energy problem.
+                raise ValueError(
+                    f"target: quality protein floor "
+                    f"({self.quality_protein_floor_g}) exceeds the total protein "
+                    f"ceiling ({protein_ceiling}); qualifying protein is a subset "
+                    "of protein, so no plate can satisfy both"
+                )
         for macro, lo in self.floors.items():
             hi = self.ceilings.get(macro)
             if hi is not None and lo > hi:
@@ -115,6 +153,11 @@ class NutritionTarget:
                     f"({hard}), which no relaxation can widen — this target can "
                     "never be satisfied"
                 )
+
+    def quality_protein_floor(self) -> float | None:
+        """The qualifying-protein floor, if this target has one."""
+
+        return self.quality_protein_floor_g
 
     def floor(self, macro: str) -> float | None:
         return self.floors.get(macro)
@@ -158,6 +201,7 @@ def simple_target(
     carb_g: float | None = None,
     sodium_mg_max: float | None = None,
     fibre_g_min: float | None = None,
+    quality_protein_g_min: float | None = None,
     energy_tolerance: float | None = None,
     fat_carb_tolerance: float | None = None,
 ) -> NutritionTarget:
@@ -198,4 +242,14 @@ def simple_target(
     if fibre_g_min is not None:
         floors["fibre_g"] = fibre_g_min
 
-    return NutritionTarget(floors=floors, ceilings=ceilings, points=points)
+    # No point registered for qualifying protein: it is a floor with no ideal
+    # value to sit near, and giving it one would make the solver's deviation
+    # score prefer plates that hit the quality floor exactly — i.e. actively
+    # penalise a plate for containing MORE quality protein than required, which
+    # is the opposite of what the rule is for.
+    return NutritionTarget(
+        floors=floors,
+        ceilings=ceilings,
+        points=points,
+        quality_protein_floor_g=quality_protein_g_min,
+    )

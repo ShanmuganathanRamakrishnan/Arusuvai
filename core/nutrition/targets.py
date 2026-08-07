@@ -12,11 +12,24 @@ invariant"):
     protein g/kg (by goal) * weight    <- the floor, unadjusted for quality
     energy -> fat (AMDR midpoint) + carb (remainder) + fibre + sodium ceiling
 
-``diet`` is still read here, but as of 2026-08-02 (slice 2) it changes no
-target value: DIAAS is computed and reported, never applied. Protein quality
-became a constraint on which sources fill the target rather than a multiplier
-on it, and that constraint (slice 4) is not built. Between the two, ``diet``
-moves nothing — see :class:`ProteinTarget` and ``docs/methodology.md``.
+``diet`` is still read here, and as of slice 4 (2026-08-07) it **still changes
+no number this module returns**, which is worth stating precisely because slice
+4 was expected to close that gap and does not.
+
+Slice 2 removed DIAAS from target inflation. Slice 4 put protein quality back
+to work as a *source* constraint — a floor on how much of a plate's protein
+comes from ingredients clearing ``protein.quality_diaas_threshold``. That floor
+is a fraction of ``ProteinTarget.base_g``, which depends on weight and goal and
+not on diet, and the threshold is a property of a food rather than of an eater.
+So diet still moves nothing here. What diet now does is decide **which
+components can satisfy the floor**, via ``core/planner/candidates.py``'s diet
+filter — a vegan cannot reach the qualifying protein in paneer or curd. That is
+a real consequence and it is entirely outside this module.
+
+Making the threshold or the fraction diet-conditional would close the gap on
+paper by inventing a constant to satisfy a checklist, which is the thing this
+project's registry exists to stop. See ``docs/methodology.md``, "Diet still
+changes no target number".
 
 Two rules from CLAUDE.md shape the output:
 
@@ -161,6 +174,19 @@ class ProteinTarget:
     quality_adjusted_g: float
     g_per_kg: float
     diaas: float
+    #: Slice 4. Grams of the day's protein that should come from sources
+    #: clearing ``protein.quality_diaas_threshold``. Carried on the DAY target
+    #: and **gated on by nothing**: enforcing a day floor against a planner that
+    #: solves one meal at a time is a reachability question, not a subtraction,
+    #: and that is a separate slice. What is enforced is the per-meal floor
+    #: ``core/nutrition/meal_target.py`` derives from ``base_g``.
+    #:
+    #: This is the second figure on this class that is computed and displayed
+    #: without gating (``quality_adjusted_g`` is the first), and they are not
+    #: the same kind of thing: ``quality_adjusted_g`` is inert because it was
+    #: found to be the wrong answer, this one because the machinery to enforce
+    #: it is not built yet.
+    quality_source_day_g: float = 0.0
 
 
 def compute_protein(profile: Profile) -> ProteinTarget:
@@ -180,6 +206,13 @@ def compute_protein(profile: Profile) -> ProteinTarget:
         quality_adjusted_g=quality_adjusted_g,
         g_per_kg=g_per_kg,
         diaas=diaas,
+        # A fraction of base_g, NOT of quality_adjusted_g. Taking it off the
+        # inflated figure would reintroduce DIAAS as a multiplier on a target
+        # by the back door -- the exact double-application slice 2 removed and
+        # docs/design/target_model_v2.md section 3 warns about by name.
+        quality_source_day_g=(
+            citations.value_of("protein.quality_day_fraction") * base_g
+        ),
     )
 
 
@@ -288,6 +321,14 @@ _SOURCE_KEYS: tuple[str, ...] = (
     "macro.fat_energy_fraction_max",
     "nutrient.fibre_g_per_1000kcal",
     "nutrient.sodium_max_mg",
+    # Read by compute_protein for ProteinTarget.quality_source_day_g. The other
+    # two quality constants (the DIAAS threshold and the per-meal floor
+    # fraction) are NOT listed: they are read by core/foods/quality.py and
+    # core/nutrition/meal_target.py respectively, and this tuple is the
+    # provenance of THIS derivation. Listing a constant the function does not
+    # read would be a false statement about where a number came from, which is
+    # the reason the five diaas.* keys had to be examined in slice 2.
+    "protein.quality_day_fraction",
 )
 
 

@@ -33,6 +33,12 @@ by the energy fraction is self-consistent and destroys no information. Iron,
 calcium and B12 are not budgeted because they have no target at all today — they
 are new work, not a migration.
 
+**Flat**, for the per-meal quality-protein floor (slice 4): neither scaled by
+the energy fraction nor checked against a day ledger. It is a fraction of the
+day protein floor applied identically to every slot, because the rule it
+implements is "no meal is pure lentil", which is a statement about each plate
+rather than a share of anything. See :func:`_quality_protein_floor`.
+
 ## The first-meal problem, and the guard
 
 A remaining-budget check alone puts **no limit whatsoever** on the first meal of
@@ -145,6 +151,33 @@ def _apply_protein_meal_bounds(
     )
 
 
+def _quality_protein_floor(day_target: NutritionTarget) -> float | None:
+    """Slice 4's per-meal floor on protein from qualifying sources.
+
+    A flat fraction of the day protein floor, applied identically to every
+    slot — **not** scaled by the meal's energy share and **not** a ``max()``
+    guard beneath a share, unlike ``protein.meal_floor_fraction`` above. There
+    is nothing to guard beneath: the day quality floor
+    (``ProteinTarget.quality_source_day_g``) is never apportioned across slots,
+    because the design deliberately wants most of a day's quality protein to be
+    free to land in one or two meals. A per-slot share would contradict that
+    directly.
+
+    The cost of flat, stated rather than discovered: a snack gets the same
+    floor as a lunch on a quarter of the energy. No template exists for the
+    snack slot today, so the case is unexercised, not solved.
+
+    Returns ``None`` when the day target states no protein floor, for the same
+    reason ``_apply_protein_meal_bounds`` returns early: inventing a bound here
+    would be a nutritional number written outside ``citations.py``.
+    """
+
+    day_floor = day_target.floor("protein_g")
+    if day_floor is None:
+        return None
+    return citations.value_of("protein.quality_meal_floor_fraction") * day_floor
+
+
 def meal_target(
     day_target: NutritionTarget,
     meal_slot: MealSlot,
@@ -201,4 +234,5 @@ def meal_target(
         points=points,
         hard_ceilings=hard_ceilings,
         bound_sources=bound_sources,
+        quality_protein_floor_g=_quality_protein_floor(day_target),
     )

@@ -38,6 +38,12 @@ class ProteinOut(BaseModel):
     quality_adjusted_g: float
     g_per_kg: float
     diaas: float
+    #: Slice 4. Grams of the day's protein that should come from sources
+    #: clearing the DIAAS threshold. Displayed, gated on by nothing at day
+    #: level; what IS enforced is the per-meal share of it, inside
+    #: ``POST /api/plan``. Carried here so the onboarding copy can say what
+    #: protein quality does now, rather than only what it stopped doing.
+    quality_source_day_g: float
 
 
 class SourceOut(BaseModel):
