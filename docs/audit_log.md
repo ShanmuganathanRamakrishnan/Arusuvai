@@ -8,7 +8,225 @@ Newest entries at the top.
 
 ---
 
-## 2026-08-08 — D4a: findings 24 and 26 closed on the decline path
+## 2026-08-09 — D4b-i: every gate in the planner, deleted one at a time
+
+Finding 26 asked for a deletion test on every gate and guard in the
+enumeration, solver and validator paths, and said to "count them first and say
+the number." This entry is the count and the coverage audit. The tests the
+audit calls for are **not** in this commit; they are D4b-ii.
+
+Everything below comes from `docs/design/probes/d4b_mutations.py`, which holds
+one entry per mechanism and the smallest edit that deletes it, applies each edit
+to a throwaway git worktree, runs the suite, records which tests fail, and
+reverts. The real checkout is never written to.
+
+### The count: 55, not the ~25 the task estimated
+
+| module | mechanisms |
+| ---------------------------- | ---: |
+| `core/planner/candidates.py` | 9 |
+| `core/planner/combinations.py` | 8 |
+| `core/planner/solver.py` | 11 |
+| `core/planner/validator.py` | 27 |
+
+`validator.py` is where the estimate went wrong. The ladder is not one
+mechanism but roughly a dozen: `_capped`'s clip, `_widen_band`'s two skips and
+its `replace`-rather-than-reconstruct, rung 1's widen-don't-drop, each rung's
+locked-macro skip, the order of `RELAXATION_ORDER` itself, the fully-locked-rung
+skip, and the three construction-time checks in
+`ValidationResult.__post_init__`. Each is separately deletable and separately
+load-bearing. D4a's five injections are excluded from the count, per the task.
+
+### The result
+
+```
+55 mechanisms: 41 covered, 1 soft-covered, 13 SURVIVED, 0 harness errors.
+```
+
+**covered** — at least one correctly-scoped test fails when the mechanism is
+deleted. **soft-covered** — tests fail, but only end-to-end ones that do not
+know what they are protecting. **SURVIVED** — nothing in the suite fails.
+
+"Correctly scoped" is a file-level judgement, written down in the probe as
+`OWN_TESTS` rather than applied silently per row. `tests/test_planner_plan.py`
+is deliberately scoped to nothing: it is the wiring test, by its own docstring.
+
+### Two measurement errors made while producing this, both corrected
+
+**`-x` cannot classify.** The first sweep ran `pytest -x`, so each row recorded
+the first failure in pytest's *collection* order — alphabetical by filename,
+unrelated to which test is about the mechanism. It reported the solver's
+quality gate (`S3`, finding 26's own founding example) as held up by
+`test_planner_plan.py`, and two mechanisms as held up by `test_api_auth.py`,
+producing an apparent "a third of the suite is soft coverage" that was pure
+alphabetical artifact. Running `tests/test_planner_quality.py` alone against
+the same mutation gives:
+
+```
+FAILED tests/test_planner_quality.py::TestTheSolverGateItself::test_the_gate_changes_the_chosen_unit_counts
+FAILED tests/test_planner_quality.py::TestTheSolverGateItself::test_the_gate_can_empty_a_solve_the_pre_filter_admitted
+2 failed, 34 passed in 1.64s
+```
+
+Two tests named after the gate. **Finding 26's founding example is genuinely
+covered** — `TestTheSolverGateItself` was added after the finding was raised.
+The probe now runs the whole suite every time and collects every failure.
+
+**Plate-pinning tests inflate "covered", and were checked rather than assumed.**
+Six rows were attributed to `TestAgainstTheRealLibrary` classes, which pin an
+exact plate and so break on almost any planner change despite living in scoped
+files. `UNSCOPED_CLASSES` now excludes them, and the sweep was re-run. **The
+totals did not move**: every one of the six had a second, properly-scoped test
+behind the pin (`S1`/`S2`/`S8`/`S9` → `TestTheSolverGateItself`, `S5` →
+`TestThePerturbationTest`, `V26` →
+`TestLadderFires::test_the_sodium_rung_fires_first_and_silently`). 41 is not an
+upper bound.
+
+### Finding 32 — the region hard filter is unenforced, and its test says so — **OPEN**
+
+Deleting the region check in `_passes_hard_filters` entirely — letting a North
+Indian recipe into a South Indian template — breaks nothing in the suite. A
+correctly-named test exists and asserts too little:
+
+```python
+def test_region_mismatch_excludes_a_recipe(self, library, ingredients):
+    # rajma_chawal is north_indian; south_lunch's region is south_indian
+    # and rajma_chawal is not pan_indian, so it must not appear even
+    # though combo_rice_legume is not a south_lunch category anyway.
+    ...
+    assert pool.by_category == {}
+```
+
+The comment concedes the redundancy and the assertion is satisfied by the
+*category* filter alone. Nor can the fixtures express the case: `make_recipe`
+defaults `region=Region.SOUTH_INDIAN` and nothing overrides it.
+
+Underneath that: **the real library's categories are region-partitioned**, so
+the region filter is redundant with the category filter for every recipe that
+exists today. North carries `sabzi`/`dal`/`roti`/`raita`/`legume_curry`/
+`combo_rice_legume`; south carries `tiffin`/`sambar`/`kuzhambu`/`chutney`/
+`rice`/`mixed_rice`/`poriyal`/`kootu`/`curd`. Nothing overlaps. The gate is real
+but dormant, and starts binding the first time a category spans regions.
+
+This qualifies a claim in `CLAUDE.md`'s build-status table: D3 argues the north
+plates "could not fail to be" unchanged because "`candidates.py` rejects a
+recipe whose region is neither the template's nor `pan_indian`." The conclusion
+holds, but for today's data it holds via the category filter — the region filter
+does no work. Noted rather than edited, since the conclusion stands.
+
+**Disposition:** OPEN. The fix is a synthetic fixture carrying a south category
+with `region=Region.NORTH_INDIAN`, following the precedent of
+`test_allergen_overlap_excludes_a_recipe`, which builds synthetic rather than
+borrowing from the library. D4b-ii.
+
+### Finding 33 — two survivors are dead code, not missing coverage — **OPEN**
+
+Neither can be covered by any test, because deleting them is behaviour-preserving
+for every possible input.
+
+- **`C8`**, `for_slot`'s `seen` deduplication. `Component.id` is
+  `f"{recipe.id}@{category}"` and `build_candidate_pool` files each component
+  under `by_category[component.category]`, so the bucket a component sits in is
+  always the category embedded in its own id. Iterating a slot's accepted
+  categories cannot yield the same id twice.
+- **`B2`**, `enumerate_combinations`' early `return ()` when a required slot has
+  no legal selection. `itertools.product` over a sequence containing an empty
+  slot is empty anyway — verified, not reasoned:
+  `list(itertools.product(('a','b'), (), ('c',))) == []`. The early return
+  changes only a log line.
+
+**Disposition:** OPEN, deliberately not fixed here. Deleting code in
+`core/planner` is outside this commit's scope (harness plus audit), and the
+right disposition for each — remove, or keep with a comment saying it is
+defensive — is a judgement worth making on its own.
+
+### Finding 34 — eight mechanisms have no test that fails on their deletion — **OPEN**
+
+| id | module | mechanism |
+| --- | --- | --- |
+| `S6` | `solver.py` | an empty plate is still gated (0 g of qualifying protein) |
+| `S7` | `solver.py` | unset quality protein defaults conservatively to 0.0 |
+| `V8` | `validator.py` | the `bound_source` follows the number when the guard clips it |
+| `V10` | `validator.py` | rung 4 skips protein entirely when a flag locks it |
+| `V11` | `validator.py` | rung 4 lowers the floor only, never raises the ceiling |
+| `V16` | `validator.py` | a failed result must carry a disclosure |
+| `V20` | `validator.py` | `bound_source` is read off the target, never inferred |
+| `V22` | `validator.py` | the protein disclosure keeps one decimal |
+
+Three survivors are not in this table and are not gaps. `B5` is a bad mutation
+of the probe's own: it mutates the *low* side of `quality_protein_bounds`, and
+every caller reads `[1]` — grepped, nothing reads `[0]`. `B8` is expected and
+already documented: `CLAUDE.md` states the quality pre-filter is "a pure
+optimisation: removing it changes no verdict," and the sweep confirms the doc.
+`C3` and the two dead-code rows are findings 32 and 33.
+
+**Disposition:** OPEN. D4b-ii writes these eight plus finding 32's fixture fix.
+
+### The V10 misdiagnosis — a survived mutation is not a hole until reachability is checked
+
+`V10` was first reported as a live clinical-safety hole: deleting
+`if "protein_g" in locked: return target` from `_relax_protein` would let a
+chronic-kidney-disease profile have its protein floor lowered, and nothing
+failed. That reading was wrong, and it was wrong in the direction that causes
+work to be misprioritised — it was nearly given its own commit ahead of
+lower-stakes tests on that basis.
+
+Rung 4's `macros` is exactly `("protein_g",)`, and CKD is the only flag locking
+protein, so `RelaxationStep.is_fully_locked` is true whenever the guard would
+matter and the ladder skips the rung before `_relax_protein` is ever called.
+Checked by instrumenting rather than by argument — an unconditional
+`raise AssertionError` placed inside the guard, whole suite run:
+
+```
+395 passed, 40 skipped, 1 deselected, 1 warning in 88.77s
+probe never fired: 0
+```
+
+The branch is never reached. The clinical property is enforced, by `V13`
+(`test_a_fully_locked_rung_is_skipped_not_recorded_as_applied`, which pins the
+CKD floor at 32.0 g). `V10` is defence-in-depth against a future rung that
+groups protein with another macro, where `is_fully_locked` would be false. It
+still earns a test — called directly, and the test must say in its own body why
+it bypasses the ladder, or it will read as an ordinary clinical-locking test and
+the next reader will believe the ladder path is covered by it.
+
+**No survivor is a live clinical-safety hole.** Clinical locking is covered on
+every rung: `V3` (rung 2), `V13` (rung 4 skip), `V27` (the decline sentence).
+
+The general lesson, now in `CLAUDE.md`'s standing list: the harness makes
+survivors cheap to produce, which makes this misreading the one most likely to
+recur.
+
+### Reproduce
+
+```bash
+PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d4b_mutations.py
+PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d4b_mutations.py solver
+```
+
+The second form limits the sweep to one module while iterating. A full run is
+55 suite runs and takes roughly 40 minutes; it prints each row as it completes.
+
+One note on the run that produced the figures above: it printed its complete
+55-row table and summary and removed its worktree, but the shell reported exit
+code -1. The artifact is complete and the numbers are the numbers; the exit code
+is unexplained and is recorded here rather than guessed at.
+
+**Disposition:** finding 26 measured, still OPEN — the count and the audit it
+asked for exist; the tests do not yet. Findings 32, 33 and 34 raised, all OPEN,
+all D4b-ii. Finding 24 CLOSED (2026-08-08) is untouched. Findings 22, 28, 29,
+31, 2, 15, 20 untouched.
+
+---
+
+## 2026-08-08 — D4a: finding 24 closed on the decline path
+
+> Title corrected 2026-08-09. It read "findings 24 and 26 closed" while this
+> entry's own Disposition line said finding 26's sweep "is D4b and remains
+> OPEN" — a heading claiming a closure the body denied, which is the class of
+> unverified state claim `CLAUDE.md`'s process rule exists to prevent. Finding
+> 26 is measured by the 2026-08-09 entry above and is still open until its
+> tests land.
 
 Scope note first, because it changes what the queue says. **D4 as written is
 two tasks and only the first is done here.** Its second half — finding 26's

@@ -158,7 +158,62 @@ is superseded.
 
 ---
 
-## D4b — make the deletion-testing pattern standing — **NEXT**
+## D4b-i — count the gates and audit their coverage — **DONE 2026-08-09**
+
+**55 mechanisms**, not the ~25 estimated: `candidates.py` 9,
+`combinations.py` 8, `solver.py` 11, `validator.py` 27. The ladder alone is a
+dozen. `docs/design/probes/d4b_mutations.py` holds one row per mechanism and
+the edit that deletes it, applies each in a throwaway worktree, and runs the
+suite. Result: **41 covered, 1 soft-covered, 13 survived, 0 harness errors.**
+
+The suite is in better shape than feared. Two measurement errors were made and
+corrected before they reached a conclusion: `-x` classifies by pytest's
+alphabetical collection order rather than by relevance (it reported finding
+26's own founding example, the solver quality gate, as held up by a wiring
+test — `TestTheSolverGateItself` genuinely covers it), and plate-pinning
+`TestAgainstTheRealLibrary` classes were excluded and the sweep re-run, which
+moved no total: all six such rows had a properly-scoped test behind the pin.
+
+Three findings raised, all OPEN and all D4b-ii: **32** (the region hard filter
+is unenforced; its test asserts too little and says so in its own comment; the
+real library's categories are region-partitioned so the gate is dormant),
+**33** (`C8` and `B2` are dead code — behaviour-preserving deletions no test
+can catch), **34** (eight mechanisms with no deletion coverage).
+
+`V10` was misdiagnosed as a live clinical-safety hole and corrected by
+instrumentation before any work was ordered around it: the guard is unreachable
+because rung 4's only macro is protein, so the ladder skips the rung first.
+No survivor is a live clinical-safety hole. `CLAUDE.md` gains the practice
+("Deletion testing") and the misreading (standing list).
+
+---
+
+## D4b-ii — write the missing tests — **NEXT**
+
+**Goal:** close findings 32 and 34, and decide 33.
+
+Nine items, one batch: the eight of finding 34 (`S6` `S7` `V8` `V10` `V11`
+`V16` `V20` `V22`) plus finding 32's fixture fix. Each must be shown red
+against the deleted mechanism before being believed — that is what this whole
+task is about.
+
+Two the reviewer should look at closely:
+
+- **`V10`** must call `_relax_protein` directly and **say so in its own body**,
+  naming `is_fully_locked` as why the ladder path cannot reach it. Otherwise it
+  reads as an ordinary clinical-locking test and the next reader believes the
+  ladder path is covered by it — finding 32's failure mode running in reverse,
+  a test overstating its reach rather than understating it.
+- **`V11`** must assert the protein ceiling is **unchanged**, not merely that
+  the plate fits under it. `_relax_protein`'s docstring argues the ceiling
+  passes through untouched; the assertion should mirror that claim exactly.
+
+Finding 33 is a judgement, not a test: remove the dead code, or keep it with a
+comment saying it is defensive. Decide it explicitly; do not leave it.
+
+---
+
+## D4b — original text, for the record
 
 **Goal:** stop shipping tests that cannot fail on the defect they name.
 

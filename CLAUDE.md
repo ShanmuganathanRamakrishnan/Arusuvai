@@ -319,6 +319,30 @@ module boundaries. Full annotations on public functions.
 **Errors.** Raise on impossible input. Warn on implausible-but-valid input via
 a `warnings: list[str]` field — never silently clamp without recording it.
 
+**Deletion testing.** A test that cannot fail on the defect it names is not
+evidence. Every gate and guard — any conditional, ordering, clip or
+construction-time check whose removal changes what the pipeline outputs — must
+have at least one test that goes red when it is deleted. Adding one: delete the
+mechanism, run the suite, watch it fail, restore. If nothing fails, the test you
+were about to trust does not exist yet, whatever it is named.
+
+`docs/design/probes/d4b_mutations.py` does this mechanically for the four
+planner modules — one entry per mechanism and the smallest edit that removes it,
+applied in a throwaway worktree. Extend it when adding a gate; a new mechanism
+without a row is a mechanism nobody will check again.
+
+Three things it taught, which apply to any such check:
+
+- **Run the whole suite, never `-x`.** The first failure under `-x` is the
+  first in pytest's collection order — alphabetical by filename — which has
+  nothing to do with which test is about the mechanism. It will name a wiring or
+  API test and hide the real one.
+- **A test in the right file is not automatically the right test.** A test that
+  pins an exact plate from the real library breaks on almost any change, so it
+  reports red without protecting anything specific. Useful; not coverage.
+- **Check reachability before calling a survivor a hole.** See the standing list
+  below.
+
 **Comments.** Explain _why_ a choice was made over its alternatives, not what
 the line below already says.
 
@@ -492,6 +516,15 @@ miscalibrated prediction once already.
   unmeasurable an hour later. Same family as the two entries below: a claim
   about the repo's own state, satisfying the rule's letter, unverifiable in
   practice.
+- **Calling a survived mutation a hole before checking it is reachable.** A
+  guard whose deletion breaks nothing may be unreachable rather than untested.
+  `_relax_protein`'s locked-protein guard was reported as a live clinical-safety
+  hole on 2026-08-09 and nearly given its own commit ahead of lower-stakes work;
+  rung 4's only macro is protein, so the ladder skips the whole rung first and
+  the guard is never called. Settled by putting an unconditional `raise` in the
+  branch and running the suite — 395 passed, so it never executes — not by
+  reading the code and reasoning. The deletion harness makes survivors cheap to
+  produce, which makes this the misreading most likely to recur.
 - Writing a test that cannot fail on the defect it names. Inject the defect and
   watch it go red before believing it. Finding 18's first three tests all
   passed against the defect: one exercised a slot with candidates in only one
