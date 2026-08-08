@@ -273,6 +273,39 @@ and is exactly the failure mode this project's central thesis argues against.
 If you claim a test count, the pytest output goes in the same message or
 commit, not a reference to a prior run.
 
+## What belongs in the repo, and what stays local
+
+This is a public repository. Before adding a file to a commit, ask what a
+reader who is not the author gains from it. Two categories, and the line
+between them is *durability*, not sensitivity:
+
+**Tracked — the durable record.** Product code (`core/`, `api/`, `web/`,
+`data/`), the test suite, `demo.py`, and `docs/` in full: `audit_log.md`,
+`build_log.md`, `methodology.md`, `design/` and `design/probes/`. These are
+what the process rule above is about — a finding, a figure or a transcript
+that must outlive the session that produced it. `CLAUDE.md`, `README.md` and
+`DESIGN_SYSTEM.md` are tracked because they are the contract, not a status
+report.
+
+**Untracked — working scaffolding.** `TASKS.md` and `TASKS_2.MD` (the private
+queue a session is driven from), `.claude/settings.local.json` and
+`.claude/output-styles/` (per-machine tool state). Removed from tracking
+2026-08-09; both task files remain on disk and are in `.gitignore`. A task
+list is the one artifact whose entire purpose is to be stale tomorrow —
+"D4b-ii — NEXT" is true for an afternoon, and a reader who finds it a month
+later learns something false about the repo. Everything a task file records
+that *should* survive already lands in `docs/`, by the process rule above.
+
+Consequence, accepted rather than fixed: `docs/audit_log.md` and two files
+under `docs/design/` cite `TASKS.md`/`TASKS_2.MD` by name for provenance
+("Task T3 in `TASKS.md`"). Those citations now point outside the repo. They
+are left as-is — they date a decision rather than direct a reader, and
+rewriting history to hide a working file would be worse than a dangling
+reference. Do not add new ones: cite the `docs/` artifact instead.
+
+Applies to future commits, not just this one. When staging, look at the file
+list before committing, not after pushing.
+
 ## Architecture
 
 ```

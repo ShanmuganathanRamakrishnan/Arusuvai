@@ -9,3 +9,15 @@ venv/
 # Real, mutable per-user account/profile state (api/db.py) -- not a checked-in
 # fixture, unlike everything else under data/.
 data/app.db
+
+# Working scaffolding -- the private queue I drive a session from, not part of
+# the product. Untracked 2026-08-09. `docs/` is the durable record: audit_log,
+# build_log, methodology and design/ carry every finding and figure a reader
+# needs, and a task list is the one artifact whose whole purpose is to be
+# stale tomorrow. Kept on disk, never pushed.
+TASKS.md
+TASKS_2.MD
+
+# Session-local Claude Code state (output styles, permission grants).
+.claude/output-styles/
+.claude/settings.local.json
