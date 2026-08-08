@@ -8,6 +8,246 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-08 — D5: finding 22 re-scoped, and D5's own premise was wrong
+
+Every figure below is from
+`PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d5_margins.py`,
+reference profile (70 kg / 175 cm / 28 / male / moderate / maintain /
+vegetarian), today's `data/` library, `dev_mode=True`. Nothing was edited:
+the guard sweep wraps `citations.value_of` in memory and restores it.
+
+### D5's premise, restated and then contradicted
+
+TASKS_2.MD's D5 says: "whether the app can plan a South Indian lunch currently
+turns on half a percent of a number nobody derived." That reads the 8.9 mg
+figure as the verdict's sensitivity to the guard. It is not. It is the chosen
+**plate's** slack against the guard. Those are different quantities, and the
+second one was never measured until now.
+
+Measured — the guard moved, everything else held, pass/decline bisected over 40
+iterations:
+
+```
+  Bisected pass/decline boundary per template (40 iterations):
+    south_indian/breakfast: flips at 0.504835 =  1009.7 mg; registered 0.70 = 1400.0 mg is 390.3 mg (27.9%) above it
+    south_indian/lunch: flips at 0.545743 =  1091.5 mg; registered 0.70 = 1400.0 mg is 308.5 mg (22.0%) above it
+    north_indian/lunch: flips at 0.466169 =   932.3 mg; registered 0.70 = 1400.0 mg is 467.7 mg (33.4%) above it
+    north_indian/dinner: flips at 0.436229 =   872.5 mg; registered 0.70 = 1400.0 mg is 527.5 mg (37.7%) above it
+```
+
+south_lunch does not stop passing at 1391 mg, or at 1300, or at 1200. It stops
+passing at **1091.5 mg** — the guard would have to fall 22% before the verdict
+moves. The verdict's margin on the guard is 308.5 mg, not 8.9 mg. **The goal as
+written was wrong**, in the specific way TASKS_2.MD's "How to work this file"
+anticipates, and this is the third time.
+
+What actually happens as the guard falls is that the plate changes and the
+ladder walks further, verdict intact:
+
+```
+  0.55 -> guard  1100.0 mg | south_break=pass(2r,1072mg)  south_lunch=pass(4r,1091mg)  north_lunch=pass(0r,992mg)  north_dinne=pass(2r,872mg)
+  0.60 -> guard  1200.0 mg | south_break=pass(0r,1190mg)  south_lunch=pass(4r,1091mg)  north_lunch=pass(0r,992mg)  north_dinne=pass(0r,1148mg)
+  0.65 -> guard  1300.0 mg | south_break=pass(0r,1190mg)  south_lunch=pass(4r,1246mg)  north_lunch=pass(0r,992mg)  north_dinne=pass(0r,1148mg)
+  0.70 -> guard  1400.0 mg | south_break=pass(0r,1190mg)  south_lunch=pass(3r,1391mg)  north_lunch=pass(0r,992mg)  north_dinne=pass(0r,1371mg)
+  0.80 -> guard  1600.0 mg | south_break=pass(0r,1190mg)  south_lunch=pass(0r,1546mg)  north_lunch=pass(0r,1431mg)  north_dinne=pass(0r,1371mg)
+```
+
+The 4-rung south_lunch at 0.55–0.65 is worth noticing on its own: rung 4 is
+protein tolerance, which carries mandatory disclosure. A tighter guard does not
+turn south_lunch off, it turns it into a plate that has to apologise for its
+protein.
+
+### Finding 22, re-stated in its current form — still **OPEN**
+
+The 2026-08-02 wording ("a multi-dish South Indian plate cannot get under the
+sodium guard"; two of three south_lunch combinations unreachable at their
+minimum counts) is **obsolete**: D3's `steamed_rice` and `soya_kuzhambu` changed
+the enumerated set (3 -> 12 combinations), and all four templates now pass. The
+finding survives in a narrower form:
+
+> **Sodium is the only bound in the system whose ceiling is a project decision
+> with no derivation, and it is simultaneously the bound closest to two of the
+> four passing plates.** south_lunch sits 8.9 mg (0.6%) under it; north_dinner
+> sits 28.7 mg (2.0%) under it. Both are hard-ceiling contacts — no relaxation
+> rung may widen past 1400 mg, so a plate 9 mg over it is a decline with no
+> recourse, however loose every other bound is.
+
+Note the correction embedded there: the D5 task asked whether the other three
+templates have comparable margins. **north_dinner does** — 28.7 mg, 2.0%, and
+tighter still by the measure that matters (see below). Nobody had noticed it
+either. south_breakfast (210.2 mg, 15.0%) and north_lunch (407.8 mg, 29.1%) do
+not.
+
+### Slack is the wrong unit; the smallest legal move is the right one
+
+Portion space is integer unit counts, so a bound is not "nearly breached"
+because slack is small in absolute terms — it is tight when slack is smaller
+than the smallest legal one-unit move on that plate. By that measure the
+sodium picture inverts:
+
+| template | Na slack | smallest legal move raising Na | verdict |
+|---|---|---|---|
+| south_breakfast | 210.2 mg | 40.9 (chutney 2->3) | loose |
+| south_lunch | **8.9 mg** | **2.0** (steamed_rice 1->2) | **loose** |
+| north_lunch | 407.8 mg | 59.9 (phulka 5->6) | loose |
+| north_dinner | **28.7 mg** | **59.9** (phulka 3->4) | **TIGHT** |
+
+south_lunch's famous 8.9 mg is *not* a cliff edge in unit space: unsalted rice
+is available in 2.0 mg increments, so the plate has room to move without
+touching the guard. north_dinner's 28.7 mg **is** a cliff: every legal increment
+on that plate costs at least 59.9 mg of sodium.
+
+Both south plates and both north plates were also checked against every legal
+single-unit neighbour, which is the honest version of the per-macro `step`
+number because one unit move changes every macro at once:
+
+```
+south_lunch  -> 0 of the plate's single-unit neighbours are feasible
+north_lunch  -> 0 of the plate's single-unit neighbours are feasible
+north_dinner -> 0 of the plate's single-unit neighbours are feasible
+south_breakfast -> 1 (coconut_chutney 2->3)
+```
+
+Three of the four passing plates are **point solutions**: not one adjacent
+portion assignment is admissible. That is a property of a narrow library and
+tight energy bands, not of sodium — the neighbours die on `energy_kcal` far
+more often than on `sodium_mg`.
+
+### What could change, and what each costs — **not picked, deliberately**
+
+D5 says lay out the options and do not choose. Five, with the cost of each:
+
+1. **Move the guard's value.** Cheapest to do, and now measured to buy nothing:
+   the verdicts are stable from 0.55 to 1.00. Its real effect is on plate
+   *choice* and rung count, not on pass/fail. Cost: re-registering a
+   `PROJECT_DECISION` for an effect the sweep says is not the one anyone
+   thought it had.
+2. **Remove the guard.** The 2026-08-02 entry records why it exists: a bare
+   remaining-budget check puts no limit at all on the first meal of a day, and
+   a 1649.3 mg lunch passed one. Cost: that case returns.
+3. **Let rule (ii) relax.** `core/nutrition/meal_target.py` states the reason it
+   does not: rung 1 widens sodium by 0.50, so a widenable 0.70 guard permits a
+   plate carrying 105% of a day's sodium. Cost: exactly that, and it is the
+   outcome the guard was introduced to prevent.
+4. **Re-derive the salt lines.** The sensitivity is measurable and is the axis
+   D5's goal is actually about, since recipe work moves the plate and not the
+   guard. Measured, every `sodium_mg` in the library scaled uniformly:
+   ```
+    south_indian/breakfast: still passes at x1.387 (+38.7% on every salt figure in the library)
+    south_indian/lunch: still passes at x1.283 (+28.3% on every salt figure in the library)
+    north_indian/lunch: still passes at x1.502 (+50.2% on every salt figure in the library)
+    north_indian/dinner: still passes at x1.605 (+60.5% on every salt figure in the library)
+   ```
+   Every salt estimate in the library could be 28% low and all four templates
+   would still pass. Cost: this is a *uniform* scaling and therefore an
+   optimistic bound — a single dish being 30% under-salted is not covered by it.
+5. **Nothing.** Defensible on this evidence, and it is what D5 forbids acting
+   against anyway.
+
+### What a reader should conclude about the four passing templates
+
+They are a **result**, on the sodium axis, and something closer to a
+**coincidence** on the energy axis.
+
+Sodium: 22–38% of guard margin and 28–60% of salt-estimate margin behind every
+verdict. Recipe work would have to be badly wrong, not slightly wrong, to flip
+one. D5's fear does not survive measurement.
+
+Energy: three of four plates have no feasible neighbour at all, and the
+tightest bounds in the whole table are energy bounds — north_lunch's energy
+ceiling has 13.6 kcal of slack against a 98.9 kcal smallest move (1.4%), and
+south_lunch's *unrelaxed* energy floor is **missed by 6.7 kcal**, which is why
+its third rung fires. One recipe's energy changing by a few percent moves those.
+The honest reading: sodium is the bound everyone has been watching and is not
+the fragile one; energy is fragile, on a band nobody has been watching, and no
+task in the queue is about it.
+
+### Finding 28 — the sodium guard is the only thing in the system that prefers less salt — **OPEN**
+
+Raised by the sweep, not fixed here.
+
+Nothing in the solver's objective penalises sodium: `NutritionTarget.points`
+has no sodium entry, so any plate under the ceiling scores identically on that
+macro. The consequence is visible as the guard rises:
+
+```
+  0.70 -> north_lunch=pass(0r, 992mg)   south_lunch=pass(3r,1391mg)
+  0.80 -> north_lunch=pass(0r,1431mg)   south_lunch=pass(0r,1546mg)
+  0.90 -> north_lunch=pass(0r,1733mg)   south_lunch=pass(0r,1546mg)
+```
+
+north_lunch's sodium **rises 741 mg (+75%) when the ceiling is loosened**, on
+the same library and the same profile. Relaxing a limit made the plan worse in
+the dimension the limit exists to protect. The guard is not acting as a
+plausibility backstop here; it is acting as the sodium objective, because there
+isn't one. A backstop and an objective are different mechanisms, and a system
+where the only pressure toward less salt is a never-relaxing ceiling will always
+serve the saltiest plate it is allowed to.
+
+This is why option 1 above ("move the guard's value") is not the free
+no-op the verdict sweep alone makes it look like: the verdicts do not move, but
+the plates do, and they move in the wrong direction.
+
+**Disposition.** OPEN. Not fixed here — D5 forbids tuning, and adding a sodium
+term to the solver objective is a design decision about what the product
+optimises for, not a defect fix.
+
+### Finding 29 — relaxation rung 1 lets a *day* exceed its own sodium budget — **OPEN**
+
+Raised while reconsidering the queue (slice 6 is about sequencing south meals
+inside one day's sodium budget), not by the probe. Logged and left, per
+TASKS_2.MD.
+
+`core/nutrition/meal_target.py` sets two sodium bounds per plate:
+`ceilings["sodium_mg"] = min(remaining, guard)` and
+`hard_ceilings["sodium_mg"] = guard` — **the hard ceiling is always the
+per-plate guard, never `remaining`.** So when the day's remaining budget is the
+binding term, rung 1 of the ladder (`sodium_max_fibre_min`, ×1.5) is free to
+widen it, and nothing catches the result at the day level.
+
+Measured, south breakfast then south lunch for the reference profile:
+
+```
+$ python demo.py plan --region south_indian --meal-slot lunch --sodium-spent-mg 1189.8
+
+      sodium_mg    floor         -   ceiling     810.2   [what the day has left]
+  TARGET AS SOLVED (after 4 relaxation rung(s): ... ):
+      sodium_mg    floor         -   ceiling    1215.3   [what the day has left]
+  point        : 944.6 kcal, 35.0g protein, 24.3g fat, 144.8g carb, 1091.5mg sodium
+```
+
+The 1189.8 mg is the measured south_breakfast plate from the probe above.
+2000 − 1189.8 = 810.2 remaining; 810.2 × 1.5 = 1215.3; the lunch plate takes
+1091.5. Two meals, **2281.3 mg against a 2000 mg day budget — 14.1% over, with
+one meal still to plan**, and no violation reported.
+
+The 2026-08-02 entry that introduced the guard argued precisely this shape and
+stopped one step short: it prevented *one plate* carrying 105% of a day, and
+did not prevent *two plates* carrying 114% of one. `hard_ceilings` was made to
+hold the guard still while tolerance moves around it; the day's remaining
+budget was left with no such protection, and it is the bound that actually
+encodes "a day".
+
+Not a defect in rung 1 as such — the ladder is supposed to widen ceilings. The
+question it raises is whether `day_remaining` is a tolerance at all, or a second
+bound of the `hard_ceiling` kind that the ladder should skip. That is slice 6's
+decision, not a fix to make here.
+
+**Disposition.** OPEN. Blocks nothing today (nothing sequences a day yet); it
+is the first thing slice 6 will hit.
+
+### Reproduce
+
+```bash
+PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d5_margins.py
+python demo.py plan --region south_indian --meal-slot lunch --sodium-spent-mg 1189.8
+```
+
+Full transcript is the probe's own output; the excerpts above are verbatim from
+it. `docs/design/probes/README.md` lists it.
+
+---
+
 ## 2026-08-07 — D3: making the south templates reachable
 
 Three recipes (`idli`, `steamed_rice`, `soya_kuzhambu`) added so both South
