@@ -484,6 +484,14 @@ miscalibrated prediction once already.
   and missed its purpose. A determinism or reproducibility claim has to be
   checked *across the axis it claims independence from* — a different process,
   a different machine — not by repeating the same run.
+- **Writing a before/after probe that can only run on the "after" tree.** A
+  probe measuring what a change improved must run on both sides of that change,
+  so it must read only fields present in both — check that when writing it, not
+  when someone asks. `d4_declines.py` read a field D4a introduced, so the
+  before column in the 2026-08-08 audit entry was real when taken and
+  unmeasurable an hour later. Same family as the two entries below: a claim
+  about the repo's own state, satisfying the rule's letter, unverifiable in
+  practice.
 - Writing a test that cannot fail on the defect it names. Inject the defect and
   watch it go red before believing it. Finding 18's first three tests all
   passed against the defect: one exercised a slot with candidates in only one

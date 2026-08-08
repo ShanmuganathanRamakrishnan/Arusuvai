@@ -146,6 +146,16 @@ user-facing decline prose, and a test *asserted* the leak) FIXED here, and
 and left for D9, because the remedy is a macro-to-copy map and D4 says not to
 design the screen.
 
+**Amended 2026-08-08, same day.** The before column above was not re-measurable
+as first committed — the probe read a field D4a introduced, so it ran on the
+after tree only. Fixed (one `getattr`, reason at the call site); both columns
+re-taken from one probe implementation across a worktree of `b72060e` and
+unchanged. The commands for each column are in `docs/audit_log.md`, "Reproduce".
+Finding 24 was **not** validly closable before this: the entry claimed an
+improvement nobody could measure a second time. Commits `6b89ed7` (D4a) and the
+amendment are pushed to `origin/main`; the earlier report that D4a was unpushed
+is superseded.
+
 ---
 
 ## D4b — make the deletion-testing pattern standing — **NEXT**

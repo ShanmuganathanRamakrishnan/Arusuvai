@@ -22,7 +22,7 @@ PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/t3_shares.py
 | `t3_capped.py` | §4 — per-line bands under the mass-check cap, per-recipe and per-plate bands, and §8's unverified-energy figure |
 | `t3_future.py` | §6 — the confidence label today and under a simulation of Task 6 (every ingredient verified) |
 | `t3b_propagation.py` | all of `tolerance_versus_band.md` — that the composition band does not accumulate with component count, which macro each propagated band exceeds, and the point-versus-midpoint identity behind finding 21 |
-| `d4_declines.py` | the 2026-08-08 D4a entry in `docs/audit_log.md` — a 144-profile x 4-template sweep of every decline, comparing what it says against which bounds are structurally unreachable and which the nearest-to-feasible plate misses, both computed independently of the code under audit |
+| `d4_declines.py` | the 2026-08-08 D4a entry in `docs/audit_log.md` — a 144-profile x 4-template sweep of every decline, comparing what it says against which bounds are structurally unreachable and which the nearest-to-feasible plate misses, both computed independently of the code under audit. Runs on the pre- and post-D4a trees both, which is what makes its before/after delta re-measurable; see that entry's "Reproduce" for the worktree command |
 | `d5_margins.py` | the 2026-08-08 D5 entry in `docs/audit_log.md` — slack and smallest-legal-move on every bound of all four passing plates, their single-unit neighbours, and two sensitivity bisections (the sodium guard's value, and a uniform scaling of every salt figure in the library) |
 
 These pin figures at one moment. They are not tests and nothing runs them in

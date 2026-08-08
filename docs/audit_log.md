@@ -47,6 +47,20 @@ The verdicts themselves did not move: 156 declines before and after, and
 reference profile still gets a plate on all four templates. This changed what a
 decline says, not who is declined.
 
+**Both columns above are re-measurable; the commands are in "Reproduce" below.**
+Corrected 2026-08-08, after the entry was first written: as originally committed
+the before column was **not** reproducible. `d4_declines.py` read
+`Violation.blocking_slots` directly, and that field does not exist before D4a,
+so the probe raised on the pre-D4a tree and only the after column could be taken
+again. The numbers were real when taken and both reproduce unchanged now that
+the probe runs on both trees — but "real when taken" is precisely the standard
+`CLAUDE.md`'s process rule rejects, and a delta nobody can re-measure is not
+evidence, whatever its provenance. The fix is one `getattr` with the reason
+written at the call site; every other field the probe touches was checked to be
+present in both trees rather than assumed. A probe that measures a change has to
+run on both sides of it, and that is a property to check when the probe is
+written, not after someone asks.
+
 ### Finding 24 — CLOSED
 
 Two defects, opposite directions, one cause: `_blocking_violations` stopped at
@@ -167,11 +181,40 @@ gains an effect later — the alternative was a comment asserting it.
 
 ### Reproduce
 
+The **after** column of the table above, and every figure in this entry that is
+not marked "before":
+
 ```bash
 PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d4_declines.py
 python demo.py plan --region north_indian --meal-slot lunch --weight-kg 110 --goal lose_fat
 python demo.py plan --region south_indian --meal-slot lunch --diet vegan
 python -m pytest tests/test_planner_decline.py -q
+```
+
+The **before** column. The probe is copied into a worktree of the pre-D4a
+commit rather than run from the old tree's own copy, so both columns come from
+one probe implementation and a difference between them is a difference in
+`core/`, not in how the two probes counted:
+
+```bash
+git worktree add /tmp/pre_d4a b72060e
+cp docs/design/probes/d4_declines.py /tmp/pre_d4a/docs/design/probes/
+cd /tmp/pre_d4a && PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d4_declines.py
+git worktree remove /tmp/pre_d4a --force
+```
+
+`b72060e` is D5, the commit D4a was built on. Both runs, 2026-08-08:
+
+```
+before: 156 declines across the grid, 50 distinct shapes.
+          72 decline with an empty pool, naming no slot
+          12 omit a cause that is actually blocking
+          30 name a bound as blocking that the nearest plate meets
+
+after:  156 declines across the grid, 36 distinct shapes.
+          0 decline with an empty pool, naming no slot
+          0 omit a cause that is actually blocking
+          0 name a bound as blocking that the nearest plate meets
 ```
 
 **Disposition:** finding 24 CLOSED. The 2026-08-07 observation "a decline can

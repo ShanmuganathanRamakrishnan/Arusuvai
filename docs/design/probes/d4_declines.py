@@ -189,8 +189,17 @@ def main() -> None:
             # does not say why -- which required slot went empty -- so it is
             # counted and reported separately rather than folded in either way.
             if not combinations:
+                # `getattr`, not `v.blocking_slots`: this probe must run against
+                # BOTH the pre-D4a and post-D4a trees to produce a delta, and
+                # `Violation.blocking_slots` does not exist before D4a. Reading
+                # it directly made the before-column unmeasurable -- the numbers
+                # were real when taken, but nobody could take them again, which
+                # is the same unverifiable-claim failure the process rule in
+                # CLAUDE.md exists to prevent. Every other field this probe
+                # touches is present in both trees (checked, not assumed).
                 named_slots = tuple(
-                    s for v in outcome.result.violations for s in v.blocking_slots
+                    s for v in outcome.result.violations
+                    for s in getattr(v, "blocking_slots", ())
                 )
                 if not named_slots:
                     empty_pool += 1
