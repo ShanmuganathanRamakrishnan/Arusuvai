@@ -8,6 +8,185 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-09 — D4b-ii: the nine missing tests, each shown red first
+
+Closes findings **32** and **34**, and decides **33**. Fourteen tests across
+three files, covering the nine mechanisms the D4b-i sweep left uncovered.
+
+Every one was shown failing against its own deleted mechanism before being
+believed, which is the entire point of the exercise and is not a claim to take
+on trust — the transcript is below.
+
+### The measurement
+
+```
+9 mechanisms: 9 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+C3   covered      tests/test_planner_candidates.py::TestHardFilters::test_region_mismatch_excludes_a_recipe
+S6   covered      tests/test_planner_solver.py::TestTheEmptyPlate::test_an_empty_plate_is_rejected_by_a_floor
+S7   covered      tests/test_planner_solver.py::TestUnsetQualityProteinIsConservative::test_the_default_is_zero
+V8   covered      tests/test_planner_validator.py::TestBoundSourceIsProvenanceNotAGuess::test_the_source_becomes_the_guard_once_rung_one_is_clipped
+V10  covered      tests/test_planner_validator.py::TestRungFourInIsolation::test_a_locked_protein_floor_is_returned_untouched
+V11  covered      tests/test_planner_validator.py::TestRungFourInIsolation::test_the_protein_ceiling_passes_through_unchanged
+V16  covered      tests/test_planner_validator.py::TestTheDeclineExplainsItself::test_a_failed_result_without_a_disclosure_is_refused
+V20  covered      tests/test_planner_validator.py::TestBoundSourceIsProvenanceNotAGuess::test_the_source_is_read_off_the_target_not_inferred
+V22  covered      tests/test_planner_validator.py::TestTheDeclineExplainsItself::test_the_protein_disclosure_keeps_one_decimal
+```
+
+Each row names a correctly-scoped test, and in each case it is the test written
+for that mechanism rather than something incidental. The suite itself:
+
+```
+1 failed, 409 passed, 40 skipped, 1 warning in 111.18s
+FAILED tests/test_recipes.py::TestRecipeLoaderRules::test_declared_uncertainty_is_backed_by_registered_constants
+```
+
+395 → 409 is the fourteen new tests exactly. The one failure is D10's
+deliberately-red test, unchanged and untouched.
+
+### Finding 35 — the harness's verdict depended on the shell that launched it — **FIXED**
+
+The first run of the sweep above returned this, for all nine rows:
+
+```
+9 mechanisms: 0 covered, 9 soft-covered, 0 SURVIVED, 0 harness errors.
+C3   soft-covered 1 incidental: (non-test failure; see output)
+```
+
+Nothing was wrong with the tests. `_run_suite` classified by matching
+`line.startswith("FAILED ")`, and pytest had written its summary as
+`"\x1b[31mFAILED\x1b[0m tests/..."`, so no line matched and every mutation was
+recorded as a crash. Confirmed by running one mutation (`V22`) through the
+identical `subprocess.run` call and printing the raw bytes:
+
+```
+returncode: 1
+FAILED tests/test_planner_validator.py::TestTheDeclineExplainsItself::test_the_protein_disclosure_keeps_one_decimal - AssertionError: assert '29.5g' in 'This plan delivers 30g of protein agains...
+1 failed, 408 passed, 40 skipped, 1 deselected, 1 warning in 108.02s
+```
+
+The right test failed, alone, for the right reason. Only the parser was blind.
+
+**Why this is a finding and not a typo.** pytest colours output when
+`FORCE_COLOR`/`PY_COLORS` is inherited, and suppresses colour when stdout is a
+plain pipe. So the harness gave a *different answer for identical code
+depending on which shell ran it* — the same class as findings 11 and 18 in this
+log, and the one the probe exists to prevent. The D4b-i numbers already
+recorded above were taken in an uncoloured shell (had they not been, all 55
+rows would read "non-test failure" instead of naming test ids), so they stand
+— but they stood by luck.
+
+**Disposition:** FIXED. Three independent defences, since any one of them can
+be defeated by an environment: `--color=no` on the command, the three colour
+env vars forced off in the subprocess, and an ANSI strip before matching.
+
+### Finding 32 — CLOSED
+
+`test_region_mismatch_excludes_a_recipe` no longer feeds `SOUTH_LUNCH` a recipe
+the category filter would have rejected anyway. It now builds two synthetic
+components differing **only** in region — same category (`poriyal`, asserted to
+be one `SOUTH_LUNCH` accepts), same ingredient, same serving unit — and checks
+the southern twin survives before checking the northern one does not. The
+control is the load-bearing half: without it, an empty pool proves nothing
+about which filter emptied it, which is precisely how the old test passed
+against a deleted region check.
+
+A second test covers the other arm of the same condition,
+`not in (template.region, Region.PAN_INDIAN)`: a mutation narrowing it to the
+template's region alone would silently drop every pan-Indian recipe from every
+plate while leaving the first test green.
+
+The observation underneath finding 32 is unchanged and still true — the real
+library's categories are region-partitioned, so the region filter does no work
+on today's data. It is now tested rather than dormant-and-untested.
+
+### Finding 33 — CLOSED, decided in opposite directions
+
+The two dead-code survivors got different answers, because they are not the
+same case.
+
+**`C8`, `for_slot`'s `seen` dedup — REMOVED.** Being unreachable would on its
+own argue for keeping it: harmless, cheap, defensive. The reason to remove it
+is that it does not guard the duplicate a reader would assume it does. One
+recipe offered under two categories a slot both accepts produces components
+with *different* ids (`r@a`, `r@b`), so the same dish appears twice and the
+dedup never fires. Code that reads like a duplicate guard, while not handling
+the only duplicate that can actually occur, is worse than no guard — the next
+person to face that case will believe it is already handled. The invariant that
+makes the sort total without it is now stated in `for_slot`'s docstring.
+
+**`B2`, `enumerate_combinations`' early `return ()` — KEPT, with a comment.**
+Its deletion is behaviour-preserving for the return value, as recorded. What it
+preserves is the *diagnosis*: falling through reaches the second `logger.info`,
+which reports "0 combinations, naive bound N, Nx smaller" — an enumeration that
+pruned everything — and never names the blocking slot. Those are different
+facts about the library and only one of them is what a decline is built from.
+
+`C8`'s row is deleted from the probe rather than left to report "pattern not
+found" forever. `B2` keeps its row, retargeted at the surviving line, with its
+expected result recorded as *survives* — a row whose answer is known is worth
+more than no row, because it stops the next sweep rediscovering it as news.
+
+Re-measured after both edits, since removing code from `for_slot` could have
+taken the coverage of the mechanism beside it as well:
+
+```
+4 mechanisms: 3 covered, 0 soft-covered, 1 SURVIVED, 0 harness errors.
+C3   covered      tests/test_planner_candidates.py::TestHardFilters::test_region_mismatch_excludes_a_recipe
+C7   covered      tests/test_planner_determinism.py::TestOrderDoesNotDependOnCategoryIteration::test_candidates_come_back_sorted_by_id
+B2   SURVIVED
+V10  covered      tests/test_planner_validator.py::TestRungFourInIsolation::test_a_locked_protein_floor_is_returned_untouched
+```
+
+`C7` is finding 18's `for_slot` sort — the line immediately below the deleted
+dedup — and it still goes red on its own deletion. `B2` survives with its
+retargeted row located, which is the documented expected answer rather than a
+harness error.
+
+### A harness change that was needed to do this honestly
+
+The probe ran whatever `git worktree add HEAD` checked out, so it could only
+grade already-committed code. That inverts the practice it enforces:
+`CLAUDE.md` says to watch a test fail before believing it, and a test you must
+commit before you can watch it is a test you have already believed. It bit
+twice in one session — first on the new tests, then again on `B2`'s retargeted
+row, which reported "pattern not found" against a `core/` that predated the
+edit the row was written for, reading as a harness error rather than as the
+stale checkout it was.
+
+Both `core/` and `tests/` are now copied in from the working tree. The worktree
+contributes isolation and nothing else, which was its only stated job in this
+probe anyway. The id filter (`... d4b_mutations.py C3,V10,V11`) exists for the
+same reason — grading nine mechanisms should not cost a 55-run sweep.
+
+### On the two tests the reviewer asked to look at
+
+`V10`'s test states in its own body that it calls `_relax_protein` directly
+because the ladder cannot reach the guard, and names `RelaxationStep.
+is_fully_locked` as the reason, with the instrumentation result (395 passed,
+branch never executed) quoted. Without that, it reads as an ordinary
+clinical-locking test and the next reader concludes the ladder path is covered
+by it — finding 32's failure mode inverted, a test overstating its reach. It
+also points at `V13`, which is what actually covers the ladder path.
+
+`V11`'s test asserts the protein ceiling's **value** is unchanged (90.0 before,
+90.0 after), not that some plate fits under it, mirroring the claim
+`_relax_protein`'s docstring makes. It then walks all four rungs cumulatively,
+since a later rung reconstructing the target could move the ceiling just as
+silently as this one could.
+
+**Disposition:** findings 32, 33, 34 CLOSED. Finding 35 raised and FIXED.
+**Finding 26 CLOSED** — it asked for a deletion test on every gate in the
+enumeration, solver and validator paths, an audit of the gates without one, and
+the practice written into `CLAUDE.md`. The count and audit landed in D4b-i, the
+practice is in `CLAUDE.md`'s "Deletion testing" convention, and the gaps that
+audit found are closed here. Two survivors remain and both are documented
+expected results, not gaps: `B2` above, and `B8` (the quality pre-filter, which
+`CLAUDE.md` already states is "a pure optimisation: removing it changes no
+verdict"). `B5` remains a bad mutation of the probe's own and is not a
+mechanism. Findings 22, 28, 29, 31, 2, 15, 20 untouched.
+
+---
+
 ## 2026-08-09 — D4b-i: every gate in the planner, deleted one at a time
 
 Finding 26 asked for a deletion test on every gate and guard in the

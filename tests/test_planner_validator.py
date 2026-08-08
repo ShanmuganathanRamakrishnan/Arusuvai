@@ -30,6 +30,15 @@ from core.planner.validator import (
     plan_within_ladder,
     validate,
 )
+
+# Private by name, imported deliberately. Both are single mechanisms with no
+# public entry point that isolates them: `_bound_source` is called from inside
+# violation assembly, and `_protein_disclosure`'s rounding is only observable
+# through a full decline, where the interesting numbers are whatever the
+# fixture library happens to reach rather than values chosen to expose the
+# rounding. Testing them directly is the only way the assertion can be about
+# the mechanism named in the test.
+from core.planner.validator import _bound_source, _protein_disclosure
 from core.schemas import (
     MACRO_KEYS,
     ActivityLevel,
@@ -526,3 +535,205 @@ class TestThinFeasibleSetDisclosure:
         (violation,) = outcome.result.violations
         assert violation.kind == "no_candidates"
         assert "nothing to solve" in violation.describe()
+
+
+class TestRungFourInIsolation:
+    """``_relax_protein``, called directly rather than through the ladder.
+
+    Both tests below reach past ``plan_within_ladder`` and into the private
+    rung function, which needs saying plainly: **the ladder cannot reach the
+    branch the first test covers.** Rung 4's ``macros`` is exactly
+    ``("protein_g",)``, so for any profile whose flags lock protein,
+    ``RelaxationStep.is_fully_locked`` is true for the whole rung and
+    ``plan_within_ladder`` skips it before ``apply`` is ever called. The
+    in-function ``if "protein_g" in locked`` guard is therefore dead on every
+    path the product takes today.
+
+    That was measured, not reasoned: an unconditional ``raise`` was put in the
+    branch and the suite run (395 passed), so nothing executes it. Deleting
+    the guard consequently breaks no test, which ``docs/design/probes/
+    d4b_mutations.py`` reports as survivor ``V10``.
+
+    So do not read these as evidence that clinical protein-locking works
+    end to end — that is ``TestClinicalLocking``'s job, via
+    ``test_a_fully_locked_rung_is_skipped_not_recorded_as_applied``. These two
+    pin the rung's own contract so a future ladder that *does* call ``apply``
+    on a locked rung (one extra macro added to rung 4's ``macros`` is enough
+    to make ``is_fully_locked`` false and wake this path up) cannot silently
+    lower a locked floor. A test that let itself be read as broader than it is
+    would be finding 32's failure mode inverted: overstating reach rather than
+    understating it.
+    """
+
+    def _rung(self):
+        return next(s for s in RELAXATION_ORDER if s.name == "protein_tolerance")
+
+    def _target(self) -> NutritionTarget:
+        # floor 60, point 60, ceiling 90 -- an explicit ceiling, because the
+        # second test is about what happens to it. simple_target registers no
+        # protein ceiling, so one is set by hand here.
+        base = simple_target(energy_kcal=600.0, protein_g_min=60.0)
+        return NutritionTarget(
+            floors=base.floors,
+            ceilings={**base.ceilings, "protein_g": 90.0},
+            points=base.points,
+        )
+
+    def test_a_locked_protein_floor_is_returned_untouched(self):
+        target = self._target()
+        # CHRONIC_KIDNEY_DISEASE is the flag that locks protein; see
+        # LOCKED_CONSTRAINTS. Passed as the `locked` set the ladder would have
+        # computed, since the ladder itself would never get this far.
+        locked = locked_macros(_profile(ClinicalFlag.CHRONIC_KIDNEY_DISEASE))
+        assert "protein_g" in locked
+
+        relaxed = self._rung().apply(target, locked)
+
+        assert relaxed.floor("protein_g") == pytest.approx(60.0)
+        # Unlocked, the same call lowers it by tolerance.protein_relaxed_
+        # fraction: 60 * (1 - 0.15) = 51.0. Asserted so the test above cannot
+        # pass merely because the rung does nothing at all.
+        loosened = self._rung().apply(target, locked_macros(None))
+        assert loosened.floor("protein_g") == pytest.approx(51.0)
+
+    def test_the_protein_ceiling_passes_through_unchanged(self):
+        # `_relax_protein`'s docstring argues the ceiling must survive the rung
+        # untouched: a ladder lowering the floor while raising the ceiling would
+        # be widening the band on both sides to admit the very plate the
+        # plausibility ceiling ("no one meal carries half the day's protein")
+        # exists to reject. The assertion mirrors that claim directly -- it
+        # checks the bound's VALUE, not that some plate happens to fit under it,
+        # because a plate fitting under a raised ceiling proves nothing.
+        target = self._target()
+        relaxed = self._rung().apply(target, locked_macros(None))
+
+        assert relaxed.ceiling("protein_g") == pytest.approx(90.0)
+        # And the floor did move, so the rung is demonstrably doing its job
+        # rather than returning its input.
+        assert relaxed.floor("protein_g") == pytest.approx(51.0)
+        # Every rung, cumulatively -- a later rung reconstructing the target
+        # could drop or move the ceiling just as silently.
+        walked = target
+        for step in RELAXATION_ORDER:
+            walked = step.apply(walked, locked_macros(None))
+            assert walked.ceiling("protein_g") == pytest.approx(90.0)
+
+
+class TestTheDeclineExplainsItself:
+    """Construction-time guards and the sentences a decline is built from."""
+
+    def test_a_failed_result_without_a_disclosure_is_refused(self):
+        # Sibling of test_a_decline_may_not_be_generic: that one covers the
+        # "names no violation" arm of the same __post_init__ check, this one
+        # the "explains nothing to the user" arm. A named violation is a macro
+        # identifier and a number; the disclosure is the part a person reads.
+        with pytest.raises(ValueError, match="explain the decline"):
+            ValidationResult(
+                passed=False,
+                actual_point_estimate=NutritionVector.zero(),
+                actual_interval=(NutritionVector.zero(), NutritionVector.zero()),
+                violations=(
+                    Violation(macro="protein_g", kind="below_floor", actual=10.0, bound=60.0),
+                ),
+                disclosure=None,
+            )
+
+    def test_a_whitespace_disclosure_does_not_count_as_one(self):
+        # `.strip()` in the guard, not a bare truth test: "  " is truthy.
+        with pytest.raises(ValueError, match="explain the decline"):
+            ValidationResult(
+                passed=False,
+                actual_point_estimate=NutritionVector.zero(),
+                actual_interval=(NutritionVector.zero(), NutritionVector.zero()),
+                violations=(
+                    Violation(macro="protein_g", kind="below_floor", actual=10.0, bound=60.0),
+                ),
+                disclosure="   ",
+            )
+
+    def test_the_protein_disclosure_keeps_one_decimal(self):
+        # The failure this pins is specific and is stated in
+        # `_protein_disclosure`'s own docstring: at whole grams, 29.5 g against
+        # a 30.0 g floor renders as "30g against a 30g target, a shortfall of
+        # 0g" -- a mandatory disclosure firing and then saying nothing is
+        # wrong. Numbers chosen so every one of the three figures rounds
+        # visibly: 29.5 -> 30, 30.0 -> 30, 0.5 -> 0.
+        original = simple_target(energy_kcal=600.0, protein_g_min=30.0)
+        point = NutritionVector(protein_g=29.5)
+
+        text = _protein_disclosure(point, original)
+
+        assert "29.5g" in text
+        assert "30.0g" in text
+        assert "shortfall of 0.5g" in text
+        # The whole-gram rendering must not appear anywhere in the sentence --
+        # the point is not that "29.5g" is present but that the reader is never
+        # shown a zero shortfall against a real one.
+        assert "shortfall of 0g" not in text
+
+
+class TestBoundSourceIsProvenanceNotAGuess:
+    """``bound_source`` is read off the target, and follows the number.
+
+    Two separate mechanisms with one theme. A decline sentence changes on this
+    token -- "too salty for this plate" versus "your day is already spent"
+    versus "more than one plate may take of a day's allowance" -- so a token
+    that drifts from the number it labels explains the wrong bound.
+    """
+
+    def test_the_source_is_read_off_the_target_not_inferred(self):
+        # `_bound_source` must not guess by comparing the ceiling against the
+        # hard ceiling: they are floats and can coincide for unrelated reasons.
+        # Here they coincide *deliberately* -- ceiling 500 == hard ceiling 500 --
+        # while the registered source says "day_remaining". An implementation
+        # that inferred from the floats would answer "absurdity_guard".
+        target = NutritionTarget(
+            ceilings={"sodium_mg": 500.0},
+            hard_ceilings={"sodium_mg": 500.0},
+            bound_sources={"sodium_mg": "day_remaining"},
+        )
+        assert _bound_source("sodium_mg", target) == "day_remaining"
+        # And a macro the target says nothing about falls back to the default
+        # rather than to whatever the last lookup returned.
+        assert _bound_source("energy_kcal", target) == "meal_share"
+
+    def test_the_source_becomes_the_guard_once_rung_one_is_clipped(self):
+        # 400 * 1.50 = 600 widened, clipped to the 450 hard ceiling. The number
+        # the user is declined against is now the guard, not what the day had
+        # left, so the sentence must change with it.
+        target = NutritionTarget(
+            ceilings={"sodium_mg": 400.0},
+            hard_ceilings={"sodium_mg": 450.0},
+            bound_sources={"sodium_mg": "day_remaining"},
+        )
+        step = next(s for s in RELAXATION_ORDER if s.name == "sodium_max_fibre_min")
+        relaxed = step.apply(target, locked_macros(None))
+
+        assert relaxed.ceiling("sodium_mg") == pytest.approx(450.0)
+        assert relaxed.bound_sources["sodium_mg"] == "absurdity_guard"
+        # The sentence, not just the token -- this is what the leak would look
+        # like to a reader.
+        sentence = Violation(
+            macro="sodium_mg",
+            kind="above_ceiling",
+            actual=700.0,
+            bound=relaxed.ceiling("sodium_mg"),
+            bound_source=relaxed.bound_sources["sodium_mg"],
+        ).describe()
+        assert "whole day's allowance" in sentence
+
+    def test_an_unclipped_widening_keeps_the_original_source(self):
+        # Control for the test above: 400 * 1.50 = 600 against a 2000 guard, so
+        # the clamp does not bite and the reason must NOT be rewritten. Without
+        # this, an implementation that set "absurdity_guard" unconditionally
+        # would pass the previous test.
+        target = NutritionTarget(
+            ceilings={"sodium_mg": 400.0},
+            hard_ceilings={"sodium_mg": 2000.0},
+            bound_sources={"sodium_mg": "day_remaining"},
+        )
+        step = next(s for s in RELAXATION_ORDER if s.name == "sodium_max_fibre_min")
+        relaxed = step.apply(target, locked_macros(None))
+
+        assert relaxed.ceiling("sodium_mg") == pytest.approx(600.0)
+        assert relaxed.bound_sources["sodium_mg"] == "day_remaining"

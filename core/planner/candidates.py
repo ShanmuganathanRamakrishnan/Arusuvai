@@ -117,10 +117,27 @@ class CandidatePool:
 
         Sorting by ``component.id`` rather than by category name: the id is the
         identity of the thing actually offered, so the order survives a category
-        being renamed or a slot accepting more of them, and it is a total order
-        because this method already deduplicates on that same key. Ordering by
-        category would make the output depend on how the categories happen to be
-        spelled, which is incidental to every caller.
+        being renamed or a slot accepting more of them. Ordering by category
+        would make the output depend on how the categories happen to be spelled,
+        which is incidental to every caller.
+
+        The id is a total order here without a deduplication pass, and there is
+        no longer one. ``Component.id`` is ``f"{recipe.id}@{category}"`` and
+        ``by_category`` is keyed by ``component.category``, so a component
+        appears in exactly one bucket and each bucket is visited once (the
+        categories come from a set). Two ids can therefore never collide across
+        this loop.
+
+        There *was* a ``seen``-set dedup here until 2026-08-09; it was removed
+        rather than kept as defensive, on ``docs/audit_log.md`` finding 33. It
+        could not fire -- which alone would argue for keeping it, harmless --
+        but worse, it did not guard the duplicate a reader would assume it did.
+        One recipe offered under two categories a slot both accepts yields two
+        components with *different* ids (``r@a``, ``r@b``), so the same dish
+        would still appear twice and the dedup would not have stopped it.
+        Leaving code that reads like a duplicate guard while not handling the
+        only duplicate that can occur is worse than not having one, because the
+        next person to face that case will believe it is already handled.
 
         Order matters beyond reproducibility: ``core/planner/solver.py`` sorts
         plans by score with Python's stable sort, so among equally-scoring plans
@@ -129,13 +146,9 @@ class CandidatePool:
         library -- but with a larger library it is which plate a user is served.
         """
 
-        seen: set[str] = set()
         out: list[Component] = []
         for category in sorted(slot.accepted_categories):
-            for component in self.by_category.get(category, ()):
-                if component.id not in seen:
-                    seen.add(component.id)
-                    out.append(component)
+            out.extend(self.by_category.get(category, ()))
         out.sort(key=lambda component: component.id)
         return tuple(out)
 

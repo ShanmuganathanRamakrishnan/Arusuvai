@@ -5,11 +5,16 @@ from __future__ import annotations
 import pytest
 
 from core.foods import templates
+from core.foods.models import Component
 from core.foods.nutrition_of import nutrition_of_components
 from core.nutrition import citations
 from core.planner.candidates import build_candidate_pool, recipe_allergens
 from core.schemas import DietPattern, Region
-from tests.factories import SOUTH_LUNCH_COMPONENTS, SOUTH_LUNCH_INGREDIENTS
+from tests.factories import (
+    SOUTH_LUNCH_COMPONENTS,
+    SOUTH_LUNCH_INGREDIENTS,
+    make_recipe,
+)
 
 
 class TestHardFilters:
@@ -26,17 +31,80 @@ class TestHardFilters:
         assert pool.by_category == {}
 
     def test_region_mismatch_excludes_a_recipe(self, library, ingredients):
-        # rajma_chawal is north_indian; south_lunch's region is south_indian
-        # and rajma_chawal is not pan_indian, so it must not appear even
-        # though combo_rice_legume is not a south_lunch category anyway.
+        """The region filter alone, with the category filter held out of it.
+
+        Rewritten 2026-08-09 for ``docs/audit_log.md`` finding 32. The previous
+        version fed ``rajma_chawal`` to ``SOUTH_LUNCH`` and asserted an empty
+        pool -- and said so in its own comment: "combo_rice_legume is not a
+        south_lunch category anyway". Two filters could have produced that
+        empty pool and the test could not tell which did, so deleting the
+        region check left it green.
+
+        That is not an accident of one badly chosen recipe. Every category in
+        the real library is region-partitioned (north: sabzi/dal/roti/raita;
+        south: tiffin/sambar/kuzhambu/chutney/poriyal), so for every recipe
+        that actually exists the region filter is redundant with the category
+        filter, and no real-library fixture can isolate it. Hence the synthetic
+        pair below: same category, same ingredient, same everything except
+        region.
+        """
+
+        south_category = "poriyal"
+        assert any(
+            south_category in slot.accepted_categories
+            for slot in templates.SOUTH_LUNCH.slots
+        ), "the category must be one SOUTH_LUNCH accepts, or this proves nothing"
+
+        ingredient = SOUTH_LUNCH_INGREDIENTS["veg_a"]
+        northern = Component(
+            recipe=make_recipe("northern_poriyal", ingredient, region=Region.NORTH_INDIAN),
+            category=south_category,
+        )
+        southern = Component(
+            recipe=make_recipe("southern_poriyal", ingredient, region=Region.SOUTH_INDIAN),
+            category=south_category,
+        )
+
+        def pool_of(*components):
+            return build_candidate_pool(
+                components,
+                SOUTH_LUNCH_INGREDIENTS,
+                template=templates.SOUTH_LUNCH,
+                diet_pattern=DietPattern.VEGETARIAN,
+                dev_mode=True,
+            )
+
+        # The control comes first and is the load-bearing half: it proves the
+        # southern twin passes every OTHER filter, so the northern one's
+        # absence below is attributable to region and to nothing else.
+        assert {c.recipe.id for c in pool_of(southern).by_category[south_category]} == {
+            "southern_poriyal"
+        }
+        assert pool_of(northern).by_category == {}
+        # And together, so the filter is shown discriminating within one call
+        # rather than only across two.
+        assert {c.recipe.id for c in pool_of(northern, southern).by_category[south_category]} == {
+            "southern_poriyal"
+        }
+
+    def test_a_pan_indian_recipe_survives_either_region(self, library, ingredients):
+        # The other arm of the same condition: `not in (template.region,
+        # Region.PAN_INDIAN)`. A mutation narrowing the check to the template's
+        # region alone would keep the test above green while quietly dropping
+        # every pan-Indian recipe from every plate.
+        ingredient = SOUTH_LUNCH_INGREDIENTS["veg_a"]
+        pan = Component(
+            recipe=make_recipe("pan_poriyal", ingredient, region=Region.PAN_INDIAN),
+            category="poriyal",
+        )
         pool = build_candidate_pool(
-            [library.component("rajma_chawal")],
-            ingredients,
+            [pan],
+            SOUTH_LUNCH_INGREDIENTS,
             template=templates.SOUTH_LUNCH,
             diet_pattern=DietPattern.VEGETARIAN,
             dev_mode=True,
         )
-        assert pool.by_category == {}
+        assert {c.recipe.id for c in pool.by_category["poriyal"]} == {"pan_poriyal"}
 
     def test_category_not_in_template_excludes_a_recipe(self, library, ingredients):
         # masala_dosa's category is "tiffin", which no south_lunch slot accepts.

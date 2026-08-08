@@ -28,18 +28,39 @@ Run from the repo root:
 
     PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d4b_mutations.py
 
-Optionally limit to one module while iterating:
+Optionally limit to one module, or to named mechanisms, while iterating:
 
     ... python docs/design/probes/d4b_mutations.py solver
+    ... python docs/design/probes/d4b_mutations.py C3,V10,V11
+
+## Which version of the code is measured: the working tree, not HEAD
+
+``core/`` and ``tests/`` are both copied into the worktree from the **working
+tree**. The worktree contributes isolation and nothing else, which was its only
+stated job here anyway.
+
+Changed 2026-08-09 (D4b-ii); it used to run whatever `git worktree add HEAD`
+checked out. That could only grade already-committed code, which inverts the
+order this whole practice requires: CLAUDE.md says to watch a test fail before
+believing it, and a test you must commit before you can watch it is a test you
+have already believed. The same applies to the mutations -- a row retargeted at
+a line you just edited reports "pattern not found" against HEAD, which reads as
+a harness error rather than as the stale-checkout it is.
 """
 from __future__ import annotations
 
+import os
+import re
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
+
+#: SGR escape sequences, stripped before any line is matched. See `_run_suite`.
+_ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
 #: The deliberately-red test (D10). It fails before and after every mutation, so
 #: leaving it in would mark all 53 mechanisms as covered by it.
@@ -104,13 +125,13 @@ MUTATIONS: tuple[Mutation, ...] = (
         "        out.sort(key=lambda component: component.id)\n",
         "",
     ),
-    Mutation(
-        "C8", CANDIDATES, "for_slot deduplicates across categories",
-        "                if component.id not in seen:\n"
-        "                    seen.add(component.id)\n"
-        "                    out.append(component)",
-        "                out.append(component)",
-    ),
+    # C8 -- "for_slot deduplicates across categories" -- is gone, not skipped.
+    # It survived the 2026-08-09 sweep because it was unreachable: a component
+    # lives in exactly one `by_category` bucket, so no id repeats. D4b-ii
+    # deleted the dedup rather than testing it (`docs/audit_log.md` finding 33),
+    # so there is no longer a mechanism here to mutate. A row asserting an
+    # absence would report "pattern not found" forever and teach the next
+    # reader nothing.
     Mutation(
         "C9", CANDIDATES, "eligibility priced at min_count, not 1 (finding 27)",
         "        [(component, component.recipe.serving_unit.min_count)], ingredients",
@@ -123,9 +144,17 @@ MUTATIONS: tuple[Mutation, ...] = (
         "    for size in (slot.min_selections,):",
     ),
     Mutation(
+        # KNOWN AND ACCEPTED SURVIVOR. `itertools.product` over an empty
+        # sequence yields nothing, so deleting this early return leaves the
+        # return value identical and no test can go red. Kept in the code and
+        # kept as a row here, both deliberately (`docs/audit_log.md` finding
+        # 33): what it protects is the log line naming the blocking slots,
+        # which no assertion reads. A row whose expected result is "survives"
+        # is worth more than no row -- it stops the next sweep re-discovering
+        # it as news.
         "B2", COMBINATIONS, "unfillable required slot returns no combinations",
-        "            naive_bound,\n        )\n        return ()",
-        "            naive_bound,\n        )",
+        "        # one call would also be strictly worse than either alone.\n        return ()",
+        "        # one call would also be strictly worse than either alone.",
     ),
     Mutation(
         "B3", COMBINATIONS, "variety filter excludes recent recipe ids",
@@ -397,15 +426,27 @@ def _run_suite(worktree: Path) -> tuple[str, ...]:
     """
 
     proc = subprocess.run(
-        [sys.executable, "-m", "pytest", "tests/", "-q",
+        # --color=no and the strip below are belt and braces, added 2026-08-09
+        # after a sweep returned "(non-test failure)" for all nine rows it ran.
+        # pytest had emitted its summary as "\x1b[31mFAILED\x1b[0m tests/...",
+        # so `startswith("FAILED ")` matched nothing and every mutation looked
+        # like a crash. The tests had failed exactly as intended; only the
+        # parser was blind. Colour is off by default when stdout is a pipe, so
+        # this depends on the *inherited environment* (FORCE_COLOR / PY_COLORS)
+        # -- meaning the harness could report differently for the same code
+        # depending on which shell launched it, which is precisely the kind of
+        # unreproducible measurement this probe exists to avoid.
+        [sys.executable, "-m", "pytest", "tests/", "-q", "--color=no",
          "-p", "no:cacheprovider", "--deselect", DESELECT],
         cwd=worktree, capture_output=True, text=True,
+        env={**os.environ, "FORCE_COLOR": "0", "PY_COLORS": "0", "NO_COLOR": "1"},
     )
     if proc.returncode == 0:
         return ()
+    lines = [_ANSI.sub("", line) for line in proc.stdout.splitlines()]
     failed = tuple(
         line.split(" ", 1)[1].split(" - ")[0].strip()
-        for line in proc.stdout.splitlines()
+        for line in lines
         if line.startswith("FAILED ") or line.startswith("ERROR ")
     )
     # A collection error or interpreter-level failure is still red.
@@ -439,15 +480,31 @@ def _is_scoped(failure: str, scoped: tuple[str, ...]) -> bool:
     return not any(cls in failure for cls in UNSCOPED_CLASSES)
 
 
+def _selected(mutation: Mutation, only: str) -> bool:
+    """``only`` is a module substring ("solver") or a comma-separated id list."""
+
+    if not only:
+        return True
+    tokens = [t.strip() for t in only.split(",") if t.strip()]
+    return any(t == mutation.id or t in mutation.module for t in tokens)
+
+
 def main() -> None:
     only = sys.argv[1] if len(sys.argv) > 1 else ""
     worktree = REPO / ".d4b_worktree"
     subprocess.run(["git", "worktree", "add", "--detach", str(worktree), "HEAD"],
                    cwd=REPO, capture_output=True, text=True, check=True)
+    # See the module docstring: the working tree, not HEAD.
+    for tree in ("core", "tests"):
+        shutil.rmtree(worktree / tree, ignore_errors=True)
+        shutil.copytree(
+            REPO / tree, worktree / tree,
+            ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"),
+        )
     rows: list[tuple[Mutation, str, str]] = []
     try:
         for mutation in MUTATIONS:
-            if only and only not in mutation.module:
+            if not _selected(mutation, only):
                 continue
             path = worktree / mutation.module
             original = path.read_text(encoding="utf-8")

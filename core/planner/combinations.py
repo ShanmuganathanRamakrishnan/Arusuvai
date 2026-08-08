@@ -129,6 +129,19 @@ def enumerate_combinations(pool: CandidatePool) -> tuple[MealCombination, ...]:
             blocking,
             naive_bound,
         )
+        # KEPT deliberately, though it changes no return value: with a blocking
+        # slot `per_slot` contains an empty tuple, and `itertools.product` over
+        # any empty sequence yields nothing, so falling through returns () too.
+        # `docs/audit_log.md` finding 33 (2026-08-09) reports this as a
+        # behaviour-preserving deletion no test can catch, and it is -- the
+        # decision recorded here is to keep it anyway.
+        #
+        # What it preserves is the diagnosis, not the answer. Falling through
+        # reaches the second logger.info, which reports "0 combinations, bound
+        # N, i.e. Nx smaller" -- an enumeration that pruned everything -- and
+        # never names the slots. Those are different facts about the library
+        # and the first is the one a decline is built from. Two log lines for
+        # one call would also be strictly worse than either alone.
         return ()
 
     results = tuple(
