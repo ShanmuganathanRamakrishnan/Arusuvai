@@ -89,6 +89,8 @@ from core.schemas import ClinicalFlag, Profile
 __all__ = [
     "LOCKED_CONSTRAINTS",
     "RELAXATION_ORDER",
+    "VIOLATION_REACH",
+    "VIOLATION_RELAXABILITY",
     "RelaxationStep",
     "Violation",
     "ValidationResult",
@@ -96,6 +98,54 @@ __all__ = [
     "validate",
     "plan_within_ladder",
 ]
+
+
+#: How far out of reach a bound is. Stable tokens in the same style as
+#: ``core.nutrition.target.BOUND_SOURCES``, and for the same reason: a decline
+#: screen has to tell "no plate can ever do this" apart from "each bound is
+#: reachable but not all at once", and parsing English to find out is not a
+#: mechanism. Like ``BOUND_SOURCES`` these are identifiers and must never reach
+#: a visible text node (``tests/test_web_no_identifiers.py``).
+#:
+#: The distinction is load-bearing, not cosmetic. ``docs/audit_log.md`` finding
+#: 24: a user told "energy is unreachable" adds an energy-dense dish, when every
+#: such dish was already excluded on a bound nobody named. "Unreachable" is a
+#: claim the library cannot serve them at all; "jointly infeasible" is a claim
+#: about this combination of demands, and only the second is worth acting on.
+VIOLATION_REACH: tuple[str, ...] = (
+    #: No legal assignment of any enumerated combination satisfies this bound,
+    #: whatever the user does. Computed from each component's serving-unit
+    #: min/max, the same arithmetic the pre-filter uses.
+    "unreachable",
+    #: Reachable on its own; the plate that comes closest to feasible still
+    #: misses it. The bound is part of a set that cannot be met together.
+    "jointly_infeasible",
+    #: This specific solved plate misses it. Only reachable when the solver and
+    #: the gate disagree, which they should not.
+    "plate_miss",
+    #: There was no combination to evaluate at all — a required course of the
+    #: template has no dish this profile can eat.
+    "empty_pool",
+)
+
+#: Why a bound did not move out of the way. The ladder's own vocabulary, made
+#: explicit so a screen can offer "relax this" only where relaxing is a thing
+#: that exists. Same identifier rule as above.
+VIOLATION_RELAXABILITY: tuple[str, ...] = (
+    #: A rung touches this bound and has not fired yet.
+    "relaxable",
+    #: A rung touches this bound, fired, and it still blocks.
+    "relaxed_to_limit",
+    #: A rung touches this bound but a ``hard_ceiling`` stops it widening.
+    "hard_capped",
+    #: A disclosed clinical condition holds it. Deliberately not relaxed —
+    #: the one case where "we did not try" is the honest answer.
+    "locked",
+    #: No rung in ``RELAXATION_ORDER`` touches this bound at all. The quality
+    #: protein floor is the case that matters: it is a composition rule, not a
+    #: tolerance, so there is no looser version of it to offer.
+    "never_relaxed",
+)
 
 
 #: Which macro each disclosed condition hard-locks. Deliberately narrow: a flag
@@ -378,10 +428,50 @@ class Violation:
     #: too salty" and "your day is already spent" as the different messages they
     #: are, and it must never reach a visible text node itself.
     bound_source: str = "meal_share"
+    #: One of :data:`VIOLATION_REACH`. Whether anything the user could choose
+    #: differently would help.
+    reach: str = "plate_miss"
+    #: One of :data:`VIOLATION_RELAXABILITY`. Whether the ladder had anything
+    #: left to give on this bound, and if not, why not.
+    relaxability: str = "relaxable"
+    #: ``TemplateSlot.name`` per required course that had no legal selection.
+    #: Only populated on a ``no_candidates`` violation. Structured rather than
+    #: written into ``describe`` because slot names are ``snake_case``
+    #: identifiers — the screen maps them to the name of a course a person would
+    #: recognise ("the curd course"), which is not this module's job.
+    blocking_slots: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        # Validated at construction, like NutritionTarget.bound_sources, and for
+        # the identical reason: these reach the API as tokens a client switches
+        # on, so a typo would fall through to a default message rather than fail.
+        if self.reach not in VIOLATION_REACH:
+            raise ValueError(
+                f"violation: unknown reach {self.reach!r}. Allowed: "
+                f"{list(VIOLATION_REACH)}"
+            )
+        if self.relaxability not in VIOLATION_RELAXABILITY:
+            raise ValueError(
+                f"violation: unknown relaxability {self.relaxability!r}. "
+                f"Allowed: {list(VIOLATION_RELAXABILITY)}"
+            )
+        if self.blocking_slots and self.kind != "no_candidates":
+            raise ValueError(
+                "violation: blocking_slots describes an unfillable template "
+                "course, which only a 'no_candidates' violation has"
+            )
 
     def describe(self) -> str:
         unit = unit_for(self.macro)
         if self.kind == "no_candidates":
+            if self.blocking_slots:
+                count = len(self.blocking_slots)
+                course = "course" if count == 1 else "courses"
+                return (
+                    f"{count} required {course} of this meal cannot be filled "
+                    "from the recipe library for this profile, so there was "
+                    "nothing to solve"
+                )
             return (
                 "no recipe combination survived filtering for this profile, so "
                 "there was nothing to solve"
@@ -415,8 +505,20 @@ class Violation:
         elif self.bound_source == "absurdity_guard":
             text += " (more than one plate may take of a whole day's allowance)"
         if self.locked_by:
-            names = ", ".join(f.value for f in self.locked_by)
-            text += f" (locked by disclosed condition: {names}; never relaxed)"
+            # The flag values are NOT interpolated here, though they were until
+            # 2026-08-08. `ClinicalFlag.CHRONIC_KIDNEY_DISEASE.value` is
+            # "chronic_kidney_disease" — a snake_case identifier, written
+            # straight into the sentence a decline screen renders, which is the
+            # exact class `tests/test_web_no_identifiers.py` exists to catch and
+            # which it missed because no test rendered a locked decline. Which
+            # condition it was travels as `locked_by`, a tuple of enum members
+            # the screen maps to its own copy.
+            count = len(self.locked_by)
+            which = "a condition" if count == 1 else f"{count} conditions"
+            text += (
+                f" (locked by {which} you disclosed, and never relaxed for that "
+                "reason)"
+            )
         return text
 
 
@@ -485,11 +587,47 @@ def _bound_source(macro: str, target: NutritionTarget) -> str:
     return target.bound_sources.get(macro, "meal_share")
 
 
+def _relaxability(
+    macro: str,
+    kind: str,
+    target: NutritionTarget,
+    locked_by: tuple[ClinicalFlag, ...],
+    applied: tuple[str, ...],
+) -> str:
+    """Why this bound did not move, as one of :data:`VIOLATION_RELAXABILITY`.
+
+    Derived from ``RELAXATION_ORDER`` itself rather than from a hand-kept table
+    of "which macros are relaxable". A rung added to the ladder, or a macro
+    added to an existing rung's ``macros``, changes this answer automatically;
+    a table would have to be remembered, and would be wrong the first time it
+    was not.
+    """
+
+    if locked_by:
+        return "locked"
+    step = next((s for s in RELAXATION_ORDER if macro in s.macros), None)
+    if step is None:
+        # Includes QUALITY_PROTEIN_KEY, which is not a macro and appears in no
+        # rung, and any macro bounded by a target the ladder does not cover.
+        return "never_relaxed"
+    if kind == "above_ceiling":
+        hard = target.hard_ceiling(macro)
+        ceiling = target.ceiling(macro)
+        if hard is not None and ceiling is not None and ceiling >= hard:
+            # Sitting on the guard: the rung fires but `_capped` clips it, so
+            # there is no further widening to offer however many rungs remain.
+            return "hard_capped"
+    return "relaxed_to_limit" if step.name in applied else "relaxable"
+
+
 def _violations_for(
     point: NutritionVector,
     target: NutritionTarget,
     profile: Profile | None,
     quality_protein_g: float = 0.0,
+    *,
+    reach: str = "plate_miss",
+    applied: tuple[str, ...] = (),
 ) -> tuple[Violation, ...]:
     out: list[Violation] = []
     quality_floor = target.quality_protein_floor()
@@ -500,7 +638,12 @@ def _violations_for(
         # reason it did not move.
         out.append(
             Violation(
-                QUALITY_PROTEIN_KEY, "below_floor", quality_protein_g, quality_floor
+                QUALITY_PROTEIN_KEY,
+                "below_floor",
+                quality_protein_g,
+                quality_floor,
+                reach=reach,
+                relaxability="never_relaxed",
             )
         )
     for macro in sorted(target.bounded_macros()):
@@ -508,18 +651,34 @@ def _violations_for(
         floor = target.floor(macro)
         ceiling = target.ceiling(macro)
         if floor is not None and value < floor:
+            locked = _flags_locking(macro, profile)
             out.append(
-                Violation(macro, "below_floor", value, floor, _flags_locking(macro, profile))
+                Violation(
+                    macro,
+                    "below_floor",
+                    value,
+                    floor,
+                    locked,
+                    reach=reach,
+                    relaxability=_relaxability(
+                        macro, "below_floor", target, locked, applied
+                    ),
+                )
             )
         if ceiling is not None and value > ceiling:
+            locked = _flags_locking(macro, profile)
             out.append(
                 Violation(
                     macro,
                     "above_ceiling",
                     value,
                     ceiling,
-                    _flags_locking(macro, profile),
+                    locked,
                     _bound_source(macro, target),
+                    reach=reach,
+                    relaxability=_relaxability(
+                        macro, "above_ceiling", target, locked, applied
+                    ),
                 )
             )
     return tuple(out)
@@ -543,7 +702,12 @@ def validate(
 
     estimate = plan.estimate
     violations = _violations_for(
-        estimate.point, target, profile, plan.quality_protein_g
+        estimate.point,
+        target,
+        profile,
+        plan.quality_protein_g,
+        reach="plate_miss",
+        applied=relaxation_applied,
     )
     passed = not violations
     if not passed and not (disclosure or "").strip():
@@ -632,29 +796,25 @@ def _reach(
     return lowest, highest
 
 
-def _blocking_violations(
+def _unreachable_violations(
     combinations: Sequence[MealCombination],
     target: NutritionTarget,
     ingredients: Mapping,
     profile: Profile | None,
+    applied: tuple[str, ...],
 ) -> tuple[Violation, ...]:
-    """Which specific bound the library cannot reach, given the final target.
+    """Bounds no legal assignment of any combination can satisfy, all of them.
 
-    Only genuinely unreachable bounds are reported. A target can also be
-    infeasible because two individually-reachable bounds cannot be met at the
-    same time; in that case this returns every bound the best-case combination
-    misses, which is the closest honest answer available without solving the
-    interaction — never a generic failure.
+    "Structurally unreachable" in finding 24's sense: not a fact about the plate
+    the solver happened to look at, a fact about the library. Computed from each
+    component's serving-unit min/max via the pre-filter's own ``macro_bounds``
+    and ``quality_protein_bounds``, so a decline never explains an empty set
+    with a number arrived at some other way.
     """
-
-    if not combinations:
-        return (Violation("", "no_candidates", 0.0, 0.0),)
 
     out: list[Violation] = []
     quality_floor = target.quality_protein_floor()
     if quality_floor is not None:
-        # Same reach arithmetic as the pre-filter (quality_protein_bounds), so
-        # the decline explains the empty set with the number that produced it.
         # One-sided, so only the max side is computed.
         best_quality = max(
             sum(
@@ -666,16 +826,32 @@ def _blocking_violations(
         if best_quality < quality_floor:
             out.append(
                 Violation(
-                    QUALITY_PROTEIN_KEY, "below_floor", best_quality, quality_floor
+                    QUALITY_PROTEIN_KEY,
+                    "below_floor",
+                    best_quality,
+                    quality_floor,
+                    reach="unreachable",
+                    relaxability="never_relaxed",
                 )
             )
     for macro in sorted(target.bounded_macros()):
         lowest, highest = _reach(combinations, macro, ingredients)
         floor = target.floor(macro)
         ceiling = target.ceiling(macro)
+        locked = _flags_locking(macro, profile)
         if floor is not None and highest < floor:
             out.append(
-                Violation(macro, "below_floor", highest, floor, _flags_locking(macro, profile))
+                Violation(
+                    macro,
+                    "below_floor",
+                    highest,
+                    floor,
+                    locked,
+                    reach="unreachable",
+                    relaxability=_relaxability(
+                        macro, "below_floor", target, locked, applied
+                    ),
+                )
             )
         if ceiling is not None and lowest > ceiling:
             out.append(
@@ -684,31 +860,136 @@ def _blocking_violations(
                     "above_ceiling",
                     lowest,
                     ceiling,
-                    _flags_locking(macro, profile),
+                    locked,
                     _bound_source(macro, target),
+                    reach="unreachable",
+                    relaxability=_relaxability(
+                        macro, "above_ceiling", target, locked, applied
+                    ),
                 )
             )
+    return tuple(out)
 
-    if out:
-        return tuple(out)
 
-    # Every bound is individually reachable but no single assignment meets them
-    # together. Report the best available plan's own misses rather than
-    # inventing a reason.
-    best: tuple[float, tuple[Violation, ...]] | None = None
+def _nearest_plate_violations(
+    combinations: Sequence[MealCombination],
+    target: NutritionTarget,
+    ingredients: Mapping,
+    profile: Profile | None,
+    applied: tuple[str, ...],
+) -> tuple[Violation, ...]:
+    """Every bound missed by the combination that comes closest to feasible.
+
+    "Closest" is **fewest bounds broken**, tie-broken by the solver's deviation
+    score. Ranking by score alone — which is what this did until 2026-08-08 — is
+    wrong for this job in a way that is easy to miss: ``_deviation_point``
+    measures distance from each macro's ideal *point*, and sodium and fibre have
+    no registered point at all (``core.nutrition.target.simple_target``), so a
+    plate's saltiness contributes exactly nothing to its score. The plate the
+    old ranking called "best available" could therefore be one that breaks two
+    bounds while another breaks one.
+
+    Measured, before the change, on the real library: a 110 kg fat-loss profile
+    against ``north_lunch`` was declined on "fat is 37.1g above its ceiling of
+    34.1g; sodium is 1418.5mg above its ceiling of 1400.0mg" while a plate
+    existed — phulka x3, soya_chunk_curry x2, paneer_masala x1 — breaking only
+    the protein floor, by 4.0g. Both named bounds were ones that plate met. A
+    user acting on that decline would have gone looking for leaner, less salty
+    dishes to fix a protein shortfall. See ``docs/design/probes/d4_declines.py``.
+    """
+
+    best: tuple[tuple[int, float], tuple[Violation, ...]] | None = None
     for combo in combinations:
         loose = solve((combo,), NutritionTarget(points=target.points), ingredients)
         if not loose:
             continue
+        plan = loose[0]
         violations = _violations_for(
-            loose[0].estimate.point, target, profile, loose[0].quality_protein_g
+            plan.estimate.point,
+            target,
+            profile,
+            plan.quality_protein_g,
+            reach="jointly_infeasible",
+            applied=applied,
         )
-        score = loose[0].score
-        if violations and (best is None or score < best[0]):
-            best = (score, violations)
-    if best is not None:
-        return best[1]
-    return (Violation("", "no_candidates", 0.0, 0.0),)
+        if not violations:
+            continue
+        key = (len(violations), plan.score)
+        if best is None or key < best[0]:
+            best = (key, violations)
+    return best[1] if best is not None else ()
+
+
+def _blocking_violations(
+    combinations: Sequence[MealCombination],
+    target: NutritionTarget,
+    ingredients: Mapping,
+    profile: Profile | None,
+    *,
+    applied: tuple[str, ...] = (),
+    empty_required_slots: tuple[str, ...] = (),
+) -> tuple[Violation, ...]:
+    """Every bound blocking this profile, structural and joint together.
+
+    ``docs/audit_log.md`` findings 24 and 26, which are the same defect from
+    opposite directions and are both fixed by not stopping early.
+
+    This function used to return the structurally-unreachable bounds *or*, only
+    if there were none, the nearest plate's misses. Both halves were wrong:
+
+    - **It stopped at the first cause.** From slice 4 onward a South Indian
+      decline named the quality-protein floor and nothing else, because an
+      unreachable quality floor made the first half non-empty and the second
+      half never ran. Energy, fat and sodium were blocking too and went unsaid.
+      Four problems were reported as one.
+    - **When it did reach the second half, it picked the wrong plate.** See
+      ``_nearest_plate_violations``.
+
+    Both halves now always run and their results are merged, keyed by
+    (macro, kind) so a bound reported as structurally unreachable is not also
+    reported as jointly infeasible — the stronger claim wins, because
+    "no plate can do this" and "no plate can do this *alongside the rest*" are
+    not two problems.
+    """
+
+    if not combinations:
+        return (
+            Violation(
+                "",
+                "no_candidates",
+                0.0,
+                0.0,
+                reach="empty_pool",
+                relaxability="never_relaxed",
+                blocking_slots=tuple(empty_required_slots),
+            ),
+        )
+
+    unreachable = _unreachable_violations(
+        combinations, target, ingredients, profile, applied
+    )
+    already = {(v.macro, v.kind) for v in unreachable}
+    joint = tuple(
+        v
+        for v in _nearest_plate_violations(
+            combinations, target, ingredients, profile, applied
+        )
+        if (v.macro, v.kind) not in already
+    )
+    out = unreachable + joint
+    if out:
+        return out
+    # No bound is unreachable and the nearest plate meets every one of them --
+    # which means `solve` should have found it. Reaching here is a disagreement
+    # between the solver's gate and this module's, not a profile the library
+    # cannot serve, so it is reported as the honest "nothing to hand you"
+    # rather than dressed up as a nutritional cause.
+    return (
+        Violation(
+            "", "no_candidates", 0.0, 0.0, reach="empty_pool",
+            relaxability="never_relaxed",
+        ),
+    )
 
 
 def plan_within_ladder(
@@ -717,6 +998,7 @@ def plan_within_ladder(
     ingredients: Mapping,
     *,
     profile: Profile | None = None,
+    empty_required_slots: tuple[str, ...] = (),
 ) -> LadderOutcome:
     """Solve, and if nothing is feasible, walk the ladder in order.
 
@@ -733,6 +1015,15 @@ def plan_within_ladder(
     widen a target and then search a set that had already been pruned to fit
     the tight one, declining plans it should have found. Running it inside is
     also faster, since each rung's solve sees fewer combinations.
+
+    ``empty_required_slots`` is which of the template's required courses had no
+    legal selection, when ``combinations`` is empty because of that. This
+    function cannot work it out for itself — it receives combinations, not a
+    pool — and without it a decline can only say "nothing survived filtering",
+    which tells a vegan asking for a South Indian lunch nothing about the curd
+    course being the reason. Optional so a caller holding only combinations
+    still works; ``core.planner.plan.plan_meal`` supplies it from
+    ``core.planner.combinations.unfillable_slots``.
     """
 
     locked = locked_macros(profile)
@@ -784,7 +1075,14 @@ def plan_within_ladder(
             skipped_locked_steps=tuple(skipped),
         )
 
-    violations = _blocking_violations(combinations, current, ingredients, profile)
+    violations = _blocking_violations(
+        combinations,
+        current,
+        ingredients,
+        profile,
+        applied=tuple(applied),
+        empty_required_slots=empty_required_slots,
+    )
     locked_hits = tuple(v for v in violations if v.locked_by)
     decline = "No plan could be built for this profile: " + "; ".join(
         v.describe() for v in violations

@@ -52,6 +52,13 @@ guard is the only thing in the system that prefers less salt — loosening it
 makes plates saltier; **29**, relaxation rung 1 widens a day's *remaining*
 sodium budget, so two south meals reach 2281 mg against a 2000 mg day.
 
+D4a made the declines behind those verdicts honest — finding 24 CLOSED, and
+the 2026-08-07 "a decline says less than it used to" observation with it. Two
+more findings: **30** (a clinical-flag identifier in user-facing prose, with a
+test asserting the leak) FIXED; **31** (macro identifiers in the same prose)
+OPEN, for D9. Both were invisible to `test_web_no_identifiers.py`, which never
+renders a decline — that gap is itself queued (D4c).
+
 ---
 
 ## D5 — re-scope finding 22 — **DONE 2026-08-08**
@@ -106,7 +113,80 @@ measured.
 
 ---
 
-## D4 — declines that name the wrong constraint — **NEXT**
+## D4a — declines that name the wrong constraint — **DONE 2026-08-08**
+
+Finding 24 CLOSED. Measured over a 144-profile x 4-template sweep
+(`docs/design/probes/d4_declines.py`), before -> after: declines omitting a
+real cause 12 -> 0; declines naming a bound the nearest plate meets 30 -> 0;
+empty-pool declines naming no slot 72 -> 0. 156 declines before and after —
+this changed what a decline says, not who is declined.
+
+Two causes, both "stop at the first thing found": an unreachable bound
+returned early and hid every other blocking bound (this is the 2026-08-07
+"a decline can now say less than it used to" observation, now CLOSED), and the
+nearest plate was ranked by the solver's deviation score, which is silent on
+sodium and fibre because neither has a registered ideal point. A 110 kg
+fat-loss profile was declined on fat and sodium while a plate existed meeting
+both and short only on protein.
+
+`Violation` now carries `reach` (`unreachable` / `jointly_infeasible` /
+`plate_miss` / `empty_pool`), `relaxability` (`locked` / `never_relaxed` /
+`hard_capped` / `relaxed_to_limit` / `relaxable`, derived from
+`RELAXATION_ORDER` rather than a table) and `blocking_slots`. All reach the
+API; none render raw.
+
+**D4 as written was two tasks.** Finding 26's standing practice is split to
+D4b below, unstarted. The five mechanisms D4a introduced each got a deletion
+test, confirmed red before restoring — that is finding 26's discipline applied
+to this change, not to the suite.
+
+Two findings raised: **30** (a `ClinicalFlag` identifier was written into
+user-facing decline prose, and a test *asserted* the leak) FIXED here, and
+**31** (macro identifiers still are, same prose, same missed detection) OPEN
+and left for D9, because the remedy is a macro-to-copy map and D4 says not to
+design the screen.
+
+---
+
+## D4b — make the deletion-testing pattern standing — **NEXT**
+
+**Goal:** stop shipping tests that cannot fail on the defect they name.
+
+Finding 26. Deleting the solver's quality gate left all 31 of slice 4's new
+tests green; the pre-filter caught everything first. That is the fourth
+instance in this repo (also findings 18, 27, and the slice 3 vacuous test).
+
+- Every gate and guard in the enumeration, solver and validator paths gets a
+  deletion test: remove the mechanism, confirm something goes red. Roughly 25
+  mechanisms across `candidates.py`, `combinations.py`, `solver.py`,
+  `validator.py` — count them first and say the number.
+- Audit the existing suite for gates without such coverage. Report what you
+  find, **including any you decide not to cover and why**.
+- Write the practice into `CLAUDE.md` so it isn't rediscovered a fifth time.
+
+D4a's five injections (`docs/audit_log.md` 2026-08-08, "Finding 26's
+discipline") are the worked example of the format; they are not part of the
+count above.
+
+**Verify:** the mechanism count, and for each, the test that goes red.
+
+---
+
+## D4c — declines that name the wrong constraint, part 2
+
+**Goal:** what D4's original text asked for that D4a did not deliver.
+
+D4a fixed which causes are reported. It did not produce before/after decline
+text for all four templates as a single artifact, and it did not touch
+`test_web_no_identifiers.py`, which cannot see either the fixed leak (finding
+30) or the open one (finding 31) because it sweeps static views and never
+renders a decline.
+
+Small. May fold into **D9** — check before starting whether D9 subsumes it.
+
+---
+
+## D4 — original text, for the record
 
 **Goal:** make a decline tell the truth about why, so the decline screen has
 something honest to render.

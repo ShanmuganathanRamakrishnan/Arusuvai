@@ -312,9 +312,19 @@ def section_plan(
     if not outcome.result.violations:
         print("    (none)")
     for violation in outcome.result.violations:
+        # Raw tokens, deliberately: this is a developer transcript, not a user
+        # surface. `reach` and `relaxability` are the two answers a decline
+        # screen needs and the two a transcript reader most wants to check --
+        # "unreachable" versus "jointly_infeasible" is the difference between a
+        # library that cannot serve this profile and a set of demands that
+        # cannot be met together (docs/audit_log.md finding 24).
         print(f"    kind={violation.kind!r} macro={violation.macro!r} "
               f"actual={violation.actual:.1f} bound={violation.bound:.1f} "
               f"locked_by={violation.locked_by}")
+        print(f"      reach={violation.reach!r} "
+              f"relaxability={violation.relaxability!r}"
+              + (f" blocking_slots={list(violation.blocking_slots)}"
+                 if violation.blocking_slots else ""))
     print()
     print(f"disclosure     : {outcome.result.disclosure}")
     print()

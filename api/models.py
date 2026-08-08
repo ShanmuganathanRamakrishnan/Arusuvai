@@ -217,6 +217,22 @@ class ViolationOut(BaseModel):
     macro: str
     kind: str
     bound_source: str
+    #: ``core.planner.validator.VIOLATION_REACH``. "unreachable" means no plate
+    #: this library can build satisfies the bound, so no substitution helps;
+    #: "jointly_infeasible" means each bound is reachable but not all together,
+    #: which is the case a screen may offer to compromise on. Conflating them is
+    #: ``docs/audit_log.md`` finding 24.
+    reach: str = "plate_miss"
+    #: ``core.planner.validator.VIOLATION_RELAXABILITY``. Whether the ladder had
+    #: anything left to give. "locked" is the one a screen must surface rather
+    #: than smooth over — the system deliberately did not try.
+    relaxability: str = "relaxable"
+    #: ``TemplateSlot.name`` per required course that could not be filled.
+    #: Present only on a ``no_candidates`` violation.
+    blocking_slots: list[str] = Field(default_factory=list)
+    #: ``ClinicalFlag`` values holding this bound out of the ladder. Empty
+    #: unless ``relaxability`` is "locked".
+    locked_by: list[str] = Field(default_factory=list)
     text: str
 
 

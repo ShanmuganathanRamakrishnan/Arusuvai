@@ -8,6 +8,179 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-08 — D4a: findings 24 and 26 closed on the decline path
+
+Scope note first, because it changes what the queue says. **D4 as written is
+two tasks and only the first is done here.** Its second half — finding 26's
+standing practice: a deletion test for every gate and guard in the
+enumeration, solver and validator paths, an audit of the existing suite for
+gates without one, and writing the practice into `CLAUDE.md` — is a full task
+against three modules and ~25 mechanisms, and stapling it to a redesign of the
+decline path would have produced one commit nobody can review. It is split out
+as **D4b** and is NEXT. What is done here is the decline diagnosis, plus
+deletion tests for the five mechanisms this change introduced (below), which is
+finding 26's discipline applied to this change rather than to the whole suite.
+
+Every figure below is from
+`PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d4_declines.py`
+(144 profiles x 4 templates, today's `data/` library, `dev_mode=True`) or from
+the `demo.py` commands in "Reproduce".
+
+### The measurement, before and after
+
+The probe sweeps a profile grid, keeps every decline, and compares what the
+decline **says** against two things computed independently of the code under
+audit: which bounds are structurally unreachable (from each component's
+serving-unit min/max), and which bounds the combination closest to feasible
+misses.
+
+|                                                        | before | after |
+| ------------------------------------------------------ | -----: | ----: |
+| declines across the grid                                |    156 |   156 |
+| declining with an empty pool, naming no slot            |     72 |     0 |
+| omitting a cause that is actually blocking              |     12 |     0 |
+| naming a bound as blocking that the nearest plate meets |     30 |     0 |
+| distinct decline shapes                                 |     50 |    36 |
+
+The verdicts themselves did not move: 156 declines before and after, and
+`tests/test_planner_decline.py::TestAgainstTheRealLibrary` pins that the
+reference profile still gets a plate on all four templates. This changed what a
+decline says, not who is declined.
+
+### Finding 24 — CLOSED
+
+Two defects, opposite directions, one cause: `_blocking_violations` stopped at
+the first thing it found.
+
+**It stopped at the first cause.** The function returned the
+structurally-unreachable bounds *or*, only if there were none, the nearest
+plate's misses. From slice 4 onward a South Indian decline named the
+quality-protein floor and nothing else, because an unreachable quality floor
+made the first half non-empty and the second half never ran. Recorded at the
+time as "a decline can now say less than it used to" (2026-08-07, OPEN); it is
+this. Both halves now always run and merge, keyed by `(macro, kind)` so a bound
+reported unreachable is not also reported jointly infeasible.
+
+**When it did reach the second half, it picked the wrong plate.** The nearest
+combination was chosen by the solver's deviation score. That score measures
+distance from each macro's ideal *point*, and sodium and fibre have no
+registered point at all (`core.nutrition.target.simple_target`), so a plate's
+saltiness contributes exactly nothing to it. Measured, 110 kg fat-loss
+vegetarian, `north_lunch`:
+
+    BEFORE
+      kind='above_ceiling' macro='fat_g'     actual=37.1   bound=34.1
+      kind='above_ceiling' macro='sodium_mg' actual=1418.5 bound=1400.0
+
+    AFTER
+      kind='below_floor'   macro='protein_g' actual=54.9   bound=58.9
+        reach='jointly_infeasible' relaxability='relaxed_to_limit'
+
+A plate existed — phulka x3, soya_chunk_curry x2, paneer_masala x1 — that met
+both named bounds and broke only the protein floor. The user was told to go
+looking for leaner, less salty dishes to fix a protein shortfall. Ranking is now
+**fewest bounds broken**, tie-broken by score.
+
+### The structure a decline screen needs
+
+Two token vocabularies on `Violation`, in the same style as
+`core.nutrition.target.BOUND_SOURCES` and subject to the same rule — they are
+`snake_case` identifiers, they cross the API, and they must never reach a
+visible text node.
+
+- `VIOLATION_REACH`: `unreachable` (no plate this library can build satisfies
+  it, so no substitution helps) | `jointly_infeasible` (reachable alone, not
+  alongside the rest) | `plate_miss` | `empty_pool`. Finding 24's actual
+  complaint was that these were indistinguishable.
+- `VIOLATION_RELAXABILITY`: `relaxable` | `relaxed_to_limit` | `hard_capped`
+  (a rung fired and `_capped` clipped it — the sodium guard's shape) | `locked`
+  (a disclosed condition; the one case where "we did not try" is the honest
+  answer) | `never_relaxed` (no rung touches it at all — the quality floor).
+  Derived from `RELAXATION_ORDER` itself, not a hand-kept table, so a rung
+  added later cannot leave a stale classification behind.
+
+`Violation.blocking_slots` carries the required courses that had no legal
+selection. Sourced from `core.planner.combinations.unfillable_slots`, which
+calls the enumerator's own `_slot_selections` rather than asking whether the
+slot has candidates — a slot with two candidates and `min_selections=3` has
+candidates *and* no legal selection, and the obvious implementation would name
+nothing. Measured, vegan `south_lunch` (the one real-library pair that
+enumerates zero combinations):
+
+    BEFORE  no recipe combination survived filtering for this profile, so
+            there was nothing to solve
+    AFTER   1 required course of this meal cannot be filled from the recipe
+            library for this profile, so there was nothing to solve
+            blocking_slots=['curd_course']
+
+### Finding 30 — a clinical-flag identifier was being written into user-facing prose — FIXED in the same commit
+
+Found while carrying relaxable-vs-locked through. `Violation.describe` built
+`f"(locked by disclosed condition: {names}...)"` from `ClinicalFlag.value`, so a
+kidney-disease decline rendered the string `chronic_kidney_disease` into the
+sentence `web/dashboard.js` displays verbatim. This is precisely the class
+`tests/test_web_no_identifiers.py` exists to catch, and it missed it because no
+web test renders a locked decline — the sweep is over static views, and a
+decline disclosure is server-supplied.
+
+Worse, `tests/test_planner_validator.py` **asserted the leak**:
+`assert "hypertension" in outcome.result.disclosure`. It passed for months.
+The prose now names no condition and the tuple travels as `locked_by`; that
+assertion is inverted, and now also loops every `ClinicalFlag` value rather
+than checking the one that happened to be in the test.
+
+### Finding 31 — macro identifiers are still written into the same prose — **OPEN**
+
+Noticed while fixing finding 30, logged and left per the queue's rule.
+`Violation.describe` writes `f"{self.macro} is {actual}..."`, so a decline reads
+`energy_kcal is 350.0kcal, above its ceiling of 300.0kcal`. Same defect class as
+finding 30, same missed detection, and unfixed here because the remedy is a
+macro-to-copy map, which is a decision about the screen and D4 says explicitly
+not to design the screen. The structured fields a client needs to render it
+properly (`macro`, `kind`, `actual`, `bound`, `bound_source`, `reach`,
+`relaxability`) are all present and reach the API. Belongs with **D9**.
+
+Related and also unfixed: `test_web_no_identifiers.py` cannot see either leak,
+because it sweeps rendered static views and never exercises a decline. Whatever
+D9 does about the copy, the sweep needs a decline in it or the third instance
+of this class will be found the same way.
+
+### Finding 26's discipline, applied to this change
+
+Five mechanisms were introduced. Each was deleted, the suite re-run, and the
+test that names it confirmed red before the mechanism was restored:
+
+| defect injected                                                      | went red                                          |
+| -------------------------------------------------------------------- | ------------------------------------------------- |
+| rank nearest plate by `score` alone (`key = (0, plan.score)`)         | 4 tests, incl. `test_it_does_not_report_the_first_enumerated_plate_instead` |
+| restore `if unreachable: return unreachable`                          | `test_an_unreachable_bound_no_longer_hides_the_reachable_ones` |
+| `unfillable_slots` asks `not pool.for_slot(slot)`                     | `test_a_slot_with_candidates_but_no_legal_selection_still_counts` |
+| `_relaxability` returns a constant                                    | 3 tests in `TestRelaxabilityIsDerivedFromTheLadderItself` |
+| re-interpolate `ClinicalFlag.value` into `describe`                   | `test_with_hypertension_the_same_target_is_declined_instead` |
+
+The joint-infeasibility fixture is built so its expected values are exact
+rather than envelopes: `tests/factories.py`'s FEASIBILITY components pin
+`min_count = max_count = 1`, so each of the four combinations is one point.
+`TestTheLadderIsInertOnThisTarget` checks that all four rungs fire and move
+nothing, so every hand-computed figure in that file stays valid if a rung
+gains an effect later — the alternative was a comment asserting it.
+
+### Reproduce
+
+```bash
+PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d4_declines.py
+python demo.py plan --region north_indian --meal-slot lunch --weight-kg 110 --goal lose_fat
+python demo.py plan --region south_indian --meal-slot lunch --diet vegan
+python -m pytest tests/test_planner_decline.py -q
+```
+
+**Disposition:** finding 24 CLOSED. The 2026-08-07 observation "a decline can
+now say less than it used to" CLOSED — it was finding 24. Finding 30 FIXED.
+Finding 31 OPEN, for D9. Finding 26's full sweep is D4b and remains OPEN.
+Findings 22, 28, 29, 2, 15, 20 untouched.
+
+---
+
 ## 2026-08-08 — D5: finding 22 re-scoped, and D5's own premise was wrong
 
 Every figure below is from

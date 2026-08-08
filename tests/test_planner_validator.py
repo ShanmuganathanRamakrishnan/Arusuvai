@@ -427,7 +427,17 @@ class TestClinicalLocking:
         sodium_violations = [v for v in outcome.result.violations if v.macro == "sodium_mg"]
         assert sodium_violations, "the decline must name sodium specifically"
         assert sodium_violations[0].locked_by == (ClinicalFlag.HYPERTENSION,)
-        assert "hypertension" in outcome.result.disclosure
+        assert sodium_violations[0].relaxability == "locked"
+        # Which condition travels as structure, NOT as prose. This assertion was
+        # `"hypertension" in outcome.result.disclosure` until 2026-08-08, i.e. it
+        # asserted the leak: ClinicalFlag values are identifiers
+        # ("chronic_kidney_disease"), the disclosure is rendered verbatim by
+        # `web/dashboard.js`, and `tests/test_web_no_identifiers.py` never saw it
+        # because no web test renders a locked decline.
+        assert "hypertension" not in outcome.result.disclosure
+        for flag in ClinicalFlag:
+            assert flag.value not in outcome.result.disclosure
+        assert "a condition you disclosed" in outcome.result.disclosure
         assert "not a substitute for clinical nutrition guidance" in outcome.result.disclosure
 
     def test_the_sodium_ceiling_survives_every_rung_for_a_locked_profile(self):

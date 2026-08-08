@@ -58,7 +58,7 @@ from core.foods.templates import template_for
 from core.nutrition.meal_target import meal_target
 from core.nutrition.target import NutritionTarget
 from core.planner.candidates import build_candidate_pool
-from core.planner.combinations import enumerate_combinations
+from core.planner.combinations import enumerate_combinations, unfillable_slots
 from core.planner.validator import LadderOutcome, plan_within_ladder
 from core.schemas import DayLedger, DietPattern, MealSlot, Profile, Region
 
@@ -146,5 +146,13 @@ def plan_meal(
     )
     combinations = enumerate_combinations(pool)
     return plan_within_ladder(
-        combinations, single_meal_target, library.ingredients, profile=profile
+        combinations,
+        single_meal_target,
+        library.ingredients,
+        profile=profile,
+        # Computed unconditionally rather than only when `combinations` is
+        # empty: it is cheap, and a conditional here would be a second place
+        # that has to agree with `enumerate_combinations` about what "empty"
+        # means. `unfillable_slots` calls the enumerator's own helper.
+        empty_required_slots=unfillable_slots(pool),
     )

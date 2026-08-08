@@ -455,6 +455,10 @@ def plan(body: PlanRequestIn) -> PlanOut:
                 macro=v.macro,
                 kind=v.kind,
                 bound_source=v.bound_source,
+                reach=v.reach,
+                relaxability=v.relaxability,
+                blocking_slots=list(v.blocking_slots),
+                locked_by=[f.value for f in v.locked_by],
                 text=v.describe(),
             )
             for v in outcome.result.violations

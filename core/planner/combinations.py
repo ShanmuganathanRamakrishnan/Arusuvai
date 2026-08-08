@@ -56,6 +56,7 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "MealCombination",
     "enumerate_combinations",
+    "unfillable_slots",
     "combinations_excluding_recent",
     "feasible_combinations",
     "macro_bounds",
@@ -145,6 +146,27 @@ def enumerate_combinations(pool: CandidatePool) -> tuple[MealCombination, ...]:
         naive_bound / max(len(results), 1),
     )
     return results
+
+
+def unfillable_slots(pool: CandidatePool) -> tuple[str, ...]:
+    """Names of the slots with no legal selection — why enumeration returns ().
+
+    Deliberately calls ``_slot_selections``, the same function
+    ``enumerate_combinations`` uses, rather than the more obvious
+    ``not pool.for_slot(slot)``. Those two are not the same question: a slot
+    with one candidate and ``min_selections=2`` has candidates and still has no
+    legal selection, so the obvious version would report an empty pool with no
+    blocking slot named and the decline would be back to saying nothing.
+
+    Optional slots never appear here — ``range(0, max + 1)`` always includes the
+    empty selection — so every name returned is a required course.
+    """
+
+    return tuple(
+        slot.name
+        for slot in pool.template.slots
+        if not _slot_selections(slot, pool)
+    )
 
 
 def combinations_excluding_recent(
