@@ -19,13 +19,26 @@ and for each one prints three things side by side:
 
 The gap between SAYS and the other two columns is the finding.
 
+A second mode, ``text``, added for D4c-i, prints the decline **sentences**
+themselves rather than the counts that summarise them -- the artifact D4's
+original text asked for and D4a did not produce. See ``decline_text`` for the
+profile-selection rule and why the phrase "the decline for each template" no
+longer denotes anything without one.
+
 Run from the repo root:
 
     PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d4_declines.py
+    PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d4_declines.py text
+
+Both modes read only fields that exist on **both** sides of D4a, so either can
+be run in a worktree of the pre-D4a commit to produce a before column. That is
+a property to check when writing a probe, not when someone asks for the delta;
+see the 2026-08-08 entry's amendment in ``docs/audit_log.md``.
 """
 from __future__ import annotations
 
 import itertools
+import sys
 
 from core.foods.quality import QUALITY_PROTEIN_KEY
 from core.foods.templates import template_for
@@ -259,5 +272,130 @@ def main() -> None:
               f"truth={list(truth)} said={list(said)}")
 
 
+def decline_text() -> None:
+    """The decline sentences, per template. D4c-i.
+
+    **There is no such thing as "the decline for each template."** Since D3 all
+    four templates pass for the reference profile, so a decline only exists
+    relative to a profile, and any artifact that prints four blocks without
+    saying whose they are has quietly answered a question nobody asked. The
+    selection rule is therefore part of the output, not part of the setup:
+
+    Walk ``profiles()`` in grid order. Group each template's declines by the
+    **shape of what the decline says** -- the sorted ``(macro, kind)`` pairs it
+    names, and whether the profile has clinical flags. Then per template print
+
+      1. the most common shape,
+      2. the most common shape whose profile carries clinical flags, and
+      3. the most common shape whose profile carries none,
+
+    deduplicated -- (1) is always one of (2) or (3) -- each with the count of
+    grid profiles sharing it and the first such profile in grid order as the
+    representative. Ties break on grid order, so the output is a function of
+    the grid and nothing else.
+
+    (2) and (3) are called out rather than left to frequency because they
+    produce the two sentence families D9 has to design separately: "we did not
+    try, and here is what we would not compromise" versus "we tried everything
+    and failed." Ranking by count alone buries whichever is rarer, and which
+    one that is turned out to be an accident of the grid -- the first version
+    of this rule guarded only (2), and on the real library the top shape
+    already carried flags on all four templates, so the artifact printed four
+    locked declines and not one ordinary one. The asymmetry was invisible
+    until the output was read, which is the argument for reading it.
+
+    Reads ``result.disclosure``, ``Violation.describe()``, ``.macro``, ``.kind``,
+    ``result.relaxation_applied`` and ``outcome.skipped_locked_steps`` -- all
+    present before D4a as well as after (checked against ``b72060e``, not
+    assumed), so this mode produces both columns of a before/after.
+    """
+
+    print("Decline text, all four templates. Selection rule: see `decline_text`")
+    print("in this file -- the representative profiles are chosen by the grid,")
+    print("not by hand, and the rule is reproduced with the output on purpose.")
+
+    for region, slot in TEMPLATES:
+        shapes: dict[tuple, list[tuple]] = {}
+        for profile in profiles():
+            day = derive_target(profile).nutrition_target
+            outcome = plan_meal(lib, day, region=region, meal_slot=slot,
+                                diet_pattern=profile.diet, profile=profile,
+                                dev_mode=True)
+            if outcome.plan is not None:
+                continue
+            key = (
+                tuple(sorted((v.macro, v.kind) for v in outcome.result.violations)),
+                bool(profile.clinical_flags),
+            )
+            shapes.setdefault(key, []).append((profile, outcome))
+
+        print()
+        print("#" * 100)
+        print(f"# {region.value} / {slot.value}")
+        if not shapes:
+            # Not an error and not a gap in the artifact: a template that never
+            # declines across the grid is a fact about the library worth
+            # printing, and printing nothing would read as a probe failure.
+            print("#   no profile in the grid is declined on this template.")
+            continue
+        order = list(shapes)
+        ranked = sorted(order, key=lambda k: (-len(shapes[k]), order.index(k)))
+        chosen = [ranked[0]]
+        for want_flags in (True, False):
+            side = [k for k in ranked if k[1] is want_flags]
+            if side and side[0] not in chosen:
+                chosen.append(side[0])
+
+        total = sum(len(v) for v in shapes.values())
+        print(f"#   {total} declines across the grid in {len(shapes)} shape(s); "
+              f"showing {len(chosen)}")
+        print("#" * 100)
+
+        for key in chosen:
+            members = shapes[key]
+            profile, outcome = members[0]
+            why = ("most common shape overall" if key is ranked[0] else
+                   "most common shape with clinical flags set" if key[1] else
+                   "most common shape with no clinical flags")
+            print()
+            print(f"  [{why}] x{len(members)} profile(s)")
+            print(f"  representative: {profile.weight_kg:g}kg {profile.goal.value} "
+                  f"{profile.diet.value} flags="
+                  f"{sorted(f.value for f in profile.clinical_flags) or 'none'}")
+            print(f"  rungs walked: {list(outcome.result.relaxation_applied) or 'none'}"
+                  f" | rungs refused as locked: "
+                  f"{list(outcome.skipped_locked_steps) or 'none'}")
+            print()
+            print("  DISCLOSURE (the one string `web/dashboard.js` renders verbatim):")
+            for line in _wrap(outcome.result.disclosure or "(empty)"):
+                print(f"    {line}")
+            print()
+            print("  VIOLATIONS, each as the user would read it:")
+            if not outcome.result.violations:
+                print("    (none -- a decline that names no cause)")
+            for violation in outcome.result.violations:
+                for i, line in enumerate(_wrap(violation.describe())):
+                    print(f"    {'-' if i == 0 else ' '} {line}")
+
+
+def _wrap(text: str, width: int = 88) -> list[str]:
+    """Wrap for the transcript. The sentences are long and the point of this
+    artifact is that someone reads them to the end."""
+
+    lines, current = [], ""
+    for word in text.split():
+        if current and len(current) + 1 + len(word) > width:
+            lines.append(current)
+            current = word
+        else:
+            current = f"{current} {word}".strip()
+    if current:
+        lines.append(current)
+    return lines or [""]
+
+
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1 and sys.argv[1] == "text":
+        decline_text()
+    else:
+        main()

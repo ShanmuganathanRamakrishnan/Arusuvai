@@ -8,6 +8,175 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-09 — D4c-i: the decline sentences, before and after D4a
+
+D4a's entry proved the declines got better with four counts. Nobody had read
+the sentences those counts summarise. This is that artifact: `d4_declines.py`
+gains a `text` mode, run on both sides of D4a from one probe implementation.
+
+### There is no "the decline for each template"
+
+Since D3 all four templates **pass** for the reference profile. A decline
+exists only relative to a profile, so an artifact printing four blocks without
+saying whose they are has silently answered a question nobody asked. The
+selection rule is therefore part of the output and is reproduced above it:
+walk the existing profile grid in order, group each template's declines by the
+`(macro, kind)` pairs the decline names plus whether the profile has clinical
+flags, and print the most common shape, the most common flagged shape, and the
+most common unflagged shape, deduplicated. Representative is first-in-grid-order.
+Ties break on grid order, so the output is a function of the grid alone.
+
+**The first version of that rule was wrong and the output said so.** It
+guarded only the flagged side, on the reasoning that a locked bound is rare
+and would be buried by frequency. On the real library the opposite held: the
+top shape already carried flags on all four templates, so the artifact printed
+four locked declines and not one ordinary one — the commonest case a user hits,
+missing entirely. Fixed to be symmetric. Worth recording because the defect was
+invisible in the rule and obvious in the transcript, which is the whole argument
+for producing a transcript rather than asserting the rule was sound.
+
+### Reproduce
+
+```bash
+PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d4_declines.py text
+```
+
+The **before** column, same probe copied into a worktree of the pre-D4a commit
+so a difference between the columns is a difference in `core/`:
+
+```bash
+git worktree add .d4c_pre b72060e
+cp docs/design/probes/d4_declines.py .d4c_pre/docs/design/probes/
+cd .d4c_pre && PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d4_declines.py text
+git worktree remove .d4c_pre --force
+```
+
+Both modes read only fields present on both sides of D4a — `result.disclosure`,
+`Violation.describe`/`.macro`/`.kind`, `result.relaxation_applied`,
+`outcome.skipped_locked_steps` — checked against `b72060e` rather than assumed,
+per the 2026-08-08 amendment.
+
+### What changed, in the prose itself
+
+Full transcripts are reproducible from the commands above; the diff between
+them, taken 2026-08-09, is 115 lines each side and reduces to four changes.
+
+**1. Finding 30, visible as a user would have met it.** south_breakfast and
+north_dinner, both CKD representatives:
+
+```
+BEFORE  protein_g is 35.6g, below its floor of 38.2g (locked by disclosed
+        condition: chronic_kidney_disease; never relaxed)
+AFTER   protein_g is 35.6g, below its floor of 38.2g (locked by a condition you
+        disclosed, and never relaxed for that reason)
+```
+
+**2. Finding 24's empty-pool half.** south_lunch, both representatives — this
+is the shape 54 of the grid's 105 south_lunch declines take:
+
+```
+BEFORE  no recipe combination survived filtering for this profile, so there was
+        nothing to solve
+AFTER   1 required course of this meal cannot be filled from the recipe library
+        for this profile, so there was nothing to solve
+```
+
+**3. Finding 24's wrong-plate half.** north_dinner, 110 kg fat-loss vegetarian
+with CKD. Before, the plate chosen by deviation score broke two bounds and the
+decline named both; after, ranking by fewest-bounds-broken found a plate that
+breaks one, and the fat ceiling — which that plate meets — is correctly no
+longer mentioned. The protein figure moves with the plate, 56.0 → 55.4 g:
+
+```
+BEFORE  fat_g is 29.6g, above its ceiling of 29.3g;
+        protein_g is 56.0g, below its floor of 59.4g (locked ...)
+AFTER   protein_g is 55.4g, below its floor of 59.4g (locked ...)
+```
+
+**4. Shape counts regrouped in both directions**: south_lunch 12 → 11 distinct
+shapes, north_dinner 2 → 1, but north_lunch 12 → **13**. Shape is keyed on which
+bounds a decline names, and D4a changed which bounds get named, so both merging
+and splitting are expected. Recorded rather than explained: the direction of the
+move carries no quality signal on its own, and reading one into it would be the
+same mistake as reading the deviation score as nearness.
+
+### What the artifact shows that the counts could not
+
+Finding **31** is now legible rather than described. Every after-column sentence
+above still contains `protein_g` or `fat_g`, and north_lunch's most common
+decline — the quality-source floor — reads well precisely because someone wrote
+it a bespoke sentence with no identifier in it. That contrast, in one
+transcript, is the input D9's copy map needs and is the reason this ran before
+D9 rather than inside it.
+
+The locked-decline sentence is also visibly the strongest thing the system
+currently says, and it is two clauses long. "We did not try, and here is what we
+would not compromise" is D9's centrepiece; it exists today and no screen shows it.
+
+**Disposition:** D4c-i done. No `core/` change; the suite is unmoved at
+`1 failed, 409 passed, 40 skipped, 1 warning in 114.79s`, the failure being
+D10's deliberately-red test. Findings 31 and 36 untouched and OPEN, both D9.
+
+---
+
+## 2026-08-09 — finding 36, raised while scoping D4c
+
+### Finding 36 — the identifier sweep describes coverage it does not have — **OPEN**
+
+`tests/test_web_no_identifiers.py`'s module docstring says, of the views it
+walks:
+
+> The eight views are the ones a user can reach: the landing page, wizard steps
+> 1-6, and the dashboard (plate picker, then whatever `POST /api/plan`
+> returns — a solved plate **or an honest decline, both of which render copy**).
+
+The decline half is false, and has been since D3. The fixture's profile is
+74 kg / 176 cm / 31 / male / moderate / maintain / vegetarian with
+`chronic_kidney_disease`, and it clicks `#dashGenerate` without touching the
+plate picker. `web/dashboard.html:71` has `south_indian:breakfast` checked by
+default. Measured against today's real library:
+
+```
+$ PYTHONHASHSEED=0 PYTHONPATH=. python -c "...plan_meal for the sweep profile..."
+south_indian breakfast -> PLATE   | skipped_locked ()
+south_indian lunch     -> DECLINE | skipped_locked ('protein_tolerance',)
+     sodium_mg is 1546.0mg, above its ceiling of 1400.0mg (more than one plate
+     may take of a whole day's allowance) (locked by a condition you disclosed,
+     and never relaxed for that reason)
+north_indian lunch     -> PLATE   | skipped_locked ()
+north_indian dinner    -> PLATE   | skipped_locked ()
+```
+
+So `dashboard_after_plan` renders the success view on every run. The decline
+view has never been swept. It is one radio click away, and the sentence waiting
+there contains `sodium_mg` — finding 31, live, and exactly the token shape this
+file exists to catch.
+
+**Why this is its own finding and not a note inside D4c.** D4c already records
+that the sweep never renders a decline. What it did not record is that the file
+*claims otherwise in its own words*. Those are different defects. The first is
+a coverage gap; the second is a coverage gap that reports itself as covered,
+which is the class this repository's process rule is built against — and it is
+worse here than elsewhere, because the docstring is a long, careful argument
+about why grepping for known strings cannot work. A reader who accepts that
+argument has no reason to check whether the sweep reaches the view it says it
+reaches. The care in the prose is what makes the false clause load-bearing.
+
+Same family as finding 32 (a region-filter test whose assertion documented the
+unenforced filter) and the D4b-ii note about a test overstating its reach. This
+is the third instance, so it is a pattern rather than a slip: **a test's own
+description of its scope is not evidence of its scope, and is read by more
+people than the code is.**
+
+**Disposition: OPEN.** Not fixed here, per the queue's rule about not fixing
+what a task notices in passing — and it cannot be honestly fixed in isolation
+anyway. Correcting the docstring to describe what the sweep really does would
+make the file accurate and leave the hole; making the sweep reach a decline
+turns it red on finding 31, whose remedy is a macro-to-copy map that belongs to
+D9. Both halves are therefore assigned to D9, which is renamed to say so.
+
+---
+
 ## 2026-08-09 — D4b-ii: the nine missing tests, each shown red first
 
 Closes findings **32** and **34**, and decides **33**. Fourteen tests across
