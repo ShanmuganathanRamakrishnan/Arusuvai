@@ -21,3 +21,24 @@ TASKS_2.MD
 # Session-local Claude Code state (output styles, permission grants).
 .claude/output-styles/
 .claude/settings.local.json
+
+# Vendored third-party agent skills and their lockfile. Untracked 2026-08-09.
+# Per-machine tool state, same category as the two lines above -- and .agents/
+# was a byte-for-byte duplicate of .claude/, so the repo carried two copies of
+# 28 files (shadcn, frontend-design and four others) that are nobody's product
+# code and are separately licensed. Kept on disk; `skills-lock.json` restores
+# them.
+.claude/skills/
+.agents/skills/
+skills-lock.json
+
+# The original build-prompt script. Untracked 2026-08-09: it is a forward-
+# looking instruction sheet ("feed these to Claude Code one at a time"), i.e.
+# the same artifact class as TASKS.md above, and it has gone actively wrong.
+# It specifies `RecipeIngredient` without `process_key`, a hand-declared
+# `process_uncertainty` dict, and an eligibility filter gating on
+# `process_uncertainty` alone -- the last is `docs/audit_log.md` finding 1,
+# which CLAUDE.md corrects explicitly. A reader following it would build three
+# defects this repo has already fixed, with the repo's own authority behind
+# them. `docs/build_log.md` is the durable record of what was actually built.
+BUILD_PROMPTS.md
