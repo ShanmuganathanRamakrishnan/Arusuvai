@@ -90,6 +90,12 @@ VALIDATOR = "core/planner/validator.py"
 #: the unverified-energy attribution is a gate on whether anything can ever be
 #: certified. The harness never cared which package a module was in.
 NUTRITION_OF = "core/foods/nutrition_of.py"
+#: Not product code at all. Added for D8 (2026-08-09): the rule deciding what a
+#: skipped browser check *means* is a gate in exactly the sense this convention
+#: cares about — remove it and the pipeline's reported state changes, from "the
+#: frontend was not looked at" to silence. It lives in `tests/`, which the
+#: harness already copies from the working tree, so it costs a module constant.
+WEB_GATE = "tests/conftest.py"
 
 MUTATIONS: tuple[Mutation, ...] = (
     # ---------------------------------------------------------------- candidates
@@ -436,6 +442,46 @@ MUTATIONS: tuple[Mutation, ...] = (
         "            total += ing.for_grams(line.quantity_g).energy_kcal * unit_count\n",
         "            total += ing.for_grams(line.quantity_g).energy_kcal\n",
     ),
+    # ------------------------------------------------------- web gate (D8)
+    # These grade `tests/test_web_gate.py`, which drives the hooks with stand-in
+    # report objects. That file cannot answer whether pytest honours a wrapper
+    # setting `report.outcome`; the real transcripts in `docs/audit_log.md`
+    # (2026-08-09, D8) do, taken with the servers genuinely stopped. These rows
+    # grade the other half: that the rule survives edits to the file.
+    Mutation(
+        "W1", WEB_GATE, "strict mode turns a skipped web check into a failure",
+        '        report.outcome = "failed"\n',
+        "",
+    ),
+    Mutation(
+        "W2", WEB_GATE, "strict mode is armed by one exact word, not by any value",
+        '    return os.environ.get(WEB_STRICT_ENV, "").strip().lower() == "required"\n',
+        "    return WEB_STRICT_ENV in os.environ\n",
+    ),
+    Mutation(
+        "W3", WEB_GATE, "the gate applies to web tests only",
+        '    if not report.skipped or "web" not in item.keywords:\n',
+        "    if not report.skipped:\n",
+    ),
+    Mutation(
+        "W4", WEB_GATE, "a string longrepr still yields its reason",
+        "    if isinstance(longrepr, tuple) and len(longrepr) == 3:\n"
+        "        reason = str(longrepr[2])\n"
+        "    else:\n"
+        "        reason = str(longrepr)\n",
+        "    reason = str(longrepr[2])\n",
+    ),
+    Mutation(
+        "W5", WEB_GATE, "the summary announces the skipped checks at all",
+        '    terminalreporter.write_sep("=", "web tests did not run", '
+        "yellow=True, bold=True)\n",
+        "",
+    ),
+    Mutation(
+        "W6", WEB_GATE, "the summary names every distinct reason, deduplicated",
+        "    reasons = sorted({reason for _, reason in _web_skips})\n",
+        "    reasons = []\n",
+    ),
 )
 
 
@@ -461,6 +507,10 @@ OWN_TESTS: dict[str, tuple[str, ...]] = {
     # attribution. `test_planner_*` is not — a planner test that goes red on an
     # attribution change is reporting a coincidence.
     NUTRITION_OF: ("test_nutrition_of.py", "test_recipes.py"),
+    # Only its own file. The three `test_web_*.py` suites are the *subject* of
+    # this gate, not tests of it — they skip together for the same reason, so a
+    # row they turn red is reporting the weather, not the mechanism.
+    WEB_GATE: ("test_web_gate.py",),
 }
 
 

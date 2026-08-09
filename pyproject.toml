@@ -28,4 +28,9 @@ testpaths = ["tests"]
 # server); they skip themselves when either is absent, so a bare checkout
 # still runs `python -m pytest tests/ -q` clean. Run just those with
 # `-m web`, or exclude them with `-m "not web"`.
+#
+# That clean run is the point and also the hazard: it is how a frontend test
+# surface reports green without having looked at anything. Since D8 the skips
+# are announced in a block at the end of the run, and `FOODAI_WEB_TESTS=required`
+# turns each one into a failure -- see `tests/conftest.py`.
 markers = ["web: browser-backed layout checks (needs playwright + a static server)"]

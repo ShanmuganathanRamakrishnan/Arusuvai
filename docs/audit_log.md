@@ -8,6 +8,203 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-09 — D8: the web suite reported green without looking
+
+D8 was written as two halves: **(a)** make conditional passing honest, and
+**(b)** triage "12 failed / 30 errors, Playwright timeouts, undiagnosed". Its
+own re-scope note said to start by re-measuring rather than fixing. Doing that
+changed both halves.
+
+### Finding 38 — (b)'s triage list is empty, and the recorded failure count was stale
+
+With both dev servers up, every browser-backed check passes:
+
+```
+$ python -m pytest tests/ -q --color=no --no-header -m web
+.........................................                                [100%]
+41 passed, 416 deselected, 1 warning in 86.60s (0:01:26)
+EXIT=0
+```
+
+**Disposition: CLOSED, nothing fixed, because nothing was broken.** The "12
+failed / 30 errors" figure predates work that has since landed and was never
+re-taken. This is the second independent run showing 41/41 — the first was
+D11's incidental `1 failed, 456 passed`, which is why D8's re-scope note
+existed. Two runs on one machine is not a proof of health, and the tests remain
+timing-sensitive Playwright checks; but the specific list D8 was written to
+triage does not exist, and inventing work to match a stale number would be
+worse than saying so.
+
+Nothing in `web/`, `api/` or `core/` was touched for this half.
+
+### Finding 39 — the skips were never silent; they were merely unseen
+
+D8's premise, carried in the task text for weeks, is that the suite "passed
+silently when servers were down". Measured, that is **false in its literal
+form**. Every skip already names its cause:
+
+```
+$ python -m pytest tests/test_web_*.py -q --color=no --no-header -rsp
+ssssssssssssss.ssssssssssssssssssssssssss                                [100%]
+=========================== short test summary info ===========================
+SKIPPED [1] tests\test_web_landing_geometry.py:90: no static server on http://localhost:3000
+SKIPPED [9] tests\test_web_no_identifiers.py:198: no static server on http://localhost:3000 (python -m http.server 3000 --directory web)
+...
+1 passed, 40 skipped in 4.60s
+EXIT=0
+```
+
+The reasons are good ones — several name the command that would fix them. They
+appear **only under `-rs`**, which nobody passes by habit. The default view is
+`1 passed, 40 skipped`, exit 0.
+
+So the defect is real but it is not the one recorded: **naming a reason is not
+the same as it being seen.** A distinction worth writing down, because the fix
+that "silent" implies — add reasons — was already done, and doing it again
+would have produced a satisfied task and an unchanged failure mode. This is the
+same family as findings 11, 18 and 36: a check that satisfies the letter of its
+rule while missing the purpose.
+
+**Disposition: FIXED**, described below.
+
+### The fix sits on the report, not on the fifteen call sites
+
+`tests/conftest.py` gains one rule: a `web`-marked test that skips is recorded,
+announced at the end of the run, and — under `FOODAI_WEB_TESTS=required` —
+converted into a failure.
+
+It deliberately does **not** edit the ~15 `pytest.skip` sites across the three
+web files (`_listening` is defined three times; the skips split 4 / 2 / 9).
+Two reasons, and the second is the load-bearing one:
+
+1. One definition instead of fifteen.
+2. It catches **every** cause of a web skip, including a missing Playwright —
+   which no server check would ever see, because `importorskip` fires before
+   any server is contacted. A gate written as "check the servers harder" would
+   have left the bare-checkout case exactly as it was.
+
+The call sites keep deciding *whether* a prerequisite is missing — they know
+which of the two servers each test needs, and duplicating that into the gate
+would have been the actual larger change — while the gate decides what a
+missing prerequisite *means*.
+
+`pyproject.toml` promises `python -m pytest tests/ -q` runs clean on a bare
+checkout. That promise is kept: the default stays exit 0. It is also precisely
+how a frontend surface reports green without looking, so the strict reading is
+available to anyone who wants it rather than imposed on everyone.
+
+### Both modes, measured with the servers genuinely stopped
+
+Default — loud, exit preserved:
+
+```
+$ python -m pytest tests/test_web_landing_geometry.py tests/test_web_no_identifiers.py -q
+ssssssssssssss.                                                          [100%]
+============================ web tests did not run ============================
+14 browser-backed check(s) skipped. Nothing in web/ was verified by this run.
+  - no static server on http://localhost:3000
+  - no static server on http://localhost:3000 (python -m http.server 3000 --directory web)
+Start the servers (see web/README.md), or set FOODAI_WEB_TESTS=required to make this a failure.
+1 passed, 14 skipped in 2.13s
+EXIT=0
+```
+
+Strict — hard failure, exit 1:
+
+```
+$ FOODAI_WEB_TESTS=required python -m pytest tests/test_web_landing_geometry.py -q
+FAILED tests/test_web_landing_geometry.py::test_the_kolam_never_exceeds_its_token_on_the_landing_page
+FAILED tests/test_web_landing_geometry.py::test_every_route_renders_the_kolam_at_one_strength
+FAILED tests/test_web_landing_geometry.py::test_the_language_label_holds_position_across_all_four_scripts
+FAILED tests/test_web_landing_geometry.py::test_no_placeholder_copy_renders_in_the_hero
+4 failed in 1.69s
+EXIT=1
+```
+
+with each failure carrying the reason forward:
+`FOODAI_WEB_TESTS=required, so a skipped browser check is a failure: no static
+server on http://localhost:3000`. A strict run that said only "something was
+skipped" would be reporting what it already reported.
+
+And with the servers up, the summary correctly stays quiet: `4 passed in
+32.62s`, no block.
+
+### Deletion check: six rows, all covered
+
+`d4b_mutations.py` gains `WEB_GATE = "tests/conftest.py"` and rows W1–W6. It
+already copies `tests/` from the working tree, so hosting a `tests/` module cost
+a module constant and an `OWN_TESTS` row — the same shape D6 found for
+`core/foods/`.
+
+```
+$ python docs/design/probes/d4b_mutations.py W1,W2,W3,W4,W5,W6
+W1   covered      tests/test_web_gate.py::TestStrictModeTurnsASkipIntoAFailure::test_a_skipped_web_test_fails_under_the_env_var
+W2   covered      tests/test_web_gate.py::TestStrictModeTurnsASkipIntoAFailure::test_only_the_exact_word_arms_strict_mode
+W3   covered      tests/test_web_gate.py::TestStrictModeTurnsASkipIntoAFailure::test_a_non_web_skip_is_untouched_even_under_strict
+W4   covered      tests/test_web_gate.py::TestTheReasonIsRecoveredWhateverShapeItCameIn::test_a_bare_string_longrepr
+W5   covered      tests/test_web_gate.py::TestTheSummarySaysTheFrontendWasNotChecked::test_it_names_the_count_and_every_distinct_reason
+W6   covered      tests/test_web_gate.py::TestTheSummarySaysTheFrontendWasNotChecked::test_it_names_the_count_and_every_distinct_reason
+====================================================================================================
+6 mechanisms: 6 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+`OWN_TESTS[WEB_GATE]` is `test_web_gate.py` **only**. The three `test_web_*.py`
+suites are the *subject* of this gate, not tests of it — they skip together for
+one reason, so a row they turn red is reporting the weather.
+
+W5 and W6 name the same test, which is the pattern `CLAUDE.md` says not to
+believe on sight, so the full list was taken for both rather than trusting the
+row:
+
+```
+=== W5 full failure list in test_web_gate.py ===
+FAILED ...::TestTheSummarySaysTheFrontendWasNotChecked::test_it_names_the_count_and_every_distinct_reason
+1 failed, 9 passed in 0.06s
+=== W6 full failure list in test_web_gate.py ===
+FAILED ...::TestTheSummarySaysTheFrontendWasNotChecked::test_it_names_the_count_and_every_distinct_reason
+1 failed, 9 passed in 0.06s
+```
+
+Exactly one failure each, and it is the test about the summary's content in both
+cases — a single test genuinely covering two mechanisms, not collection order
+picking a bystander. Recorded because the check is cheap and the D6 sweep is the
+reason it is now habitual.
+
+### One thing the tests cannot grade, and where the evidence for it lives
+
+`tests/test_web_gate.py` drives the hooks with stand-in report objects. It
+cannot answer whether pytest honours `report.outcome = "failed"` set from a
+wrapper — the two transcripts above answer that, taken against the real suite.
+The file is scoped to the other half: that the rule survives edits. Recorded
+here because a reader finding only the unit tests would over-trust them.
+
+### Full suite, servers down — the state most readers will be in
+
+```
+$ python -m pytest tests/ -q --color=no --no-header
+============================ web tests did not run ============================
+40 browser-backed check(s) skipped. Nothing in web/ was verified by this run.
+  - no static server on http://localhost:3000
+  - no static server on http://localhost:3000 (python -m http.server 3000 --directory web)
+Start the servers (see web/README.md), or set FOODAI_WEB_TESTS=required to make this a failure.
+=========================== short test summary info ===========================
+FAILED tests/test_recipes.py::TestRecipeLoaderRules::test_declared_uncertainty_is_backed_by_registered_constants
+1 failed, 426 passed, 40 skipped, 1 warning in 109.68s (0:01:49)
+```
+
+426 = 414 + D11's 2 + this task's 10. The single failure is D10's deliberately
+red test, unchanged.
+
+### Still true after this change
+
+The suite still reports exit 0 by default with the frontend unchecked. That is
+a deliberate trade, not an oversight: the alternative breaks the bare-checkout
+promise for every reader who is not running a browser. What changed is that the
+run now says so in six lines nobody can miss, and that a caller who wants the
+guarantee has one word to type.
+
+---
+
 ## 2026-08-09 — D11: the `dev_mode` plate now says so
 
 Closes **finding 37**. The dashboard had always rendered a plate built on
