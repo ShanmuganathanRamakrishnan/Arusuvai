@@ -105,6 +105,23 @@ has no business with it. `core/planner/plan.py` owns both halves and is the
 right place, but that is a deliberate change, not a field addition, and D7's
 headline is blocked regardless. Queued, not slipped in.
 
+**Checked against D9 before queuing, because D4c had just turned out to be this
+shape.** D9 already lists "surface `dev_mode`", so the question was whether
+finding 37 was inside it. It is not, and the reason is not scope-drawing
+preference: D9 is the *decline* screen in every other bullet, this is the
+*success* path, and `web/dashboard.js` renders the two through independent
+functions into independent DOM sections (`renderPlanSuccess`,
+`renderPlanDecline`). The decisive asymmetry is detection, not surface —
+`tests/test_web_no_identifiers.py` already reaches the success view (its own
+fixture profile is served a plate on the default `south_indian:breakfast`), so
+a naive `dev_mode` string there is caught today; it never reaches a decline,
+which is finding 36 and is D9's own (b). One is verifiable now, the other is
+blocked behind D8 and a detector that does not yet exist.
+
+The two do share exactly one change — `PlanOut` gains `dev_mode` once, for both
+paths. That is recorded in both task entries rather than in neither, which is
+the failure mode finding 31 nearly had.
+
 **Disposition:** D7 **part 1 done, part 2 blocked on a human.** The scope
 narrowing and its justifying measurement are landed; the ten rows are named; the
 plumbing is finding 37 and the verification is nobody-but-a-human's. Findings
