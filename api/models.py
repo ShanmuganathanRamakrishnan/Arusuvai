@@ -101,6 +101,14 @@ class PlanEstimateOut(BaseModel):
     carb_g: float
     fibre_g: float
     sodium_mg: float
+    #: Energy on ingredient lines whose composition record, or whose
+    #: quantity-determining process constant, rests on evidence nobody has
+    #: opened (``core.foods.nutrition_of``, per `docs/audit_log.md` finding 20).
+    #: Computed in `core/`, carried here, rendered as prose by the client — the
+    #: number is not the client's to derive, and the sentence is not the
+    #: server's to write.
+    unverified_energy_kcal: float = 0.0
+    unverified_energy_fraction: float = 0.0
 
 
 class EvidenceOut(BaseModel):
@@ -247,6 +255,18 @@ class PlanOut(BaseModel):
     """
 
     passed: bool
+    #: True when the plan was solved with the eligibility filter suspended —
+    #: recipes that miss an uncertainty ceiling were kept rather than excluded.
+    #: `docs/methodology.md` ("dev_mode versus validated") requires any rendered
+    #: plan produced this way to carry the label in the artifact itself, because
+    #: a portfolio project's output is a screenshot and "unvalidated" has to
+    #: survive being viewed without context. `demo.py` complied from the start;
+    #: nothing on the web did until this field existed (finding 37).
+    #:
+    #: A bool, not a rendered string: `dev_mode` is `snake_case` and must never
+    #: reach a visible text node, exactly like `bound_source` and
+    #: `VIOLATION_REACH`. The client maps it to its own copy.
+    dev_mode: bool = False
     disclosure: str
     relaxation_applied: list[str]
     #: Prose only, one string per violation. Retained unchanged so existing

@@ -109,6 +109,14 @@
           <aside class="dash-plan-side">
             <p class="ob-target-sentence" id="obSuccessSentence" style="max-width: 46ch;"></p>
             <div class="day-total" id="obPlanTotal"></div>
+            <!-- Provenance, not decoration. docs/methodology.md requires any
+                 rendered plan produced in dev_mode to carry that label in the
+                 artifact itself, because this page's real output is a
+                 screenshot and "unvalidated" has to survive being viewed with
+                 no surrounding context. Sits above the relaxation note: how
+                 much of this plate rests on unchecked data outranks which
+                 tolerance rungs were walked. See audit finding 37. -->
+            <div class="illus" id="obPlanProvenance"></div>
             <div class="illus" id="obPlanRelaxationNote"></div>
 
             <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: clamp(20px, 3vw, 28px);">

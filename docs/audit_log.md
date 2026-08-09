@@ -8,6 +8,153 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-09 — D11: the `dev_mode` plate now says so
+
+Closes **finding 37**. The dashboard had always rendered a plate built on
+100%-unverified data as an ordinary result, against a requirement
+`docs/methodology.md` states about exactly this case.
+
+### D11's own part 1 was wrong, and the code said so
+
+D11 specified, as its first and "only real decision", surfacing provenance from
+`core/` — on the reasoning that `plan_meal` discards the candidate pool and
+`LadderOutcome` carries no provenance field. That is true and it is not the
+obstacle. `SolvedPlan.estimate` is a `NutritionEstimate`, which has carried
+`unverified_energy_kcal` all along; `api/main.py` was already reading
+`outcome.plan.estimate.point` and dropping the rest of the object. And
+`dev_mode` is a parameter the API itself passes.
+
+So **no `core/` change was needed** and none was made. Recorded rather than
+quietly dropped, because the wrong premise was written into the queue and this
+file yesterday, and a reader would otherwise be left expecting a refactor that
+never happened. What is genuinely unreachable is `CandidatePool.flagged` — see
+"What is still not surfaced" below.
+
+### The shape: the server sends the number, the client writes the sentence
+
+`PlanOut` gains `dev_mode: bool`. `PlanEstimateOut` gains
+`unverified_energy_kcal` and `unverified_energy_fraction`, read off the
+estimate `core/` already computed rather than recomputed in `api/`, which
+computes no nutritional number.
+
+The prose is written in `web/dashboard.js`. `dev_mode` is `snake_case` and must
+never reach a visible text node — same rule as `bound_source` and
+`VIOLATION_REACH` — and this is also the division `CLAUDE.md`'s central
+invariant describes for the LLM: the number is computed deterministically
+upstream, the language is written around it.
+
+### The order, which is the point
+
+The first draft of `renderProvenance` rendered the token itself. Run against
+live servers **before** the real copy was written:
+
+```
+$ python -m pytest tests/test_web_no_identifiers.py -q
+FAILED tests/test_web_no_identifiers.py::test_no_identifier_reaches_a_rendered_string[dashboard_after_plan]
+E   AssertionError: dashboard_after_plan renders internal identifiers to the user.
+E   Leaks: [('dev_mode', 'Built with dev_mode')]
+1 failed, 10 passed in 19.05s
+```
+
+Then the copy, then:
+
+```
+11 passed in 15.28s
+```
+
+That red run also **measures** a claim made yesterday on reasoning alone. The
+2026-08-09 finding-37 entry argued this belonged outside D9 partly because the
+identifier sweep already reaches the success view. It does, and now that is a
+transcript rather than an inference.
+
+### It renders
+
+```
+$ curl -s -X POST localhost:8000/api/plan -d '{...north_indian/lunch, 70kg...}'
+passed      : True
+dev_mode    : True
+energy      : 931.2
+unverified  : 931.2 kcal = 100.0%
+```
+
+Live browser, same profile and plate:
+
+```
+success section hidden : False
+PROVENANCE LINE        : Not validated. About 100% of this plate's energy rests on
+                         figures nobody has checked against a primary source yet. The
+                         nutrition data behind these dishes is unconfirmed, so treat
+                         the numbers as an illustration of the method rather than
+                         dietary advice.
+```
+
+### A second false claim, found in the same function
+
+`renderPlanSuccess`'s no-estimate fallback read **"A validated combination of
+real components for this plate."** Nothing in this library can ship as
+validated, so that sentence was false on every plate the app has ever served,
+and it asserted precisely the thing finding 37 is about. Now "A combination of
+real components for this plate." Found by reading the function being edited,
+not by any test — no test covers a success render with a null estimate.
+
+### Measured, per the deletion convention
+
+Two mechanisms in `api/main.py`, each deleted with the full suite re-run:
+
+```
+A1  PlanOut echoes the dev_mode it actually ran with
+      tests/test_api_targets.py::TestPlanProvenanceReachesTheClient::test_a_solved_plate_says_it_is_not_validated
+A2  the unverified figure is carried onto the estimate
+      tests/test_api_targets.py::TestPlanProvenanceReachesTheClient::test_the_unverified_figure_is_carried_not_dropped
+```
+
+Each caught by exactly its own named test, and by nothing else. The copy itself
+is graded by `test_web_no_identifiers.py`, shown red above.
+
+The harness's first run printed **empty names for both rows** — it took
+`line.split(" ")[0]`, which is the word `FAILED`. Finding 35's lesson, that a
+harness parsing tool output is itself a measurement, reproduced within a week of
+being written down. Both mutations really had gone red; the harness could not
+say which test caught them, which is the entire question it exists to answer.
+
+### What is still not surfaced
+
+`CandidatePool.flagged` — how many recipes were kept past their eligibility
+ceiling. `docs/methodology.md` names it alongside `dev_mode`, and it is the one
+thing here that *would* need the `core/` change: `plan_meal` builds the pool and
+discards it. Deliberately not done, and the position is arguable rather than
+obvious: a count of recipes that missed an internal threshold is a mechanism
+detail, while "100% of this plate's energy" is the same fact in the units a
+reader can act on. If that judgement is wrong, the fix is the refactor D11's
+part 1 described, and it now has a reason to exist that this task did not
+supply.
+
+### Verify
+
+```
+$ python -m pytest tests/ -q
+1 failed, 456 passed, 1 warning in 189.58s (0:03:09)
+FAILED tests/test_recipes.py::TestRecipeLoaderRules::test_declared_uncertainty_is_backed_by_registered_constants
+```
+
+456, not 416, because the static server and API were up: the 40 web tests that
+normally skip actually ran. 414 + 2 new + 40 = 456. The one failure is D10's
+deliberately-red test.
+
+**Relevant to D8, and not a claim about it.** D8 records the web suite as "12
+failed / 30 errors, Playwright timeouts, undiagnosed". With servers up today it
+ran clean. That is one run on one machine and does not close D8 — whose (a) is
+about *conditional passing being honest*, which is untouched: the suite still
+skips silently when the servers are down, which is how a green run can mean
+nothing. But whoever picks up D8 should know the triage list may be much shorter
+than recorded, or empty.
+
+**Disposition:** finding 37 **CLOSED**. Findings 19, 31, 36, 2, 15, 22, 28, 29
+untouched. `CandidatePool.flagged` remains unsurfaced, by decision, recorded
+above.
+
+---
+
 ## 2026-08-09 — D7, part 1: the verification horizon, and finding 37
 
 **D7 is not complete and cannot be completed by an assistant.** Its central

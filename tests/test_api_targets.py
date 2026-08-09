@@ -112,3 +112,41 @@ def test_impossible_weight_is_a_422():
 def test_unknown_enum_value_is_rejected_at_the_boundary():
     r = client.post("/api/targets", json=_body(diet="carnivore"))
     assert r.status_code == 422
+
+
+class TestPlanProvenanceReachesTheClient:
+    """`docs/audit_log.md` finding 37.
+
+    `docs/methodology.md` has required since Phase 2 that any rendered plan
+    produced in ``dev_mode`` carry that label in the artifact itself. `demo.py`
+    complied from the start; nothing on the web could, because `PlanOut` did
+    not carry the fact and `PlanEstimateOut` dropped the unverified figure
+    `core/` had already computed. These assert the payload a client needs, not
+    the copy a client writes -- the sentence is pinned by
+    `tests/test_web_no_identifiers.py`, which is what caught the first draft of
+    it rendering the raw token.
+    """
+
+    def _plan(self):
+        return client.post(
+            "/api/plan",
+            json=_body(diet="vegetarian", region="north_indian", meal_slot="lunch"),
+        ).json()
+
+    def test_a_solved_plate_says_it_is_not_validated(self):
+        data = self._plan()
+        # The precondition. If this plate ever stops passing, the assertion
+        # below would hold vacuously on a decline, so it is checked explicitly.
+        assert data["passed"] is True, data["disclosure"]
+        assert data["dev_mode"] is True
+
+    def test_the_unverified_figure_is_carried_not_dropped(self):
+        # Every ingredient row but `water` is unverified and `water` has no
+        # energy, so the whole plate is charged -- see docs/audit_log.md
+        # finding 20 (D6). Pinned as an identity against the plate's own
+        # energy rather than as the literal 931.2, which moves with the recipe
+        # library; the point is that the API does not silently report a
+        # smaller, nicer number than core/ computed.
+        est = self._plan()["estimate"]
+        assert est["unverified_energy_kcal"] == pytest.approx(est["energy_kcal"])
+        assert est["unverified_energy_fraction"] == pytest.approx(1.0)

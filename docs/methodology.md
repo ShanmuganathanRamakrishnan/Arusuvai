@@ -470,6 +470,26 @@ being viewed without surrounding context. A boolean on a dataclass does not. Any
 rendered plan, any `demo.py` stdout, and any README transcript produced in
 `dev_mode` must carry that label in the artifact itself.
 
+**Implemented on the web 2026-08-09 (D11), having been required and unbuilt
+since Phase 2** — `docs/audit_log.md` finding 37. `demo.py` complied from the
+start; the dashboard did not, so every plate it ever rendered was presented as
+an ordinary result. `PlanOut.dev_mode` and `PlanEstimateOut.unverified_energy_*`
+now carry the fact and the figure, and `web/dashboard.js` renders "Not
+validated. About 100% of this plate's energy rests on figures nobody has checked
+against a primary source yet…" above the plate summary. The server supplies the
+number and the client writes the sentence, because `dev_mode` is `snake_case`
+and must never reach a visible text node. A second false claim went with it: the
+success view's no-estimate fallback read "A validated combination of real
+components", which nothing in this library can be.
+
+One requirement in this paragraph's spirit is still unmet, by choice.
+`CandidatePool.flagged` — the count of recipes kept past their eligibility
+ceiling — is not surfaced, and it is the one piece that needs `plan_meal` to
+stop discarding the pool. The judgement is that a count of recipes missing an
+internal threshold is a mechanism detail, while "100% of this plate's energy" is
+the same fact in units a reader can act on. Arguable, and recorded as a decision
+rather than left as a silent omission.
+
 `demo.py` now exists (2026-07-31, closing `docs/audit_log.md` finding 11 — it
 was referenced here and in CLAUDE.md's Commands block for months without being
 in the repo). It satisfies the requirement above structurally rather than by

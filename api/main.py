@@ -413,6 +413,11 @@ def plan(body: PlanRequestIn) -> PlanOut:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     dt = derive_target(profile)
+    # Passed explicitly rather than left to the default, so the value echoed
+    # back in `PlanOut.dev_mode` is the one this call actually used. Reading it
+    # off a default two modules away is how a label ends up describing a run
+    # that did not happen.
+    dev_mode = True
     outcome = plan_meal(
         default_library(),
         dt.nutrition_target,
@@ -420,6 +425,7 @@ def plan(body: PlanRequestIn) -> PlanOut:
         meal_slot=body.meal_slot,
         diet_pattern=body.diet,
         profile=profile,
+        dev_mode=dev_mode,
     )
 
     components: list[ComponentOut] = []
@@ -443,10 +449,16 @@ def plan(body: PlanRequestIn) -> PlanOut:
             carb_g=point.carb_g,
             fibre_g=point.fibre_g,
             sodium_mg=point.sodium_mg,
+            # Read off the estimate `core/` already computed, not recomputed
+            # here: this package computes no nutritional number, and a second
+            # derivation could disagree with the one demo.py prints.
+            unverified_energy_kcal=outcome.plan.estimate.unverified_energy_kcal,
+            unverified_energy_fraction=outcome.plan.estimate.unverified_energy_fraction(),
         )
 
     return PlanOut(
         passed=outcome.result.passed,
+        dev_mode=dev_mode,
         disclosure=outcome.result.disclosure or "",
         relaxation_applied=list(outcome.result.relaxation_applied),
         violations=[v.describe() for v in outcome.result.violations],

@@ -297,7 +297,11 @@
     document.getElementById("obSuccessSentence").innerHTML = est
       ? `${DIET_LABELS[profile.diet] || humanise(profile.diet)} components tuned to your ${(GOAL_LABELS[profile.goal] || humanise(profile.goal)).toLowerCase()} target — about ` +
         `<span class="accent">${fmtKcal(est.energy_kcal)} kcal</span> with <span class="accent">${fmtG(est.protein_g)} g protein</span>.`
-      : `A validated combination of real components for this plate.`;
+      // Not "a validated combination", which is what this read until 2026-08-09
+      // and which was false on every plate the app has ever served: nothing in
+      // the library can ship as validated (docs/methodology.md), and the
+      // provenance line below says so explicitly.
+      : `A combination of real components for this plate.`;
 
     const wrap = document.getElementById("obPlanMeals");
     wrap.innerHTML = `<div class="meal">${label}</div>`;
@@ -326,8 +330,41 @@
         `${fmtG(est.carb_g)}g carb · ${fmtG(est.fat_g)}g fat</span>`
       : "";
 
+    renderProvenance(data);
+
     const relaxationNote = document.getElementById("obPlanRelaxationNote");
     relaxationNote.textContent = data.relaxation_applied.length ? data.disclosure : "";
+  }
+
+  // docs/methodology.md, "dev_mode versus validated": a plate solved with the
+  // eligibility filter suspended must say so on the artifact, because what
+  // leaves this page is a screenshot and a boolean in a payload does not
+  // survive that. Written here rather than sent as prose from the API for the
+  // same reason every other label on this page is: `dev_mode` is snake_case,
+  // it must never reach a visible text node, and the API's job is the number.
+  //
+  // The first draft of this function rendered the token itself, and
+  // tests/test_web_no_identifiers.py failed on `dashboard_after_plan` with
+  // ('dev_mode', 'Built with dev_mode') -- confirmed red before this copy was
+  // written, which is the order this repo keeps having to relearn.
+  function renderProvenance(data) {
+    const el = document.getElementById("obPlanProvenance");
+    if (!data.dev_mode) {
+      el.textContent = "";
+      return;
+    }
+    const est = data.estimate;
+    // Rounded to whole percent: a band this wide does not support a decimal,
+    // and "99.97%" would be the false precision this project exists to avoid.
+    const share =
+      est && est.unverified_energy_fraction > 0
+        ? `About ${Math.round(est.unverified_energy_fraction * 100)}% of this plate's energy `
+          + `rests on figures nobody has checked against a primary source yet. `
+        : "";
+    el.textContent =
+      `Not validated. ${share}` +
+      `The nutrition data behind these dishes is unconfirmed, so treat the numbers as ` +
+      `an illustration of the method rather than dietary advice.`;
   }
 
   // Generic guidance, not a claim about this profile's numbers -- static UI
