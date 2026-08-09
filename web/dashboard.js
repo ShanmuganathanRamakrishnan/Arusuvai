@@ -524,13 +524,65 @@
     );
   }
 
-  // Generic guidance, not a claim about this profile's numbers -- static UI
-  // copy, unlike everything else on this page, is fine to hardcode.
+  // The wording is static UI copy and fine to hardcode; WHICH of them shows is
+  // not. D9 asks the screen to "offer only suggestions that can change the
+  // outcome", and three unconditional strings cannot do that: telling someone
+  // whose decline has nothing to do with a disclosed condition to review their
+  // conditions sends them to a settings page that will change nothing, and a
+  // screen that pads its advice teaches a reader to skip all of it.
+  //
+  // Each `applies` reads only tokens the payload actually carries. The first is
+  // unconditional and must stay that way -- it is what guarantees the list is
+  // never empty, which would be a worse screen than a slightly loose suggestion.
   const DECLINE_PATHS = [
-    "Try a different plate above — more (region, meal) combinations means more room to fit the same locked limits.",
-    "If your disclosed conditions have changed, update your profile and we'll recompute from scratch.",
-    "Check back as the recipe library grows — a plate that's infeasible today may not be next week.",
+    {
+      // Reworded 2026-08-09: this used to end "...to fit the same locked
+      // limits", which was written when it only ever appeared beside a locked
+      // bound. It is the unconditional suggestion, so its wording has to hold
+      // for every decline — including the common one where nothing is locked.
+      text: "Try a different plate above — a different template draws on different recipes, so the same limits may fit.",
+      // Every `reach` value is scoped to the template that was solved, including
+      // "unreachable": it means no combination *of this template* works, so
+      // another template genuinely can. Always offered, and always true.
+      applies: () => true,
+    },
+    {
+      text: "If your disclosed conditions have changed, update your profile and we'll recompute from scratch.",
+      // Only when a disclosed condition actually held a bound out of the ladder.
+      // Otherwise the profile's conditions had no bearing on this decline and
+      // this is busywork dressed as a remedy.
+      applies: (details) => details.some((v) => (v.locked_by || []).length > 0),
+    },
+    {
+      text: "Check back as the recipe library grows — a plate that's infeasible today may not be next week.",
+      // Only when the catalogue is the binding constraint: no legal assignment
+      // reaches the bound ("unreachable"), or the template could not be filled
+      // at all ("empty_pool"). For a plate that misses only in combination, more
+      // recipes is a guess, and `docs/audit_log.md` finding 24 is precisely
+      // about the harm of offering an action against a cause nobody established.
+      applies: (details) =>
+        details.some((v) => v.reach === "unreachable" || v.reach === "empty_pool"),
+    },
   ];
+
+  /** The decline's provenance line, counterpart to renderProvenance().
+   *
+   *  There is no plate here, so there is no "% of this plate's energy" to
+   *  quote -- but the refusal itself was computed from the same unchecked
+   *  figures, and a reader deciding whether to trust a "no" is owed that as
+   *  much as one deciding whether to trust a "yes".
+   */
+  function renderDeclineProvenance(data) {
+    const el = document.getElementById("obDeclineProvenance");
+    if (!data.dev_mode) {
+      el.textContent = "";
+      return;
+    }
+    el.textContent =
+      "Not validated. The limits above were computed from nutrition data nobody " +
+      "has checked against a primary source yet, so treat this as an " +
+      "illustration of the method rather than dietary advice.";
+  }
 
   function renderPlanDecline(data, plate) {
     planDeclineEl.hidden = false;
@@ -567,15 +619,18 @@
 
     const paths = document.getElementById("obDeclinePaths");
     paths.innerHTML = "";
-    DECLINE_PATHS.forEach((text, i) => {
+    // Numbered after filtering, not before: a list reading 1, 3 tells the reader
+    // something was withheld and invites them to wonder what.
+    DECLINE_PATHS.filter((p) => p.applies(details)).forEach((p, i) => {
       const row = document.createElement("div");
       row.className = "ob-path-item";
-      row.innerHTML = `<span class="ob-path-num">${i + 1}</span><span class="ob-path-text">${text}</span>`;
+      row.innerHTML = `<span class="ob-path-num">${i + 1}</span><span class="ob-path-text">${p.text}</span>`;
       paths.appendChild(row);
     });
 
     document.getElementById("obDeclineDisclosure").textContent =
       declineDisclosure(details);
+    renderDeclineProvenance(data);
   }
 
   init();

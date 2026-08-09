@@ -8,6 +8,135 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-09 — D9(a) closeout: advice that can actually change the outcome
+
+Finishes D9. Two items were left open by D9(b), both small, both now built and
+deletion-checked.
+
+### The three suggestions were shown unconditionally, and two of them often could not help
+
+`DECLINE_PATHS` rendered the same three strings for every decline. One of them —
+"if your disclosed conditions have changed, update your profile" — sends a user
+to a settings page that cannot affect a decline no clinical flag took part in.
+Another — "check back as the recipe library grows" — is a real remedy when a
+bound is structurally out of reach and a guess when the plate misses only in
+combination. That guess is finding 24's shape exactly: an action offered against
+a cause nobody established.
+
+Each suggestion now carries an `applies(details)` predicate reading only tokens
+already on the wire:
+
+| suggestion | shows when |
+| --- | --- |
+| Try a different plate | always |
+| Review your disclosed conditions | some violation has a non-empty `locked_by` |
+| Wait for the library to grow | some violation is `unreachable` or `empty_pool` |
+
+The first is unconditional **by design, not by omission**: it is what guarantees
+the list is never empty, and a decline offering nothing at all is a worse screen
+than a slightly loose suggestion. It is also always true — every `reach` value is
+scoped to the template that was solved, `unreachable` included, so another
+template genuinely can succeed.
+
+Its wording was corrected in the same change. It ended "...to fit the same
+*locked* limits", written when it only ever appeared beside a locked bound.
+Now that it is the one suggestion shown on every decline, that was false on the
+common case. Caught by rendering the screen and reading it, not by a test.
+
+Measured, the jointly-infeasible shape (nothing locked, nothing unreachable):
+
+```
+--[paths]--
+1
+Try a different plate above — a different template draws on different recipes,
+so the same limits may fit.
+```
+
+Two of three withheld, and the survivor renumbered to close the gap.
+
+### The decline path now says it is not validated
+
+`PlanOut.dev_mode` has existed since D11 and the decline view ignored it, so a
+refusal computed entirely from unchecked figures was presented as settled. The
+counterpart to D11's success-path line, in `#obDeclineProvenance`:
+
+```
+Not validated. The limits above were computed from nutrition data nobody has
+checked against a primary source yet, so treat this as an illustration of the
+method rather than dietary advice.
+```
+
+Deliberately **no percentage**. The success line quotes a share of the plate's
+energy; there is no plate here, so that number does not exist and quoting one
+would be a fabrication. Pinned by a test asserting `"%"` does not appear.
+
+### A test that could not fail on the defect it named, caught before it was trusted
+
+The first numbering test asserted consecutive numbering against the
+`jointly_infeasible` payload — where only the *first* suggestion survives. Index
+0 renders "1" whether the numbering runs before or after the filter, so the test
+could not distinguish the two implementations and would have passed against the
+defect.
+
+Fixed by adding a payload where the *middle* suggestion is the one dropped
+(`unreachable`, nothing locked → paths 1 and 3 apply). Pre-filter numbering
+renders "1" and "3" there; post-filter renders "1" and "2". Confirmed by
+deletion:
+
+```
+=== E2: numbering taken before the filter ===
+FAILED ...TestOnlySuggestionsThatCanChangeTheOutcome::test_the_numbering_closes_the_gap_the_filter_opens
+1 failed, 26 passed
+```
+
+This is the third time in two tasks that a test needed the perturbation before
+it was worth anything (finding 40 and D8's stale premise being the others).
+
+### Deletion checks — four mechanisms, four covered
+
+```
+=== E1: suggestions no longer filtered ===
+FAILED ...::test_reviewing_conditions_is_withheld_when_no_condition_locked_anything
+FAILED ...::test_waiting_for_the_library_is_withheld_when_the_library_is_not_the_limit
+FAILED ...::test_the_numbering_closes_the_gap_the_filter_opens
+3 failed, 24 passed
+
+=== E2: numbering taken before the filter ===
+FAILED ...::test_the_numbering_closes_the_gap_the_filter_opens
+1 failed, 26 passed
+
+=== E3: decline provenance never rendered ===
+FAILED ...TestTheDeclineSaysItIsNotValidated::test_a_dev_mode_decline_says_so
+1 failed, 26 passed
+
+=== E4: dev_mode guard removed ===
+FAILED ...TestTheDeclineSaysItIsNotValidated::test_nothing_is_claimed_when_the_plan_was_not_dev_mode
+1 failed, 26 passed
+```
+
+E4's first attempt aborted rather than running: the guard's source is
+byte-identical to `renderProvenance`'s on the success path, so the pattern
+matched twice and the harness refused a non-unique mutation instead of editing
+the wrong function and reporting a false result. Same protection
+`d4b_mutations.py` has, for the same reason.
+
+By hand again, for the reason recorded under D9(b): `d4b_mutations.py`
+structurally cannot grade `web/`.
+
+### Suite
+
+```
+$ python -m pytest tests/ -q --color=no --no-header       # both servers up
+FAILED tests/test_recipes.py::TestRecipeLoaderRules::test_declared_uncertainty_is_backed_by_registered_constants
+1 failed, 497 passed, 1 warning in 225.54s (0:03:45)
+```
+
+497 = 488 + 9. The single failure is D10's deliberately red test.
+
+**D9 is now complete**, (a) and (b).
+
+---
+
 ## 2026-08-09 — D9(b): the decline stopped saying `sodium_mg`
 
 Closes **findings 31 and 36**. Done in the order D9 states, which is the repo's

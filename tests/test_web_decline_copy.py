@@ -99,11 +99,11 @@ def _listening(host: str, port: int) -> bool:
         return s.connect_ex((host, port)) == 0
 
 
-def _render_decline(playwright, violations):
+def _render_decline(playwright, violations, dev_mode=True):
     """Render the real decline view against a stubbed `POST /api/plan`."""
     payload = {
         "passed": False,
-        "dev_mode": True,
+        "dev_mode": dev_mode,
         "disclosure": "server prose containing sodium_mg, deliberately unused",
         "relaxation_applied": ["sodium_max_fibre_min"],
         "violations": [v["text"] for v in violations],
@@ -148,6 +148,8 @@ def _render_decline(playwright, violations):
         out = {
             "violations": page.inner_text("#obDeclineViolations"),
             "disclosure": page.inner_text("#obDeclineDisclosure"),
+            "paths": page.inner_text("#obDeclinePaths"),
+            "provenance": page.inner_text("#obDeclineProvenance"),
         }
         browser.close()
     return out
@@ -236,3 +238,124 @@ class TestTheSentencesSayTheRightThing:
         blob = every_branch["disclosure"]
         assert "We stopped rather than relax a limit tied to a condition" in blob
         assert "not a substitute for clinical nutrition guidance" in blob
+
+
+# A decline with nothing locked and nothing structurally out of reach: every
+# bound is missed only in combination. Two of the three suggestions must
+# disappear -- the profile's conditions had no bearing on it, and no bound is
+# beyond what the library can build.
+JOINTLY_INFEASIBLE_ONLY = [
+    {"macro": "energy_kcal", "kind": "below_floor", "bound_source": "meal_share",
+     "reach": "jointly_infeasible", "relaxability": "relaxed_to_limit",
+     "blocking_slots": [], "locked_by": [], "actual": 612.4, "bound": 854.9,
+     "text": "energy_kcal is 612.4kcal, below its floor of 854.9kcal"},
+    {"macro": "fat_g", "kind": "above_ceiling", "bound_source": "meal_share",
+     "reach": "plate_miss", "relaxability": "relaxable",
+     "blocking_slots": [], "locked_by": [], "actual": 41.0, "bound": 33.8,
+     "text": "fat_g is 41.0g, above its ceiling of 33.8g"},
+]
+
+_PATH_PLATE = "Try a different plate above"
+_PATH_PROFILE = "If your disclosed conditions have changed"
+_PATH_LIBRARY = "Check back as the recipe library grows"
+
+
+@pytest.fixture(scope="module")
+def jointly_infeasible(every_branch):  # shares the skip decisions
+    playwright = pytest.importorskip("playwright.sync_api")
+    return _render_decline(playwright, JOINTLY_INFEASIBLE_ONLY)
+
+
+#: Structurally out of reach, but no disclosed condition involved: the catalogue
+#: is the limit. Paths 1 and 3 apply, path 2 does not — the shape that makes the
+#: numbering observable.
+LIBRARY_LIMITED = [
+    {"macro": "protein_g", "kind": "below_floor", "bound_source": "meal_share",
+     "reach": "unreachable", "relaxability": "relaxable",
+     "blocking_slots": [], "locked_by": [], "actual": 21.5, "bound": 39.2,
+     "text": "protein_g is 21.5g, below its floor of 39.2g"},
+]
+
+
+@pytest.fixture(scope="module")
+def library_limited(every_branch):
+    playwright = pytest.importorskip("playwright.sync_api")
+    return _render_decline(playwright, LIBRARY_LIMITED)
+
+
+@pytest.fixture(scope="module")
+def not_dev_mode(every_branch):
+    playwright = pytest.importorskip("playwright.sync_api")
+    return _render_decline(playwright, JOINTLY_INFEASIBLE_ONLY, dev_mode=False)
+
+
+class TestOnlySuggestionsThatCanChangeTheOutcome:
+    """D9(a): three unconditional strings could not satisfy this, so they aren't.
+
+    The value of each gate is what it *removes*. Asserting only that the right
+    suggestions appear would pass against no filter at all, so every test here
+    pairs a presence with an absence.
+    """
+
+    def test_all_three_apply_when_the_payload_earns_all_three(self, every_branch):
+        blob = every_branch["paths"]
+        assert _PATH_PLATE in blob
+        assert _PATH_PROFILE in blob  # something is locked_by a condition
+        assert _PATH_LIBRARY in blob  # something is unreachable / empty_pool
+
+    def test_reviewing_conditions_is_withheld_when_no_condition_locked_anything(
+        self, jointly_infeasible
+    ):
+        blob = jointly_infeasible["paths"]
+        assert _PATH_PROFILE not in blob, (
+            "sending a user to review conditions that had no bearing on this "
+            "decline is an action that cannot change the outcome"
+        )
+
+    def test_waiting_for_the_library_is_withheld_when_the_library_is_not_the_limit(
+        self, jointly_infeasible
+    ):
+        blob = jointly_infeasible["paths"]
+        assert _PATH_LIBRARY not in blob, (
+            "every bound here is reachable alone; the catalogue is not what is "
+            "blocking this plate"
+        )
+
+    def test_the_list_is_never_empty(self, jointly_infeasible):
+        assert _PATH_PLATE in jointly_infeasible["paths"], (
+            "a decline with no suggestions at all is a dead end"
+        )
+
+    def test_the_numbering_closes_the_gap_the_filter_opens(self, library_limited):
+        """Numbered after filtering, not before.
+
+        This needs a payload where the *middle* suggestion is the one dropped —
+        under `jointly_infeasible` only the first survives, and index 0 is "1"
+        either way, so that fixture cannot tell the two implementations apart.
+        Here paths 1 and 3 apply and path 2 does not: numbering before the
+        filter renders "1" and "3", which tells the reader something was
+        withheld and invites them to wonder what.
+        """
+        rendered = library_limited["paths"]
+        assert _PATH_PLATE in rendered and _PATH_LIBRARY in rendered
+        assert _PATH_PROFILE not in rendered
+        numbers = [ln.strip() for ln in rendered.splitlines() if ln.strip().isdigit()]
+        assert numbers == ["1", "2"], f"expected consecutive numbering, got {numbers}"
+
+
+class TestTheDeclineSaysItIsNotValidated:
+    def test_a_dev_mode_decline_says_so(self, every_branch):
+        blob = every_branch["provenance"]
+        assert "Not validated." in blob
+        assert "checked against a primary source" in blob
+
+    def test_it_does_not_claim_a_percentage_it_does_not_have(self, every_branch):
+        # There is no plate, so there is no share of a plate's energy to quote.
+        # The success path's sentence would be a fabricated number here.
+        assert "%" not in every_branch["provenance"]
+
+    def test_nothing_is_claimed_when_the_plan_was_not_dev_mode(self, not_dev_mode):
+        assert not_dev_mode["provenance"].strip() == ""
+
+    def test_no_identifier_reaches_the_provenance_line(self, every_branch):
+        assert not _leaks(every_branch["provenance"].splitlines())
