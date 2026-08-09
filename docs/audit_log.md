@@ -8,6 +8,110 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-09 — D7, part 1: the verification horizon, and finding 37
+
+**D7 is not complete and cannot be completed by an assistant.** Its central
+deliverable — "verify those rows against IFCT 2017 with correct grading" — is
+the one action this project reserves for a human, in `CLAUDE.md`'s second
+invariant, in the round-4 addendum, and in this file's 2026-07-21 entry. What
+follows is everything else D7 asked for, plus the measurement that says whether
+the human half is worth anyone's afternoon.
+
+### The question D7 put to D6, now answerable
+
+D7's own text: *"Depends on D6. Verified ingredients feeding a wrong denominator
+certify nothing."* D6 fixed the denominator yesterday, so the question is
+answerable — and better answered before someone opens a reference book than
+after.
+
+`docs/design/probes/d7_verification_horizon.py`, north_lunch's plate (phulka x5
++ soya_chunk_curry x1 + paneer_masala x1, 931.2 kcal):
+
+```
+  TODAY          931.2 / 931.2 kcal = 100.0%   -> does NOT ship (threshold 15%)
+  INGREDIENTS     88.4 / 931.2 kcal =   9.5%   -> SHIPS (threshold 15%)
+      soya_chunk_curry:sunflower_oil              44.2 kcal  (process)
+      paneer_masala:sunflower_oil                 44.2 kcal  (process)
+  EVERYTHING       0.0 / 931.2 kcal =   0.0%   -> SHIPS (threshold 15%)
+
+  cross-check: core/ reports 931.2 kcal, this probe's TODAY is 931.2 kcal -- agree
+```
+
+**Ten ingredient rows are sufficient on their own.** The process constants are
+not on the critical path — which matters, because IFCT 2017 is a composition
+table and does not contain oil-uptake figures for a tempered curry; those are
+separate constants with separate sources, and `CLAUDE.md` warns Indian-specific
+process literature is thin. Had the answer come out the other way, the ten rows
+would have bought nothing and D7 would have needed rescoping before the work,
+not after.
+
+Stated against over-reading: 9.5% leaves 139.7 kcal of headroom, real but not
+large; a second template gets its own answer; and ~15% is still the provisional
+figure `CLAUDE.md` flags for revisiting.
+
+The probe computes both hypotheticals itself and **never flips a flag**. A probe
+that sets `verified=True` to answer a question is one interrupted session away
+from leaving it set — the failure the flag exists to prevent, committed by the
+tool built to measure it. Only the TODAY column has a shipped counterpart to
+cross-check against, and it agrees.
+
+### The rows, named
+
+Ten of the eleven rows reachable from north_lunch need a human: `wheat_atta_raw`,
+`paneer_fresh`, `soya_chunks_dry`, `onion_raw`, `tomato_raw`, `sunflower_oil`,
+`ginger_garlic_paste`, `garam_masala`, `green_chilli`, `salt_iodised`. `water`
+is the eleventh and is already verified.
+
+**None of the ten carries an IFCT code**, so the task is "find the code, then
+transcribe", not "transcribe". None of the four rows that already carry real
+codes from 2026-07-24 (`rice_milled_raw`, `rajma_raw`, `toor_dal_raw`,
+`potato_raw`) appears on this plate — the template D7 picked is the one with no
+head start, which nobody had noticed.
+
+`docs/methodology.md` now carries the narrowing as a deliberate scope line, per
+D7's instruction to write it in the voice of the existing boundaries.
+
+### Finding 37 — a `dev_mode` plate is rendered with no label — **OPEN**
+
+Found while scoping D7's third deliverable. `docs/methodology.md` has required,
+since Phase 2:
+
+> Any rendered plan, any `demo.py` stdout, and any README transcript produced in
+> `dev_mode` must carry that label in the artifact itself.
+
+`demo.py` complies — it prints `unverified : 931.2 kcal (100.0% of plate)`. The
+web does not. `PlanOut` carries `passed`, `disclosure`, `relaxation_applied`,
+`violations`, `violation_detail`, `components`, `estimate`; `PlanEstimateOut`
+carries six macros. **Neither carries `dev_mode`, `CandidatePool.flagged`, or
+the unverified figure**, and `web/dashboard.js` renders none of them. Grepped,
+not assumed: the only `unverified` in `api/` is `/api/science`'s registry count,
+and `web/dashboard.js` mentions the word once, in a comment.
+
+So the dashboard has always presented a `dev_mode` plate as an ordinary result.
+That was true before D6 and is sharper after it: the number now absent from the
+screen is 100%.
+
+This is the "artifact survives without context" failure the same section names,
+on the surface where a portfolio project's output is actually seen — and the
+requirement it violates was written in this repository, about this case, and
+then not implemented.
+
+**Why it is not fixed here.** `plan_meal` builds the candidate pool and discards
+it; `LadderOutcome` carries `plan`, `result`, `target_used` and
+`skipped_locked_steps`, and nothing about provenance. Surfacing it is a `core/`
+design decision with a wrong answer available — hanging `dev_mode` on
+`LadderOutcome` would put candidate-pool knowledge on a validator dataclass that
+has no business with it. `core/planner/plan.py` owns both halves and is the
+right place, but that is a deliberate change, not a field addition, and D7's
+headline is blocked regardless. Queued, not slipped in.
+
+**Disposition:** D7 **part 1 done, part 2 blocked on a human.** The scope
+narrowing and its justifying measurement are landed; the ten rows are named; the
+plumbing is finding 37 and the verification is nobody-but-a-human's. Findings
+19, 31, 36, 2, 15, 22, 28, 29 untouched.
+
+---
+
 ## 2026-08-09 — D6: the unverified-energy denominator
 
 Closes **finding 20**. The number the 15% shipping threshold and the `dev_mode`

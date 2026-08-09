@@ -422,6 +422,49 @@ ceilings become satisfiable. A later phase (API/web) must still plumb
 the paragraph below on artifacts surviving without context; Phase 2 records
 the flag on the pool, it does not yet render it anywhere.
 
+#### Scope of the exit: one template, named deliberately (2026-08-09, D7)
+
+The exit condition above is stated over the whole library, which is why it has
+never looked reachable — 28 of 29 rows, none of them anyone's afternoon. It is
+**narrowed here, as a choice rather than a quiet gap, to the ingredient rows
+reachable from `north_lunch`**: the first plan the project intends to stand
+behind is one plate, not a library.
+
+That is ten rows — `wheat_atta_raw`, `paneer_fresh`, `soya_chunks_dry`,
+`onion_raw`, `tomato_raw`, `sunflower_oil`, `ginger_garlic_paste`,
+`garam_masala`, `green_chilli`, `salt_iodised`. (`water` is the eleventh and is
+already verified.) None of them carries an IFCT code today, so the work is
+"find the code, then transcribe", not "transcribe" — and none of the four rows
+that *do* carry real codes from 2026-07-24 appears on this plate.
+
+**The narrowing is worth doing, and that is measured rather than assumed.**
+`docs/design/probes/d7_verification_horizon.py` computes what the plate's
+unverified-energy fraction would be if those ten rows were verified, against
+`CLAUDE.md`'s ~15% shipping threshold:
+
+| scenario | unverified energy | fraction | |
+| --- | ---: | ---: | --- |
+| today | 931.2 / 931.2 kcal | 100.0% | does not ship |
+| the ten ingredient rows verified | 88.4 / 931.2 kcal | **9.5%** | **ships** |
+| those *and* the process constants | 0.0 / 931.2 kcal | 0.0% | ships |
+
+So the ten rows are sufficient on their own. The process constants — which IFCT
+does not contain, being a composition table — are **not** on the critical path,
+and the whole remaining charge is two `sunflower_oil` lines at 44.2 kcal each,
+attributed to `oil_uptake.vegetable_tempering`.
+
+Two things this does not license. The 9.5% has 139.7 kcal of headroom to the
+threshold, so the margin is real but not large: adding process-attributed oil
+to this plate consumes it, and a second template will have its own answer, not
+this one. And the threshold itself is still the provisional ~15% figure
+`CLAUDE.md` flags for revisiting — clearing it is a claim about this project's
+stated bar, not about nutritional adequacy.
+
+**Nothing here flips a flag.** The probe computes the hypothetical without
+touching the registry, deliberately: a probe that sets `verified=True` to answer
+a question is one interrupted session away from leaving it set, which is the
+failure the flag exists to prevent, committed by the tool built to measure it.
+
 Because a portfolio project's output is a screenshot, "unvalidated" must survive
 being viewed without surrounding context. A boolean on a dataclass does not. Any
 rendered plan, any `demo.py` stdout, and any README transcript produced in
