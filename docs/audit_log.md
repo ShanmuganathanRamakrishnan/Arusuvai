@@ -8,6 +8,120 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-09 — D7 handoff: finding 43, and what D10 did to D7's own conclusion
+
+No code changed. Three artifacts added — `docs/design/ifct_sitting.md`,
+`docs/design/ifct_transcription_worksheet.csv`,
+`docs/design/probes/d7b_after_verification.py` and
+`docs/design/probes/d7b_transcription_diff.py` — so the one task in this project
+that no automation can perform is one mechanical session rather than an open
+question.
+
+### Finding 43 — verifying every ingredient row cannot make any current plate servable — **OPEN**
+
+`docs/design/probes/d7_verification_horizon.py` was written to answer, *before*
+a human spends hours with IFCT 2017 open rather than after, whether verifying
+the north_lunch ingredient rows would clear the ~15% unverified-energy shipping
+threshold. It answered **INGREDIENTS 9.5% → SHIPS**.
+
+That probe ran before D10. D10 gave `idli`, `phulka` and `steamed_rice` a
+`process_uncertainty_unassessed` declaration on every macro, mapping to
+`process.unassessed_uncertainty` = 0.20 — and D7's conclusion measures the
+*second* of two gates while D10 moved the *first*.
+
+```
+$ PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d7b_after_verification.py
+Protein eligibility band per recipe, against the 0.15 ceiling
+(counterfactual assumes every composition record verified at 0.05 -- the best the sitting can buy)
+
+  recipe                 comp   proc   TODAY    comp   proc VERIFIED   verdict
+  idli                 0.2500 0.2000  0.4500  0.0500 0.2000   0.2500   STILL BLOCKED
+  phulka               0.2500 0.2000  0.4500  0.0500 0.2000   0.2500   STILL BLOCKED
+  steamed_rice         0.2500 0.2000  0.4500  0.0500 0.2000   0.2500   STILL BLOCKED
+  [the other 15 recipes: 0.2500 0.0000 0.2500 -> 0.0500 0.0000 0.0500, clears]
+
+  3 of 18 recipes remain protein-ineligible after full composition verification
+
+  south_breakfast    BLOCKED by idli
+  south_lunch        BLOCKED by steamed_rice
+  north_lunch        BLOCKED by phulka
+  north_dinner       BLOCKED by phulka
+
+Cross-check: this probe's TODAY column vs core/
+  18 of 18 components agree, 0 disagree.
+```
+
+The gate in `core/planner/candidates.py` runs at pool-build time, before
+enumeration. A component over the ceiling never enters the pool, so the plate is
+never enumerated and never solved — an earlier and harder failure than the
+energy threshold D7 was watching for. Every one of the four reference plates
+contains one of the three blocked recipes. Composition verification cannot move
+them: the 0.20 is a process term, and there is no registered constant for
+boiling, steaming or dry-griddle loss to replace it with.
+
+So D7's *stated* conclusion is not wrong about what it measured, and is
+misleading about what it implies. Verifying the ten rows is **necessary and not
+sufficient**: it takes 15 of 18 recipes from 0.25 to 0.05, and leaves all four
+plates unenumerable outside `dev_mode`.
+
+*Disposition:* OPEN. This is finding 41 seen from the other end — 41 is the
+missing process constants, and closing 41 is what makes the sitting cash out.
+Neither ordering makes the other unnecessary. The sitting is still worth doing;
+`docs/design/ifct_sitting.md` states this up front so nobody books the time
+expecting a servable plate at the end of it.
+
+### The sitting is realistically five or six rows, not ten
+
+Triage in `docs/design/ifct_sitting.md`. Four of the ten are probably not IFCT
+questions at all: `sunflower_oil` (**measured**, 2026-07-24 — IFCT's T012 row
+carries no nutrient panel for oils), `ginger_garlic_paste` and `garam_masala`
+(household compounds a composition table does not tabulate; the real fix is
+decomposition into constituent foods, which is a recipe-data change), and
+`salt_iodised` (a stoichiometric derivation deliberately chosen over a measured
+value for reproducibility). **Only `sunflower_oil`'s verdict is measured; the
+rest are predictions from what IFCT 2017 is, and a wrong one should be recorded
+in the worksheet's `notes` as a result.**
+
+Separately: IFCT does not tabulate DIAAS, so the authored 1.00 on `paneer_fresh`
+and 0.85 on `soya_chunks_dry` — the latter being the only vegan-eligible row
+clearing the 0.75 quality threshold — stay authored no matter how the sitting
+goes. That is a different source and a different sitting.
+
+### The worksheet is blind, and the diff writes nothing
+
+`docs/design/ifct_transcription_worksheet.csv` is filled from IFCT alone, without
+reading the current fixture values first: every one of these rows is a
+hand-entered approximation, and transcribing with the guess visible anchors the
+transcription to the guess it exists to check. An agreeing transcription then
+looks identical, in the file, to a good approximation.
+
+`d7b_transcription_diff.py` reports MATCH / DIFFERS / NOT FOUND per value, flags
+a ratio past 2.5x as a probable raw-versus-cooked basis error rather than a
+data-quality one, and **writes nothing** — no fixture edit, no `verified` flip.
+That omission is the round-4 self-attestation rule applied to tooling: a script
+that filled the fixture in would make running the script the cheapest path *and*
+the most confident-looking output.
+
+Shown able to fail before being trusted, per CLAUDE.md — a synthetic
+`onion_raw` row exercising all four branches, then reverted:
+
+```
+  onion_raw   ifct_code=E011  page=p.142  state: worksheet=raw fixture=raw
+      energy_kcal  match             40.00
+      protein_g    DIFFERS            1.10 ->       1.40  (1.27x)
+      carb_g       DIFFERS            9.30 ->      27.90  (3.00x)  <-- BASIS ERROR?
+      fibre_g      NOT FOUND    (fixture holds 1.7)
+```
+
+### Reproduce
+
+```bash
+PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d7b_after_verification.py
+PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d7b_transcription_diff.py
+```
+
+---
+
 ## 2026-08-09 — D10: finding 2 CLOSED, findings 41 and 42 raised
 
 ### Finding 2 — a recipe with no `process:` line reads as fully process-certain — **CLOSED**
