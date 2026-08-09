@@ -390,3 +390,54 @@ D3 with the new files stashed (`git stash -u`), failing on `onion_raita`; it now
 fails on `idli`, which sorts first and carries the same defect. Same assertion,
 same message class, untouched. The warning is the pre-existing
 `FOODAI_SESSION_SECRET is not set` notice from `api/main.py`.
+
+Updated 2026-08-09 for D10 (`core/foods/recipe_loader.py`'s
+`_check_zero_process_is_earned` and `preparation:`; five recipe YAML files;
+`data/recipes/schema.yaml`; `docs/design/probes/d10_process_zero.py`;
+`docs/design/probes/d4b_mutations.py`). Closes `docs/audit_log.md` finding 2;
+raises finding 41 (unfixed, by scope) and finding 42 (fixed).
+
+**The suite has no deliberately-red test any more.** The one that stood since
+2026-07-24 was retired because reading it while fixing finding 2 showed its
+condition `if recipe.process_uncertainty:` is *always* true —
+`Recipe.process_uncertainty` is mandatory per macro and never empty — so what it
+actually asserted was "every recipe carries a process constant", which held by
+accident until D3 added the library's first oil-free cooked dishes. It was never
+a rule worth satisfying.
+
+Transcript, after the last edit, with the API on :8000 and a static server on
+:3000 so the browser checks genuinely ran rather than skipping:
+
+```
+python -m pytest tests/ -q --color=no
+........................................................................ [ 14%]
+[...]
+505 passed, 1 warning in 224.96s (0:03:44)
+```
+
+497 -> 505 collected and **zero skipped, zero failed**. The eight are the D10
+tests in `tests/test_recipes.py` (six new in
+`TestZeroProcessUncertaintyMustBeEarned`, one of which —
+`test_a_macro_the_dish_contains_none_of_needs_no_justification` — was written
+only after mutation R5 survived); the other two are net of
+`test_declared_uncertainty_is_backed_by_registered_constants` being rewritten
+rather than added. Two existing tests in
+`tests/test_nutrition_of.py::TestEligibilityConsequence` went red on D10 and
+were rewritten rather than restored: one asserted every recipe's protein band is
+0.25, now true of 15 of 18; the other asserted that verifying every ingredient
+row clears the eligibility ceiling for the whole library, which D10 showed is
+false for the three dishes that cook without oil. That second correction is the
+one with consequences outside this task — see `docs/methodology.md`, "A zero
+process uncertainty has to be earned".
+
+Deletion-checked, after fixing the harness itself (finding 42: it copied `core/`
+and `tests/` from the working tree but left `data/` at HEAD, so the new loader
+met the old recipe files and the library fixture errored on every run):
+
+```
+PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d4b_mutations.py R1,R2,R3,R4,R5
+5 mechanisms: 5 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+The warning is the pre-existing `FOODAI_SESSION_SECRET is not set` notice from
+`api/main.py`.

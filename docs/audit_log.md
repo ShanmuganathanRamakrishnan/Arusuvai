@@ -8,6 +8,257 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-09 — D10: finding 2 CLOSED, findings 41 and 42 raised
+
+### Finding 2 — a recipe with no `process:` line reads as fully process-certain — **CLOSED**
+
+Open since 2026-07-21. The loader derives process uncertainty per macro from the
+constants on each ingredient line, and the design's defence of the zeros was
+that they are *computed*, not omitted — something an author cannot obtain by
+leaving the work undone. That is true of a macro. It is false of a recipe. With
+no `process:` line anywhere the numerator is empty for **every** macro, and the
+arithmetic producing that zero is indistinguishable from the arithmetic
+producing a real one.
+
+Five recipes are in that population, and they are not the same kind of thing:
+
+```
+$ PYTHONPATH=. python docs/design/probes/d10_process_zero.py
+process.unassessed_uncertainty = 0.2
+
+recipe               preparation  proc  undeclared      now  combined
+----------------------------------------------------------------------
+aloo_sabzi           cooked          1      0.0311   0.0311    0.2811
+carrot_kootu         cooked          1      0.0177   0.0177    0.2677
+carrot_poriyal       cooked          1      0.0274   0.0274    0.2774
+coconut_chutney      cooked          1      0.0137   0.0137    0.2637
+dal_tadka            cooked          1      0.0255   0.0255    0.2755
+idli                 cooked          0      0.0000   0.2000    0.4500  <-- moved
+masala_dosa          cooked          2      0.0390   0.0390    0.2890
+onion_raita          uncooked        0      0.0000   0.0000    0.2500
+paneer_masala        cooked          1      0.0160   0.0160    0.2660
+phulka               cooked          0      0.0000   0.2000    0.4500  <-- moved
+rajma_chawal         cooked          1      0.0150   0.0150    0.2650
+sambar               cooked          1      0.0231   0.0231    0.2731
+sambar_sadam         cooked          1      0.0133   0.0133    0.2633
+soya_chunk_curry     cooked          1      0.0274   0.0274    0.2774
+soya_kuzhambu        cooked          1      0.0260   0.0260    0.2760
+steamed_rice         cooked          0      0.0000   0.2000    0.4500  <-- moved
+thayir_plain         uncooked        0      0.0000   0.0000    0.2500
+tofu_bhurji          cooked          1      0.0235   0.0235    0.2735
+
+Recipes with no process constant at all -- the population D10 rules on:
+  idli             cooked        100.8 kcal   cooked; 9 of 9 macros declared unassessed
+  onion_raita      uncooked       84.2 kcal   zero earned: nothing is heated
+  phulka           cooked         98.9 kcal   cooked; 9 of 9 macros declared unassessed
+  steamed_rice     cooked        260.0 kcal   cooked; 9 of 9 macros declared unassessed
+  thayir_plain     uncooked       87.0 kcal   zero earned: nothing is heated
+```
+
+The `undeclared` column is what each recipe's energy band would be if it
+declared neither `preparation` nor an unassessed list — the pre-D10 state, and
+what a new recipe gets today if the rule is removed. Before D10 all five sat at
+a combined **0.2500**, the composition floor and nothing else: a griddled phulka
+claimed exactly the certainty of raw whisked curd.
+
+**The column is a counterfactual, deliberately, not a git-history claim.** D10
+changed the loader *and* three recipe files, so today's checkout cannot be asked
+what yesterday's produced. The probe recomputes the derivation from the
+ingredient lines rather than reading `Recipe.process_uncertainty`, so it runs on
+either tree and cannot silently agree with the code it audits — the failure this
+log records against `d4_declines.py` on 2026-08-08.
+
+**Fix.** A recipe with no process constant must now say which case it is in:
+`preparation: uncooked` (a claim about the food, rejected if any line also
+carries a `process:` key) or `process_uncertainty_unassessed`, which takes the
+registered wide band. `preparation` defaults to `cooked` — omission is the
+cheapest authoring path and the round-4 rule is that the cheapest path must
+never produce the most confident-looking output.
+
+**What moved in the product.** Only the displayed band on one plate:
+
+```
+-  energy band  : 689.6 - 1172.9 kcal
++  energy band  : 590.7 - 1271.8 kcal
+```
+
+No plate, unit count, verdict or relaxation rung, on any of the four templates.
+That is the expected shape rather than a lucky one: the validator gates on the
+point estimate and intervals are display-only, so a widened band cannot reach a
+decision. It reaches the user, which is the entire reason for displaying it.
+
+**The red test.** `test_declared_uncertainty_is_backed_by_registered_constants`
+has been red on purpose since 2026-07-24 (see the cross-reference entry of that
+date). Reading it again while fixing this: its condition
+`if recipe.process_uncertainty:` is **always true**, because
+`Recipe.process_uncertainty` is mandatory per macro and never empty. So the
+assertion it actually made was "every recipe carries a process constant" — which
+held only by accident until `idli` and `steamed_rice` arrived in D3 as the
+library's first oil-free cooked dishes. It was never a rule worth satisfying.
+Rewritten to the invariant it was reaching for (every constant a recipe names is
+registered), with the earned-zeros half moved to
+`TestZeroProcessUncertaintyMustBeEarned` where the loader enforces it.
+`d4b_mutations.py`'s `DESELECT` is now empty; there is no deliberately-red test
+in the suite.
+
+**Suite**, both dev servers up so the browser checks actually ran:
+
+```
+$ python -m pytest tests/ -q --color=no
+........................................................................ [ 14%]
+[...]
+505 passed, 1 warning in 224.96s (0:03:44)
+```
+
+No skips and no failures. The suite has not been all-green since before
+2026-07-24 — the deliberately-red test dates from then — so this is the first
+run in which every browser check ran and nothing was excluded.
+
+**Disposition: CLOSED.** `core/foods/recipe_loader.py`,
+`data/recipes/schema.yaml`, five recipe files, `docs/methodology.md` ("A zero
+process uncertainty has to be earned"), D3 limitation 2.
+
+### Finding 41 — a declared process constant still leaves the macros it does not touch at a bare zero — **OPEN**
+
+The rule D10 added fires only when a recipe has **no** process constant
+whatsoever. A cooked dish that carries one still derives 0.0 for every macro
+that constant does not touch. In this library that is protein on almost every
+recipe: oil carries no protein, and oil uptake is the only kind of process
+constant registered. Measured —
+
+tail of the same probe run above:
+
+```
+Finding 41 -- protein process uncertainty is exactly 0.0 on 15 of 18 recipes:
+  aloo_sabzi, carrot_kootu, carrot_poriyal, coconut_chutney, dal_tadka, masala_dosa, onion_raita, paneer_masala, rajma_chawal, sambar, sambar_sadam, soya_chunk_curry, soya_kuzhambu, thayir_plain, tofu_bhurji
+  escaping only: idli, phulka, steamed_rice -- the three D10 forced to declare all nine macros unassessed
+```
+
+The only three that escape are the three D10 forced to declare all nine macros
+unassessed. Every other recipe — including all 13 that were never in finding 2's
+population, and `masala_dosa`, which is griddled in oil — still reports a protein
+process uncertainty of exactly zero.
+
+This is the same defect finding 2 named, one level down: a zero produced by an
+empty numerator, presented as a measurement. It is worth separating because the
+remedy is different in kind. Finding 2 was closeable with a loader rule, because
+the author knows whether the food is cooked. This one is not: closing it needs
+registered process constants for boiling loss, steaming loss and griddle
+protein retention, which is a data problem — and per `CLAUDE.md`, Indian-specific
+process literature is thin, so the honest outcome may be a row of
+`verified=False` conservative estimates rather than sources.
+
+Not fixed here, per the queue rule about tasks turning out larger than
+described. Scope is stated in `_check_zero_process_is_earned`'s docstring so the
+next reader meets it in the code rather than discovering it.
+
+**It already invalidated a standing claim, which is how it was sized.** Two
+tests in `tests/test_nutrition_of.py::TestEligibilityConsequence` went red on
+D10, and both were right to:
+
+- `test_every_recipe_sits_at_exactly_the_unverified_composition_band` asserted
+  0.25 protein for every recipe, on the premise "oil carries no protein, so no
+  process term touches this macro". True of 15 recipes and now false of three.
+  Rewritten as two populations with the split named.
+- `test_verifying_every_row_would_clear_the_protein_ceiling` asserted that
+  flipping every ingredient to verified drops every recipe to 0.05, under the
+  0.15 ceiling — i.e. that opening IFCT is *sufficient* to make this library
+  shippable. It is not. `idli`, `phulka` and `steamed_rice` land at
+  0.05 + 0.20 = **0.25**, still above the ceiling, and no amount of composition
+  verification moves them. Renamed
+  `test_verifying_every_row_clears_the_ceiling_for_all_but_three_recipes`.
+
+That second one matters beyond D10: the ten-row human sign-off D7 is waiting on
+would not, by itself, produce a shippable library. Process constants are a
+separate prerequisite nobody had costed, and it took making the zeros honest to
+see it.
+
+**Disposition: OPEN.** Blocks nothing today — `candidates.py` gates on the
+*combined* composition+process band and composition uncertainty is mandatory per
+macro and never zero, so no recipe currently passes eligibility on the strength
+of a fake zero. It would matter the moment a verified ingredient exists.
+
+### Finding 42 — the mutation harness ran new code against old data, and reported "covered" for it — **FIXED**
+
+The first D10 sweep returned this:
+
+```
+R1   covered      ...::test_silence_is_rejected_because_it_is_the_cheapest_path
+R2   covered      ...::test_mutating_a_constant_moves_every_recipe_that_depends_on_it
+R3   covered      ...::test_mutating_a_constant_moves_every_recipe_that_depends_on_it
+R4   covered      ...::test_mutating_a_constant_moves_every_recipe_that_depends_on_it
+R5   covered      ...::test_mutating_a_constant_moves_every_recipe_that_depends_on_it
+5 mechanisms: 5 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+Four of five rows naming one test that is about none of them. `CLAUDE.md`
+already warns that a `covered` row names the *first scoped failure*, which is
+collection order rather than relevance, so the rows were re-derived by hand —
+apply each mutation, run `tests/test_recipes.py`, take the whole failure list:
+
+```
+--- R1: a cooked dish may not derive zeros from silence  (1 red)
+       TestZeroProcessUncertaintyMustBeEarned::test_silence_is_rejected_because_it_is_the_cheapest_path
+--- R2: preparation defaults to cooked, the demanding case  (28 red)
+       ...the library does not load at all...
+--- R3: an unknown preparation is rejected, not assumed  (1 red)
+       TestZeroProcessUncertaintyMustBeEarned::test_an_unknown_preparation_is_rejected_rather_than_assumed
+--- R4: 'uncooked' and a process: line cannot both be true  (1 red)
+       TestZeroProcessUncertaintyMustBeEarned::test_an_uncooked_dish_may_not_also_name_a_process
+--- R5: a macro the dish contains none of is not the author's to justify  (0 red)
+```
+
+R5 is **red in the harness and green by hand**, which is not a difference the
+mutation can explain. Cause: `main()` copies `core/` and `tests/` into the
+worktree from the working tree and leaves everything else at HEAD — including
+`data/`. D10 edited five recipe files, so the worktree ran the new loader
+against the old YAML, every one of those five was rejected on load, and the
+session-scoped `library` fixture errored on **every** run. The rows were
+measuring a mismatch the harness created, mutation or no mutation.
+
+This is finding 35's family — a harness is itself a measurement — and the same
+class of blind spot: finding 35 was about parsing tool output, this is about
+what the tool was pointed at. The docstring's claim, "the worktree contributes
+isolation and nothing else," was the thing that was false.
+
+**Fixed**: `data/` is copied from the working tree alongside `core/` and
+`tests/`, and the docstring says why.
+
+**And R5 was a genuine hole.** Its guard — `getattr(total, macro) != 0`, which
+exempts a macro the dish contains none of — has no test, and the real library
+cannot supply one: all three cooked no-process dishes declare every macro
+unassessed, so the guard has nothing left to filter. Deleting it would force a
+rice dish to declare B12 unassessed to load at all, a wide band on a macro it
+does not contain. `test_a_macro_the_dish_contains_none_of_needs_no_justification`
+added, built on `rice_cooked` (0 µg B12). Written **after** watching the
+mutation survive, which is the only order that proves the test is about the
+mechanism.
+
+Re-run with `data/` copied and the new test in place:
+
+```
+$ PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d4b_mutations.py R1,R2,R3,R4,R5
+R1   covered      tests/test_recipes.py::TestZeroProcessUncertaintyMustBeEarned::test_silence_is_rejected_because_it_is_the_cheapest_path
+R2   covered      tests/test_recipes.py::TestRecipeLoaderRules::test_mutating_a_constant_moves_every_recipe_that_depends_on_it
+R3   covered      tests/test_recipes.py::TestZeroProcessUncertaintyMustBeEarned::test_an_unknown_preparation_is_rejected_rather_than_assumed
+R4   covered      tests/test_recipes.py::TestZeroProcessUncertaintyMustBeEarned::test_an_uncooked_dish_may_not_also_name_a_process
+R5   covered      tests/test_recipes.py::TestZeroProcessUncertaintyMustBeEarned::test_a_macro_the_dish_contains_none_of_needs_no_justification
+====================================================================================================
+5 mechanisms: 5 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+Four of the five rows now name the test written for that mechanism. R2 still
+names something incidental, and correctly: flipping the default to `uncooked`
+makes every recipe with a `process:` line illegal, so the library does not load
+and 28 tests in this file alone go red. Its own test
+(`test_silence_is_rejected_because_it_is_the_cheapest_path`) is in that list —
+verified by taking the whole per-mutation failure list, not the row.
+
+**Disposition: FIXED.** `docs/design/probes/d4b_mutations.py`,
+`tests/test_recipes.py`.
+
+---
+
 ## 2026-08-09 — D9(a) closeout: advice that can actually change the outcome
 
 Finishes D9. Two items were left open by D9(b), both small, both now built and

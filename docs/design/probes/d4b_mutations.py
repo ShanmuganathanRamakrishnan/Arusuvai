@@ -35,9 +35,17 @@ Optionally limit to one module, or to named mechanisms, while iterating:
 
 ## Which version of the code is measured: the working tree, not HEAD
 
-``core/`` and ``tests/`` are both copied into the worktree from the **working
-tree**. The worktree contributes isolation and nothing else, which was its only
-stated job here anyway.
+``core/``, ``tests/`` and ``data/`` are all copied into the worktree from the
+**working tree**. The worktree contributes isolation and nothing else, which was
+its only stated job here anyway.
+
+``data/`` was added 2026-08-09 (D10, `docs/audit_log.md` finding 42) after a
+sweep of five loader mechanisms returned "5 covered" and four of the five rows
+named the same unrelated test. The loader came from the working tree and the
+recipe YAML from HEAD, so every recipe D10 had edited was rejected on load and
+the shared library fixture errored on **every** run, mutation or not. The rows
+were not measuring the mutations at all. Same family as finding 35: a harness
+is a measurement, and this one was measuring a mismatch it created itself.
 
 Changed 2026-08-09 (D4b-ii); it used to run whatever `git worktree add HEAD`
 checked out. That could only grade already-committed code, which inverts the
@@ -62,12 +70,15 @@ REPO = Path(__file__).resolve().parents[3]
 #: SGR escape sequences, stripped before any line is matched. See `_run_suite`.
 _ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
-#: The deliberately-red test (D10). It fails before and after every mutation, so
-#: leaving it in would mark all 53 mechanisms as covered by it.
-DESELECT = (
-    "tests/test_recipes.py::TestRecipeLoaderRules"
-    "::test_declared_uncertainty_is_backed_by_registered_constants"
-)
+#: There is no longer a deliberately-red test to deselect. `DESELECT` used to
+#: hold `test_declared_uncertainty_is_backed_by_registered_constants`, which
+#: failed before and after every mutation and would otherwise have marked all 53
+#: mechanisms as covered by it. D10 (2026-08-09) settled the question it was
+#: standing in for, so the suite is green again and the harness no longer
+#: excludes anything. Kept as an empty tuple rather than deleted: if another
+#: deliberately-red test is ever added, it belongs here, and the reason why is
+#: worth more than the two lines it costs.
+DESELECT: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -96,6 +107,11 @@ NUTRITION_OF = "core/foods/nutrition_of.py"
 #: frontend was not looked at" to silence. It lives in `tests/`, which the
 #: harness already copies from the working tree, so it costs a module constant.
 WEB_GATE = "tests/conftest.py"
+#: Added for D10 (2026-08-09). The rule deciding whether a recipe has *earned*
+#: its zero process uncertainty is a construction-time check in exactly the
+#: sense this convention names: delete it and the pipeline's output moves — a
+#: griddled phulka goes back to displaying the same certainty as raw curd.
+RECIPE_LOADER = "core/foods/recipe_loader.py"
 
 MUTATIONS: tuple[Mutation, ...] = (
     # ---------------------------------------------------------------- candidates
@@ -482,6 +498,42 @@ MUTATIONS: tuple[Mutation, ...] = (
         "    reasons = sorted({reason for _, reason in _web_skips})\n",
         "    reasons = []\n",
     ),
+    # ------------------------------------------------- recipe loader (D10)
+    # `docs/audit_log.md` finding 2. R1 and R2 the real library grades directly
+    # — five recipes carry no process constant, three of them cooked, and R2
+    # stops the whole library loading. R3, R4 and R5 it cannot: no real recipe
+    # names a bad `preparation`, none pairs `uncooked` with a `process:` key,
+    # and every cooked no-process dish declares all nine macros unassessed, so
+    # R5's guard has nothing left to filter. Those three are graded by
+    # `tmp_path` recipes built for them, R5's written only after watching this
+    # row survive (finding 42).
+    Mutation(
+        "R1", RECIPE_LOADER, "a cooked dish may not derive zeros from silence",
+        "    if unearned:\n",
+        "    if False:\n",
+    ),
+    Mutation(
+        "R2", RECIPE_LOADER, "preparation defaults to cooked, the demanding case",
+        '    preparation = str(doc.get("preparation", "cooked"))\n',
+        '    preparation = str(doc.get("preparation", "uncooked"))\n',
+    ),
+    Mutation(
+        "R3", RECIPE_LOADER, "an unknown preparation is rejected, not assumed",
+        "    if preparation not in PREPARATIONS:\n",
+        "    if False:\n",
+    ),
+    Mutation(
+        "R4", RECIPE_LOADER, "'uncooked' and a process: line cannot both be true",
+        "        if has_process:\n            raise ValueError(\n"
+        "                f\"{path.name}: preparation is 'uncooked' but an ingredient line \"\n",
+        "        if False:\n            raise ValueError(\n"
+        "                f\"{path.name}: preparation is 'uncooked' but an ingredient line \"\n",
+    ),
+    Mutation(
+        "R5", RECIPE_LOADER, "a macro the dish contains none of is not the author's to justify",
+        "        if macro not in unassessed and getattr(total, macro) != 0\n",
+        "        if macro not in unassessed\n",
+    ),
 )
 
 
@@ -511,6 +563,9 @@ OWN_TESTS: dict[str, tuple[str, ...]] = {
     # this gate, not tests of it — they skip together for the same reason, so a
     # row they turn red is reporting the weather, not the mechanism.
     WEB_GATE: ("test_web_gate.py",),
+    # Same file as NUTRITION_OF's second entry, and for the same reason: a
+    # reader editing `test_recipes.py` knows they are editing evidence rules.
+    RECIPE_LOADER: ("test_recipes.py",),
 }
 
 
@@ -539,7 +594,8 @@ def _run_suite(worktree: Path) -> tuple[str, ...]:
         # depending on which shell launched it, which is precisely the kind of
         # unreproducible measurement this probe exists to avoid.
         [sys.executable, "-m", "pytest", "tests/", "-q", "--color=no",
-         "-p", "no:cacheprovider", "--deselect", DESELECT],
+         "-p", "no:cacheprovider",
+         *(arg for test in DESELECT for arg in ("--deselect", test))],
         cwd=worktree, capture_output=True, text=True,
         env={**os.environ, "FORCE_COLOR": "0", "PY_COLORS": "0", "NO_COLOR": "1"},
     )
@@ -597,7 +653,7 @@ def main() -> None:
     subprocess.run(["git", "worktree", "add", "--detach", str(worktree), "HEAD"],
                    cwd=REPO, capture_output=True, text=True, check=True)
     # See the module docstring: the working tree, not HEAD.
-    for tree in ("core", "tests"):
+    for tree in ("core", "tests", "data"):
         shutil.rmtree(worktree / tree, ignore_errors=True)
         shutil.copytree(
             REPO / tree, worktree / tree,

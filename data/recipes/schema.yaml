@@ -48,6 +48,16 @@
 #    measured constant in the registry, so declaring something unassessed is
 #    never the cheap route to a tidy number.
 #
+#    A dish with NO `process:` line anywhere must say which case it is in, or
+#    the loader rejects it (D10, 2026-08-09; `docs/audit_log.md` finding 2).
+#    Curd raita and a griddled phulka produced byte-identical zeros from
+#    byte-identical silence, and the loader could not tell "raw, so genuinely
+#    zero" from "cooked, but nobody did the work." So: either declare
+#    `preparation: uncooked`, or list the macros in
+#    `process_uncertainty_unassessed`. `preparation` defaults to `cooked`
+#    precisely because omission is the cheapest authoring path and must lead to
+#    the demanding treatment, never the confident one.
+#
 # 3. PROCESS ATTRIBUTION GOES ON THE LINE, NOT THE RECIPE.
 #
 #    A line whose quantity was determined by a registered constant names it in
@@ -96,6 +106,13 @@ serving_unit:
   default_count: int # min <= default <= max
   max_count: int
   note: string # optional; required in spirit if grams_per_unit overrides the measure
+
+# Whether the dish involves a cooking step at all. Optional; defaults to
+# `cooked`, which is the demanding case — see rule 2 above. `uncooked` is a
+# claim about the food, checked against the lines: a recipe declaring it may not
+# also carry a `process:` key, since a dish that is not cooked has no cooking
+# process to attribute uncertainty to.
+preparation: cooked | uncooked
 
 # Macros you believe cooking affects but for which no constant is registered.
 # These take the wide registered `process.unassessed_uncertainty` band instead

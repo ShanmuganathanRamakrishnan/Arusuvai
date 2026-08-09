@@ -50,19 +50,31 @@ serving_unit:
     nobody is served one idli. Six is a large breakfast and an ordinary one.
 
 # Steaming adds nothing and removes nothing that any registered constant
-# describes, so there is no `process:` line anywhere below and energy, protein,
-# fat and carb each derive to a COMPUTED zero rather than an omitted one. This
-# is the second recipe in the library where that is true (thayir_plain is the
-# other) and it is docs/audit_log.md finding 2's shape again: a recipe with no
-# process lines reads as 0% process-uncertain. Its composition band is
-# untouched and the eligibility filter still excludes it outside dev_mode.
+# describes, so there is no `process:` line anywhere below. This file used to
+# argue from that to a COMPUTED zero on energy, protein, fat and carb — "not an
+# omitted one" — while naming docs/audit_log.md finding 2 as the thing that
+# made the argument uncomfortable. D10 settled it against this file: the
+# distinction is real in the derivation and invisible in the output, and a
+# steamed dish reading 0% process-uncertain is a claim nobody measured. See
+# the unassessed list below. The composition band is untouched either way, and
+# the eligibility filter still excludes this recipe outside dev_mode.
 #
 # Fermentation changes B-vitamin and mineral availability in ways nobody here
 # has measured, and steaming leaches nothing into water that is thrown away, so
 # those macros are declared unassessed rather than deriving to a zero nobody
 # has earned. Same list masala_dosa declares, for the fermentation half of the
 # same reasoning.
-process_uncertainty_unassessed: [fibre_g, iron_mg, calcium_mg, b12_ug]
+# D10 (docs/audit_log.md finding 2, settled 2026-08-09). Extended from the
+# four micro/fibre macros to every macro this dish contains. The cooking
+# step here is real and nobody has quantified it; before this line the dish
+# derived a process uncertainty of 0.0 on energy, protein, fat, carb and
+# sodium for exactly the same reason a raw raita did -- the absence of a
+# 'process:' key -- and showed an identical 0.2500 combined energy band.
+# No oil-uptake constant applies, so there is nothing to attribute; the
+# registered wide band is the honest answer, not a computed zero.
+process_uncertainty_unassessed:
+  [energy_kcal, protein_g, fat_g, carb_g, fibre_g, sodium_mg,
+   iron_mg, calcium_mg, b12_ug]
 
 ingredients:
   - id: rice_milled_raw

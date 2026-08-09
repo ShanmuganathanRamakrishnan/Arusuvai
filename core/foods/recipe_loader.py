@@ -105,6 +105,89 @@ def _derive_process_uncertainty(
     return derived
 
 
+#: The two things a recipe can be, for the purpose of process uncertainty.
+#: ``cooked`` is the default *deliberately*: omitting the key is the cheapest
+#: authoring path, and it must lead to the demanding treatment, never the
+#: confident one. See ``_check_zero_process_is_earned``.
+PREPARATIONS: tuple[str, ...] = ("cooked", "uncooked")
+
+
+def _check_zero_process_is_earned(
+    doc: Mapping[str, object],
+    lines: Sequence[RecipeIngredient],
+    ingredients: Mapping[str, Ingredient],
+    unassessed: Sequence[str],
+    path: Path,
+) -> None:
+    """Reject a *cooked* dish that attributes its zero process uncertainty to nothing.
+
+    `docs/audit_log.md` finding 2, and the question D10 was written to settle:
+    can a recipe declare uncertainty with nothing to attribute it to? The answer
+    is yes — but only if it says so, because the loader could not otherwise tell
+    the two cases apart:
+
+      * ``onion_raita`` is whisked curd with raw onion. Nothing is heated,
+        drained, griddled or fried, so every macro's process uncertainty is a
+        genuine zero. Its own file header has said so in prose since it was
+        written; prose is not something the loader can read.
+      * ``phulka`` is griddled and ``idli`` is steamed. Both derived exactly the
+        same zeros, from exactly the same absence of a ``process:`` line — not
+        because their processes are inert but because nobody has quantified
+        them. Measured 2026-08-09: both showed a combined energy band of 0.2500,
+        identical to the raw dishes and to the composition-only floor.
+
+    So a recipe with no process constant at all must either declare
+    ``preparation: uncooked`` — a claim about the food, checked against the
+    lines — or name the macros it cannot quantify, which then take the
+    registered wide band.
+
+    **Scope, stated rather than left to be discovered.** This fires only when a
+    recipe has *no* process constant whatsoever. A cooked dish that carries one
+    still derives 0.0 for every macro that constant does not touch — protein on
+    every recipe in the library, since oil carries no protein — and that zero is
+    just as unexamined. Closing it needs process constants for something other
+    than oil uptake, which is a data problem, not a loader rule.
+    `docs/audit_log.md` finding 41.
+    """
+
+    preparation = str(doc.get("preparation", "cooked"))
+    if preparation not in PREPARATIONS:
+        raise ValueError(
+            f"{path.name}: preparation {preparation!r} is not one of {PREPARATIONS}"
+        )
+
+    has_process = any(line.process_key for line in lines)
+    if preparation == "uncooked":
+        if has_process:
+            raise ValueError(
+                f"{path.name}: preparation is 'uncooked' but an ingredient line "
+                "carries a 'process:' key. One of the two is wrong — a dish that "
+                "is not cooked has no cooking process to attribute uncertainty to."
+            )
+        return
+    if has_process:
+        return
+
+    total = nutrition_of_lines(lines, ingredients, recipe_id=path.stem)
+    # A macro the dish contains none of derives 0.0 for a reason that has
+    # nothing to do with cooking, so it is not the author's to justify.
+    unearned = [
+        macro
+        for macro in MACRO_KEYS
+        if macro not in unassessed and getattr(total, macro) != 0
+    ]
+    if unearned:
+        raise ValueError(
+            f"{path.name}: no ingredient line carries a 'process:' key, so "
+            f"{unearned} would each derive a process uncertainty of 0.0 with "
+            "nothing behind it. Either add 'preparation: uncooked' if the dish "
+            "genuinely involves no cooking step, or list the macros in "
+            "'process_uncertainty_unassessed' so they take the registered wide "
+            "band. Omitting both is the cheapest path and must not be the most "
+            "confident-looking one."
+        )
+
+
 def load_recipe_file(
     path: Path, ingredients: Mapping[str, Ingredient]
 ) -> tuple[Recipe, str]:
@@ -191,6 +274,7 @@ def load_recipe_file(
                 f"which is not a known macro (one of {MACRO_KEYS})"
             )
 
+    _check_zero_process_is_earned(doc, lines, ingredients, unassessed, path)
     uncertainty = _derive_process_uncertainty(lines, ingredients, unassessed, path)
 
     recipe = Recipe(

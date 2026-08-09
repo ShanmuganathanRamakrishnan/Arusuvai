@@ -12,6 +12,10 @@
 # Same dairy, different dish, different slot — which is why the category
 # vocabulary distinguishes them.
 id: thayir_plain
+# Set curd, spooned out. No cooking step, so every macro's process
+# uncertainty is a genuine computed zero rather than an unexamined one.
+# See onion_raita.yaml and docs/audit_log.md finding 2.
+preparation: uncooked
 name: Curd
 name_ta: தயிர்
 name_hi: दही

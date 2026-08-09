@@ -48,11 +48,23 @@ serving_unit:
 # as little Indian-specific literature behind it. No constant is registered for
 # it, so the macros that a moisture-basis shift would move are declared
 # unassessed rather than deriving to a computed 0.0 nobody has earned.
-# Energy, protein, fat and carb are NOT listed: nothing process-sensitive
-# touches them here (no oil, no drained cooking water, no leaching step), so
-# they derive to a computed zero, which is a different claim from an
-# undeclared one.
-process_uncertainty_unassessed: [fibre_g, iron_mg, calcium_mg, b12_ug]
+# SUPERSEDED, kept because it is the argument D10 rejected: "Energy, protein,
+# fat and carb are NOT listed: nothing process-sensitive touches them here (no
+# oil, no drained cooking water, no leaching step), so they derive to a
+# computed zero, which is a different claim from an undeclared one." The last
+# clause is true of the reasoning and false of the artifact — the number
+# reaching the reader is byte-identical either way, and this dish is griddled.
+# D10 (docs/audit_log.md finding 2, settled 2026-08-09). Extended from the
+# four micro/fibre macros to every macro this dish contains. The cooking
+# step here is real and nobody has quantified it; before this line the dish
+# derived a process uncertainty of 0.0 on energy, protein, fat, carb and
+# sodium for exactly the same reason a raw raita did -- the absence of a
+# 'process:' key -- and showed an identical 0.2500 combined energy band.
+# No oil-uptake constant applies, so there is nothing to attribute; the
+# registered wide band is the honest answer, not a computed zero.
+process_uncertainty_unassessed:
+  [energy_kcal, protein_g, fat_g, carb_g, fibre_g, sodium_mg,
+   iron_mg, calcium_mg, b12_ug]
 
 ingredients:
   - id: wheat_atta_raw

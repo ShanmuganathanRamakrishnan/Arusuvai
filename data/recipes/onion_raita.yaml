@@ -43,6 +43,14 @@ diet_patterns: [vegetarian]
 # Not vegan: curd. Not jain: onion.
 
 category: raita
+
+# D10 (docs/audit_log.md finding 2, settled 2026-08-09). This file's header
+# has claimed since it was written that nothing here is heated, drained,
+# griddled or fried. That claim was prose the loader could not read, so this
+# dish and a griddled phulka derived identical zeros. Now it is a field, and
+# the loader rejects the file if any ingredient line also carries a
+# 'process:' key -- the two statements cannot both be true.
+preparation: uncooked
 prep_minutes: 10
 tags: [cooling, no_cook, lunch, dinner]
 

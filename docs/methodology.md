@@ -272,6 +272,99 @@ threshold; it is the whole plate. Anything downstream that leans on this
 number — the `dev_mode` exit in particular — now leans on a figure that means
 what it says.
 
+## A zero process uncertainty has to be earned (2026-08-09, D10)
+
+Closes `docs/audit_log.md` finding 2, open since 2026-07-21.
+
+The loader derives process uncertainty per macro from the constants attached to
+each ingredient line. A macro nothing process-sensitive touches derives to 0.0,
+and the design called that a *computed* zero — one an author cannot obtain by
+leaving the work undone. That was true of a macro, and false of a whole recipe.
+A recipe with no `process:` line anywhere derives 0.0 for **every** macro, and
+the arithmetic producing that zero is indistinguishable from the arithmetic
+producing a real one.
+
+Five recipes in the library have no process constant at all, and they are not
+the same kind of thing:
+
+| recipe | what happens to it | zero deserved? |
+|---|---|---|
+| `onion_raita` | curd whisked with raw onion | yes |
+| `thayir_plain` | curd, plated | yes |
+| `idli` | steamed | **no** |
+| `steamed_rice` | boiled | **no** |
+| `phulka` | dry-griddled on a tawa | **no** |
+
+Measured before the fix, every one of the five reported a combined energy band
+of **0.2500** and a process term of **0.0000** — the composition floor and
+nothing else. A griddled phulka claimed exactly the certainty of raw curd. This
+is the false-precision failure the whole uncertainty axis exists to prevent,
+committed by the layer built to prevent it, and it was reachable only because
+D3 added the second and third cooked instance; with `phulka` alone it read as a
+one-recipe quirk.
+
+### What the loader now requires
+
+A recipe with no process constant must say which case it is in:
+
+- **`preparation: uncooked`** — a claim about the food, checked against the
+  lines. A recipe declaring it may not also carry a `process:` key, since a dish
+  that is not cooked has no cooking process to attribute uncertainty to.
+- **`process_uncertainty_unassessed: [...]`** — the macros it believes cooking
+  affects but cannot quantify, which take the registered wide band.
+
+Neither may be omitted. `preparation` **defaults to `cooked`**, deliberately:
+omission is the cheapest authoring path, and the round-4 rule is that the
+cheapest path must never produce the most confident-looking output. Under the
+opposite default a new recipe would silently inherit a perfect score.
+
+### What moved
+
+```
+recipe                     combined   energy    process     (before -> after)
+idli                       0.2500 ->  0.4500    0.0000 -> 0.2000
+phulka                     0.2500 ->  0.4500    0.0000 -> 0.2000
+steamed_rice               0.2500 ->  0.4500    0.0000 -> 0.2000
+onion_raita                0.2500 ->  0.2500    0.0000 -> 0.0000
+thayir_plain               0.2500 ->  0.2500    0.0000 -> 0.0000
+```
+
+The two genuinely uncooked dishes are untouched — the rule widens nothing for
+tidiness. In `python demo.py` the **only** line that moved anywhere is the
+displayed band on the south breakfast plate:
+
+```
+-  energy band  : 689.6 - 1172.9 kcal
++  energy band  : 590.7 - 1271.8 kcal
+```
+
+No plate, no unit count, no verdict, no relaxation rung. That is the expected
+shape: the validator gates on the point estimate and intervals are display-only,
+so a widened band cannot reach a decision. It reaches the user, which is the
+whole point of displaying it.
+
+### Limitation carried out of D10, stated rather than discovered
+
+The rule fires only when a recipe has **no** process constant whatsoever. A
+cooked dish that carries one still derives 0.0 for every macro that constant
+does not touch — protein on every recipe in the library, because oil carries no
+protein — and that zero is just as unexamined as the ones D10 closed. Closing it
+needs registered process constants for something other than oil uptake, which is
+a data problem and not a loader rule. Raised as `docs/audit_log.md` **finding
+41**, OPEN, and deliberately not fixed here.
+
+**One consequence is worth stating on its own, because it revises a claim this
+document has made since Phase 2.** Making the zeros honest also made visible
+that *verifying every ingredient row is not sufficient to make this library
+shippable*. Composition verification takes a recipe's protein band from 0.25 to
+0.05, under the 0.15 eligibility ceiling — for 15 of 18 recipes. The three that
+cook without oil (`idli`, `phulka`, `steamed_rice`) land at 0.05 + 0.20 = **0.25**
+and stay above the ceiling, because the 0.20 is a process band no composition
+work can touch. Pinned in
+`tests/test_nutrition_of.py::TestEligibilityConsequence::test_verifying_every_row_clears_the_ceiling_for_all_but_three_recipes`,
+which asserted the opposite until 2026-08-09. The human sign-off on IFCT rows is
+a necessary step and not the last one.
+
 ## Nothing can currently ship as validated (2026-07-21)
 
 Stated plainly, because the alternative is discovering it after `core/planner`
@@ -1462,10 +1555,13 @@ the unrelaxed 854.9–944.9 window while clearing protein under the salt ceiling
    nudges that plate — or any profile whose day budget leaves less than a full
    2000 mg for lunch — puts it straight back into decline. This is
    `docs/audit_log.md` finding 22's territory and is not fixed here.
-2. **`idli` and `steamed_rice` are the second and third recipes with no
+2. ~~**`idli` and `steamed_rice` are the second and third recipes with no
    `process:` line at all**, so every macro derives to a *computed* zero
    process-uncertainty. That is `docs/audit_log.md` finding 2's shape, still
-   OPEN, now reachable with three real files instead of one.
+   OPEN, now reachable with three real files instead of one.~~ **CLOSED
+   2026-08-09 by D10** — see "A zero process uncertainty has to be earned"
+   below. Having three real files instead of one is what made it answerable:
+   with `phulka` alone the question read as a one-recipe quirk.
 3. **`idli` uses `rice_milled_raw` for what is really parboiled idli rice**,
    which IFCT tabulates separately. Stated in the file; the least accurate thing
    in it.

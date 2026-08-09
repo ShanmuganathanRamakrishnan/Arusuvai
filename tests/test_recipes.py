@@ -224,13 +224,28 @@ class TestRecipeLoaderRules:
             assert component.category in accepted
 
     def test_declared_uncertainty_is_backed_by_registered_constants(self, library):
+        """D10, settled 2026-08-09. This test was red on purpose for weeks.
+
+        It used to read ``if recipe.process_uncertainty: assert
+        recipe.process_constants``. That condition is **always true** —
+        `Recipe.process_uncertainty` is mandatory per macro, so the mapping is
+        never empty — which made the real assertion "every recipe carries a
+        process constant". That held only by accident, until `idli` and
+        `steamed_rice` arrived in D3 as the library's first dishes with no oil
+        in them, and `onion_raita` as the first cooked by nothing at all.
+
+        A steamed idli genuinely has no oil-uptake constant, so the old rule
+        was not something to satisfy. What it was reaching for is below: every
+        constant a recipe names must be registered, and no macro may sit at a
+        zero nobody earned. The second half is enforced at load time and graded
+        by `TestZeroProcessUncertaintyMustBeEarned`.
+        """
         from core.nutrition import citations
 
         for recipe in library.recipes.values():
-            if recipe.process_uncertainty:
-                assert recipe.process_constants
             for key in recipe.process_constants:
                 assert citations.constant(key)
+
 
     def test_dosa_uncertainty_matches_its_own_arithmetic(self, library, ingredients):
         # Declared energy band, rederived here from the recipe's own oil lines.
@@ -469,3 +484,175 @@ class TestRecipeLoaderRules:
         with pytest.raises(ValueError, match="no longer read from the recipe file"):
             load_recipe_file(Path(bad), ingredients)
 
+
+class TestZeroProcessUncertaintyMustBeEarned:
+    """`docs/audit_log.md` finding 2, and D10's question.
+
+    "Can a recipe declare uncertainty with nothing to attribute it to?" Yes —
+    but only by saying which case it is in, because a raw raita and a griddled
+    phulka produced byte-identical zeros from byte-identical silence.
+    """
+
+    _BASE = [
+        "id: probe",
+        "name: Probe",
+        "region: south_indian",
+        "diet_patterns: [vegetarian]",
+        "category: rice",
+        "serving_unit:",
+        "  measure: cup",
+        "  grams_per_unit: 100.0",
+        "  min_count: 1",
+        "  default_count: 1",
+        "  max_count: 2",
+    ]
+
+    def _write(self, tmp_path, *extra, lines=None):
+        bad = tmp_path / "probe.yaml"
+        body = list(self._BASE) + list(extra) + (
+            lines
+            or ["ingredients:", "  - id: rice_cooked", "    quantity_g: 100.0",
+                "    state: cooked"]
+        )
+        bad.write_text("\n".join(body), encoding="utf-8")
+        return bad
+
+    def test_silence_is_rejected_because_it_is_the_cheapest_path(
+        self, tmp_path, ingredients
+    ):
+        from pathlib import Path
+
+        from core.foods.recipe_loader import load_recipe_file
+
+        # No process line, no `preparation`, no unassessed list. Before D10 this
+        # loaded and claimed perfect process certainty on every macro.
+        with pytest.raises(ValueError, match="nothing behind it"):
+            load_recipe_file(Path(self._write(tmp_path)), ingredients)
+
+    def test_declaring_the_dish_uncooked_earns_the_zeros(self, tmp_path, ingredients):
+        from pathlib import Path
+
+        from core.foods.recipe_loader import load_recipe_file
+
+        recipe, _ = load_recipe_file(
+            Path(self._write(tmp_path, "preparation: uncooked")), ingredients
+        )
+        assert recipe.uncertainty_for("energy_kcal") == 0.0
+        assert recipe.process_constants == frozenset()
+
+    def test_listing_the_macros_unassessed_also_earns_them(self, tmp_path, ingredients):
+        from pathlib import Path
+
+        from core.foods.recipe_loader import load_recipe_file
+        from core.nutrition import citations
+
+        recipe, _ = load_recipe_file(
+            Path(
+                self._write(
+                    tmp_path,
+                    "process_uncertainty_unassessed:",
+                    "  [energy_kcal, protein_g, fat_g, carb_g, fibre_g,"
+                    " sodium_mg, iron_mg, calcium_mg, b12_ug]",
+                )
+            ),
+            ingredients,
+        )
+        wide = citations.value_of("process.unassessed_uncertainty")
+        assert recipe.uncertainty_for("energy_kcal") == pytest.approx(wide)
+
+    def test_a_macro_the_dish_contains_none_of_needs_no_justification(
+        self, tmp_path, ingredients
+    ):
+        """The guard that keeps the rule from demanding the impossible.
+
+        `rice_cooked` carries 0 µg of B12. Its process uncertainty on B12 derives
+        to 0.0 because there is no B12 to be uncertain about, which is not a
+        claim about cooking and not the author's to earn. Without the
+        ``getattr(total, macro) != 0`` arm, a rice dish would have to declare
+        B12 unassessed to load at all — a wide band on a macro it does not
+        contain, which is noise dressed as caution.
+
+        This test exists because it did not: mutation R5 in
+        `docs/design/probes/d4b_mutations.py` deleted the arm and nothing in
+        `tests/test_recipes.py` went red. The real recipes hide it — all three
+        cooked no-process dishes declare every macro unassessed, so the arm has
+        nothing left to filter.
+        """
+        from pathlib import Path
+
+        from core.foods.recipe_loader import load_recipe_file
+
+        every_macro_but_b12 = [m for m in MACRO_KEYS if m != "b12_ug"]
+        recipe, _ = load_recipe_file(
+            Path(
+                self._write(
+                    tmp_path,
+                    "process_uncertainty_unassessed:",
+                    f"  [{', '.join(every_macro_but_b12)}]",
+                )
+            ),
+            ingredients,
+        )
+        assert recipe.uncertainty_for("b12_ug") == 0.0
+
+    def test_an_uncooked_dish_may_not_also_name_a_process(self, tmp_path, ingredients):
+        from pathlib import Path
+
+        from core.foods.recipe_loader import load_recipe_file
+
+        # Both statements cannot be true, and silently honouring one would pick
+        # a winner the author did not choose.
+        with pytest.raises(ValueError, match="preparation is 'uncooked'"):
+            load_recipe_file(
+                Path(
+                    self._write(
+                        tmp_path,
+                        "preparation: uncooked",
+                        lines=[
+                            "ingredients:",
+                            "  - id: rice_cooked",
+                            "    quantity_g: 100.0",
+                            "    state: cooked",
+                            "  - id: gingelly_oil",
+                            "    quantity_g: 3.0",
+                            "    state: raw",
+                            "    process: oil_uptake.vegetable_tempering",
+                        ],
+                    )
+                ),
+                ingredients,
+            )
+
+    def test_an_unknown_preparation_is_rejected_rather_than_assumed(
+        self, tmp_path, ingredients
+    ):
+        from pathlib import Path
+
+        from core.foods.recipe_loader import load_recipe_file
+
+        with pytest.raises(ValueError, match="is not one of"):
+            load_recipe_file(
+                Path(self._write(tmp_path, "preparation: lightly_toasted")),
+                ingredients,
+            )
+
+    def test_the_real_library_no_longer_confuses_raw_with_unmeasured(self, library):
+        """The measurement that made D10 answerable, pinned.
+
+        Before: `idli` (steamed), `phulka` (griddled) and `steamed_rice`
+        (boiled) each derived a process energy uncertainty of 0.0 — identical to
+        `onion_raita` and `thayir_plain`, which are genuinely uncooked. The
+        three cooked dishes now carry the registered wide band instead.
+        """
+        from core.nutrition import citations
+
+        wide = citations.value_of("process.unassessed_uncertainty")
+        for rid in ("idli", "phulka", "steamed_rice"):
+            assert library.recipes[rid].uncertainty_for("energy_kcal") == pytest.approx(
+                wide
+            ), f"{rid} is cooked; its process uncertainty must not be a bare zero"
+        for rid in ("onion_raita", "thayir_plain"):
+            assert library.recipes[rid].uncertainty_for("energy_kcal") == 0.0, (
+                f"{rid} involves no cooking step, so a computed zero is correct "
+                "and must not be widened for tidiness"
+            )

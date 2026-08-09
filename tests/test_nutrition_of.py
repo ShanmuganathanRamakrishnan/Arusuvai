@@ -301,24 +301,40 @@ class TestEligibilityConsequence:
         assert citations.value_of("eligibility.max_protein_uncertainty") == 0.15
         assert citations.value_of("eligibility.max_energy_uncertainty") == 0.20
 
-    def test_every_recipe_sits_at_exactly_the_unverified_composition_band(
+    #: The three dishes that cook without oil — steamed, boiled, dry-griddled.
+    #: D10 (2026-08-09) made them declare every macro `unassessed` rather than
+    #: derive a bare zero from having no `process:` line, so they alone carry a
+    #: process term on protein. Named here once, used by the two tests below.
+    NO_OIL_COOKED = ("idli", "phulka", "steamed_rice")
+
+    def test_every_recipe_sits_at_exactly_its_registered_band(
         self, library, ingredients
     ):
-        # Not "above the ceiling" — exactly 0.25. Oil carries no protein, so no
-        # process term touches this macro on any of the three recipes, and the
-        # figure is the composition band alone. A direction-only assertion would
-        # survive the band drifting to 0.9 or 0.16; this does not.
+        # Exact figures, not "above the ceiling". A direction-only assertion
+        # would survive a band drifting to 0.9 or to 0.16; these do not.
+        #
+        # Two populations, and the split is the whole point. Oil carries no
+        # protein, so on an oil-cooked dish no process term touches this macro
+        # and 0.25 is the composition band alone. On the three that cook without
+        # oil there is no constant to attribute anything to, so D10 requires them
+        # to declare the macro unassessed: 0.25 composition + 0.20 registered
+        # wide band = 0.45. Before D10 they reported 0.25 too — the same number
+        # as a raw raita — which is the false precision finding 2 named.
+        #
         # min_count, not a hard-coded 1: uncertainty_fraction is scale-invariant
         # so the count is arbitrary, but nutrition_of_recipe enforces the
         # serving unit's bounds and idli's floor is 2. Same defect these three
         # tests shared with core/planner/candidates.py until 2026-08-07.
+        unassessed_band = citations.value_of("process.unassessed_uncertainty")
+        assert unassessed_band == 0.20
         for recipe_id, component in library.components.items():
             est = nutrition_of_components(
                 [(component, component.recipe.serving_unit.min_count)], ingredients
             )
-            assert est.uncertainty_fraction("protein_g") == pytest.approx(0.25), (
-                f"{recipe_id}: protein band moved off the unverified-composition "
-                "constant"
+            expected = 0.25 + (unassessed_band if recipe_id in self.NO_OIL_COOKED else 0.0)
+            assert est.uncertainty_fraction("protein_g") == pytest.approx(expected), (
+                f"{recipe_id}: protein band is neither the unverified-composition "
+                "constant nor that plus the registered unassessed band"
             )
 
     def test_no_recipe_currently_clears_the_protein_eligibility_ceiling(
@@ -340,14 +356,26 @@ class TestEligibilityConsequence:
                 "can ship as validated is stated there"
             )
 
-    def test_verifying_every_row_would_clear_the_protein_ceiling(
+    def test_verifying_every_row_clears_the_ceiling_for_all_but_three_recipes(
         self, library, ingredients
     ):
-        # What verification actually buys, pinned: 0.05 composition band, which
-        # IS below the 0.15 protein ceiling. So flipping the dominant
-        # ingredients to verified is the thing that changes dev_mode status —
-        # stated as an exact number so a future change to either constant
-        # surfaces here rather than silently flipping the shipping story.
+        """What ingredient verification buys, and where it stops buying.
+
+        This test used to assert that verifying every row clears the protein
+        ceiling for the whole library. D10 (2026-08-09) made that false, and the
+        falsity is real rather than bookkeeping: `idli`, `phulka` and
+        `steamed_rice` cook without oil, no registered constant describes
+        steaming, boiling or dry-griddling, and so their protein carries the
+        0.20 unassessed band no matter how good the composition data gets.
+        0.05 + 0.20 = 0.25, still above the 0.15 ceiling.
+
+        Opening IFCT for every ingredient is therefore **not sufficient** to
+        make this library shippable. That needs process constants too — which is
+        `docs/audit_log.md` finding 41, and is a different piece of work from the
+        ten-row human sign-off D7 is waiting on. Stated as exact numbers so a
+        future change to either constant surfaces here rather than quietly
+        rewriting the shipping story.
+        """
         from dataclasses import replace
 
         from core.schemas import MACRO_KEYS
@@ -361,12 +389,22 @@ class TestEligibilityConsequence:
             for key, ing in ingredients.items()
         }
         ceiling = citations.value_of("eligibility.max_protein_uncertainty")
-        for component in library.components.values():
+        cleared, blocked = [], []
+        for recipe_id, component in library.components.items():
             est = nutrition_of_components(
                 [(component, component.recipe.serving_unit.min_count)], verified
             )
-            assert est.uncertainty_fraction("protein_g") == pytest.approx(0.05)
-            assert est.uncertainty_fraction("protein_g") < ceiling
+            fraction = est.uncertainty_fraction("protein_g")
+            if recipe_id in self.NO_OIL_COOKED:
+                assert fraction == pytest.approx(0.25)
+                assert fraction > ceiling
+                blocked.append(recipe_id)
+            else:
+                assert fraction == pytest.approx(0.05)
+                assert fraction < ceiling
+                cleared.append(recipe_id)
+        assert sorted(blocked) == sorted(self.NO_OIL_COOKED)
+        assert len(cleared) == len(library.components) - 3
 
     def test_every_registered_evidence_is_still_unverified(self):
         # The precondition for the above. If this ever fails, someone has opened
