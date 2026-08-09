@@ -292,8 +292,17 @@ the same kind of thing:
 | `onion_raita` | curd whisked with raw onion | yes |
 | `thayir_plain` | curd, plated | yes |
 | `idli` | steamed | **no** |
-| `steamed_rice` | boiled | **no** |
+| `steamed_rice` | boiled | **no** — revised, see below |
 | `phulka` | dry-griddled on a tawa | **no** |
+
+**`steamed_rice`'s row was wrong, corrected 2026-08-09 by D12**
+(`docs/audit_log.md` finding 44). It is one line: 200 g of `rice_cooked`, a
+*cooked-basis* composition row. The boiling happened before the record was made,
+so the recipe transforms nothing and there is no unmeasured process step. D10
+charged it 0.20 on all nine macros on top of the 0.25 composition band that
+already covers whether that row is right — the same doubt counted twice. The
+loader now earns those zeros structurally: a macro fed by no raw-basis line
+needs no justification. See "Where a zero is earned, and where it is not" below.
 
 Measured before the fix, every one of the five reported a combined energy band
 of **0.2500** and a process term of **0.0000** — the composition floor and
@@ -361,9 +370,68 @@ shippable*. Composition verification takes a recipe's protein band from 0.25 to
 cook without oil (`idli`, `phulka`, `steamed_rice`) land at 0.05 + 0.20 = **0.25**
 and stay above the ceiling, because the 0.20 is a process band no composition
 work can touch. Pinned in
-`tests/test_nutrition_of.py::TestEligibilityConsequence::test_verifying_every_row_clears_the_ceiling_for_all_but_three_recipes`,
+`tests/test_nutrition_of.py::TestEligibilityConsequence::test_verifying_every_row_clears_the_ceiling_for_all_but_two_recipes`,
 which asserted the opposite until 2026-08-09. The human sign-off on IFCT rows is
 a necessary step and not the last one.
+
+**Two of three, corrected 2026-08-09 by D12.** `steamed_rice` was in that list
+by D10's error, not by a real gap (finding 44): it clears the ceiling on
+verification like the other 15, and `south_lunch` goes from blocked to
+enumerable without a single new constant. `idli` and `phulka` remain, and their
+0.20 is genuine — both cook a raw-basis row and nothing quantifies the step.
+
+## Where a zero is earned, and where it is not (2026-08-09, D12)
+
+Finding 41 measured protein process uncertainty at 0.0 on 15 of 18 recipes and
+read a library-wide fake zero into it. The count is right and the inference is
+not, which took asking *why* each zero was zero rather than counting them. There
+are three reasons, and only one is a defect:
+
+| | | share of library protein |
+|---|---|---|
+| **attributed** | the line carries a `process:` key | 0.0% |
+| **served-basis** | the row already describes the food as eaten (`cooked` / `as_used`) | **65.2%** |
+| **unattributed** | a raw-basis row the recipe cooks, quantified by nothing | **34.8%** |
+
+Two thirds of the library's protein arrives on rows like `rice_cooked`,
+`toor_dal_cooked`, curd, paneer and tofu. Nothing transforms them between the
+record and the plate, so no process step went unmeasured; the doubt that remains
+is doubt about the row, charged at 0.25 composition. Those zeros are correct, and
+D10 was over-charging one recipe's worth of them.
+
+The real 34.8% is concentrated rather than spread — `soya_chunk_curry` 98.1%,
+`soya_kuzhambu` 94.7%, `carrot_poriyal` 90.1%, `coconut_chutney` 89.9%,
+`masala_dosa` 82.4%, against `rajma_chawal` 2.6% and `dal_tadka` 3.6%. The single
+largest item is `soya_chunks_dry`: 14.6 g of protein on a dry-basis row that is
+rehydrated and simmered with no rehydration constant registered, and it is also
+the only vegan-eligible row clearing the DIAAS quality threshold. **The rule that
+decides vegan plates rests on a row whose cooking transformation is entirely
+unquantified.**
+
+Closing finding 41 therefore needs four constants, not one: rehydration,
+sauteing/simmering, steaming and dry-griddling. Reproduce with
+`docs/design/probes/d12_process_attribution.py`.
+
+### Why the obvious fix was rejected
+
+Four `yield.*` constants are already registered — `yield.rice_milled_boiled`,
+`yield.toor_dal_boiled`, `yield.rajma_soaked_boiled`, `yield.potato_boiled` —
+and each cooked-basis row's `source_note` names one as "connecting" it to a raw
+row. Declaring them on the lines looked like a free close.
+
+It is not, because none of the four cooked rows is its raw row divided by its
+yield factor: the gaps run to 22% on `potato_boiled` energy and 19% on
+`toor_dal_cooked` protein. `RecipeIngredient.process_key` means "the constant
+that *determined this line's quantity*", so declaring it would attach a real,
+registered, correctly-graded figure to a number that did not come from it —
+the mechanism-mismatch failure `phenomenon` exists to prevent, committed in the
+process axis rather than the citation axis, and invisible to every automated
+check the registry performs.
+
+Two consequences, both `docs/audit_log.md` **finding 45**, OPEN: all four
+`yield.*` constants are load-bearing for nothing, and four ingredient
+`source_note`s assert a relationship their numbers do not satisfy — the same
+defect already caught on `salt_iodised` in 2026-07-31.
 
 ## Nothing can currently ship as validated (2026-07-21)
 

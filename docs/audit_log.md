@@ -89,6 +89,250 @@ $ wc -l CLAUDE.md
 
 ---
 
+## 2026-08-09 — D12: finding 44 FIXED, findings 45 and 46 raised, finding 41 re-scoped
+
+**D12's premise was partly wrong, and the measurement is the deliverable.** The
+task read: "the three cooked-but-process-silent recipes (`idli`, `phulka`,
+`steamed_rice`) stop deriving their uncertainty from
+`process.unassessed_uncertainty`", expecting three new registered constants.
+Two of the three need constants. The third needed the opposite — it had been
+over-charged — and finding it took asking *why* each zero was zero rather than
+counting the zeros.
+
+### Finding 41, re-scoped with the arithmetic it was missing — still **OPEN**
+
+Finding 41 measured protein process uncertainty = 0.0 on 15 of 18 recipes and
+inferred a library-wide fake zero. The count is right; the inference is not. A
+line derives no process uncertainty for three different reasons:
+
+```
+$ PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d12_process_attribution.py
+
+  Library protein, by why its process uncertainty is zero:
+      ATTRIBUTED          0.0 g  ( 0.0%)   line carries a process: key
+      SERVED-BASIS       80.6 g  (65.2%)   row already describes the food as eaten
+      UNATTRIBUTED       43.0 g  (34.8%)   raw-basis row the recipe cooks  <-- finding 41
+```
+
+Two thirds of the library's protein arrives on `cooked`- or `as_used`-basis
+rows — `rice_cooked`, `toor_dal_cooked`, curd, paneer, tofu. The recipe applies
+no transformation to those, so no process step went unmeasured and the zero is
+earned; the doubt that remains is doubt about the row, already charged at 0.25
+composition. Finding 41 is the other 34.8%, and it is concentrated rather than
+spread: `soya_chunk_curry` 98.1%, `soya_kuzhambu` 94.7%, `carrot_poriyal`
+90.1%, `coconut_chutney` 89.9%, `masala_dosa` 82.4%, against `rajma_chawal`
+2.6% and `dal_tadka` 3.6%.
+
+The largest single item is `soya_chunks_dry` — 14.6 g of protein on a dry-basis
+row rehydrated and simmered, with no rehydration constant registered. It is also
+the only vegan-eligible row clearing the DIAAS quality threshold, so the rule
+that decides vegan plates rests on a row whose cooking transformation is
+entirely unquantified.
+
+*Disposition:* OPEN, and now costed. Closing it needs registered constants for
+rehydration, sauteing/simmering, steaming and dry-griddling — four, not the one
+"cooking loss" the finding implied. Queued as D13.
+
+### Finding 44 — D10 charged a recipe for a transformation it does not perform — **FIXED**
+
+`steamed_rice` is one ingredient line: 200 g of `rice_cooked`, a **cooked-basis**
+composition row. D10 put it in the same population as `idli` and `phulka` and
+made it declare all nine macros `process_uncertainty_unassessed`, reasoning
+that "boiling is still a cooking step whatever the basis the composition row is
+stated on."
+
+That sentence is true about rice and false about this file. The boiling happened
+before the composition record was made. The recipe names a portion of an
+already-boiled food; it transforms nothing. So the 0.20 was charged on top of
+the 0.25 composition band that already covers whether the cooked row is right —
+the same quantity counted twice, and D10's own probe could not see it because it
+asked whether a `process:` key existed, not whether anything needed one.
+
+The loader now earns those zeros structurally: **a macro fed by no raw-basis
+line needs no justification.** Keyed off `Ingredient.state`, the composition
+record's own basis, and deliberately not off `RecipeIngredient.state` — see
+finding 46.
+
+Measured, south_lunch (the plate `steamed_rice` sits on):
+
+```
+$ PYTHONHASHSEED=0 PYTHONPATH=. python demo.py plan --region south_indian --meal-slot lunch
+  unit counts  : {'steamed_rice': 1, 'soya_kuzhambu': 2, 'carrot_poriyal': 2, 'thayir_plain': 1}
+  relaxation   : ('sodium_max_fibre_min', 'fat_carb_tolerance', 'energy_tolerance')
+  point        : 848.1 kcal, 40.4g protein, 29.3g fat, 107.4g carb, 1391.1mg sodium
+  energy band  : 622.9 - 1073.4 kcal        [was 570.9 - 1125.4]
+```
+
+Plate, unit counts, point estimate, sodium, rungs and verdict all unchanged —
+only the displayed band, which is the expected shape and not a lucky one: the
+validator gates on the point estimate and intervals are display-only. The
+arithmetic behind the before-column: `steamed_rice` is 260.0 kcal at one cup,
+D10 charged 0.20 of that as process half-width = 52.0 kcal each side.
+
+The three micronutrients `steamed_rice` declared unassessed **before** D10
+(`iron_mg`, `calcium_mg`, `b12_ug`) are kept, at the original author's judgment
+rather than the loader's requirement — draining boiled rice leaches minerals,
+and whether a hand-entered cooked row accounts for that is genuinely unknown.
+Free, too: none of the three has a target anywhere in the system.
+
+And it moves a plate. From `d7b_after_verification.py`, re-run:
+
+```
+  2 of 18 recipes remain protein-ineligible after full composition verification:
+      idli, phulka
+  south_breakfast    BLOCKED by idli
+  south_lunch        enumerable          <-- was BLOCKED by steamed_rice
+  north_lunch        BLOCKED by phulka
+  north_dinner       BLOCKED by phulka
+```
+
+So finding 43's count improves from four blocked plates to three, without a
+single new constant — because one of the four was never blocked by a real gap.
+
+**Four D10 assertions went red and all four were right to.** In
+`tests/test_nutrition_of.py::TestEligibilityConsequence`, both tests turn on a
+`NO_OIL_COOKED` tuple whose name was already the wrong generalisation: what
+separates that population is not "cooks without oil" but "cooks a **raw-basis**
+row with no constant describing the step". `steamed_rice` left the tuple, and
+`test_verifying_every_row_clears_the_ceiling_for_all_but_three_recipes` is now
+`..._for_all_but_two_recipes`. Its `len(cleared) == len(library.components) - 3`
+became `- len(self.NO_OIL_COOKED)`: the literal encoded a population size that
+changed one commit later, which is the second time in two sessions a hard-coded
+count outlived the fact behind it.
+
+In `tests/test_recipes.py`:
+`test_silence_is_rejected_because_it_is_the_cheapest_path` built its probe from
+`rice_cooked`, which is now legitimately earned, so the test would have passed
+without exercising anything it names — its base is now a raw-basis line, and the
+reason is a comment on `_RAW_LINES`. `test_the_real_library_no_longer_confuses_raw_with_unmeasured`
+asserted all three recipes carry the wide band; it now names three populations
+(cooked-from-raw, cooked-from-served, uncooked) with the split stated.
+
+**One condition became dead and was removed rather than left.** D10 filtered
+"a macro the dish contains none of" as `getattr(total, macro) != 0`. Nutrient
+values are non-negative, so `from_raw[m] > 0` implies `total[m] > 0`: the old arm
+is strictly subsumed. Keeping both would leave a condition no input can reach on
+its own, which the next sweep would correctly report as untested. R5's row is
+edited to the new line rather than retired — same mechanism, same test.
+
+### Finding 45 — four registered constants are load-bearing for nothing, and a `source_note` claims a derivation that does not hold — **OPEN**
+
+The obvious fix for finding 41 was to declare the already-registered yield
+constant on each cooked-basis line: `process: yield.rice_milled_boiled` on
+`rice_cooked`, and so on. It is wrong, and checking why turned up something
+worse.
+
+`RecipeIngredient.process_key` is documented as the constant that *determined
+this line's quantity*. Each cooked row's `source_note` says a yield factor
+"connect[s] the two" — so if `cooked == raw / yield`, the claim would hold.
+
+```
+  cooked row         macro           stated  raw/yield   ratio
+  rice_cooked        energy_kcal     130.00     118.80   1.094   <-- does not follow
+  toor_dal_cooked    protein_g         7.00       8.68   0.806   <-- does not follow
+  rajma_cooked       carb_g           22.80      27.16   0.840   <-- does not follow
+  potato_boiled      energy_kcal      87.00      71.22   1.221   <-- does not follow
+```
+
+None of the four is its raw row divided by its yield factor; the worst gap is
+22%. They are independent hand-entered approximations and the note is a
+navigational cross-reference, not a derivation. Declaring the constant would
+attach a real, registered, correctly-graded figure to a line whose number did
+not come from it — the mechanism-mismatch failure `CLAUDE.md`'s `phenomenon`
+field exists to prevent, committed in the process axis instead of the citation
+axis, and undetectable by every automated check the registry performs.
+
+Two things follow, neither fixed here. **(a)** All four `yield.*` constants are
+registered, graded and used by nothing: no code multiplies by them, no line
+derives from them. **(b)** The `source_note` on four ingredient rows asserts a
+relationship the numbers do not satisfy — the same defect already caught once on
+`salt_iodised`, where a measured figure sat under a note claiming a
+stoichiometric derivation (corrected 2026-07-31).
+
+*Disposition:* OPEN. Logged and left per the queue rule. The honest repair is
+either to derive the cooked rows from the raw ones at load time — which is the
+round-4 "no nutritional number may be hand-duplicated" rule applied to a place
+nobody has applied it — or to rewrite four notes to stop claiming a connection
+that is not there. That is a decision, not a typo fix.
+
+### Finding 46 — a recipe line's declared `state` is never checked against the row it points at — **OPEN**
+
+`RecipeIngredient.state` is author-declared. `models.py` has a branch for it:
+
+```python
+if self.state is RawOrCooked.RAW:
+    # Not forbidden outright — a raw-basis line is legitimate for
+    # something eaten raw — but it must be a deliberate choice, so the
+    # loader records it rather than letting it look like an oversight.
+    pass
+```
+
+The comment says the loader records it. Nothing records it, and nothing compares
+`line.state` against `ingredients[line.ingredient_id].state`. A line may declare
+`state: cooked` over a raw-basis composition row with no complaint.
+
+This was load-bearing for finding 44's fix and is why that fix reads the
+ingredient's state: had it read the line's, writing `state: cooked` over a raw
+row would have become the cheapest way to earn a full set of zeros — this
+check's own failure mode, reintroduced by its own repair.
+`test_calling_a_raw_row_cooked_on_the_line_does_not_earn_the_zeros` pins that,
+and mutation R7 grades it.
+
+*Disposition:* OPEN. Harmless today only because nothing reads `line.state` for
+any decision. A comment asserting behaviour that does not exist is the same
+class as the notes in finding 45.
+
+### Deletion coverage, and why the sweep's own answer was not taken at face value
+
+```
+$ PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d4b_mutations.py R1,R2,R3,R4,R5,R6,R7
+R1   covered  ...::test_silence_is_rejected_because_it_is_the_cheapest_path
+R2   covered  ...::test_mutating_a_constant_moves_every_recipe_that_depends_on_it
+R3   covered  ...::test_an_unknown_preparation_is_rejected_rather_than_assumed
+R4   covered  ...::test_an_uncooked_dish_may_not_also_name_a_process
+R5   covered  ...::test_mutating_a_constant_moves_every_recipe_that_depends_on_it
+R6   covered  ...::test_mutating_a_constant_moves_every_recipe_that_depends_on_it
+R7   covered  ...::test_calling_a_raw_row_cooked_on_the_line_does_not_earn_the_zeros
+7 mechanisms: 7 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+R5 and R6 both name `test_mutating_a_constant_moves_every_recipe_that_depends_on_it`,
+which is not the test written for either — the exact shape `CLAUDE.md` records
+from D6, where a `covered` row named the *first* scoped failure in collection
+order rather than the relevant one. Taking the full failure list per mutation by
+hand, as that lesson requires:
+
+```
+R6 (delete the served-basis path):
+  FAILED ...::test_mutating_a_constant_moves_every_recipe_that_depends_on_it
+  FAILED ...::test_a_served_basis_row_earns_its_zeros_without_declaring_anything
+  + 26 errors — steamed_rice stops loading, so the shared library fixture dies
+
+R5 (delete the from_raw filter):
+  FAILED ...::test_mutating_a_constant_moves_every_recipe_that_depends_on_it
+  FAILED ...::test_a_macro_the_dish_contains_none_of_needs_no_justification
+  FAILED ...::test_a_served_basis_row_earns_its_zeros_without_declaring_anything
+  + 26 errors, same cause
+```
+
+Both mechanisms are red on their own test. The alphabetically-earlier name is a
+real failure too, not a false positive — it is simply not the test anyone editing
+that mechanism would look at. Also worth noting for the next sweep: unlike D10's
+R3/R4/R5, mutations R5 and R6 are now graded by the **real library** as well,
+because `steamed_rice` no longer declares its way past the check and a deleted
+served-basis path rejects it at load.
+
+### Reproduce
+
+```bash
+PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d12_process_attribution.py
+PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d7b_after_verification.py
+PYTHONHASHSEED=0 PYTHONPATH=. python demo.py plan --region south_indian --meal-slot lunch
+PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d4b_mutations.py R1,R2,R3,R4,R5,R6,R7
+```
+
+---
+
 ## 2026-08-09 — D7 handoff: finding 43, and what D10 did to D7's own conclusion
 
 No code changed. Three artifacts added — `docs/design/ifct_sitting.md`,

@@ -301,11 +301,21 @@ class TestEligibilityConsequence:
         assert citations.value_of("eligibility.max_protein_uncertainty") == 0.15
         assert citations.value_of("eligibility.max_energy_uncertainty") == 0.20
 
-    #: The three dishes that cook without oil — steamed, boiled, dry-griddled.
-    #: D10 (2026-08-09) made them declare every macro `unassessed` rather than
-    #: derive a bare zero from having no `process:` line, so they alone carry a
-    #: process term on protein. Named here once, used by the two tests below.
-    NO_OIL_COOKED = ("idli", "phulka", "steamed_rice")
+    #: The dishes that cook a RAW-basis composition row without oil — idli is
+    #: steamed, phulka dry-griddled. D10 (2026-08-09) made them declare every
+    #: macro `unassessed` rather than derive a bare zero from having no
+    #: `process:` line, so they alone carry a process term on protein. Named
+    #: here once, used by the two tests below.
+    #:
+    #: `steamed_rice` was in this tuple until D12 (2026-08-09,
+    #: `docs/audit_log.md` finding 44) and should not have been: its single line
+    #: is 200 g of `rice_cooked`, a cooked-basis row, so the boiling happened
+    #: before the composition record and the recipe transforms nothing. D10 was
+    #: charging 0.20 on top of the 0.25 composition band already covering that
+    #: row — the same doubt twice. What separates this population from the rest
+    #: of the library is not "cooks without oil", it is "cooks a raw-basis row
+    #: with no constant describing the step".
+    NO_OIL_COOKED = ("idli", "phulka")
 
     def test_every_recipe_sits_at_exactly_its_registered_band(
         self, library, ingredients
@@ -356,7 +366,7 @@ class TestEligibilityConsequence:
                 "can ship as validated is stated there"
             )
 
-    def test_verifying_every_row_clears_the_ceiling_for_all_but_three_recipes(
+    def test_verifying_every_row_clears_the_ceiling_for_all_but_two_recipes(
         self, library, ingredients
     ):
         """What ingredient verification buys, and where it stops buying.
@@ -404,7 +414,10 @@ class TestEligibilityConsequence:
                 assert fraction < ceiling
                 cleared.append(recipe_id)
         assert sorted(blocked) == sorted(self.NO_OIL_COOKED)
-        assert len(cleared) == len(library.components) - 3
+        # Derived from the tuple, not a literal: the population changed size
+        # once already (D12 removed steamed_rice) and a hard-coded 3 outlived
+        # the fact it encoded by exactly one commit.
+        assert len(cleared) == len(library.components) - len(self.NO_OIL_COOKED)
 
     def test_every_registered_evidence_is_still_unverified(self):
         # The precondition for the above. If this ever fails, someone has opened

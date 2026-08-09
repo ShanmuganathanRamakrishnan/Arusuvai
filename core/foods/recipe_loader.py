@@ -141,12 +141,36 @@ def _check_zero_process_is_earned(
     lines — or name the macros it cannot quantify, which then take the
     registered wide band.
 
+    **Third earned path, added 2026-08-09 (D12, `docs/audit_log.md` finding
+    44).** D10's rule as first written was too blunt in one direction: it
+    demanded a justification for every macro, including macros whose every gram
+    comes from a composition row that already describes the food *as eaten*.
+    ``steamed_rice`` is one line — 200 g of ``rice_cooked``, a cooked-basis row —
+    and the boiling is inside the row, not applied by the recipe. There is no
+    process step there whose uncertainty went unmeasured, so D10 charged it
+    0.20 on all nine macros for a transformation the recipe does not perform.
+    The remaining doubt is doubt about the row, which is already charged as
+    composition uncertainty at 0.25.
+
+    So a macro is also earned when **no raw-basis line contributes to it**.
+
+    Keyed off ``Ingredient.state`` — the composition record's own basis — and
+    deliberately NOT off ``RecipeIngredient.state``, which is author-declared
+    and which nothing cross-checks against the row it points at
+    (`docs/audit_log.md` finding 46). Keying off the line would make writing
+    ``state: cooked`` over a raw-basis row the cheapest way to earn the zeros,
+    which is the ordering this whole check exists to prevent, reintroduced by
+    the fix for it.
+
     **Scope, stated rather than left to be discovered.** This fires only when a
     recipe has *no* process constant whatsoever. A cooked dish that carries one
-    still derives 0.0 for every macro that constant does not touch — protein on
-    every recipe in the library, since oil carries no protein — and that zero is
-    just as unexamined. Closing it needs process constants for something other
-    than oil uptake, which is a data problem, not a loader rule.
+    still derives 0.0 for every macro that constant does not touch, and that
+    zero is just as unexamined — but it is unexamined only where a *raw-basis*
+    line feeds the macro. Measured, `docs/design/probes/d12_process_attribution.py`:
+    34.8% of the library's protein sits on raw-basis lines the recipe cooks and
+    nothing quantifies; the other 65.2% is served-basis and its zero is earned.
+    Closing the remainder needs process constants for steaming, dry-griddling,
+    sauteing and rehydration, which is a data problem, not a loader rule.
     `docs/audit_log.md` finding 41.
     """
 
@@ -168,20 +192,38 @@ def _check_zero_process_is_earned(
     if has_process:
         return
 
-    total = nutrition_of_lines(lines, ingredients, recipe_id=path.stem)
-    # A macro the dish contains none of derives 0.0 for a reason that has
-    # nothing to do with cooking, so it is not the author's to justify.
+    # Grams of each macro arriving on a raw-basis line. A macro with none of
+    # these is fed entirely by rows describing the food as eaten, so the recipe
+    # performs no transformation of it and its zero is earned. See the docstring
+    # for why this reads the ingredient's state and not the line's.
+    from_raw = {macro: 0.0 for macro in MACRO_KEYS}
+    for line in lines:
+        ingredient = ingredients[line.ingredient_id]
+        if ingredient.state is not RawOrCooked.RAW:
+            continue
+        contribution = ingredient.for_grams(line.quantity_g)
+        for macro in MACRO_KEYS:
+            from_raw[macro] += getattr(contribution, macro)
+
+    # A macro the dish contains none of is filtered by the same test: nutrient
+    # values are non-negative, so a macro with no raw-basis grams has none from
+    # a raw-basis line to justify. D10 spelled that case out separately as
+    # `getattr(total, macro) != 0`; that arm is now strictly subsumed by this
+    # one — `from_raw[m] > 0` implies `total[m] > 0` — and keeping both would
+    # leave a condition no input can reach on its own, which the next deletion
+    # sweep would correctly report as untested.
     unearned = [
         macro
         for macro in MACRO_KEYS
-        if macro not in unassessed and getattr(total, macro) != 0
+        if macro not in unassessed and from_raw[macro] != 0
     ]
     if unearned:
         raise ValueError(
             f"{path.name}: no ingredient line carries a 'process:' key, so "
             f"{unearned} would each derive a process uncertainty of 0.0 with "
-            "nothing behind it. Either add 'preparation: uncooked' if the dish "
-            "genuinely involves no cooking step, or list the macros in "
+            "nothing behind it — each is fed by a raw-basis composition row "
+            "that this recipe cooks. Either add 'preparation: uncooked' if the "
+            "dish genuinely involves no cooking step, or list the macros in "
             "'process_uncertainty_unassessed' so they take the registered wide "
             "band. Omitting both is the cheapest path and must not be the most "
             "confident-looking one."

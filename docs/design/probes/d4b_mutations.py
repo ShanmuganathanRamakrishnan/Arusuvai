@@ -499,14 +499,20 @@ MUTATIONS: tuple[Mutation, ...] = (
         "    reasons = []\n",
     ),
     # ------------------------------------------------- recipe loader (D10)
-    # `docs/audit_log.md` finding 2. R1 and R2 the real library grades directly
-    # — five recipes carry no process constant, three of them cooked, and R2
-    # stops the whole library loading. R3, R4 and R5 it cannot: no real recipe
-    # names a bad `preparation`, none pairs `uncooked` with a `process:` key,
-    # and every cooked no-process dish declares all nine macros unassessed, so
-    # R5's guard has nothing left to filter. Those three are graded by
-    # `tmp_path` recipes built for them, R5's written only after watching this
-    # row survive (finding 42).
+    # `docs/audit_log.md` finding 2, and finding 44 for R6/R7. R1 and R2 the
+    # real library grades directly — five recipes carry no process constant, two
+    # of them cooked-from-raw, and R2 stops the whole library loading. R3, R4,
+    # R5 and R7 it cannot: no real recipe names a bad `preparation`, none pairs
+    # `uncooked` with a `process:` key, none declares a raw-basis row `cooked`
+    # on the line, and the cooked no-process dishes declare every macro they
+    # contain unassessed, so R5's guard has nothing left to filter. Those are
+    # graded by `tmp_path` recipes built for them, R5's written only after
+    # watching this row survive (finding 42).
+    #
+    # R5 changed shape in D12: the arm it deletes used to be
+    # `getattr(total, macro) != 0` and is now `from_raw[macro] != 0`, which
+    # subsumes it. Same mechanism — "a macro nobody must justify is filtered
+    # out" — same test, different line, so the row is edited rather than retired.
     Mutation(
         "R1", RECIPE_LOADER, "a cooked dish may not derive zeros from silence",
         "    if unearned:\n",
@@ -531,8 +537,21 @@ MUTATIONS: tuple[Mutation, ...] = (
     ),
     Mutation(
         "R5", RECIPE_LOADER, "a macro the dish contains none of is not the author's to justify",
-        "        if macro not in unassessed and getattr(total, macro) != 0\n",
+        "        if macro not in unassessed and from_raw[macro] != 0\n",
         "        if macro not in unassessed\n",
+    ),
+    # ------------------------------------------------- recipe loader (D12)
+    Mutation(
+        "R6", RECIPE_LOADER, "a served-basis row earns its zeros; charging it double-counts",
+        "        if ingredient.state is not RawOrCooked.RAW:\n",
+        "        if False:\n",
+    ),
+    Mutation(
+        "R7", RECIPE_LOADER, "earned-ness reads the composition row's basis, not the line's claim",
+        "        ingredient = ingredients[line.ingredient_id]\n"
+        "        if ingredient.state is not RawOrCooked.RAW:\n",
+        "        ingredient = ingredients[line.ingredient_id]\n"
+        "        if line.state is not RawOrCooked.RAW:\n",
     ),
 )
 

@@ -507,13 +507,19 @@ class TestZeroProcessUncertaintyMustBeEarned:
         "  max_count: 2",
     ]
 
+    #: The default probe is a RAW-basis line, deliberately. D12 gave the loader
+    #: a third earned path — a macro fed only by served-basis rows needs no
+    #: justification — which would make every rejection test in this class
+    #: vacuous if the probe stayed on `rice_cooked`: the dish would load clean
+    #: and the tests would pass without exercising anything they name.
+    _RAW_LINES = ["ingredients:", "  - id: rice_milled_raw", "    quantity_g: 100.0",
+                  "    state: raw"]
+    _SERVED_LINES = ["ingredients:", "  - id: rice_cooked", "    quantity_g: 100.0",
+                     "    state: cooked"]
+
     def _write(self, tmp_path, *extra, lines=None):
         bad = tmp_path / "probe.yaml"
-        body = list(self._BASE) + list(extra) + (
-            lines
-            or ["ingredients:", "  - id: rice_cooked", "    quantity_g: 100.0",
-                "    state: cooked"]
-        )
+        body = list(self._BASE) + list(extra) + (lines or self._RAW_LINES)
         bad.write_text("\n".join(body), encoding="utf-8")
         return bad
 
@@ -565,18 +571,26 @@ class TestZeroProcessUncertaintyMustBeEarned:
     ):
         """The guard that keeps the rule from demanding the impossible.
 
-        `rice_cooked` carries 0 µg of B12. Its process uncertainty on B12 derives
-        to 0.0 because there is no B12 to be uncertain about, which is not a
-        claim about cooking and not the author's to earn. Without the
-        ``getattr(total, macro) != 0`` arm, a rice dish would have to declare
-        B12 unassessed to load at all — a wide band on a macro it does not
-        contain, which is noise dressed as caution.
+        Rice carries 0 µg of B12. Its process uncertainty on B12 derives to 0.0
+        because there is no B12 to be uncertain about, which is not a claim
+        about cooking and not the author's to earn. Without the filter, a rice
+        dish would have to declare B12 unassessed to load at all — a wide band
+        on a macro it does not contain, which is noise dressed as caution.
 
         This test exists because it did not: mutation R5 in
         `docs/design/probes/d4b_mutations.py` deleted the arm and nothing in
-        `tests/test_recipes.py` went red. The real recipes hide it — all three
-        cooked no-process dishes declare every macro unassessed, so the arm has
+        `tests/test_recipes.py` went red. The real recipes hid it — the cooked
+        no-process dishes declared every macro unassessed, so the arm had
         nothing left to filter.
+
+        **The arm it guards changed in D12** and the test still holds, which is
+        the useful part. D10 wrote the filter as ``getattr(total, macro) != 0``;
+        D12 replaced it with ``from_raw[macro] != 0``, which subsumes it —
+        nutrient values are non-negative, so no raw-basis grams means no grams
+        at all from a line anyone must justify. The probe is a raw-basis line,
+        so every other macro here IS unearned and B12 is genuinely the one being
+        filtered; the assertion is not passing by accident of the served-basis
+        path.
         """
         from pathlib import Path
 
@@ -623,6 +637,50 @@ class TestZeroProcessUncertaintyMustBeEarned:
                 ingredients,
             )
 
+    def test_a_served_basis_row_earns_its_zeros_without_declaring_anything(
+        self, tmp_path, ingredients
+    ):
+        """D12, `docs/audit_log.md` finding 44 — the third earned path.
+
+        `rice_cooked` is a cooked-basis composition record. A recipe naming a
+        portion of it applies no transformation, so there is no process step
+        whose uncertainty went unmeasured, and the zero is earned without a
+        `preparation:` claim or an unassessed list. This is what D10 got wrong
+        on `steamed_rice`: it charged 0.20 on every macro for work the recipe
+        does not do, on top of the 0.25 composition band already covering
+        whether the row itself is right.
+        """
+        from pathlib import Path
+
+        from core.foods.recipe_loader import load_recipe_file
+
+        recipe, _ = load_recipe_file(
+            Path(self._write(tmp_path, lines=self._SERVED_LINES)), ingredients
+        )
+        assert recipe.uncertainty_for("energy_kcal") == 0.0
+        assert recipe.uncertainty_for("protein_g") == 0.0
+
+    def test_calling_a_raw_row_cooked_on_the_line_does_not_earn_the_zeros(
+        self, tmp_path, ingredients
+    ):
+        """The hole the fix for finding 44 could have opened, closed on purpose.
+
+        `RecipeIngredient.state` is author-declared and nothing cross-checks it
+        against the composition row it points at (`docs/audit_log.md` finding
+        46). Had the served-basis test read the *line's* state, writing
+        `state: cooked` over a raw-basis row would have become the cheapest way
+        to earn a full set of zeros — the exact ordering this check exists to
+        prevent, reintroduced by its own fix. It reads `Ingredient.state`.
+        """
+        from pathlib import Path
+
+        from core.foods.recipe_loader import load_recipe_file
+
+        lying = ["ingredients:", "  - id: rice_milled_raw", "    quantity_g: 100.0",
+                 "    state: cooked"]
+        with pytest.raises(ValueError, match="nothing behind it"):
+            load_recipe_file(Path(self._write(tmp_path, lines=lying)), ingredients)
+
     def test_an_unknown_preparation_is_rejected_rather_than_assumed(
         self, tmp_path, ingredients
     ):
@@ -637,20 +695,40 @@ class TestZeroProcessUncertaintyMustBeEarned:
             )
 
     def test_the_real_library_no_longer_confuses_raw_with_unmeasured(self, library):
-        """The measurement that made D10 answerable, pinned.
+        """The measurement that made D10 answerable, pinned — and corrected.
 
-        Before: `idli` (steamed), `phulka` (griddled) and `steamed_rice`
+        Before D10: `idli` (steamed), `phulka` (griddled) and `steamed_rice`
         (boiled) each derived a process energy uncertainty of 0.0 — identical to
-        `onion_raita` and `thayir_plain`, which are genuinely uncooked. The
-        three cooked dishes now carry the registered wide band instead.
+        `onion_raita` and `thayir_plain`, which are genuinely uncooked.
+
+        D10 gave all three the registered wide band. D12 took `steamed_rice`
+        back off it (`docs/audit_log.md` finding 44): its single line is 200 g
+        of `rice_cooked`, a **cooked-basis** composition row, so the boiling
+        happened before the record and this recipe transforms nothing. D10 was
+        charging it 0.20 for work it does not do, on top of the 0.25
+        composition band already covering whether that row is right.
+
+        Three populations now, and the split is the point of the test:
         """
         from core.nutrition import citations
 
         wide = citations.value_of("process.unassessed_uncertainty")
-        for rid in ("idli", "phulka", "steamed_rice"):
+
+        # (a) cooked, and fed by RAW-basis rows the recipe transforms. Nothing
+        # quantifies that step, so the wide band is the honest answer.
+        for rid in ("idli", "phulka"):
             assert library.recipes[rid].uncertainty_for("energy_kcal") == pytest.approx(
                 wide
-            ), f"{rid} is cooked; its process uncertainty must not be a bare zero"
+            ), f"{rid} cooks a raw-basis row; its process uncertainty is not a bare zero"
+
+        # (b) cooked, but fed entirely by served-basis rows. Earned zero.
+        assert library.recipes["steamed_rice"].uncertainty_for("energy_kcal") == 0.0, (
+            "steamed_rice names a portion of an already-boiled composition row; "
+            "charging it for a transformation it does not perform double-counts "
+            "the composition band"
+        )
+
+        # (c) not cooked at all. Earned zero, for a different reason.
         for rid in ("onion_raita", "thayir_plain"):
             assert library.recipes[rid].uncertainty_for("energy_kcal") == 0.0, (
                 f"{rid} involves no cooking step, so a computed zero is correct "
