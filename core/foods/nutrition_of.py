@@ -44,9 +44,11 @@ class NutritionEstimate:
     point: NutritionVector
     low: NutritionVector
     high: NutritionVector
-    #: Energy attributable to recipes that depend on at least one constant
-    #: whose evidence nobody has opened. Feeds the "disclose once" threshold in
-    #: CLAUDE.md — reported here, decided elsewhere.
+    #: Energy on ingredient lines whose composition record, or whose
+    #: quantity-determining process constant, rests on evidence nobody has
+    #: opened. Attributed per line, not per recipe — see ``_unverified_energy``
+    #: and `docs/audit_log.md` finding 20. Feeds the "disclose once" threshold
+    #: in CLAUDE.md — reported here, decided elsewhere.
     unverified_energy_kcal: float = 0.0
 
     def uncertainty_fraction(self, macro: str) -> float:
@@ -232,28 +234,56 @@ def _interval_for_recipe(
     return NutritionVector(*lows), NutritionVector(*highs)
 
 
-def _depends_on_unverified(recipe: Recipe) -> bool:
-    """Whether any constant behind this recipe's numbers is unverified.
+def _process_verified(process_key: str) -> bool:
+    return citations.evidence(citations.constant(process_key).evidence_id).verified
 
-    Known over-attribution, deliberately left in place: a True here charges the
-    recipe's *whole* energy to the unverified bucket, though only the grams
-    returned by ``Recipe.lines_for_process`` actually depend on the constant —
-    for the masala dosa that is 8.84 kcal of 223.65, not all of it.
 
-    It is not narrowed yet because the opposite error is larger and not fixed:
-    ``Ingredient.verified`` never reaches this calculation at all, so composition
-    data transcribed from memory — 96% of a dish's energy — currently counts as
-    verified. Correcting the smaller error alone would move the reported figure
-    *away* from the truth. Both land together, once ingredient composition
-    uncertainty exists; the per-line attribution this function would need is
-    already available.
+def _unverified_energy(
+    recipe: Recipe,
+    unit_count: int,
+    ingredients: Mapping[str, Ingredient],
+) -> float:
+    """Energy in ``unit_count`` units of ``recipe`` that rests on unopened evidence.
+
+    Attributed **per ingredient line**, which is the fix for finding 20. The
+    previous rule asked one yes/no question of the whole recipe — is any process
+    constant unverified — and was wrong in both directions at once:
+
+    - *Over*, because a True charged the recipe's entire energy. dal_tadka's
+      whole 519 kcal was charged for a 5 g tempering-oil line.
+    - *Under*, because ``Ingredient.verified`` never entered the calculation, so
+      composition data transcribed from memory — most of a dish's energy —
+      counted as verified. phulka and onion_raita charged 0.0 while resting
+      entirely on hand-entered rows.
+
+    Neither error was correctable alone: fixing the smaller one moves the
+    reported figure *away* from the truth, which is why both land here together.
+
+    A line is charged when **either** its composition record is unverified or
+    the process constant that determined its quantity is — and charged **once**
+    in either case. Union rather than sum, because a line that is unverified for
+    two reasons is still only that much energy, and adding the terms could take
+    a plate past 100% of its own energy, which is not something a fraction of a
+    quantity can do.
+
+    Charging the line's *whole* energy on an unverified process constant is
+    deliberate and is not the over-attribution above: ``process_key`` marks a
+    line whose **quantity was determined by** that constant (see
+    ``RecipeIngredient.process_key``), so if the constant is unopened, so is
+    every calorie on that line. The old rule's error was charging the *other*
+    lines too.
     """
 
-    for key in recipe.process_constants:
-        ev = citations.evidence(citations.constant(key).evidence_id)
-        if not ev.verified:
-            return True
-    return False
+    total = 0.0
+    for line in recipe.ingredients:
+        ing = _ingredient(ingredients, line.ingredient_id)
+        unverified_composition = not ing.verified
+        unverified_process = line.process_key is not None and not _process_verified(
+            line.process_key
+        )
+        if unverified_composition or unverified_process:
+            total += ing.for_grams(line.quantity_g).energy_kcal * unit_count
+    return total
 
 
 def nutrition_of_components(
@@ -293,8 +323,7 @@ def nutrition_of_components(
         point = point + p
         low = low + lo
         high = high + hi
-        if _depends_on_unverified(recipe):
-            unverified_energy += p.energy_kcal
+        unverified_energy += _unverified_energy(recipe, count, ingredients)
 
     return NutritionEstimate(
         point=point, low=low, high=high, unverified_energy_kcal=unverified_energy

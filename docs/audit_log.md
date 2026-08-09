@@ -8,6 +8,148 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-09 — D6: the unverified-energy denominator
+
+Closes **finding 20**. The number the 15% shipping threshold and the `dev_mode`
+exit both read was wrong in two directions at once. Nothing depended on it yet,
+which is why it was fixed now — D7 and the `dev_mode` exit are next in the queue
+and both would have leaned on it.
+
+### The fix
+
+Attribution moves from "one yes/no question per recipe" to per ingredient line.
+A line is charged when its composition record is unverified **or** the process
+constant that determined its quantity is, and charged **once** in either case.
+
+Union rather than sum is deliberate: a line unverified for both reasons is still
+only that much energy, and adding the terms could take a plate past 100% of its
+own energy, which is not something a fraction of a quantity can do.
+
+Charging a line's *whole* energy on an unverified process constant is not the
+old over-attribution returning. `RecipeIngredient.process_key` marks a line
+whose **quantity was determined by** that constant, so if the constant is
+unopened, so is every calorie on that line. The old rule's error was charging
+the *other* lines too.
+
+`_depends_on_unverified` is gone, replaced by `_unverified_energy`.
+
+### The measurement, all four passing plates
+
+`docs/design/probes/d6_unverified.py` prints the per-line arithmetic and three
+figures per plate: OLD (the previous rule, restated in the probe), NEW (the
+corrected rule, reimplemented independently), and SHIPPED (whatever `core/`
+returns). NEW and SHIPPED are printed side by side so the probe cannot quietly
+agree with the code it audits — a difference between them is a bug in one.
+
+```
+  PLATE south_breakfast: 623.6 kcal        PLATE north_lunch: 931.2 kcal
+    OLD        234.2 / 623.6 =  37.5%        OLD        436.8 / 931.2 =  46.9%
+    NEW        623.6 / 623.6 = 100.0%        NEW        931.2 / 931.2 = 100.0%
+    SHIPPED    623.6 / 623.6 = 100.0%        SHIPPED    931.2 / 931.2 = 100.0%
+  PLATE south_lunch: 848.1 kcal            PLATE north_dinner: 782.5 kcal
+    OLD        501.1 / 848.1 =  59.1%        OLD        317.4 / 782.5 =  40.6%
+    NEW        848.1 / 848.1 = 100.0%        NEW        782.5 / 782.5 = 100.0%
+    SHIPPED    848.1 / 848.1 = 100.0%        SHIPPED    782.5 / 782.5 = 100.0%
+```
+
+Before the `core/` change, SHIPPED equalled OLD on all four; after, it equals
+NEW on all four. That transition is the whole verification, and it is why the
+probe computes both columns itself instead of using a worktree — the comparison
+does not depend on which tree it runs from, so it keeps working after D6 lands.
+
+**Exactly 100% is the correct answer, not a rounding artifact.** 28 of 29
+ingredient rows are `verified=False` and the exception, `water`, carries no
+energy. Every calorie on every plate traces to a composition record nobody has
+opened. The old 37–59% figures were understatements produced by ignoring
+composition entirely.
+
+Confirmed through the tracked entry point, plates unchanged:
+
+```
+$ PYTHONHASHSEED=0 python demo.py plan --region south_indian --meal-slot breakfast
+  unit counts  : {'idli@tiffin': 6, 'soya_kuzhambu@kuzhambu': 1, ...}
+  point        : 623.6 kcal, 29.6g protein, ...
+  unverified   : 623.6 kcal (100.0% of plate) -- CLAUDE.md's shipping threshold is ~15%
+```
+
+### The real library cannot test this, and the old test said it could
+
+`TestUnverifiedEnergyAttribution::test_all_three_recipes_rest_on_unverified_
+process_constants` asserted `unverified_energy_fraction() == 1.0` and **passed
+identically before and after the fix** — the old whole-recipe rule also charged
+everything on this library. Under the correct rule every real plate is 100%,
+and under most broken ones it still is. A test that cannot fail on the defect it
+names is not evidence, whatever its name.
+
+It is kept, renamed `test_the_real_library_is_entirely_unverified`, and its
+comment now says what it does and does not show. Five new tests build their own
+mixed data — a verified line, an unverified-composition line, a
+verified-ingredient-on-unverified-process line — where the answer is 600 of 700
+kcal rather than everything.
+
+Measured, per the deletion-testing convention. Five mechanisms added to
+`d4b_mutations.py` (which turned out never to have cared that its modules were
+all in `core/planner`; `core/foods/nutrition_of.py` needed only a new constant
+and an `OWN_TESTS` row):
+
+```
+$ PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d4b_mutations.py N1,N2,N3,N4,N5
+N1   covered      tests/test_nutrition_of.py::TestUnverifiedEnergyAttribution::test_the_real_library_is_entirely_unverified
+N2   covered      tests/test_nutrition_of.py::TestUnverifiedEnergyAttribution::test_a_verified_line_with_no_process_is_not_charged
+N3   covered      tests/test_nutrition_of.py::TestUnverifiedEnergyAttribution::test_the_real_library_is_entirely_unverified
+N4   covered      tests/test_nutrition_of.py::TestUnverifiedEnergyAttribution::test_a_verified_line_with_no_process_is_not_charged
+N5   covered      tests/test_nutrition_of.py::TestUnverifiedEnergyAttribution::test_the_real_library_is_entirely_unverified
+5 mechanisms: 5 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+**That table is not sufficient on its own, and it names the demoted test three
+times.** The harness reports the first *scoped* failure, which is collection
+order, not relevance — D4b-i's own lesson that a test in the right file is not
+automatically the right test. So the full failure list was taken per mutation:
+
+```
+N1 composition charged     -> all four synthetic tests, plus the real-library one
+N2 process charges its line -> test_a_verified_line_with_no_process_is_not_charged
+                              test_unverified_composition_is_charged
+                              test_the_charge_scales_with_the_serving_count
+N3 charged once, not twice  -> test_a_line_unverified_twice_over_is_charged_once
+                              (+ the real-library one)
+N4 per line, not per recipe -> all four synthetic tests
+N5 scales with count        -> test_the_charge_scales_with_the_serving_count
+                              (+ the real-library one)
+```
+
+Every mechanism is caught by the test written for it. And the sharper result:
+**N2 and N4 — the two directions finding 20 actually named — do not trip the
+real-library test at all.** Under N4 the real library still charges everything
+(whole recipe = everything); under N2 composition alone still charges
+everything. The test that looked like coverage for this fix is blind to exactly
+the defect the fix is about.
+
+### Reproduce
+
+```bash
+PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d6_unverified.py
+PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d4b_mutations.py N1,N2,N3,N4,N5
+PYTHONHASHSEED=0 python demo.py plan --region south_indian --meal-slot breakfast
+python -m pytest tests/ -q
+```
+
+```
+1 failed, 414 passed, 40 skipped, 1 warning in 112.03s (0:01:52)
+FAILED tests/test_recipes.py::TestRecipeLoaderRules::test_declared_uncertainty_is_backed_by_registered_constants
+```
+
+409 → 414 is the five new tests exactly (one old test renamed, not added). The
+one failure is D10's deliberately-red test, unchanged.
+
+**Disposition:** finding 20 **CLOSED**. `docs/methodology.md` limitation 8
+closed with it, and a new dated section carries the corrected figures. No plate,
+verdict or unit count moved — this changes what the system says about its own
+evidence, not what it plans. Findings 19, 31, 36, 2, 15, 22, 28, 29 untouched.
+
+---
+
 ## 2026-08-09 — D4c-i: the decline sentences, before and after D4a
 
 D4a's entry proved the declines got better with four counts. Nobody had read

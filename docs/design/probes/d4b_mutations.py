@@ -85,6 +85,11 @@ CANDIDATES = "core/planner/candidates.py"
 COMBINATIONS = "core/planner/combinations.py"
 SOLVER = "core/planner/solver.py"
 VALIDATOR = "core/planner/validator.py"
+#: Not a planner module. Added for D6 (2026-08-09) because `CLAUDE.md`'s
+#: deletion-testing convention points at this harness for *any* new gate, and
+#: the unverified-energy attribution is a gate on whether anything can ever be
+#: certified. The harness never cared which package a module was in.
+NUTRITION_OF = "core/foods/nutrition_of.py"
 
 MUTATIONS: tuple[Mutation, ...] = (
     # ---------------------------------------------------------------- candidates
@@ -389,6 +394,48 @@ MUTATIONS: tuple[Mutation, ...] = (
         "    if locked_hits:",
         "    if False:",
     ),
+    # ------------------------------------------------- nutrition_of (D6)
+    # Finding 20's fix. Note the real library cannot grade any of these: every
+    # ingredient row but `water` is unverified and `water` has no energy, so
+    # every real plate is 100% unverified under the correct rule AND under most
+    # broken ones. The tests these rows grade build their own mixed data; see
+    # `tests/test_nutrition_of.py::TestUnverifiedEnergyAttribution`.
+    Mutation(
+        "N1", NUTRITION_OF, "unverified ingredient composition is charged",
+        "        unverified_composition = not ing.verified\n",
+        "        unverified_composition = False\n",
+    ),
+    Mutation(
+        "N2", NUTRITION_OF, "an unverified process constant charges its line",
+        "        unverified_process = line.process_key is not None and not "
+        "_process_verified(\n            line.process_key\n        )\n",
+        "        unverified_process = False\n",
+    ),
+    Mutation(
+        "N3", NUTRITION_OF, "a doubly-unverified line is charged once, not twice",
+        "        if unverified_composition or unverified_process:\n"
+        "            total += ing.for_grams(line.quantity_g).energy_kcal * unit_count\n",
+        "        if unverified_composition:\n"
+        "            total += ing.for_grams(line.quantity_g).energy_kcal * unit_count\n"
+        "        if unverified_process:\n"
+        "            total += ing.for_grams(line.quantity_g).energy_kcal * unit_count\n",
+    ),
+    Mutation(
+        "N4", NUTRITION_OF, "attribution is per line, not per whole recipe",
+        "            total += ing.for_grams(line.quantity_g).energy_kcal * unit_count\n"
+        "    return total\n",
+        "            return sum(\n"
+        "                _ingredient(ingredients, other.ingredient_id)\n"
+        "                .for_grams(other.quantity_g).energy_kcal * unit_count\n"
+        "                for other in recipe.ingredients\n"
+        "            )\n"
+        "    return total\n",
+    ),
+    Mutation(
+        "N5", NUTRITION_OF, "the charge scales with the serving count",
+        "            total += ing.for_grams(line.quantity_g).energy_kcal * unit_count\n",
+        "            total += ing.for_grams(line.quantity_g).energy_kcal\n",
+    ),
 )
 
 
@@ -409,6 +456,11 @@ OWN_TESTS: dict[str, tuple[str, ...]] = {
         "test_planner_validator.py", "test_planner_decline.py",
         "test_planner_quality.py",
     ),
+    # `test_recipes.py` is scoped here too: it is where the derived-uncertainty
+    # rules live, and a reader editing it knows they are editing evidence
+    # attribution. `test_planner_*` is not — a planner test that goes red on an
+    # attribution change is reporting a coincidence.
+    NUTRITION_OF: ("test_nutrition_of.py", "test_recipes.py"),
 }
 
 

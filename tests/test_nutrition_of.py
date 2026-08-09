@@ -7,7 +7,7 @@ import pytest
 from core.foods.models import Component, NutritionVector, RecipeIngredient
 from core.foods.nutrition_of import format_macro, nutrition_of_components, nutrition_of_recipe
 from core.nutrition import citations
-from core.schemas import RawOrCooked
+from core.schemas import MACRO_KEYS, DietPattern, RawOrCooked, Region
 
 
 class TestPlateTotals:
@@ -131,18 +131,153 @@ class TestInterval:
 
 
 class TestUnverifiedEnergyAttribution:
-    def test_all_three_recipes_rest_on_unverified_process_constants(
-        self, library, ingredients
-    ):
-        # Every process constant in the library is currently unverified, so the
-        # whole plate's energy is attributed as such. This is the honest state
-        # of the data, and the number the "disclose once" threshold will read.
+    """Finding 20's fix: attribution is per ingredient line, not per recipe.
+
+    The real library cannot test this. Every ingredient row but `water` is
+    `verified=False` and `water` carries no energy, so *every* plate comes out
+    at exactly 100% under the correct rule — and under most incorrect ones too.
+    A test against the real library therefore cannot fail on the defect it
+    names, which is why the mechanism tests below build their own mixed data
+    and the real-library test that follows is labelled as the weak check it is.
+    """
+
+    def test_the_real_library_is_entirely_unverified(self, library, ingredients):
+        # Kept, but demoted: this passed identically before finding 20 was
+        # fixed, because the old whole-recipe rule also charged everything here.
+        # It pins the honest state of the data — the figure the "disclose once"
+        # threshold reads today — and it is NOT evidence the attribution works.
         items = [
             (library.component("masala_dosa"), 2),
             (library.component("sambar_sadam"), 1),
         ]
         est = nutrition_of_components(items, ingredients)
         assert est.unverified_energy_fraction() == pytest.approx(1.0)
+
+    # `oil_uptake.vegetable_tempering` is a real registered constant and is
+    # unverified, as every registered constant currently is — pinned by
+    # TestEligibilityConsequence::test_every_registered_evidence_is_still_
+    # unverified above. If that ever changes these tests change with it, which
+    # is correct: they would then be asserting something false.
+    _UNVERIFIED_PROCESS = "oil_uptake.vegetable_tempering"
+
+    def _mixed(self):
+        """A recipe whose lines differ only in why they are (un)trustworthy.
+
+        Three 100 g lines, energies 100 / 200 / 400 kcal per 100 g:
+          verified_plain     verified, no process        -> not charged
+          unverified_plain   unverified composition      -> charged, 200
+          verified_processed verified, unverified process-> charged, 400
+        Total 700 kcal, of which 600 rests on unopened evidence.
+        """
+
+        from dataclasses import replace
+
+        from core.foods.models import Recipe, ServingUnit
+        from tests.factories import make_ingredient
+
+        verified_plain = make_ingredient(
+            "verified_plain", energy_kcal=100.0, protein_g=0.0, fat_g=0.0, carb_g=25.0
+        )
+        unverified_plain = replace(
+            make_ingredient(
+                "unverified_plain", energy_kcal=200.0, protein_g=0.0,
+                fat_g=0.0, carb_g=50.0,
+            ),
+            verified=False,
+        )
+        verified_processed = make_ingredient(
+            "verified_processed", energy_kcal=400.0, protein_g=0.0,
+            fat_g=44.0, carb_g=0.0,
+        )
+        ingredients = {
+            i.id: i for i in (verified_plain, unverified_plain, verified_processed)
+        }
+        recipe = Recipe(
+            id="mixed", name="mixed", region=Region.SOUTH_INDIAN,
+            diet_patterns=frozenset({DietPattern.VEGETARIAN}),
+            ingredients=(
+                RecipeIngredient("verified_plain", 100.0, RawOrCooked.AS_USED),
+                RecipeIngredient("unverified_plain", 100.0, RawOrCooked.AS_USED),
+                RecipeIngredient(
+                    "verified_processed", 100.0, RawOrCooked.AS_USED,
+                    process_key=self._UNVERIFIED_PROCESS,
+                ),
+            ),
+            serving_unit=ServingUnit(
+                name="plate", grams_per_unit=300.0,
+                min_count=1, default_count=1, max_count=3,
+            ),
+            prep_minutes=10,
+            process_uncertainty={m: 0.0 for m in MACRO_KEYS},
+        )
+        return Component(recipe=recipe, category="base"), ingredients
+
+    def test_a_verified_line_with_no_process_is_not_charged(self):
+        # The whole point of finding 20's first direction: the old rule charged
+        # this recipe's entire 700 kcal because ONE of its lines carries an
+        # unverified process constant. 600 of 700, not 700 of 700.
+        component, ingredients = self._mixed()
+        est = nutrition_of_components([(component, 1)], ingredients)
+        assert est.point.energy_kcal == pytest.approx(700.0)
+        assert est.unverified_energy_kcal == pytest.approx(600.0)
+        assert est.unverified_energy_fraction() == pytest.approx(600.0 / 700.0)
+
+    def test_unverified_composition_is_charged(self):
+        # Finding 20's second direction. Flipping the one unverified row to
+        # verified must drop exactly its 200 kcal and nothing else — a
+        # perturbation check, not a restatement of the rule.
+        from dataclasses import replace
+
+        component, ingredients = self._mixed()
+        all_verified = {
+            k: replace(v, verified=True) for k, v in ingredients.items()
+        }
+        est = nutrition_of_components([(component, 1)], all_verified)
+        assert est.unverified_energy_kcal == pytest.approx(400.0)
+
+    def test_an_unverified_process_constant_charges_its_own_line(self):
+        # And only its own line. Dropping the process_key must remove exactly
+        # 400 kcal, leaving the composition-only charge.
+        from dataclasses import replace
+
+        component, ingredients = self._mixed()
+        recipe = component.recipe
+        no_process = replace(
+            recipe,
+            ingredients=tuple(
+                replace(line, process_key=None) for line in recipe.ingredients
+            ),
+        )
+        est = nutrition_of_components(
+            [(Component(recipe=no_process, category="base"), 1)], ingredients
+        )
+        assert est.unverified_energy_kcal == pytest.approx(200.0)
+
+    def test_a_line_unverified_twice_over_is_charged_once(self):
+        # The union. Marking the processed line's ingredient unverified too
+        # makes it unverified for BOTH reasons; its 400 kcal must still be 400.
+        # Summing the two terms instead would give 1000 of 700 -- a plate over
+        # 100% of its own energy, which is the shape of the bug this guards.
+        from dataclasses import replace
+
+        component, ingredients = self._mixed()
+        both = dict(ingredients)
+        both["verified_processed"] = replace(
+            both["verified_processed"], verified=False
+        )
+        est = nutrition_of_components([(component, 1)], both)
+        assert est.unverified_energy_kcal == pytest.approx(600.0)
+        assert est.unverified_energy_fraction() <= 1.0
+
+    def test_the_charge_scales_with_the_serving_count(self):
+        # 3 units: 1800 of 2100. A per-line attribution that forgot unit_count
+        # would charge 600 against a 2100 kcal plate and report 28.6% -- and an
+        # under-charge is the dangerous direction, because it is the one that
+        # lets a plate slip under the shipping threshold it should fail.
+        component, ingredients = self._mixed()
+        est = nutrition_of_components([(component, 3)], ingredients)
+        assert est.point.energy_kcal == pytest.approx(2100.0)
+        assert est.unverified_energy_kcal == pytest.approx(1800.0)
 
 
 class TestEligibilityConsequence:

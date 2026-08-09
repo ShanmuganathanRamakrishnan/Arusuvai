@@ -229,8 +229,48 @@ currently declines the reference profile.
 Designed, not built: `docs/design/recipe_quantity_uncertainty.md` (2026-08-02),
 including the two findings the measurement produced — the confidence label it
 specifies has only one reachable value, and the unverified-energy fraction is
-wrong in both directions by a measured amount. Both are `docs/audit_log.md`
-findings 19 and 20, OPEN.
+wrong in both directions by a measured amount. Finding 19 is OPEN; finding 20
+is CLOSED 2026-08-09 (D6), and the figures that document quotes for the
+unverified fraction are superseded by the section below.
+
+## The unverified-energy fraction, measured correctly (2026-08-09, D6)
+
+The fraction that decides whether a plan may ship as validated used to ask one
+yes/no question per *recipe* — is any of its process constants unverified — and
+charge the recipe's whole energy on a yes. That was wrong twice over
+(`docs/audit_log.md` finding 20): it charged dal_tadka's entire 519 kcal for a
+5 g tempering-oil line, and it charged **nothing** for unverified ingredient
+composition, so dishes resting entirely on hand-entered rows reported 0.0.
+
+Attribution is now per ingredient line. A line is charged when its composition
+record is unverified **or** the process constant that determined its quantity
+is, and charged once in either case — a line unverified for two reasons is
+still only that much energy.
+
+The result, for the four plates the reference profile is served today:
+
+| plate | energy | old rule | corrected |
+| --- | ---: | ---: | ---: |
+| south_breakfast | 623.6 kcal | 37.5% | **100.0%** |
+| south_lunch | 848.1 kcal | 59.1% | **100.0%** |
+| north_lunch | 931.2 kcal | 46.9% | **100.0%** |
+| north_dinner | 782.5 kcal | 40.6% | **100.0%** |
+
+Reproduce with `PYTHONHASHSEED=0 PYTHONPATH=. python
+docs/design/probes/d6_unverified.py`, which prints the per-line arithmetic.
+
+**Exactly 100%, on every plate, is the correct answer and not a rounding
+artifact.** 28 of 29 ingredient rows are `verified=False`; the exception,
+`water`, carries no energy. So every calorie on every plate traces to a
+composition record nobody has opened, and the old figures of 37–59% were
+understatements produced by ignoring composition entirely.
+
+This does not change what can ship — nothing could ship as validated before,
+for the independent reason in the section above — but it removes the last
+reading on which that might have looked close. It is not 15% away from the
+threshold; it is the whole plate. Anything downstream that leans on this
+number — the `dev_mode` exit in particular — now leans on a figure that means
+what it says.
 
 ## Nothing can currently ship as validated (2026-07-21)
 
@@ -1257,14 +1297,11 @@ That last case is pinned in
    uniformly today. A uniform band is honest about being an estimate; a
    per-macro one invented without a source would not be.
 
-8. **`_depends_on_unverified` over-attributes.** A recipe with any unverified
-   process constant charges its *whole* energy to the unverified bucket, though
-   only the grams that constant governs actually depend on it. It is not
-   narrowed yet because the opposite and larger error — `Ingredient.verified`
-   not reaching the shipping-threshold calculation at all — is still open, and
-   correcting the smaller one alone would move the reported figure away from the
-   truth. The per-line attribution needed to fix both now exists
-   (`Recipe.lines_for_process`).
+8. ~~**`_depends_on_unverified` over-attributes.**~~ **CLOSED 2026-08-09 (D6);
+   see "The unverified-energy fraction, measured correctly" below.** Both
+   directions landed together, as this entry said they had to: attribution is
+   now per ingredient line, charging composition and process alike, and
+   `_depends_on_unverified` no longer exists.
 
 ## Making the south templates reachable (2026-08-07, D3)
 
