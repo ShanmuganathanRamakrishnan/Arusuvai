@@ -22,9 +22,18 @@ any token shaped like a Python/JS identifier: ``snake_case`` or
 ``SCREAMING_CASE``. It cannot be satisfied by knowing which key leaked; it can
 only be satisfied by no key leaking.
 
-The eight views are the ones a user can reach: the landing page, wizard steps
-1-6, and the dashboard (plate picker, then whatever ``POST /api/plan``
-returns — a solved plate or an honest decline, both of which render copy).
+The ten views are the ones a user can reach: the landing page, wizard steps
+1-6, and the dashboard in three states — the plate picker, a plate that solves,
+and a plate that declines.
+
+That last one was a claim before it was true. Until 2026-08-09 this paragraph
+said the sweep covered "a solved plate or an honest decline", and the fixture
+clicked Generate once, on the default plate, which solves. `renderPlanSuccess`
+and `renderPlanDecline` write into two independent sections, so the violation
+list and the disclosure paragraph — the two places most likely to show a reader
+a raw macro name, and the ones this file exists for — were never swept at all
+(`docs/audit_log.md` finding 36). The fixture now selects a plate that declines
+for its own profile and collects that view too.
 
 Legitimate exceptions go in ``ALLOWED`` below, each with a reason. Keep that
 list short: every entry is a hole, and a long allowlist is how this test stops
@@ -166,15 +175,33 @@ def rendered_text() -> dict[str, list[str]]:
         page.wait_for_timeout(3500)
         views["dashboard_after_plan"] = page.evaluate(COLLECT)
 
+        # The decline. `renderPlanSuccess` and `renderPlanDecline` write into two
+        # independent sections, so the view above exercises neither the violation
+        # list nor the disclosure paragraph -- the two places a raw macro name is
+        # most likely to reach a reader, and the two this file's docstring
+        # claimed to sweep while never selecting a plate that declines
+        # (`docs/audit_log.md` finding 36).
+        #
+        # south_indian:lunch is the one of the four that declines for the CKD
+        # profile above; the other three pass. Measured against the live API
+        # rather than assumed -- if the library changes so that it passes, the
+        # reachability test below goes red rather than this sweep quietly
+        # covering a second success view.
+        page.click('input[name="plate"][value="south_indian:lunch"]')
+        page.click("#dashGenerate")
+        page.wait_for_timeout(3500)
+        views["dashboard_after_decline"] = page.evaluate(COLLECT)
+
         browser.close()
     return views
 
 
-def test_eight_views_were_actually_reached(rendered_text):
+def test_every_view_was_actually_reached(rendered_text):
     """A sweep that silently covered two views would pass and mean nothing."""
-    assert len(rendered_text) >= 9, (
-        "expected the landing page, six wizard steps and the dashboard before "
-        f"and after a plan call; reached {sorted(rendered_text)}"
+    assert len(rendered_text) >= 10, (
+        "expected the landing page, six wizard steps, and the dashboard before "
+        "a plan call, after one that succeeds, and after one that declines; "
+        f"reached {sorted(rendered_text)}"
     )
     for view, strings in rendered_text.items():
         assert len(strings) > 5, f"{view} rendered almost no text ({len(strings)})"
@@ -194,13 +221,37 @@ def test_eight_views_were_actually_reached(rendered_text):
         "exercise the label map that used to leak the raw enum member"
     )
 
+    # The decline view has to be shown to be a decline, and to have rendered the
+    # violation list rather than an empty section. Without this a plate that
+    # started passing would turn this into a second sweep of the success view --
+    # green, and covering exactly nothing new.
+    decline = rendered_text["dashboard_after_decline"]
+    joined = " ".join(decline)
+    assert "This library can't build you a plate yet" in joined, (
+        "the decline section did not render; the plate selected for it may have "
+        "started passing, in which case pick another that declines rather than "
+        "deleting this assertion"
+    )
+    assert "South Indian lunch" in joined, (
+        "the decline view did not name the plate it was asked for, so the radio "
+        "click above did not take effect"
+    )
+    # Durable across the copy map this file is about to force: whatever prose
+    # replaces `sodium_mg`, an honest decline still has to tell the reader that
+    # salt is the blocking constraint. Asserted case-insensitively so it holds
+    # for both the raw macro name today and a display label tomorrow.
+    assert any("sodium" in s.lower() or "salt" in s.lower() for s in decline), (
+        "the decline rendered no violation naming the blocking constraint, so "
+        "the sweep covered the section but not the text that leaks into it"
+    )
+
 
 @pytest.mark.parametrize(
     "view",
     [
         "landing", "wizard_step1", "wizard_step2", "wizard_step3",
         "wizard_step4", "wizard_step5", "wizard_step6",
-        "dashboard", "dashboard_after_plan",
+        "dashboard", "dashboard_after_plan", "dashboard_after_decline",
     ],
 )
 def test_no_identifier_reaches_a_rendered_string(rendered_text, view):

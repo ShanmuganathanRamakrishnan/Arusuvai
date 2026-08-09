@@ -150,3 +150,58 @@ class TestPlanProvenanceReachesTheClient:
         est = self._plan()["estimate"]
         assert est["unverified_energy_kcal"] == pytest.approx(est["energy_kcal"])
         assert est["unverified_energy_fraction"] == pytest.approx(1.0)
+
+
+class TestADeclineCarriesItsNumbersNotJustItsProse:
+    """`docs/audit_log.md` finding 31, the server half.
+
+    `ViolationOut` has always carried stable tokens so a client could write its
+    own copy, but not ``actual`` and ``bound`` -- the two numbers any such
+    sentence needs. A client had to either render `text`, which interpolates the
+    raw macro key, or parse the numbers back out of it, which would make English
+    prose an API contract. Both numbers exist on
+    `core.planner.validator.Violation` and are passed through here; nothing in
+    this package computes them.
+
+    The copy built on top of this is graded by `tests/test_web_decline_copy.py`.
+    """
+
+    def _decline(self):
+        return client.post(
+            "/api/plan",
+            json=_body(
+                weight_kg=74, height_cm=176, age_years=31, diet="vegetarian",
+                clinical_flags=["chronic_kidney_disease"],
+                region="south_indian", meal_slot="lunch",
+            ),
+        ).json()
+
+    def test_this_profile_still_declines(self):
+        # If the library grows so that it passes, the two tests below stop
+        # testing anything and must be repointed rather than deleted.
+        assert self._decline()["passed"] is False
+
+    def test_every_violation_carries_the_two_numbers_its_sentence_needs(self):
+        details = self._decline()["violation_detail"]
+        assert details, "a decline with no structured violations explains nothing"
+        for v in details:
+            assert "actual" in v and "bound" in v
+            assert isinstance(v["actual"], float) and isinstance(v["bound"], float)
+
+    def test_the_numbers_match_the_prose_the_planner_wrote(self):
+        # Same source, so they must agree: the prose is what `describe` built
+        # from these very fields. A mismatch would mean the API is reporting one
+        # violation's numbers against another's text.
+        #
+        # The `!= 0.0` guards are the point of this test, not decoration. Its
+        # first draft asserted only that the formatted number appeared in the
+        # text, and passed against a build where the pass-through had been
+        # deleted: the fields defaulted to 0.0, and "0.0" is a substring of
+        # "1400.0". A test that green-lights the defect it names is not a test.
+        for v in self._decline()["violation_detail"]:
+            if v["kind"] == "no_candidates":
+                continue
+            assert v["actual"] != 0.0, "a real bound miss is not 0.0 against 0.0"
+            assert v["bound"] != 0.0
+            assert f"{v['actual']:.1f}" in v["text"]
+            assert f"{v['bound']:.1f}" in v["text"]

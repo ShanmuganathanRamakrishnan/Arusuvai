@@ -8,6 +8,190 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-09 — D9(b): the decline stopped saying `sodium_mg`
+
+Closes **findings 31 and 36**. Done in the order D9 states, which is the repo's
+own: extend the detector first, watch it fail, then write the copy.
+
+### Finding 36 — the sweep claimed a decline it never rendered
+
+`tests/test_web_no_identifiers.py`'s docstring said it covered "a solved plate
+or an honest decline". The fixture clicked Generate once, on the default plate,
+which solves. `renderPlanSuccess` and `renderPlanDecline` write into two
+independent sections, so the violation list and the disclosure paragraph — the
+two places a raw macro name was most likely to reach a reader, and the reason
+the file exists — were swept zero times.
+
+**Disposition: FIXED.** The fixture now selects a plate that declines for its
+own profile and collects a tenth view, `dashboard_after_decline`.
+
+Which plate declines was measured against the live API, not assumed:
+
+| plate | verdict |
+| --- | --- |
+| south_indian:breakfast | passes |
+| **south_indian:lunch** | **declines** — sodium 1546.0 mg vs a 1400.0 mg ceiling |
+| north_indian:lunch | passes |
+| north_indian:dinner | passes |
+
+Three rungs were walked (`sodium_max_fibre_min`, `fat_carb_tolerance`,
+`energy_tolerance`) before the ladder gave up, and the bound is `locked` by
+`chronic_kidney_disease` — so this exercises the clinical-lock path, which D9
+calls the most interesting thing on the screen.
+
+The reachability test now requires that view to prove it *is* a decline: the
+lede, the plate name (so a failed radio click cannot pass), and that some line
+names sodium — asserted case-insensitively and accepting "salt", so it survives
+the copy map below. If the library ever shifts and that plate starts passing,
+this goes red rather than the sweep quietly becoming a second pass over the
+success view.
+
+### Finding 31 — measured before it was fixed
+
+```
+FAILED tests/test_web_no_identifiers.py::test_no_identifier_reaches_a_rendered_string[dashboard_after_decline]
+Leaks: [('sodium_mg', "sodium_mg is 1546.0mg, above its ceiling of 1400.0mg (more than one
+         plate may take of a whole day's allowance) (locked b"),
+        ('sodium_mg', 'No plan could be built for this profile: sodium_mg is 1546.0mg,
+         above its ceiling of 1400.0mg (more than one plate may t')]
+1 failed, 11 passed in 19.43s
+```
+
+Red on the new view only; every other view including the success path stayed
+green, so this is finding 31 isolated rather than a broad regression.
+
+**Two leak sites, not one.** `violation_detail[].text` renders into the
+violation list, and `disclosure` renders into the closing paragraph — and the
+disclosure *embeds* the same sentence rather than composing its own. Measured
+rather than argued, by fixing only the list and re-running:
+
+```
+=== D2: disclosure renders the server string again (violations list left FIXED) ===
+FAILED tests/test_web_decline_copy.py::TestNoTokenSurvivesAnyBranch::test_not_one_identifier_reaches_the_disclosure
+FAILED tests/test_web_decline_copy.py::TestTheSentencesSayTheRightThing::test_the_disclosure_leads_with_the_clinical_refusal_when_one_holds
+FAILED tests/test_web_no_identifiers.py::test_no_identifier_reaches_a_rendered_string[dashboard_after_decline]
+3 failed, 27 passed
+```
+
+A fix closing one site leaves the detector red — the task's own definition of
+unfinished.
+
+### The map is client-side, and needed two numbers the API was not sending
+
+Copy lives in `web/dashboard.js`, consistent with D11: the server sends stable
+tokens, the client writes the sentence. `core/planner/validator.py` still writes
+`text` and `disclosure`, both still correct; they are simply not what this page
+renders.
+
+`ViolationOut` already carried `macro`/`kind`/`bound_source`/`reach`/
+`relaxability`/`locked_by` but **not the two numbers any such sentence needs**.
+Without them a client had to render `text` (which interpolates the raw key) or
+parse the numbers back out of English, which would make prose an API contract —
+the opposite of why the tokens exist. `actual` and `bound` have been on
+`core.planner.validator.Violation` since D4a; `api/` now passes them through and
+still computes nothing.
+
+Every key `Violation.macro` can carry is mapped, not only the one a decline
+produces today: all nine `MACRO_KEYS`, plus `quality_protein_g` (not a macro —
+see `core/foods/quality.py` — but it reaches a decline like any bound). An
+unmapped macro degrades to vague-but-clean prose rather than to its key, because
+`humanise()` would render `potassium_mg` as "Potassium mg" and then state a
+number against a unit the client cannot name.
+
+Before, and after, for the real declining plate:
+
+```
+sodium_mg is 1546.0mg, above its ceiling of 1400.0mg (more than one plate may
+take of a whole day's allowance) (locked by a condition you disclosed, and
+never relaxed for that reason)
+```
+
+```
+Sodium comes to 1,546mg, over the 1,400mg limit — more than one plate should
+take of a whole day's allowance. We didn't loosen this one, because you told
+us about chronic kidney disease.
+```
+
+and the disclosure, which no longer repeats the list it sits under:
+
+```
+We stopped rather than relax a limit tied to a condition you disclosed. This
+system is not a substitute for clinical nutrition guidance — please take these
+targets to your doctor or dietitian.
+```
+
+### Finding 40 — a default of `0.0` made the API's own deletion check pass
+
+`ViolationOut.actual`/`bound` were first written with `= 0.0` defaults. Deleting
+the pass-through in `api/main.py` then left every violation reporting 0.0
+against 0.0 and **the suite stayed green** — the presence-and-type assertions
+passed, and the prose check passed by coincidence, because `"0.0"` is a
+substring of `"1400.0"`.
+
+**Disposition: FIXED, in both places.** The fields are required, so a dropped
+pass-through is a construction error rather than a plausible-looking
+measurement; and the test asserts the numbers are non-zero. This is CLAUDE.md's
+round-4 rule — the cheapest authoring path must never produce the most
+confident-looking output — reappearing outside uncertainty, where the addendum
+states it. Recorded because the mechanism survived its first check and the test
+was the thing at fault, not the code.
+
+### Nine of ten map entries are unreachable from the real library
+
+`tests/test_web_decline_copy.py` (new) drives the real `renderPlanDecline` in a
+real browser with `POST /api/plan` stubbed to return violations today's recipe
+library cannot produce: every macro, both `kind`s, all three `bound_source`s,
+every `relaxability` note, an unfillable plate, and a macro absent from the map.
+Auth, profile and science still hit the real API, so the page reaches the
+renderer the way it always does.
+
+Three deletion checks, each shown red against its own mechanism:
+
+```
+=== D1: violations list renders server prose again ===
+FAILED ...TestTheSentencesSayTheRightThing::test_a_floor_reads_as_a_shortfall_and_a_ceiling_as_an_excess
+FAILED ...TestTheSentencesSayTheRightThing::test_a_locked_bound_names_the_condition_and_says_we_chose_not_to
+FAILED ...TestTheSentencesSayTheRightThing::test_the_bound_source_is_explained_when_it_is_not_the_ordinary_one
+FAILED ...TestTheSentencesSayTheRightThing::test_an_unfillable_plate_names_the_courses_in_words
+FAILED tests/test_web_no_identifiers.py::test_no_identifier_reaches_a_rendered_string[dashboard_after_decline]
+17 failed, 13 passed
+
+=== D3: unmapped-macro fallback removed ===
+FAILED ...TestNoTokenSurvivesAnyBranch::test_an_unmapped_macro_degrades_to_prose_not_to_its_key
+1 failed, 29 passed
+```
+
+**These were run by hand, not through `d4b_mutations.py`, and that is a
+structural limit rather than an omission.** The harness mutates a copy of
+`core/` and `tests/` inside a throwaway worktree; the browser loads `web/` from
+a static server pointed at the real directory, so a mutated `web/` in the
+worktree would have no effect and every row would falsely report "survived".
+Adding `web` to the copied trees would not fix it. Left as-is and written down
+here so the next person does not read the absence of W-style rows as an
+oversight.
+
+### Suite
+
+```
+$ python -m pytest tests/ -q --color=no --no-header       # both servers up
+FAILED tests/test_recipes.py::TestRecipeLoaderRules::test_declared_uncertainty_is_backed_by_registered_constants
+1 failed, 488 passed, 1 warning in 204.84s (0:03:24)
+```
+
+488 = 466 (426 + the 40 web tests, now running) + 18 decline-copy + 3 API + the
+new tenth view. The single failure is D10's deliberately red test.
+
+### What D9 still owes
+
+This is **(b) plus the copy `(a)` needs**, not all of D9(a). Specifically still
+open: the decline screen does not yet offer only suggestions that *can* change
+the outcome — `DECLINE_PATHS` is still three static strings shown regardless of
+whether they apply. "Try a different plate" is good advice for a
+`jointly_infeasible` sodium miss and useless for an `unreachable` one, and the
+payload now carries `reach` to tell them apart. Not started.
+
+---
+
 ## 2026-08-09 — D8: the web suite reported green without looking
 
 D8 was written as two halves: **(a)** make conditional passing honest, and

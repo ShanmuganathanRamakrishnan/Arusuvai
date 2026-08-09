@@ -241,6 +241,28 @@ class ViolationOut(BaseModel):
     #: ``ClinicalFlag`` values holding this bound out of the ladder. Empty
     #: unless ``relaxability`` is "locked".
     locked_by: list[str] = Field(default_factory=list)
+    #: The plate's value for ``macro`` and the bound it missed, in ``macro``'s
+    #: own units. Read off ``core.planner.validator.Violation``, which has
+    #: carried both since D4a; nothing is computed here. Exposed for D9: a
+    #: client writing its own sentence needs the two numbers in it, and the only
+    #: alternative was parsing them back out of ``text``, which would make the
+    #: prose an API contract — the opposite of why these tokens exist.
+    #:
+    #: **Required, deliberately.** Giving these a ``0.0`` default was tried and
+    #: caught by its own deletion check: dropping the pass-through in
+    #: ``api/main.py`` then left every violation reporting 0.0 against 0.0, which
+    #: is a plausible-looking measurement rather than an error, and the suite
+    #: stayed green. A missing number must not read as a real one — the same
+    #: rule CLAUDE.md's round-4 addendum states for uncertainty, applied to the
+    #: cheapest authoring path here.
+    actual: float
+    bound: float
+    #: The prose ``Violation.describe`` writes. **Retained, and deliberately not
+    #: what the dashboard renders since D9.** It interpolates ``macro`` raw, so
+    #: rendering it puts `sodium_mg` in front of a reader (`docs/audit_log.md`
+    #: finding 31). Kept because it is the honest fallback for a client with no
+    #: copy map, and because deleting it would silently change what every other
+    #: consumer shows. A client that renders it must expect identifiers.
     text: str
 
 

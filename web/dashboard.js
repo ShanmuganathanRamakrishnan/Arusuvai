@@ -367,6 +367,163 @@
       `an illustration of the method rather than dietary advice.`;
   }
 
+  // ---------------------------------------------------------------- decline copy
+  //
+  // The decline used to render two server-written strings: `violations[]` (the
+  // prose `Violation.describe` produces) and `disclosure` (a join of the same
+  // prose). Both interpolate `Violation.macro` raw, so a reader was shown
+  // "sodium_mg is 1546.0mg, above its ceiling of 1400.0mg" -- twice, in two
+  // places. `docs/audit_log.md` finding 31.
+  //
+  // The fix is here rather than in the planner for the reason D11 gives: the
+  // server sends stable tokens and numbers, the client writes the sentence.
+  // `ViolationOut` already carried macro/kind/bound_source/reach/relaxability/
+  // locked_by; D9 adds `actual` and `bound`, so nothing below needs to parse a
+  // number back out of English. `core/planner/validator.py` still writes
+  // `text` and `disclosure` and they are still correct -- they are simply not
+  // what this page renders.
+  //
+  // Every key `Violation.macro` can carry is mapped, not only the ones a
+  // decline happens to produce today. A macro missing from here would fall
+  // through to a raw identifier, which is the whole defect.
+  const MACRO_COPY = {
+    energy_kcal: { name: "Calories", unit: " kcal", digits: 0 },
+    protein_g: { name: "Protein", unit: "g", digits: 1 },
+    fat_g: { name: "Fat", unit: "g", digits: 1 },
+    carb_g: { name: "Carbohydrate", unit: "g", digits: 1 },
+    fibre_g: { name: "Fibre", unit: "g", digits: 1 },
+    sodium_mg: { name: "Sodium", unit: "mg", digits: 0 },
+    iron_mg: { name: "Iron", unit: "mg", digits: 1 },
+    calcium_mg: { name: "Calcium", unit: "mg", digits: 0 },
+    b12_ug: { name: "Vitamin B12", unit: "µg", digits: 1 },
+    // Not in MACRO_KEYS and deliberately not a macro -- see core/foods/
+    // quality.py. It reaches a decline like any other bound, so it needs copy.
+    quality_protein_g: { name: "High-quality protein", unit: "g", digits: 1 },
+  };
+
+  // Which rule set the bound. Only `meal_share` is the ordinary case, so only
+  // the other two say anything: a reader who is over a limit deserves to know
+  // when the limit came from the rest of their day rather than from this plate.
+  const BOUND_SOURCE_CLAUSE = {
+    meal_share: "",
+    day_remaining: " — what's left of your day's allowance after your other meals",
+    absurdity_guard: " — more than one plate should take of a whole day's allowance",
+  };
+
+  // Why the limit did not move. "locked" is the one this screen exists to show:
+  // the system deliberately refused to trade something away, and saying so is
+  // more useful than any number on the page.
+  const RELAXABILITY_NOTE = {
+    relaxable: "",
+    relaxed_to_limit: " We had already stretched this as far as it goes.",
+    hard_capped: " This is a hard limit that never widens.",
+    never_relaxed: " This isn't a limit we trade away.",
+    locked: "", // handled with locked_by, which names the condition
+  };
+
+  // TemplateSlot names, for the "we couldn't even fill the plate" case.
+  // humanise() is an acceptable fallback here by this file's own doctrine: a
+  // slot is structural, not a trust claim, and "Curd course" is honest.
+  const SLOT_LABELS = {
+    base: "a base",
+    tiffin: "a tiffin item",
+    rice: "a rice course",
+    curry: "a curry",
+    kuzhambu: "a kuzhambu",
+    sambar: "a sambar",
+    dal: "a dal",
+    sabzi: "a sabzi",
+    poriyal: "a vegetable side",
+    vegetable: "a vegetable side",
+    chutney: "a chutney",
+    curd_course: "a curd course",
+    accompaniment: "an accompaniment",
+    protein: "a protein dish",
+    bread: "a bread",
+  };
+
+  const fmt = (n, digits) =>
+    Number(n).toLocaleString(undefined, {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    });
+
+  /** One violation as a sentence a person can read. Never returns a token. */
+  function violationSentence(v) {
+    if (v.kind === "no_candidates") {
+      const slots = (v.blocking_slots || []).map(
+        (s) => SLOT_LABELS[s] || humanise(s).toLowerCase()
+      );
+      if (!slots.length) {
+        return "We couldn't assemble a complete plate from the recipes available for this meal.";
+      }
+      const list =
+        slots.length === 1
+          ? slots[0]
+          : slots.slice(0, -1).join(", ") + " and " + slots[slots.length - 1];
+      return `This meal needs ${list}, and the library has nothing that fits your profile.`;
+    }
+
+    // An unmapped macro must not fall through to its key. humanise() would give
+    // "Sodium mg" -- readable, but the unit is then wrong in the sentence, so
+    // the number is dropped rather than stated against a unit we can't name.
+    const copy = MACRO_COPY[v.macro];
+    if (!copy) {
+      return "One of this plate's nutritional limits couldn't be met.";
+    }
+
+    const actual = `${fmt(v.actual, copy.digits)}${copy.unit}`;
+    const bound = `${fmt(v.bound, copy.digits)}${copy.unit}`;
+    const source = BOUND_SOURCE_CLAUSE[v.bound_source] || "";
+
+    let sentence;
+    if (v.kind === "below_floor") {
+      sentence = `${copy.name} reaches only ${actual}, short of the ${bound} this plate needs${source}.`;
+    } else if (v.kind === "above_ceiling") {
+      sentence = `${copy.name} comes to ${actual}, over the ${bound} limit${source}.`;
+    } else {
+      sentence = `${copy.name} is ${actual} against a limit of ${bound}${source}.`;
+    }
+
+    const flags = (v.locked_by || []).map((f) => FLAG_LABELS[f] || humanise(f));
+    if (flags.length) {
+      // The most important sentence on the screen: the system did not fail to
+      // fix this, it declined to.
+      sentence +=
+        ` We didn't loosen this one, because you told us about ${flags
+          .join(" and ")
+          .toLowerCase()}.`;
+    } else {
+      sentence += RELAXABILITY_NOTE[v.relaxability] || "";
+    }
+    return sentence;
+  }
+
+  /** The closing paragraph. Composed here; the server's `disclosure` is not
+   *  rendered, because it is a join of the same prose the list above shows and
+   *  it carries the same raw macro key. */
+  function declineDisclosure(details) {
+    const locked = details.some((v) => (v.locked_by || []).length);
+    if (locked) {
+      return (
+        "We stopped rather than relax a limit tied to a condition you disclosed. " +
+        "This system is not a substitute for clinical nutrition guidance — please " +
+        "take these targets to your doctor or dietitian."
+      );
+    }
+    const unreachable = details.some((v) => v.reach === "unreachable");
+    if (unreachable) {
+      return (
+        "No combination this library can build meets that limit, so changing the " +
+        "portions wouldn't help — the recipes themselves are the constraint."
+      );
+    }
+    return (
+      "Each limit above is reachable on its own; there's no combination that " +
+      "meets all of them at once for this meal."
+    );
+  }
+
   // Generic guidance, not a claim about this profile's numbers -- static UI
   // copy, unlike everything else on this page, is fine to hardcode.
   const DECLINE_PATHS = [
@@ -383,12 +540,28 @@
     document.getElementById("obDeclineLede").textContent =
       "This library can't build you a plate yet — here's exactly why.";
 
+    // `violation_detail`, not `violations`: the latter is server prose with the
+    // raw macro key in it. If an older API sends only the prose, say something
+    // true and vague rather than render an identifier -- a decline that reads
+    // thinly is a worse screen, but a decline that says "sodium_mg" is the bug.
+    const details = data.violation_detail || [];
+    const sentences = details.length
+      ? details.map(violationSentence)
+      : ["We couldn't meet this plate's nutritional targets for your profile."];
+
     const list = document.getElementById("obDeclineViolations");
     list.innerHTML = "";
-    for (const v of data.violations) {
+    for (const sentence of sentences) {
       const row = document.createElement("div");
       row.className = "ob-callout-item";
-      row.innerHTML = `<span class="dot"></span><span>${v}</span>`;
+      // textContent, not innerHTML: these strings are composed here from server
+      // values, and one of them is a number formatted by toLocaleString.
+      const dot = document.createElement("span");
+      dot.className = "dot";
+      const body = document.createElement("span");
+      body.textContent = sentence;
+      row.appendChild(dot);
+      row.appendChild(body);
       list.appendChild(row);
     }
 
@@ -401,7 +574,8 @@
       paths.appendChild(row);
     });
 
-    document.getElementById("obDeclineDisclosure").textContent = data.disclosure || "";
+    document.getElementById("obDeclineDisclosure").textContent =
+      declineDisclosure(details);
   }
 
   init();
