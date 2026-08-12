@@ -20,6 +20,17 @@
       maximumFractionDigits: digits,
     });
 
+  // D15 visual pass: same amber-card markup helper as
+  // dashboard-success.js's -- duplicated rather than shared, since the two
+  // view modules otherwise share only ArusuvaiDashboardCopy's data tables,
+  // not rendering helpers.
+  function amberCallout(text) {
+    return (
+      '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 7.6v.1"></path></svg>' +
+      `<p>${text}</p>`
+    );
+  }
+
   /** One violation as a sentence a person can read. Never returns a token. */
   function violationSentence(v) {
     if (v.kind === "no_candidates") {
@@ -106,13 +117,16 @@
   function renderDeclineProvenance(data) {
     const el = document.getElementById("obDeclineProvenance");
     if (!data.dev_mode) {
-      el.textContent = "";
+      el.className = "";
+      el.innerHTML = "";
       return;
     }
-    el.textContent =
+    const text =
       "Not validated. The limits above were computed from nutrition data nobody " +
       "has checked against a primary source yet, so treat this as an " +
       "illustration of the method rather than dietary advice.";
+    el.className = "dash-callout-amber";
+    el.innerHTML = amberCallout(text);
   }
 
   function renderPlanDecline(data, plate) {

@@ -19,6 +19,16 @@
     return Math.round(n * 10) / 10;
   }
 
+  // D15 visual pass: the icon-plus-sentence amber card ported from Claude
+  // Design's "Arusuvai Dashboard v2.dc.html". Markup only -- the sentence
+  // itself is still composed from real fields exactly as before this pass.
+  function amberCallout(text) {
+    return (
+      '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 7.6v.1"></path></svg>' +
+      `<p>${text}</p>`
+    );
+  }
+
   function plateLabel(plate) {
     // Both halves go through humanise(): a region or meal slot added to
     // core/schemas after this map was written would otherwise reach the
@@ -60,7 +70,8 @@
   function renderProvenance(data) {
     const el = document.getElementById("obPlanProvenance");
     if (!data.dev_mode) {
-      el.textContent = "";
+      el.className = "";
+      el.innerHTML = "";
       return;
     }
     const est = data.estimate;
@@ -71,10 +82,12 @@
         ? `About ${Math.round(est.unverified_energy_fraction * 100)}% of this plate's energy `
           + `rests on figures nobody has checked against a primary source yet. `
         : "";
-    el.textContent =
+    const text =
       `Not validated. ${share}` +
       `The nutrition data behind these dishes is unconfirmed, so treat the numbers as ` +
       `an illustration of the method rather than dietary advice.`;
+    el.className = "dash-callout-amber";
+    el.innerHTML = amberCallout(text);
   }
 
   function renderPlanSuccess(data, plate, profile) {
@@ -93,32 +106,68 @@
       // provenance line below says so explicitly.
       : `A combination of real components for this plate.`;
 
+    // "On the plate" -- one row per solved component, dot colour alternating
+    // purely for visual rhythm (ported from the mockup's dish list), role
+    // line reads the real component category (data already on the wire, not
+    // invented for this pass).
     const wrap = document.getElementById("obPlanMeals");
-    wrap.innerHTML = `<div class="meal">${label}</div>`;
-    const list = document.createElement("ul");
-    list.className = "ob-plan-components";
-    for (const c of data.components) {
-      const li = document.createElement("li");
-      li.innerHTML =
-        `<span>${c.recipe_name} <span class="cat">${c.category}</span></span>` +
-        `<span class="count">${c.unit_count} × ${c.unit_name}</span>`;
-      list.appendChild(li);
-    }
-    wrap.appendChild(list);
-    if (est) {
-      const stat = document.createElement("div");
-      stat.className = "stat";
-      stat.textContent =
-        `≈ ${fmtKcal(est.energy_kcal)} kcal · ${fmtG(est.protein_g)}g protein · ${fmtG(est.carb_g)}g carb · ` +
-        `${fmtG(est.fat_g)}g fat · ${fmtG(est.fibre_g)}g fibre · ${fmtKcal(est.sodium_mg)}mg sodium`;
-      wrap.appendChild(stat);
-    }
+    wrap.className = "dash-dish-card";
+    wrap.innerHTML = `<div class="dash-dish-card-label">On the plate · ${label}</div>`;
+    data.components.forEach((c, i) => {
+      const row = document.createElement("div");
+      row.className = "dash-dish-row";
+      row.innerHTML =
+        `<span class="dash-dish-dot ${i % 2 ? "b" : "a"}" aria-hidden="true"></span>` +
+        `<div class="dash-dish-body">` +
+        `<div class="dash-dish-name">${c.recipe_name}</div>` +
+        `<div class="dash-dish-role">${c.category}</div>` +
+        `</div>` +
+        `<span class="dash-dish-qty">${c.unit_count} × ${c.unit_name}</span>`;
+      wrap.appendChild(row);
+    });
 
+    // Plate total: kcal headline, then protein/carb/fat as bars sized to
+    // each macro's own gram value relative to the largest of the three shown
+    // (a real ratio between numbers already in `est` -- not a comparison
+    // against a target, which this response doesn't carry), then fibre and
+    // sodium as plain rows since neither shares a unit with the bar trio.
     const totalEl = document.getElementById("obPlanTotal");
-    totalEl.innerHTML = est
-      ? `<strong>This plate</strong><span class="num">≈ ${fmtKcal(est.energy_kcal)} kcal · ${fmtG(est.protein_g)}g protein · ` +
-        `${fmtG(est.carb_g)}g carb · ${fmtG(est.fat_g)}g fat</span>`
-      : "";
+    if (est) {
+      totalEl.className = "dash-total-card";
+      const barMacros = [
+        { label: "Protein", value: `${fmtG(est.protein_g)} g`, raw: est.protein_g, color: "var(--green)" },
+        { label: "Carbohydrate", value: `${fmtG(est.carb_g)} g`, raw: est.carb_g, color: "var(--amber-deep)" },
+        { label: "Fat", value: `${fmtG(est.fat_g)} g`, raw: est.fat_g, color: "rgba(58, 90, 64, .45)" },
+      ];
+      const maxRaw = Math.max(...barMacros.map((m) => m.raw)) || 1;
+      const plainRows = [
+        { label: "Fibre", value: `${fmtG(est.fibre_g)} g` },
+        { label: "Sodium", value: `${fmtKcal(est.sodium_mg)} mg` },
+      ];
+      totalEl.innerHTML =
+        `<div class="dash-total-label">Plate total</div>` +
+        `<div class="dash-total-kcal"><span class="n">${fmtKcal(est.energy_kcal)}</span><span class="u">kcal</span></div>` +
+        `<div class="dash-macro-list">` +
+        barMacros
+          .map(
+            (m) =>
+              `<div class="dash-macro-row">` +
+              `<div class="line"><span class="k">${m.label}</span><span class="v">${m.value}</span></div>` +
+              `<div class="dash-macro-bar"><span style="width:${Math.round((m.raw / maxRaw) * 100)}%;background:${m.color}"></span></div>` +
+              `</div>`
+          )
+          .join("") +
+        plainRows
+          .map(
+            (m) =>
+              `<div class="dash-macro-row"><div class="line"><span class="k">${m.label}</span><span class="v">${m.value}</span></div></div>`
+          )
+          .join("") +
+        `</div>`;
+    } else {
+      totalEl.className = "";
+      totalEl.innerHTML = "";
+    }
 
     renderProvenance(data);
 

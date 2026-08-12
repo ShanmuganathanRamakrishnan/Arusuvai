@@ -67,11 +67,52 @@
           today. One plate is solved per request, not a full day.</p>
       </div>
       <div class="ob-col-controls">
-        <div class="ob-plate-picker" id="obPlatePicker">
-          <label class="ob-plate-opt ob-selectable"><input type="radio" name="plate" value="south_indian:breakfast" checked> South Indian breakfast</label>
-          <label class="ob-plate-opt ob-selectable"><input type="radio" name="plate" value="south_indian:lunch"> South Indian lunch</label>
-          <label class="ob-plate-opt ob-selectable"><input type="radio" name="plate" value="north_indian:lunch"> North Indian lunch</label>
-          <label class="ob-plate-opt ob-selectable"><input type="radio" name="plate" value="north_indian:dinner"> North Indian dinner</label>
+        <!-- Region-grouped plate cards, ported from Arusuvai Dashboard v2.dc.html.
+             The two regions and four (region, meal_slot) pairs are the real,
+             hardcoded set core/planner has templates for today (see the
+             build-status table) -- not invented from the mockup. Card "name"
+             is the region only and "note" is a generic, uniformly-true line:
+             the mockup's per-card dish names ("Pongal, sambar & chutney") are
+             not ported, because the solver -- not this page -- decides which
+             dishes fill a plate, and it hasn't run yet when this picker
+             renders. -->
+        <div class="dash-plate-groups" id="obPlatePicker">
+          <div class="dash-plate-region">
+            <div class="dash-plate-region-head"><span class="dash-plate-region-label">South Indian</span><span class="dash-plate-region-rule" aria-hidden="true"></span></div>
+            <div class="dash-plate-grid">
+              <label class="dash-plate-card">
+                <input type="radio" name="plate" value="south_indian:breakfast" checked>
+                <span class="dash-plate-card-head"><span class="dash-plate-slot">Breakfast</span><span class="dash-plate-dot" aria-hidden="true"></span></span>
+                <span class="dash-plate-name">South Indian</span>
+                <span class="dash-plate-note">Solved fresh from today's recipe library.</span>
+              </label>
+              <label class="dash-plate-card">
+                <input type="radio" name="plate" value="south_indian:lunch">
+                <span class="dash-plate-card-head"><span class="dash-plate-slot">Lunch</span><span class="dash-plate-dot" aria-hidden="true"></span></span>
+                <span class="dash-plate-name">South Indian</span>
+                <span class="dash-plate-note">Solved fresh from today's recipe library.</span>
+              </label>
+              <div class="dash-plate-more" aria-hidden="true">More South Indian slots open here as recipes are added.</div>
+            </div>
+          </div>
+          <div class="dash-plate-region">
+            <div class="dash-plate-region-head"><span class="dash-plate-region-label">North Indian</span><span class="dash-plate-region-rule" aria-hidden="true"></span></div>
+            <div class="dash-plate-grid">
+              <label class="dash-plate-card">
+                <input type="radio" name="plate" value="north_indian:lunch">
+                <span class="dash-plate-card-head"><span class="dash-plate-slot">Lunch</span><span class="dash-plate-dot" aria-hidden="true"></span></span>
+                <span class="dash-plate-name">North Indian</span>
+                <span class="dash-plate-note">Solved fresh from today's recipe library.</span>
+              </label>
+              <label class="dash-plate-card">
+                <input type="radio" name="plate" value="north_indian:dinner">
+                <span class="dash-plate-card-head"><span class="dash-plate-slot">Dinner</span><span class="dash-plate-dot" aria-hidden="true"></span></span>
+                <span class="dash-plate-name">North Indian</span>
+                <span class="dash-plate-note">Solved fresh from today's recipe library.</span>
+              </label>
+              <div class="dash-plate-more" aria-hidden="true">More North Indian slots open here as recipes are added.</div>
+            </div>
+          </div>
         </div>
         <div class="ob-save-actions">
           <!-- .btn-action, not an inline size: this is the same act as the
@@ -103,21 +144,25 @@
              this is plate | summary, not a fabricated multi-meal day. -->
         <div class="dash-plan-grid">
           <div class="meal-grid">
-            <div class="meal-card" id="obPlanMeals"></div>
+            <!-- Class set by dashboard-success.js (dash-dish-card) -- left
+                 bare here since JS overwrites className on every render. -->
+            <div id="obPlanMeals"></div>
           </div>
 
           <aside class="dash-plan-side">
             <p class="ob-target-sentence" id="obSuccessSentence" style="max-width: 46ch;"></p>
-            <div class="day-total" id="obPlanTotal"></div>
+            <!-- Class set by dashboard-success.js (dash-total-card). -->
+            <div id="obPlanTotal"></div>
             <!-- Provenance, not decoration. docs/methodology.md requires any
                  rendered plan produced in dev_mode to carry that label in the
                  artifact itself, because this page's real output is a
                  screenshot and "unvalidated" has to survive being viewed with
                  no surrounding context. Sits above the relaxation note: how
                  much of this plate rests on unchecked data outranks which
-                 tolerance rungs were walked. See audit finding 37. -->
-            <div class="illus" id="obPlanProvenance"></div>
-            <div class="illus" id="obPlanRelaxationNote"></div>
+                 tolerance rungs were walked. See audit finding 37. Class set
+                 by dashboard-success.js (dash-callout-amber) when non-empty. -->
+            <div id="obPlanProvenance"></div>
+            <div class="dash-note" id="obPlanRelaxationNote"></div>
 
             <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: clamp(20px, 3vw, 28px);">
               <button type="button" class="btn btn-primary btn-action" id="dashRegenerate">
@@ -138,7 +183,7 @@
         <p class="ob-target-sentence" id="obDeclineLede" style="max-width: 56ch;"></p>
 
         <div class="ob-decline-grid">
-          <div class="ob-callout" style="padding: clamp(20px, 3vw, 26px); margin: 0;">
+          <div class="ob-callout dash-decline-held" style="margin: 0;">
             <div class="ob-callout-head">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
               <span>Why we stopped</span>
@@ -155,8 +200,9 @@
         <p class="ob-decline-disclosure" id="obDeclineDisclosure" style="margin-top: 18px;"></p>
         <!-- The decline's counterpart to #obPlanProvenance on the success path.
              A refusal computed from unchecked figures is still a claim, and the
-             reader is owed the same disclosure a served plate gets. -->
-        <div class="illus" id="obDeclineProvenance" style="margin-top: 10px;"></div>
+             reader is owed the same disclosure a served plate gets. Class set
+             by dashboard-decline.js (dash-callout-amber) when non-empty. -->
+        <div id="obDeclineProvenance"></div>
 
         <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: clamp(24px, 3.5vw, 32px);">
           <a href="onboarding.html" class="btn btn-primary btn-action">Adjust my profile</a>

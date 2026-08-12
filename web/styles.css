@@ -1217,6 +1217,88 @@ a:focus-visible {
   .dash-plan-side { position: sticky; top: 88px; }
 }
 
+/* ---------- dashboard: plate-picker cards, plate/total cards ----------
+   D15 visual pass -- layout, spacing, typography and colour ported from
+   Claude Design's "Arusuvai Dashboard v2.dc.html" onto the existing D14
+   module structure. Not ported: the mockup's fabricated dish names
+   ("Pongal, sambar & chutney"), its macro-bar percentages (computed there
+   against an invented target the real API doesn't send), and its "Mockup
+   state" success/decline toggle -- a prototyping affordance, not a feature.
+   See web/dashboard-success.js and web/dashboard-decline.js for what
+   replaced each. The palette needed no new tokens: the mockup's #3A5A40 /
+   #B98416 / #FBF6EC are exactly --green / --amber-deep / --cream. */
+.dash-plate-groups { display: flex; flex-direction: column; gap: 16px; margin-bottom: 6px; }
+.dash-plate-region-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.dash-plate-region-label { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--amber-deep); font-weight: 700; flex: none; }
+.dash-plate-region-rule { flex: 1; height: 1px; background: var(--rule); }
+.dash-plate-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 206px), 1fr)); gap: 12px; }
+.dash-plate-card { position: relative; display: flex; flex-direction: column; text-align: left; cursor: pointer; min-width: 0; padding: 16px 17px 15px; border-radius: 15px; border: 1.5px solid rgba(43, 38, 34, .12); background: var(--cream-card); transition: border-color .25s, background .25s, box-shadow .25s; }
+/* The real control, stretched over the whole card and invisible -- the whole
+   label area is the hit target, same as a native <label><input>text</label>.
+   :has(input:checked) below carries the selected state, same mechanism as
+   .ob-selectable elsewhere in this sheet; :has(input:focus-visible) carries
+   the keyboard ring. */
+.dash-plate-card input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.dash-plate-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 9px; }
+.dash-plate-slot { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; color: rgba(43, 38, 34, .42); transition: color .25s; }
+.dash-plate-dot { width: 16px; height: 16px; border-radius: 50%; flex: none; border: 1.5px solid rgba(43, 38, 34, .22); background: transparent; transition: border-color .25s, border-width .25s, background .25s; }
+.dash-plate-name { font-family: var(--serif); font-size: 16.5px; line-height: 1.25; color: var(--ink); }
+.dash-plate-note { font-size: 12.5px; line-height: 1.45; color: rgba(43, 38, 34, .55); margin-top: 5px; }
+.dash-plate-card:has(input:checked) { border-color: var(--green); background: rgba(58, 90, 64, .07); box-shadow: 0 6px 18px rgba(58, 90, 64, .1); }
+.dash-plate-card:has(input:checked) .dash-plate-slot { color: var(--green); }
+.dash-plate-card:has(input:checked) .dash-plate-dot { border: 5px solid var(--green); background: var(--cream); }
+.dash-plate-card:has(input:focus-visible) { outline: 2px solid var(--green); outline-offset: 2px; }
+.dash-plate-more { border: 1px dashed rgba(43, 38, 34, .18); border-radius: 15px; padding: 16px 17px; display: flex; align-items: center; min-height: 104px; font-size: 12.5px; line-height: 1.45; color: rgba(43, 38, 34, .34); }
+
+/* Success: dish list card + plate-total card. */
+.dash-dish-card { background: var(--cream-card); border: 1px solid rgba(43, 38, 34, .09); border-radius: 18px; padding: clamp(18px, 2.2vw, 24px); min-width: 0; }
+.dash-dish-card-label { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--amber-deep); font-weight: 700; margin-bottom: 14px; }
+.dash-dish-row { display: flex; align-items: flex-start; gap: 14px; padding: 14px 0; border-top: 1px solid rgba(43, 38, 34, .08); min-width: 0; }
+.dash-dish-row:first-child { border-top: none; padding-top: 0; }
+.dash-dish-dot { flex: none; margin-top: 7px; width: 7px; height: 7px; border-radius: 50%; }
+.dash-dish-dot.a { background: var(--green); }
+.dash-dish-dot.b { background: var(--amber-deep); }
+.dash-dish-body { min-width: 0; flex: 1; }
+.dash-dish-name { font-family: var(--serif); font-size: 17px; line-height: 1.28; color: var(--ink); }
+.dash-dish-role { font-size: 13px; line-height: 1.5; color: rgba(43, 38, 34, .58); margin-top: 4px; text-transform: capitalize; }
+.dash-dish-qty { flex: none; font-size: 12.5px; color: rgba(43, 38, 34, .45); font-variant-numeric: tabular-nums; padding-top: 4px; white-space: nowrap; }
+
+.dash-total-card { background: rgba(58, 90, 64, .055); border: 1px solid rgba(58, 90, 64, .14); border-radius: 18px; padding: clamp(18px, 2.2vw, 22px); }
+.dash-total-label { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--green); font-weight: 700; margin-bottom: 14px; }
+.dash-total-kcal { display: flex; align-items: baseline; gap: 8px; margin-bottom: 16px; }
+.dash-total-kcal .n { font-family: var(--serif); font-size: 34px; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
+.dash-total-kcal .u { font-size: 13.5px; color: rgba(43, 38, 34, .55); }
+.dash-macro-list { display: flex; flex-direction: column; gap: 11px; }
+.dash-macro-row { min-width: 0; }
+.dash-macro-row .line { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 13.5px; margin-bottom: 5px; }
+.dash-macro-row .line .k { color: rgba(43, 38, 34, .68); }
+.dash-macro-row .line .v { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* Bar length is each macro's own gram value relative to the largest of the
+   protein/carb/fat trio shown -- a real ratio between figures already on the
+   wire, not a comparison against a target the client was never sent. Fibre
+   and sodium render as plain rows below, without a bar: different units, so
+   a shared bar scale across all five would imply a comparison that isn't
+   real. */
+.dash-macro-bar { height: 4px; border-radius: 999px; background: rgba(43, 38, 34, .09); overflow: hidden; }
+.dash-macro-bar > span { display: block; height: 100%; border-radius: 999px; }
+
+/* "Not validated" disclosure -- ports the mockup's icon-plus-sentence amber
+   card. Injected by dashboard-success.js / dashboard-decline.js only when
+   there's a sentence to show (dev_mode plates, mainly); the wrapping element
+   is otherwise left empty, same as before this pass. */
+.dash-callout-amber { display: flex; align-items: flex-start; gap: 10px; margin-top: 14px; padding: 13px 15px; border-radius: 13px; background: rgba(224, 165, 38, .09); border: 1px solid rgba(185, 132, 22, .18); }
+.dash-callout-amber svg { flex: none; margin-top: 1px; color: var(--amber-deep); }
+.dash-callout-amber p { margin: 0; font-size: 12.5px; line-height: 1.55; color: rgba(43, 38, 34, .66); font-style: normal; }
+/* The relaxation-ladder note (no mockup counterpart -- this app discloses
+   walked tolerance rungs, which the mockup's two fixed states don't model)
+   stays a quiet inline line rather than a second stacked amber card. */
+.dash-note { font-size: 12px; line-height: 1.5; color: rgba(43, 38, 34, .45); margin-top: 8px; font-style: italic; }
+
+/* Decline "what held" card: same .ob-callout this page already used, 4px
+   rounder and a touch roomier to match the mockup's card radius -- scoped to
+   the dashboard so onboarding's disclosure callout (step 5) is untouched. */
+.dash-decline-held.ob-callout { border-radius: 18px; padding: clamp(18px, 2.2vw, 24px); }
+
 /* ---------- responsive ---------- */
 @media (max-width: 560px) {
   .app-nav { gap: 12px; }
