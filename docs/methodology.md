@@ -1571,20 +1571,167 @@ the unrelaxed 854.9–944.9 window while clearing protein under the salt ceiling
 
 ## What is not built
 
-The rest of `core/nutrition/` (energy, protein, macros, targets), LLM ranking
-and narration, `core/commerce/`, `api/` and `web/`. The subset of
-`core/nutrition/` that exists is `citations.py` only.
+**This section was written at Phase 3 and went stale; corrected 2026-08-12
+during the `CLAUDE.md` restructure.** It is preserved rather than deleted
+because the paragraphs below are dated evidence of what the project looked like
+then, and because the restructure rule is to correct in place with a note, not
+to carry a false claim into a fresh-looking home. Read the correction first.
 
-`core/planner/` as of Phase 3 has `target.py`, `candidates.py`,
-`combinations.py`, `solver.py` and `validator.py` — pure functions, no LLM call
-anywhere.
+**Correct as of 2026-08-12:** not built are LLM ranking and narration, and
+`core/commerce/`. Everything else listed below has since been built —
+`core/nutrition/targets.py` and `target.py` derive a real target from a
+`Profile`, `api/` serves five auth endpoints plus `/api/targets` and
+`/api/plan`, and `web/` has three routes. `core/schemas/profile.py` is no longer
+"read only for `clinical_flags`": its body fields drive target derivation.
+`docs/build_status.md` is the current per-module record — it moved out of
+`CLAUDE.md` on 2026-08-12.
 
-`core/schemas/profile.py` exists but is deliberately partial: it records the
-body, activity and goal inputs and the clinical flags, and derives nothing.
-`Profile` is currently read only for `clinical_flags`; no code turns its body
-fields into an energy or protein target yet. `NutritionTarget` is constructed
-directly (`simple_target`) rather than derived from a profile, so the numbers
-in every test are stated, not computed from a formula that does not exist. That
-derivation is `core/nutrition/targets.py`, not built.
+*Phase 3 text, retained as dated evidence:*
 
-The build-status table in `CLAUDE.md` reflects this.
+> The rest of `core/nutrition/` (energy, protein, macros, targets), LLM ranking
+> and narration, `core/commerce/`, `api/` and `web/`. The subset of
+> `core/nutrition/` that exists is `citations.py` only.
+>
+> `core/planner/` as of Phase 3 has `target.py`, `candidates.py`,
+> `combinations.py`, `solver.py` and `validator.py` — pure functions, no LLM
+> call anywhere.
+>
+> `core/schemas/profile.py` exists but is deliberately partial: it records the
+> body, activity and goal inputs and the clinical flags, and derives nothing.
+> `Profile` is currently read only for `clinical_flags`; no code turns its body
+> fields into an energy or protein target yet. `NutritionTarget` is constructed
+> directly (`simple_target`) rather than derived from a profile, so the numbers
+> in every test are stated, not computed from a formula that does not exist.
+> That derivation is `core/nutrition/targets.py`, not built.
+
+## Appendix — design rules moved from `CLAUDE.md` (2026-08-12)
+
+`CLAUDE.md` was cut to under 200 lines. Three rules it stated in full moved
+here, because this file already had a section on each subject and two copies of
+a rule is how one of them goes stale. Each is stated below in the form
+`CLAUDE.md` had it, with any correction the current audit log forces.
+
+Rules that moved elsewhere: the pipeline shape, serving units and meal-template
+grammar are in `docs/design/architecture.md`; the round-4 uncertainty rules are
+in `docs/design/round4_addendum.md`; tracked-vs-untracked and the audit workflow
+are in `docs/repo_policy.md`. Raw-versus-cooked weight, the `phenomenon`
+mechanism-match rule and serving units already had sections in this file and
+gained nothing from the move — see "Raw versus cooked weight", "Citations:
+mechanism must match, not just format" and "Serving units, not multipliers"
+above.
+
+### Uncertainty is an eligibility filter, and it never gates
+
+Two things that must not be merged:
+
+- **Tolerance**: how far a plan's point estimate may sit from the target and
+  still count as valid. This is what the validator gates on.
+- **Uncertainty**: how much genuine measurement error exists in a constant. A
+  property of the data, not a lever anyone adjusts.
+
+**The validator gates on the point estimate against tolerance only.** It never
+gates on interval overlap. Interval-overlap gating is disqualified: it means a
+plan with worse underlying data passes more easily than one with better data,
+which is a perverse incentive baked into the core safety mechanism.
+
+Uncertainty is instead a **candidate eligibility filter, applied before a plan
+is assembled**: a recipe whose *combined* composition-plus-process uncertainty
+on a given macro exceeds a stated ceiling (default ±15% on protein, wider on
+energy) is excluded from candidate pools where that macro is target-critical.
+Uncertain data makes a recipe less usable, never makes a plan easier to pass.
+
+Gate on the *combined* figure
+(`core.foods.nutrition_of.NutritionEstimate.uncertainty_fraction`), never on
+`Recipe.process_uncertainty` alone. Corrected 2026-07-21 (`docs/audit_log.md`
+finding 1): the process field alone is 0.0 for protein on most recipes in the
+library, and an implementation gating on it literally would admit every recipe
+regardless of how unreliable its composition data is, while matching the rule's
+previous wording exactly. `core/planner/candidates.py` gates on the combined
+figure.
+
+**Display the interval to the user regardless.** "≈1,850 kcal (±10%)" is a
+stronger and more honest artifact than "1,847 kcal." Precision the data does not
+support is a liability, not a feature.
+
+> **Correction applied on the move (2026-08-12).** `CLAUDE.md` described the
+> filter as excluding an over-ceiling recipe "**or** [estimating] its
+> contribution to that macro conservatively (high-end, not optimistic) rather
+> than at the point estimate." That second arm does not exist and appears never
+> to have been built. `core/planner/candidates.py` either excludes the
+> candidate or, in `dev_mode`, keeps it and records an `EligibilityFlag` in
+> `CandidatePool.flagged` — there is no conservative-estimate path. The clause
+> was dropped rather than transcribed. (`CandidatePool.flagged` is separately
+> recorded as unreachable and unsurfaced; see `docs/build_status.md`, `api/`
+> row, D11.)
+
+### The relaxation ladder, in full
+
+When the solver finds zero feasible combinations for a profile, relax in this
+order, only this order, and only the tolerance axis — never the uncertainty
+axis, because uncertainty is never a knob:
+
+1. **Sodium max, fibre min** — general health guidance, not the product's core
+   nutritional claim. This rung **widens the bound by a stated, registered
+   fraction** (`tolerance.sodium_relaxed_fraction` /
+   `tolerance.fibre_relaxed_fraction`, both 0.50). **It does not drop the bound
+   to "no ceiling/floor at all."** Dropping it entirely was tried first, reads
+   as the more natural implementation for a one-sided bound with no ideal point
+   to widen a band around, and was caught precisely because it produces a fully
+   unconstrained worst case for an unflagged profile: that profile's sodium
+   ceiling would vanish the instant this rung fired, turning "least load-bearing
+   constraint relaxes first" into "least load-bearing constraint stops
+   existing." "Least load-bearing" is a claim about relaxation *order*, not
+   about whether a bound applies at all. This ambiguity must not be resolved
+   only inside `core/planner/validator.py`'s implementation, which is why it is
+   stated in prose — and why a two-line version of it stays in `CLAUDE.md`
+   rather than living only here.
+2. **Fat/carb tolerance** (15% → up to 25%) — least load-bearing macros, they
+   absorb whatever energy is left over.
+3. **Energy tolerance** (5% → up to 10%).
+4. **Protein tolerance** — relaxes last, partially, with **mandatory
+   disclosure** in the same units the target was originally stated in ("this
+   plan delivers 76g of protein against a 90g target; the recipe library does
+   not currently have a vegetarian component dense enough at this calorie level
+   to close the gap"). Never disclosed silently, unlike the earlier rungs.
+
+**This ordering is not global.** `Profile.clinical_flags` (hypertension, kidney
+disease, diabetes) locks the constraint tied to a disclosed condition entirely
+out of the ladder — it becomes a hard floor/ceiling that never relaxes for that
+profile. If a locked constraint makes the feasible set empty, decline and name
+the specific blocking constraint rather than loosen it.
+
+The default ordering assumes no clinical dietary condition. **This system is not
+a substitute for clinical nutrition guidance.** A user with a diagnosed
+condition should rely on `clinical_flags`, not on the default behaviour. See
+also "Clinical flags do not tighten a target" above, which states the separate
+and narrower fact that flags change no *target value*.
+
+### The 15% unverified-energy shipping threshold
+
+A plan may ship as validated if the aggregate energy contribution from
+`verified=False` constants is below roughly 15% of total plan energy
+(provisional). Disclose it once, in one sentence, when it applies — not as a
+per-dish asterisk. A per-item flag on every third recipe is wallpaper by day
+three and stops functioning as a warning. Above the threshold, decline to serve
+the plan as validated and say specifically why.
+
+> **Correction applied on the move (2026-08-12).** `CLAUDE.md` stated this
+> threshold as though it were the operative gate on shipping. Two things make
+> that misleading as written, both already in the audit log:
+>
+> 1. It said "from `verified=False` **process** constants." The corrected rule
+>    counts composition too — D6, finding 20. Measured on all four passing
+>    plates the figure is **100%**, not the 37–59% the old rule reported.
+> 2. It is not the first gate. Finding 43 (2026-08-09, OPEN) measured that the
+>    protein eligibility ceiling in `core/planner/candidates.py` blocks `idli`,
+>    `phulka` and `steamed_rice` at pool-build time, before enumeration — and
+>    every one of the four reference plates contains one of those three. A
+>    component over the ceiling never enters the pool, so the plate is never
+>    enumerated and the energy threshold is never consulted. Verifying all ten
+>    outstanding ingredient rows is **necessary and not sufficient**: it moves
+>    15 of 18 recipes from 0.25 to 0.05 and leaves all four plates unenumerable
+>    outside `dev_mode`. Closing finding 41 — registered constants for boiling,
+>    steaming and dry-griddling — is the second, uncosted prerequisite.
+>
+> The threshold is retained as the rule it is. It is not, today, what stands
+> between this library and a servable plate.

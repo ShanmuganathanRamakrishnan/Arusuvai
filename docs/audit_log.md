@@ -8,6 +8,87 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-12 — CLAUDE.md restructured to 199 lines; six stale claims corrected
+
+`CLAUDE.md` went from 652 lines to **199**. No behaviour changed: `437 passed,
+68 skipped` before and after, and `demo.py`'s plate, unit counts, point estimate
+and band are identical.
+
+New files: `docs/design/architecture.md`, `docs/design/round4_addendum.md`,
+`docs/repo_policy.md`, `docs/build_status.md` (the build table, moved by
+extraction rather than retyping), and directory-level `core/CLAUDE.md`,
+`web/CLAUDE.md`, `tests/CLAUDE.md` — which now carry the **open-findings index**,
+so a session meets the findings for the code it is editing rather than having to
+know to look. `docs/methodology.md` gained an appendix for the three rules that
+already had a section there.
+
+### Six stale claims corrected on the move — not carried across
+
+The rule applied: nothing moves verbatim without being read against this file
+first. Recorded here because five of the six had been true when written and
+quietly stopped being true, which is the class the restructure was most likely
+to launder into a fresh-looking home.
+
+1. **`web/` described as "Next.js"** in the architecture tree. It is static
+   HTML/CSS/JS and always has been in this repo; the build-status table 20 lines
+   below said so. Corrected in `docs/design/architecture.md`.
+2. **Pipeline steps 5 and 6 (LLM ranking, narration) read as built.** They are
+   specification. Marked not-built.
+3. **The round-4 addendum's five items read as an outstanding queue.** All five
+   are built. Each now carries a dated status line; carried across unchanged the
+   file would have presented finished work as a TODO list.
+4. **The audit-workflow section described `.claude/agents/auditor.md` and
+   `.claude/commands/grill.md` in the present tense** while the build table
+   recorded that they do not exist. Re-verified: `.claude/` has neither
+   directory. Rewritten in `docs/repo_policy.md` with the gap stated first.
+5. **The uncertainty filter claimed a conservative-estimate arm that does not
+   exist.** `CLAUDE.md` said an over-ceiling recipe is excluded "**or** its
+   contribution estimated conservatively (high-end)". `core/planner/candidates.py`
+   either excludes the candidate or, in `dev_mode`, keeps it and records an
+   `EligibilityFlag`. There is no conservative-estimate path and no evidence
+   there ever was. The clause was dropped, not transcribed.
+6. **`docs/methodology.md`'s own "What is not built" section had gone stale** —
+   it listed `api/`, `web/` and `core/nutrition/targets.py` as unbuilt. All three
+   exist. The Phase 3 text is retained as dated evidence, behind a correction.
+
+Separately, the **15% shipping threshold** was moved with a correction attached
+rather than a rewrite: it is stated as though it were the operative gate, and
+finding 43 established that the protein eligibility ceiling bites first, at
+pool-build time, on all four reference plates. The threshold is retained as the
+rule it is; it is not what stands between this library and a servable plate.
+
+### Finding 47 — code comments cite `CLAUDE.md` sections that have moved — **OPEN**
+
+Roughly 20 comments across `api/`, `core/foods/` and `core/nutrition/` cite
+`CLAUDE.md` by section name — "Uncertainty", "Architecture", "round-4 addendum",
+"Relaxation ladder", "'wider tolerance on energy'". Those sections are now in
+`docs/methodology.md`, `docs/design/architecture.md` and
+`docs/design/round4_addendum.md`. The rules are unchanged and the citations still
+date a decision correctly, so nothing is *wrong*; they just point at a file that
+no longer contains the named section.
+
+Not fixed in this pass, deliberately: the task protocol says do not fix things
+noticed in passing, and a 20-file comment sweep is its own reviewable idea, not
+a rider on a documentation restructure.
+
+One exception was fixed, because it is user-visible rather than a comment:
+`demo.py` printed `-- CLAUDE.md's shipping threshold is ~15%` on every run, and
+`CLAUDE.md` no longer states that threshold. Changed to `-- the shipping
+threshold is ~15%`. The number and the check are untouched.
+
+*Disposition:* OPEN. Low stakes; do it as a single sweep when someone is next in
+those files anyway.
+
+```
+$ python -m pytest tests/ -q
+437 passed, 68 skipped, 1 warning in 110.17s (0:01:50)
+
+$ wc -l CLAUDE.md
+199 CLAUDE.md
+```
+
+---
+
 ## 2026-08-09 — D7 handoff: finding 43, and what D10 did to D7's own conclusion
 
 No code changed. Three artifacts added — `docs/design/ifct_sitting.md`,

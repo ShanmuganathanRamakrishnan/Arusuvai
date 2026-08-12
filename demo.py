@@ -303,7 +303,7 @@ def section_plan(
         unverified = plan.estimate.unverified_energy_kcal
         fraction = plan.estimate.unverified_energy_fraction()
         print(f"  unverified   : {unverified:.1f} kcal ({100 * fraction:.1f}% of plate) "
-              f"-- CLAUDE.md's shipping threshold is ~15%")
+              f"-- the shipping threshold is ~15%")
     else:
         print("PLAN           : None (declined)")
     print()
