@@ -59,7 +59,7 @@ from typing import Iterable, Mapping
 from core.foods.models import Component, Ingredient, MealTemplate
 from core.foods.nutrition_of import nutrition_of_components
 from core.nutrition import citations
-from core.schemas import DietPattern, Region
+from core.schemas import DietPattern, IngredientClass, Region, diet_pattern_permits
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +68,8 @@ __all__ = [
     "EligibilityFlag",
     "CandidatePool",
     "recipe_allergens",
+    "recipe_classes",
+    "recipe_dairy_sourcing_verified",
     "build_candidate_pool",
 ]
 
@@ -167,6 +169,46 @@ def recipe_allergens(recipe, ingredients: Mapping[str, Ingredient]) -> frozenset
     return frozenset(out)
 
 
+def recipe_classes(
+    recipe, ingredients: Mapping[str, Ingredient]
+) -> frozenset[IngredientClass]:
+    """Union of every ingredient line's declared classes.
+
+    Same shape and reasoning as :func:`recipe_allergens` beside it: a recipe
+    carries no ``classes`` field of its own — derived here so it can never
+    disagree with what the ingredients actually are. This is what closed
+    ``TASKS_3.md`` R1a: the previous hand-listed ``Recipe.diet_patterns``
+    field never declared ``eggetarian`` or ``non_vegetarian`` on any recipe,
+    so both patterns returned zero candidates in every slot even though every
+    dish in the library is edible under both.
+    """
+
+    out: set[IngredientClass] = set()
+    for line in recipe.ingredients:
+        out |= ingredients[line.ingredient_id].classes
+    return frozenset(out)
+
+
+def recipe_dairy_sourcing_verified(
+    recipe, ingredients: Mapping[str, Ingredient]
+) -> bool:
+    """Whether every dairy-classed ingredient line has verified sourcing.
+
+    Vacuously ``True`` for a recipe with no dairy line — there is nothing to
+    verify. Feeds ``diet_pattern_permits``'s jain-specific check: a recipe
+    with even one dairy line whose sourcing is unverified must not read as
+    jain-eligible just because DAIRY is a class jain permits in the
+    abstract. See ``core.schemas.diet_pattern_permits`` and
+    docs/methodology.md, "Dairy sourcing for jain eligibility".
+    """
+
+    return all(
+        ingredients[line.ingredient_id].dairy_sourcing_verified
+        for line in recipe.ingredients
+        if IngredientClass.DAIRY in ingredients[line.ingredient_id].classes
+    )
+
+
 def _passes_hard_filters(
     component: Component,
     ingredients: Mapping[str, Ingredient],
@@ -176,7 +218,11 @@ def _passes_hard_filters(
     template: MealTemplate,
 ) -> bool:
     recipe = component.recipe
-    if diet_pattern not in recipe.diet_patterns:
+    if not diet_pattern_permits(
+        diet_pattern,
+        recipe_classes(recipe, ingredients),
+        dairy_sourcing_verified=recipe_dairy_sourcing_verified(recipe, ingredients),
+    ):
         return False
     if recipe_allergens(recipe, ingredients) & allergens:
         return False

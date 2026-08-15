@@ -112,12 +112,35 @@ WEB_GATE = "tests/conftest.py"
 #: sense this convention names: delete it and the pipeline's output moves — a
 #: griddled phulka goes back to displaying the same certainty as raw curd.
 RECIPE_LOADER = "core/foods/recipe_loader.py"
+#: Not a planner module either. Added for R1b (2026-08-15): diet_pattern_permits
+#: holds two gates — the permitted-class subset check (D2) and the jain
+#: dairy_sourcing_verified check (D1) — and C1 in candidates.py only proves the
+#: call site uses *a* gate, not that either sub-mechanism is individually
+#: load-bearing. Finding 48 (docs/audit_log.md) is exactly a case where the
+#: class table alone said "permitted" and only the sourcing gate was actually
+#: blocking.
+#:
+#: D1 and D2 are NOT symmetric — corrected 2026-08-15, finding 49
+#: (docs/audit_log.md). Deleting D2 never fails a
+#: TestDairySourcingGate test, so that direction isolates cleanly. Deleting
+#: D1 fails TestDairySourcingGate's three tests AND
+#: TestDietPatternPermittedClassTable's jain row, because that row's expected
+#: survivor set bakes in the gate's effect (it excludes "dairy_unverified"
+#: specifically because of D1). Read the failure list, not just the first
+#: covering test the harness reports, before trusting either row's isolation
+#: claim.
+SCHEMAS_COMMON = "core/schemas/common.py"
 
 MUTATIONS: tuple[Mutation, ...] = (
     # ---------------------------------------------------------------- candidates
     Mutation(
         "C1", CANDIDATES, "hard filter: diet pattern",
-        "    if diet_pattern not in recipe.diet_patterns:\n        return False\n",
+        "    if not diet_pattern_permits(\n"
+        "        diet_pattern,\n"
+        "        recipe_classes(recipe, ingredients),\n"
+        "        dairy_sourcing_verified=recipe_dairy_sourcing_verified(recipe, ingredients),\n"
+        "    ):\n"
+        "        return False\n",
         "",
     ),
     Mutation(
@@ -553,6 +576,23 @@ MUTATIONS: tuple[Mutation, ...] = (
         "        ingredient = ingredients[line.ingredient_id]\n"
         "        if line.state is not RawOrCooked.RAW:\n",
     ),
+    # -------------------------------------------- schemas/common (R1b)
+    Mutation(
+        "D1", SCHEMAS_COMMON, "diet_pattern_permits: jain dairy-sourcing gate",
+        "    if (\n"
+        "        pattern is DietPattern.JAIN\n"
+        "        and IngredientClass.DAIRY in classes\n"
+        "        and not dairy_sourcing_verified\n"
+        "    ):\n"
+        "        return False\n",
+        "",
+    ),
+    Mutation(
+        "D2", SCHEMAS_COMMON, "diet_pattern_permits: permitted-class subset check",
+        "    if not classes <= DIET_PATTERN_PERMITTED_CLASSES[pattern]:\n"
+        "        return False\n",
+        "",
+    ),
 )
 
 
@@ -585,6 +625,10 @@ OWN_TESTS: dict[str, tuple[str, ...]] = {
     # Same file as NUTRITION_OF's second entry, and for the same reason: a
     # reader editing `test_recipes.py` knows they are editing evidence rules.
     RECIPE_LOADER: ("test_recipes.py",),
+    # TestDietPatternPermittedClassTable and TestDairySourcingGate (R1b) target
+    # D1 and D2 respectively, but not symmetrically — see that file's module
+    # docstring above the two classes, and finding 49 (docs/audit_log.md).
+    SCHEMAS_COMMON: ("test_planner_candidates.py",),
 }
 
 

@@ -12,8 +12,8 @@ name_ta: உருளைக்கிழங்கு கறி
 name_hi: आलू की सब्ज़ी
 
 region: north_indian
-diet_patterns: [vegetarian, vegan]
-# Not jain: potato is a root vegetable, and there is onion and garlic.
+# Not jain: potato, onion and garlic are all classed root_vegetable (derived
+# from ingredient classes; see data/recipes/schema.yaml).
 
 category: sabzi
 prep_minutes: 25

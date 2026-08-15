@@ -27,7 +27,13 @@ from dataclasses import dataclass, field, fields
 from types import MappingProxyType
 from typing import Mapping
 
-from core.schemas import MACRO_KEYS, DietPattern, MealSlot, RawOrCooked, Region
+from core.schemas import (
+    MACRO_KEYS,
+    IngredientClass,
+    MealSlot,
+    RawOrCooked,
+    Region,
+)
 
 __all__ = [
     "NutritionVector",
@@ -119,8 +125,25 @@ class Ingredient:
     b12_ug: float
     state: RawOrCooked
     diaas: float | None = None
-    is_animal_product: bool = False
-    jain_safe: bool = True
+    #: Dietary-restriction-relevant classes this row belongs to (dairy, egg,
+    #: fish, poultry, root_vegetable). Empty is the normal case — most rows
+    #: (rice, dal, oil, spice) are irrelevant to every diet pattern's
+    #: restrictions. A recipe's classes are the union of its ingredients';
+    #: see ``core.planner.candidates.recipe_classes``. Replaced
+    #: ``is_animal_product``/``jain_safe`` (TASKS_3.md R1a): two booleans read
+    #: by nothing but a hand-listed recipe-level whitelist that could not
+    #: express pescatarian and never got extended to eggetarian or
+    #: non_vegetarian.
+    classes: frozenset[IngredientClass] = frozenset()
+    #: Meaningful only where ``IngredientClass.DAIRY`` is in ``classes`` — a
+    #: jain diet's dairy allowance is conditional on how the animal was kept,
+    #: not on the fact of being dairy (docs/methodology.md, "Dairy sourcing
+    #: for jain eligibility"). False on every row in the current library,
+    #: including ``curd_dahi``: nobody has traced any dairy row's sourcing, so
+    #: this defaults False rather than inheriting ``verified`` or reading
+    #: "dairy is a permitted class" as "cleared". Irrelevant, and left False,
+    #: on every non-dairy row. TASKS_3.md R1a, found not fixed 2026-08-14.
+    dairy_sourcing_verified: bool = False
     allergens: frozenset[str] = frozenset()
     #: False while the underlying value has not been read out of a primary
     #: source by a human. Mirrors the citations registry's own flag.
@@ -143,6 +166,13 @@ class Ingredient:
             "composition_uncertainty",
             MappingProxyType(dict(self.composition_uncertainty)),
         )
+        not_a_class = [c for c in self.classes if not isinstance(c, IngredientClass)]
+        if not_a_class:
+            raise TypeError(
+                f"ingredient {self.id!r}: classes must be IngredientClass members, "
+                f"got {not_a_class!r} — validated at construction so an unvalidated "
+                "string can never reach the diet-pattern permission check"
+            )
 
     def composition_uncertainty_for(self, macro: str) -> float:
         try:
@@ -269,12 +299,21 @@ class Recipe:
     ``serving_unit`` — checked on construction, because the alternative (a
     per-batch quantity list plus a separate yield figure) gives two places for
     the same fact to disagree.
+
+    Carries no ``diet_patterns`` field (removed 2026-08-14, TASKS_3.md R1a): a
+    recipe carries no allergen field of its own either, for the same reason —
+    ``core.planner.candidates.recipe_classes`` derives the union of ingredient
+    classes on demand, and ``core.schemas.diet_pattern_permits`` checks it
+    against a pattern. A stored, hand-listed field could disagree with what
+    the ingredients actually are, which is exactly what happened: no recipe
+    ever declared ``eggetarian`` or ``non_vegetarian``, so both patterns
+    returned zero candidates everywhere despite every dish being edible under
+    both.
     """
 
     id: str
     name: str
     region: Region
-    diet_patterns: frozenset[DietPattern]
     ingredients: tuple[RecipeIngredient, ...]
     serving_unit: ServingUnit
     prep_minutes: int

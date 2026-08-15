@@ -20,7 +20,7 @@ from typing import Iterable, Iterator, Sequence
 
 from core.foods.models import Ingredient
 from core.nutrition.citations import value_of
-from core.schemas import MACRO_KEYS, RawOrCooked
+from core.schemas import MACRO_KEYS, IngredientClass, RawOrCooked
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +99,32 @@ def _parse_allergens(raw: str | None) -> frozenset[str]:
     if not raw or not raw.strip():
         return frozenset()
     return frozenset(part.strip() for part in raw.split("|") if part.strip())
+
+
+def _parse_classes(raw: str | None) -> frozenset[IngredientClass]:
+    """Pipe-separated ``classes`` column, same shape as ``allergens``.
+
+    Raises on an unrecognised token rather than dropping it, matching the
+    ``state`` column's discipline: a typo here would silently exclude an
+    ingredient from a class it belongs to, which fails in the direction that
+    looks safest and is not — a jain-unsafe ingredient reading as jain-safe.
+    """
+
+    if not raw or not raw.strip():
+        return frozenset()
+    out: set[IngredientClass] = set()
+    for part in raw.split("|"):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            out.add(IngredientClass(part))
+        except ValueError:
+            raise ValueError(
+                f"classes contains {part!r}, not one of "
+                f"{[c.value for c in IngredientClass]}"
+            ) from None
+    return frozenset(out)
 
 
 def _energy_disagreement(
@@ -181,8 +207,7 @@ def _row_to_ingredient(row: dict[str, str]) -> Ingredient:
         ifct_code=ifct_code,
         state=state,
         diaas=diaas,
-        is_animal_product=_parse_bool(row.get("is_animal_product"), default=False),
-        jain_safe=_parse_bool(row.get("jain_safe"), default=True),
+        classes=_parse_classes(row.get("classes")),
         allergens=_parse_allergens(row.get("allergens")),
         verified=verified,
         composition_uncertainty=composition_uncertainty,

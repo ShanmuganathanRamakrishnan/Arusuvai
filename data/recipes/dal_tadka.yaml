@@ -22,8 +22,8 @@ name_ta: பருப்பு தாளிப்பு
 name_hi: दाल तड़का
 
 region: north_indian
-diet_patterns: [vegetarian, vegan]
-# Not jain: onion and ginger-garlic.
+# Not jain: onion and ginger-garlic are both classed root_vegetable (derived
+# from ingredient classes; see data/recipes/schema.yaml).
 
 category: dal
 prep_minutes: 35

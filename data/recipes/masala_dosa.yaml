@@ -14,8 +14,8 @@ name_ta: மசாலா தோசை
 name_hi: मसाला डोसा
 
 region: south_indian
-diet_patterns: [vegetarian, vegan]
-# Not jain: potato and onion.
+# Not jain: potato and onion are both classed root_vegetable (derived from
+# ingredient classes; see data/recipes/schema.yaml).
 
 category: tiffin
 prep_minutes: 25

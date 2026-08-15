@@ -82,10 +82,17 @@ name_hi: string # optional, Hindi
 
 region: south_indian | north_indian | pan_indian
 
-# Which diet patterns this dish satisfies. Stated explicitly, never inferred:
-# jain excludes onion, garlic and root vegetables, and that is not derivable
-# from "vegetarian".
-diet_patterns: [vegetarian, vegan, jain, eggetarian, non_vegetarian]
+# There is no `diet_patterns` field here (removed 2026-08-14, TASKS_3.md R1a).
+# Which diet patterns a dish satisfies is DERIVED, never hand-listed: it comes
+# from the union of its ingredients' `classes` (dairy, egg, fish, poultry,
+# root_vegetable -- see core/raw/ifct's `classes` column and
+# core.schemas.IngredientClass), checked against
+# core.schemas.DIET_PATTERN_PERMITTED_CLASSES by core.schemas.diet_pattern_permits.
+# A recipe with onion or potato in it is automatically not jain; a recipe with
+# no dairy/egg/fish/poultry ingredient is automatically vegan. The loader
+# rejects a file that still declares this key -- a hand-listed whitelist could
+# disagree with what the ingredients actually are, which is exactly what
+# happened: no recipe ever declared `eggetarian` or `non_vegetarian`.
 
 # The role this dish plays inside a MealTemplate slot (see core/foods/templates.py).
 # Must be a category some template accepts, or the recipe can never be planned.

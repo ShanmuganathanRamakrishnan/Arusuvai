@@ -21,7 +21,7 @@ from core.foods.nutrition_of import nutrition_of_lines
 from core.foods.portions import serving_unit as build_serving_unit
 from core.foods.templates import ALL_TEMPLATES
 from core.nutrition import citations
-from core.schemas import MACRO_KEYS, DietPattern, RawOrCooked, Region
+from core.schemas import MACRO_KEYS, RawOrCooked, Region
 
 logger = logging.getLogger(__name__)
 
@@ -249,9 +249,17 @@ def load_recipe_file(
 
     recipe_id = str(_require(doc, "id", path))
     region = Region(str(_require(doc, "region", path)))
-    patterns = frozenset(
-        DietPattern(str(p)) for p in _require(doc, "diet_patterns", path)
-    )
+    if "diet_patterns" in doc:
+        raise ValueError(
+            f"{path.name}: 'diet_patterns' is no longer read from the recipe "
+            "file — eligibility is derived from the union of ingredient "
+            "classes (see core.schemas.IngredientClass) and checked against "
+            "core.schemas.DIET_PATTERN_PERMITTED_CLASSES. A hand-listed "
+            "whitelist could disagree with what the ingredients actually are: "
+            "no recipe ever declared 'eggetarian' or 'non_vegetarian', so both "
+            "patterns returned zero candidates everywhere despite every dish "
+            "in the library being edible under both (TASKS_3.md R1a)."
+        )
     category = str(_require(doc, "category", path))
 
     su = _require(doc, "serving_unit", path)
@@ -323,7 +331,6 @@ def load_recipe_file(
         id=recipe_id,
         name=str(_require(doc, "name", path)),
         region=region,
-        diet_patterns=patterns,
         ingredients=tuple(lines),
         serving_unit=serving,
         prep_minutes=int(doc.get("prep_minutes", 0)),

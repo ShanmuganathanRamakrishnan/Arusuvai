@@ -39,8 +39,8 @@ name_ta: வெங்காய தயிர் பச்சடி
 name_hi: प्याज़ रायता
 
 region: north_indian
-diet_patterns: [vegetarian]
-# Not vegan: curd. Not jain: onion.
+# Not vegan: curd is classed dairy. Not jain: onion is classed root_vegetable
+# (derived from ingredient classes; see data/recipes/schema.yaml).
 
 category: raita
 

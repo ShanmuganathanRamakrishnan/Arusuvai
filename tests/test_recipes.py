@@ -13,7 +13,8 @@ from dataclasses import replace
 import pytest
 
 from core.foods.nutrition_of import nutrition_of_recipe
-from core.schemas import MACRO_KEYS, DietPattern, Region
+from core.planner.candidates import recipe_classes
+from core.schemas import MACRO_KEYS, DietPattern, Region, diet_pattern_permits
 
 
 class TestSambarSadam:
@@ -65,13 +66,16 @@ class TestSambarSadam:
         v = nutrition_of_recipe(library.recipes["sambar_sadam"], 2, ingredients)
         assert v.energy_kcal == pytest.approx(530.08)
 
-    def test_diet_patterns_and_region(self, library):
+    def test_diet_patterns_and_region(self, library, ingredients):
+        # Recipe.diet_patterns was removed 2026-08-14 (TASKS_3.md R1a);
+        # eligibility is now derived from ingredient classes.
         r = library.recipes["sambar_sadam"]
         assert r.region is Region.SOUTH_INDIAN
-        assert DietPattern.VEGAN in r.diet_patterns
-        # Onion and carrot: not jain, and that is stated rather than derived
-        # from "vegetarian".
-        assert DietPattern.JAIN not in r.diet_patterns
+        classes = recipe_classes(r, ingredients)
+        assert diet_pattern_permits(DietPattern.VEGAN, classes)
+        # Onion and carrot are both classed root_vegetable, which jain does
+        # not permit.
+        assert not diet_pattern_permits(DietPattern.JAIN, classes)
 
 
 class TestRajmaChawal:
@@ -318,7 +322,6 @@ class TestRecipeLoaderRules:
                     "id: stale",
                     "name: Stale",
                     "region: south_indian",
-                    "diet_patterns: [vegetarian]",
                     "category: rice",
                     "serving_unit:",
                     "  measure: cup",
@@ -352,7 +355,6 @@ class TestRecipeLoaderRules:
                     "id: invented",
                     "name: Invented",
                     "region: south_indian",
-                    "diet_patterns: [vegetarian]",
                     "category: rice",
                     "serving_unit:",
                     "  measure: cup",
@@ -463,7 +465,6 @@ class TestRecipeLoaderRules:
                     "id: pasted",
                     "name: Pasted",
                     "region: south_indian",
-                    "diet_patterns: [vegetarian]",
                     "category: rice",
                     "serving_unit:",
                     "  measure: cup",
@@ -497,7 +498,6 @@ class TestZeroProcessUncertaintyMustBeEarned:
         "id: probe",
         "name: Probe",
         "region: south_indian",
-        "diet_patterns: [vegetarian]",
         "category: rice",
         "serving_unit:",
         "  measure: cup",

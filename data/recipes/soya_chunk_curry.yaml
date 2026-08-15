@@ -24,8 +24,8 @@ name_ta: சோயா குருமா
 name_hi: सोया करी
 
 region: north_indian
-diet_patterns: [vegetarian, vegan]
-# Not jain: onion and ginger-garlic.
+# Not jain: onion and ginger-garlic are both classed root_vegetable (derived
+# from ingredient classes; see data/recipes/schema.yaml).
 
 category: legume_curry
 prep_minutes: 30
