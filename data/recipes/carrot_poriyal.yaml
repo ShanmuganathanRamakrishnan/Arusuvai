@@ -13,8 +13,8 @@ name_ta: கேரட் பொரியல்
 name_hi: गाजर की सब्ज़ी
 
 region: south_indian
-diet_patterns: [vegetarian, vegan]
-# Not jain: onion, and carrot is a root vegetable.
+# Not jain: onion and carrot are both classed root_vegetable (derived from
+# ingredient classes; see data/recipes/schema.yaml).
 
 category: poriyal
 prep_minutes: 20

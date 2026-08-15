@@ -14,8 +14,8 @@ name_ta: தேங்காய் சட்னி
 name_hi: नारियल की चटनी
 
 region: south_indian
-diet_patterns: [vegetarian, vegan, jain]
-# Jain: no onion, no garlic, no root vegetable. Every line here is jain_safe.
+# Jain-eligible: no ingredient here carries the root_vegetable class (derived
+# from ingredient classes; see data/recipes/schema.yaml).
 
 category: chutney
 prep_minutes: 10

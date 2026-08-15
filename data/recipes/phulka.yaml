@@ -25,7 +25,6 @@ name_ta: ஃபுல்கா
 name_hi: फुल्का
 
 region: north_indian
-diet_patterns: [vegetarian, vegan, jain]
 # Jain-safe: flour, water and salt only — no onion, no garlic, no root vegetable.
 
 category: roti

@@ -21,10 +21,9 @@ name_ta: தயிர்
 name_hi: दही
 
 region: south_indian
-diet_patterns: [vegetarian]
-# Not vegan: dairy. Jain-safe by ingredient, but not declared jain — a jain
-# diet permits curd and this file makes no claim either way about the dairy
-# sourcing that would decide it.
+# Not vegan: curd is classed dairy. Jain permits dairy, so this dish is
+# jain-eligible too (derived from ingredient classes; see
+# data/recipes/schema.yaml).
 
 category: curd
 prep_minutes: 2

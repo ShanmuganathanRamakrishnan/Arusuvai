@@ -7,8 +7,8 @@ name_ta: ராஜ்மா சாதம்
 name_hi: राजमा चावल
 
 region: north_indian
-diet_patterns: [vegetarian, vegan]
-# Not jain: onion and ginger-garlic.
+# Not jain: onion and ginger-garlic are both classed root_vegetable (derived
+# from ingredient classes; see data/recipes/schema.yaml).
 
 category: combo_rice_legume
 prep_minutes: 55

@@ -1288,8 +1288,21 @@ register_constant(Constant(
 
 # --- Diet: representative DIAAS by pattern (divides the protein target) ----
 # quality_adjusted_grams = base_grams / diaas: a lower score => more grams.
+#
+# diaas.pescatarian added 2026-08-14 (TASKS_3.md R1a) alongside
+# DietPattern.PESCATARIAN: compute_protein and derive_target read this key for
+# every DietPattern member (core/nutrition/targets.py's `_diaas_key`), so
+# adding the enum member without a matching constant here would leave a
+# reachable KeyError rather than an authored estimate -- the same silence the
+# module docstring on Ingredient.composition_uncertainty warns against
+# elsewhere. 0.97, between eggetarian's 0.95 and non_vegetarian's 1.0: fish
+# adds a third complete animal-protein source beyond dairy and egg, closer in
+# diversity to unrestricted non-vegetarian than to eggetarian alone. Like its
+# four neighbours this is a project estimate, not a per-diet rollup anyone has
+# published -- see the REVIEWED_MECHANISM_MATCHES note below.
 _DIAAS: tuple[tuple[str, float, str], ...] = (
     ("diaas.non_vegetarian", 1.0, "mixed animal and plant protein across the day"),
+    ("diaas.pescatarian", 0.97, "dairy, egg, fish and plant protein"),
     ("diaas.eggetarian", 0.95, "dairy, egg and plant protein"),
     ("diaas.vegetarian", 0.90, "dairy and plant protein, no egg"),
     ("diaas.jain", 0.85, "dairy and plant protein, no root vegetables"),
@@ -1559,6 +1572,7 @@ REVIEWED_MECHANISM_MATCHES.update({
     "protein.g_per_kg_lose_fat": "reviewed: project decision above the Morton anchor; no single measured breakpoint claimed",
     "protein.g_per_kg_gain_muscle": "reviewed: project decision above the Morton anchor; no single measured breakpoint claimed",
     "diaas.non_vegetarian": "reviewed: NO matching primary source for a per-diet rollup; project estimate of protein quality",
+    "diaas.pescatarian": "reviewed: NO matching primary source for a per-diet rollup; project estimate of protein quality",
     "diaas.eggetarian": "reviewed: NO matching primary source for a per-diet rollup; project estimate of protein quality",
     "diaas.vegetarian": "reviewed: NO matching primary source for a per-diet rollup; project estimate of protein quality",
     "diaas.jain": "reviewed: NO matching primary source for a per-diet rollup; project estimate of protein quality",

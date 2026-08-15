@@ -555,6 +555,76 @@ leaves. Fat, carb, fibre and sodium do clear their tolerances after verification
 `docs/audit_log.md` finding 21; options in
 `docs/design/tolerance_versus_band.md`, none chosen.
 
+### Dairy sourcing for jain eligibility (2026-08-14, TASKS_3.md R1a, found not fixed)
+
+`Ingredient.verified` above is about whether a composition *number* was read
+out of a primary source. `Ingredient.dairy_sourcing_verified` is a separate
+question about a *different* ingredient — one that only exists on rows carrying
+`IngredientClass.DAIRY` — and the two must not be conflated.
+
+A jain diet permits dairy in principle, but conditionally: milk and its
+products are acceptable only when the animal was not treated in ways jain
+practice forbids (specifically, not separated from its calf in ways that cause
+it distress, and not sent for slaughter once dry). Whether any given dairy
+product clears that bar is a fact about *where it came from*, not about its
+protein or fat content, and nothing in this project's ingredient data currently
+says anything about sourcing at all.
+
+R1a's derivation work (recipe eligibility as the union of its ingredients'
+`IngredientClass` membership, checked against a per-pattern permitted-class
+table) surfaced this directly: `curd_dahi` is classed `dairy`, dairy is a class
+the JAIN row of `DIET_PATTERN_PERMITTED_CLASSES` permits, and a first pass at
+the derivation therefore read every curd dish as jain-eligible. That is a
+*more* confident claim than the old hand-listed `diet_patterns` field ever
+made — `thayir_sadam_curd.yaml`'s own comment, before this field was removed,
+read "jain-safe by ingredient, but not declared jain — the file makes no claim
+either way about the dairy sourcing that would decide it." Reading "dairy is a
+permitted class" as "this dish is cleared" would have silently turned an
+honest non-claim into a positive one, which is exactly the failure mode named
+elsewhere in this document under "nothing has been verified" — except here it
+would have gone the other way, upgrading silence into false safety rather than
+false certainty.
+
+`Ingredient.dairy_sourcing_verified: bool = False` exists to keep that
+distinction representable. It is:
+
+- **Meaningful only where `IngredientClass.DAIRY` is present.** A non-dairy row
+  carries the field at its default and nothing reads it there.
+- **`False` on every row in the current library, including `curd_dahi`.**
+  Nobody has traced any dairy ingredient's sourcing back to a farm or dairy, so
+  there is nothing to record as verified. This is not a data gap waiting on the
+  same IFCT-2017 lookup as `Ingredient.verified` — sourcing provenance is not
+  in a composition table at all, and no primary source has been identified yet
+  that would settle it for the fixture set's two dairy rows (`curd_dahi`,
+  `paneer_fresh`).
+- **Checked in `diet_pattern_permits`** (`core/schemas/common.py`), narrowing
+  JAIN specifically: a recipe whose derived class union includes `DAIRY` is
+  jain-eligible only if every dairy line in it (via
+  `core.planner.candidates.recipe_dairy_sourcing_verified`) has
+  `dairy_sourcing_verified=True`. With the field defaulting `False` everywhere,
+  this reproduces the pre-R1a behaviour for `vegetarian`, `vegan` and `jain` —
+  confirmed byte-identical against `python demo.py` output for all three
+  patterns — but for a reason that survives review: the model now says
+  explicitly *why* curd is excluded from jain (sourcing unresolved), rather
+  than because a hand-listed field happened not to mention it.
+
+**What would flip it.** Parallel to the DIAAS verification path above: a human
+would need to identify the specific dairy source each fixture row's
+`curd_dahi`/`paneer_fresh` figures represent (or, more realistically for a
+project at this scale, adopt a named jain-dairy-sourcing standard — e.g. a
+specific certification or a documented "ahimsa milk" supplier definition — and
+record which one), then set `dairy_sourcing_verified=True` on that row with a
+`source_note` naming the standard or source consulted. Until that happens, no
+recipe containing a dairy ingredient can read as jain-eligible, which is the
+correct — not merely convenient — position for data that makes no claim either
+way.
+
+This was **found, not fixed**: the gap in what the data claims to know was
+real before R1a (silently, via `thayir_sadam_curd.yaml` never being declared
+jain) and is real after it (explicitly, via a named field defaulting to
+unresolved). R1a's job was to derive eligibility honestly, not to resolve
+jain dairy sourcing — that remains open. See `docs/audit_log.md`.
+
 ### `dev_mode` versus `validated`
 
 `core/planner` therefore carries two distinct designations, implemented as of

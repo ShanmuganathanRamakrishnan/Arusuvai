@@ -13,7 +13,7 @@ from core.foods.models import (
     ServingUnit,
     TemplateSlot,
 )
-from core.schemas import MACRO_KEYS, DietPattern, RawOrCooked, Region
+from core.schemas import MACRO_KEYS, RawOrCooked, Region
 
 
 def make_unit(**overrides) -> ServingUnit:
@@ -121,7 +121,6 @@ def _recipe(**kw) -> Recipe:
         id="r",
         name="R",
         region=Region.SOUTH_INDIAN,
-        diet_patterns=frozenset({DietPattern.VEGETARIAN}),
         ingredients=(
             RecipeIngredient("a", 60.0, RawOrCooked.COOKED),
             RecipeIngredient("b", 40.0, RawOrCooked.COOKED),

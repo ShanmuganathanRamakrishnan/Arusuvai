@@ -8,6 +8,74 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-14 — R1a: ingredient classes replace hand-listed diet patterns; finding 48 raised
+
+**Task:** `TASKS_3.md` R1a. `Ingredient.is_animal_product`/`jain_safe` were
+parsed and read by nothing; `Recipe.diet_patterns` was a hand-listed
+whitelist that no recipe ever populated with `eggetarian` or
+`non_vegetarian`, so both patterns returned zero candidates in every slot.
+Replaced with `IngredientClass` (`dairy`, `egg`, `fish`, `poultry`,
+`root_vegetable`) declared per ingredient, a recipe's eligibility derived as
+the union of its ingredients' classes, and a per-`DietPattern` permitted-class
+table (`core.schemas.DIET_PATTERN_PERMITTED_CLASSES`,
+`diet_pattern_permits`). Added `DietPattern.PESCATARIAN` (mechanism only, not
+in the web diet picker). Migrated all 17 recipes and all 29 fixture ingredient
+rows; removed `is_animal_product`/`jain_safe` (fields, CSV columns, loader
+lines) entirely.
+
+### Finding 48 — derivation is more honest than the hand-listed field it replaced, which broke a stated verify clause — found, not fixed
+
+R1a's verify clause required `vegetarian`/`vegan`/`jain` `demo.py` output to be
+byte-identical before/after. The first pass (class-union derivation only)
+was **not** byte-identical for jain: `thayir_sadam_curd.yaml` (`thayir_plain`,
+plain curd) became jain-eligible, unblocking `south_lunch`'s `curd_course`
+required slot. The recipe's own pre-R1a comment admits why: *"jain-safe by
+ingredient, but not declared jain — the file makes no claim either way about
+the dairy sourcing that would decide it."* The old hand-listed
+`diet_patterns: [vegetarian]` field simply never said jain, which was a real
+gap in what the data claimed to know, not a fact about the dish — and the
+class-only derivation, correctly, could not reproduce a gap it has no
+representation for.
+
+Resolution (not a workaround, a model addition): jain eligibility for dairy is
+not "dairy is a permitted class" but "dairy is permitted, conditional on
+sourcing, and sourcing is presently unresolved for every dairy row in the
+library." Added `Ingredient.dairy_sourcing_verified: bool = False` — meaningful
+only where `IngredientClass.DAIRY in classes`, `False` on every row including
+`curd_dahi`, and checked in `diet_pattern_permits` so a recipe with an
+unverified-sourcing dairy line cannot read as jain-eligible regardless of the
+class table. With every row defaulting `False`, this reproduces the original
+jain exclusion of `thayir_plain` — same output, but because the model now
+states an unresolved question explicitly, not because a hand-listed field
+happened to omit it. Full writeup: `docs/methodology.md`, "Dairy sourcing for
+jain eligibility."
+
+*Disposition:* **found, not fixed**. The gap in what the data claims to know
+about dairy sourcing (jain-relevant) predates R1a and remains open — this
+entry documents that it is now representable and honestly defaulted, not that
+it is resolved. Resolving it needs a human to identify or adopt a named
+sourcing standard for the fixture set's two dairy rows and flip the flag with
+a `source_note`; nobody has done that.
+
+```
+$ diff -rq /tmp/r1a_verify/before /tmp/r1a_verify/after2
+(no output — byte-identical: vegetarian, vegan, jain across
+ south_indian/breakfast, south_indian/lunch, north_indian/lunch,
+ north_indian/dinner, and library listings)
+
+$ python -m pytest tests/ -q -m "not web"
+439 passed, 69 deselected, 1 warning in 106.45s (0:01:46)
+```
+
+(The `-m "not web"` deselection is pre-existing and out of scope: `git diff
+--stat HEAD -- web/` shows zero files touched by this task, and R1a explicitly
+excludes UI changes. Un-marked-web suite is fully green.)
+
+*Disposition:* CLOSED (R1a itself). Finding 48 above stands OPEN as a
+separate, narrower item.
+
+---
+
 ## 2026-08-12 — CLAUDE.md restructured to 199 lines; six stale claims corrected
 
 `CLAUDE.md` went from 652 lines to **199**. No behaviour changed: `437 passed,

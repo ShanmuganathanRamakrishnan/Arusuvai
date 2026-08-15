@@ -19,8 +19,8 @@ name_ta: கேரட் கூட்டு
 name_hi: गाजर कूटू
 
 region: south_indian
-diet_patterns: [vegetarian, vegan]
-# Not jain: carrot is a root vegetable.
+# Not jain: carrot is classed root_vegetable (derived from ingredient
+# classes; see data/recipes/schema.yaml).
 
 category: kootu
 prep_minutes: 30

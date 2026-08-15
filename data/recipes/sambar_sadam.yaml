@@ -6,8 +6,8 @@ name_ta: சாம்பார் சாதம்
 name_hi: सांबर चावल
 
 region: south_indian
-diet_patterns: [vegetarian, vegan]
-# Not jain: onion, and carrot is a root vegetable.
+# Not jain: onion and carrot are both classed root_vegetable (derived from
+# ingredient classes; see data/recipes/schema.yaml).
 
 category: mixed_rice
 prep_minutes: 40

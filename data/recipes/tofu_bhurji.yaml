@@ -23,8 +23,8 @@ name_ta: டோஃபு பூர்ஜி
 name_hi: टोफू भुर्जी
 
 region: north_indian
-diet_patterns: [vegetarian, vegan]
-# Not jain: onion and ginger-garlic.
+# Not jain: onion and ginger-garlic are both classed root_vegetable (derived
+# from ingredient classes; see data/recipes/schema.yaml).
 
 category: sabzi
 prep_minutes: 20

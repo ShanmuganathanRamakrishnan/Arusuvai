@@ -117,7 +117,12 @@ MUTATIONS: tuple[Mutation, ...] = (
     # ---------------------------------------------------------------- candidates
     Mutation(
         "C1", CANDIDATES, "hard filter: diet pattern",
-        "    if diet_pattern not in recipe.diet_patterns:\n        return False\n",
+        "    if not diet_pattern_permits(\n"
+        "        diet_pattern,\n"
+        "        recipe_classes(recipe, ingredients),\n"
+        "        dairy_sourcing_verified=recipe_dairy_sourcing_verified(recipe, ingredients),\n"
+        "    ):\n"
+        "        return False\n",
         "",
     ),
     Mutation(

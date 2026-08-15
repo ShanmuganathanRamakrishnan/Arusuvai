@@ -37,9 +37,8 @@ from core.foods.models import (
     ServingUnit,
     TemplateSlot,
 )
-from core.schemas import MACRO_KEYS, DietPattern, MealSlot, RawOrCooked, Region
+from core.schemas import MACRO_KEYS, MealSlot, RawOrCooked, Region
 
-_DIET_PATTERNS = frozenset({DietPattern.VEGETARIAN, DietPattern.VEGAN})
 _TIGHT_UNCERTAINTY = {m: 0.03 for m in MACRO_KEYS}
 _NO_PROCESS_UNCERTAINTY = {m: 0.0 for m in MACRO_KEYS}
 
@@ -88,13 +87,11 @@ def make_recipe(
     default_count: int = 1,
     max_count: int = 2,
     region: Region = Region.SOUTH_INDIAN,
-    diet_patterns: frozenset[DietPattern] = _DIET_PATTERNS,
 ) -> Recipe:
     return Recipe(
         id=id,
         name=id,
         region=region,
-        diet_patterns=diet_patterns,
         ingredients=(RecipeIngredient(ingredient.id, 100.0, RawOrCooked.AS_USED),),
         serving_unit=ServingUnit(
             name=id,

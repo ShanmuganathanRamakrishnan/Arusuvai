@@ -30,9 +30,9 @@ name_ta: இட்லி
 name_hi: इडली
 
 region: south_indian
-diet_patterns: [vegetarian, vegan, jain]
-# Jain-safe: rice, urad, water and salt. No onion, garlic or root vegetable
-# anywhere in it — the first recipe in the library that can say that.
+# Jain-eligible: rice, urad, water and salt. No onion, garlic or root
+# vegetable anywhere in it — the first recipe in the library that can say
+# that (derived from ingredient classes; see data/recipes/schema.yaml).
 
 category: tiffin
 prep_minutes: 20

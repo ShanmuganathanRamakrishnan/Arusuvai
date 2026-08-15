@@ -18,17 +18,44 @@ from tests.factories import (
 
 
 class TestHardFilters:
-    def test_diet_pattern_excludes_a_non_matching_recipe(self, library, ingredients):
-        # No recipe in the library declares non_vegetarian; asking for it must
-        # yield nothing, not fall back to whatever is available.
+    def test_diet_pattern_excludes_a_dairy_recipe_from_vegan(self, library, ingredients):
+        # 2026-08-14, TASKS_3.md R1a: eligibility is now derived from
+        # ingredient classes, not a hand-listed Recipe.diet_patterns whitelist.
+        # paneer_masala's only protein is dairy paneer, so a vegan pool must
+        # exclude it even though 'sabzi' is a category north_lunch accepts —
+        # while tofu_bhurji, the vegan dish in the same slot, is offered.
         pool = build_candidate_pool(
+            library.components.values(),
+            ingredients,
+            template=templates.NORTH_LUNCH,
+            diet_pattern=DietPattern.VEGAN,
+            dev_mode=True,
+        )
+        ids = {c.recipe.id for c in pool.by_category.get("sabzi", ())}
+        assert "paneer_masala" not in ids
+        assert "tofu_bhurji" in ids
+
+    def test_diet_pattern_reaches_parity_for_non_vegetarian(self, library, ingredients):
+        # The bug R1a fixed: no recipe in the library ever declared
+        # 'non_vegetarian' on the old hand-listed field, so this pattern
+        # returned zero candidates in every slot even though every dish is
+        # edible under it (nothing in the library carries egg, fish or
+        # poultry). Derived eligibility reaches parity with vegetarian.
+        vegetarian_pool = build_candidate_pool(
+            library.components.values(),
+            ingredients,
+            template=templates.SOUTH_LUNCH,
+            diet_pattern=DietPattern.VEGETARIAN,
+            dev_mode=True,
+        )
+        non_veg_pool = build_candidate_pool(
             library.components.values(),
             ingredients,
             template=templates.SOUTH_LUNCH,
             diet_pattern=DietPattern.NON_VEGETARIAN,
             dev_mode=True,
         )
-        assert pool.by_category == {}
+        assert non_veg_pool.by_category == vegetarian_pool.by_category
 
     def test_region_mismatch_excludes_a_recipe(self, library, ingredients):
         """The region filter alone, with the category filter held out of it.

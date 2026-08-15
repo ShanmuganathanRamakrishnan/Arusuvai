@@ -5,11 +5,11 @@ from __future__ import annotations
 import pytest
 
 from core.foods.ifct_loader import load_ingredient_file, load_ingredients
-from core.schemas import RawOrCooked
+from core.schemas import IngredientClass, RawOrCooked
 
 HEADER = (
     "id,name_en,name_ta,name_hi,ifct_code,state,energy_kcal,protein_g,fat_g,carb_g,"
-    "fibre_g,sodium_mg,iron_mg,calcium_mg,b12_ug,diaas,is_animal_product,jain_safe,"
+    "fibre_g,sodium_mg,iron_mg,calcium_mg,b12_ug,diaas,classes,"
     "allergens,verified,source_note\n"
 )
 
@@ -66,10 +66,13 @@ class TestFixtureSet:
         assert ingredients["gingelly_oil"].allergens == frozenset({"sesame"})
         assert ingredients["rice_cooked"].allergens == frozenset()
 
-    def test_jain_safety_is_stated_not_inferred(self, ingredients):
-        assert ingredients["onion_raw"].jain_safe is False
-        assert ingredients["potato_boiled"].jain_safe is False
-        assert ingredients["tomato_raw"].jain_safe is True
+    def test_root_vegetable_class_is_stated_not_inferred(self, ingredients):
+        # Replaces jain_safe (removed 2026-08-14, TASKS_3.md R1a): jain
+        # eligibility is now derived from IngredientClass.ROOT_VEGETABLE
+        # membership rather than a separate hand-set boolean.
+        assert IngredientClass.ROOT_VEGETABLE in ingredients["onion_raw"].classes
+        assert IngredientClass.ROOT_VEGETABLE in ingredients["potato_boiled"].classes
+        assert IngredientClass.ROOT_VEGETABLE not in ingredients["tomato_raw"].classes
 
     def test_the_four_ifct_coded_rows_carry_their_real_values(self, ingredients):
         # Extracted 2026-07-24 from IFCT 2017 (via the Sahu & Sahu
@@ -153,7 +156,7 @@ class TestEnergyReconciliation:
         # |300 - 118| / 300 = 60.7%, far past the 15% tolerance.
         path = write_csv(
             tmp_path,
-            "bad,Bad,,,,raw,300,5,2,20,1,0,0,0,0,,false,true,,false,",
+            "bad,Bad,,,,raw,300,5,2,20,1,0,0,0,0,,,,false,",
         )
         report = load_ingredient_file(path)
         assert report.loaded == {}
@@ -175,7 +178,7 @@ class TestEnergyReconciliation:
         # not a hand-fudged number: the underlying data was right all along.
         path = write_csv(
             tmp_path,
-            "rajma_test,Rajma,,,,raw,299.2,19.91,1.77,65.18,16.57,0,0,0,0,,false,true,,false,",
+            "rajma_test,Rajma,,,,raw,299.2,19.91,1.77,65.18,16.57,0,0,0,0,,,,false,",
         )
         report = load_ingredient_file(path)
         assert report.rejected == []
@@ -199,7 +202,7 @@ class TestEnergyReconciliation:
         try:
             path = write_csv(
                 tmp_path,
-                "rajma_test,Rajma,,,,raw,299.2,19.91,1.77,65.18,16.57,0,0,0,0,,false,true,,false,",
+                "rajma_test,Rajma,,,,raw,299.2,19.91,1.77,65.18,16.57,0,0,0,0,,,,false,",
             )
             report = load_ingredient_file(path)
         finally:
@@ -214,7 +217,7 @@ class TestEnergyReconciliation:
         # Stated 145: |145 - 129| / 145 = 11.0%, inside the 15% tolerance.
         path = write_csv(
             tmp_path,
-            "ok,Ok,,,,cooked,145,10,1,20,1,0,0,0,0,,false,true,,false,",
+            "ok,Ok,,,,cooked,145,10,1,20,1,0,0,0,0,,,,false,",
         )
         report = load_ingredient_file(path)
         assert "ok" in report.loaded
@@ -226,7 +229,7 @@ class TestEnergyReconciliation:
         # check against zero would divide by zero rather than catch it.
         path = write_csv(
             tmp_path,
-            "fake,Fake,,,,as_used,0,10,0,0,0,0,0,0,0,,false,true,,false,",
+            "fake,Fake,,,,as_used,0,10,0,0,0,0,0,0,0,,,,false,",
         )
         report = load_ingredient_file(path)
         assert report.loaded == {}
@@ -235,7 +238,7 @@ class TestEnergyReconciliation:
     def test_genuine_zero_energy_row_is_kept(self, tmp_path):
         path = write_csv(
             tmp_path,
-            "salty,Salt,,,,as_used,0,0,0,0,0,38758,0,0,0,,false,true,,false,",
+            "salty,Salt,,,,as_used,0,0,0,0,0,38758,0,0,0,,,,false,",
         )
         report = load_ingredient_file(path)
         assert "salty" in report.loaded
@@ -243,7 +246,7 @@ class TestEnergyReconciliation:
 
 class TestRowLevelValidation:
     def test_absent_macro_is_rejected(self, tmp_path):
-        path = write_csv(tmp_path, "nomacro,No macro,,,,raw,300,,2,20,1,0,0,0,0,,false,true,,false,")
+        path = write_csv(tmp_path, "nomacro,No macro,,,,raw,300,,2,20,1,0,0,0,0,,,,false,")
         report = load_ingredient_file(path)
         assert report.loaded == {}
         assert "protein_g" in report.rejected[0].reason
@@ -251,17 +254,17 @@ class TestRowLevelValidation:
     def test_fibre_exceeding_carbohydrate_is_rejected(self, tmp_path):
         # carb_g is total carbohydrate and fibre is a subset of it; the reverse
         # means the two columns were filled on different conventions.
-        path = write_csv(tmp_path, "f,F,,,,raw,100,1,1,5,9,0,0,0,0,,false,true,,false,")
+        path = write_csv(tmp_path, "f,F,,,,raw,100,1,1,5,9,0,0,0,0,,,,false,")
         report = load_ingredient_file(path)
         assert "exceeds carb_g" in report.rejected[0].reason
 
     def test_bad_state_is_rejected(self, tmp_path):
-        path = write_csv(tmp_path, "s,S,,,,steamed,100,1,1,20,1,0,0,0,0,,false,true,,false,")
+        path = write_csv(tmp_path, "s,S,,,,steamed,100,1,1,20,1,0,0,0,0,,,,false,")
         report = load_ingredient_file(path)
         assert "state" in report.rejected[0].reason
 
     def test_duplicate_id_is_rejected_not_overwritten(self, tmp_path):
-        row = "dup,Dup,,,,cooked,130,2.7,0.3,28.2,0.4,1,0.2,3,0,,false,true,,false,"
+        row = "dup,Dup,,,,cooked,130,2.7,0.3,28.2,0.4,1,0.2,3,0,,,,false,"
         path = write_csv(tmp_path, row, row)
         report = load_ingredient_file(path)
         assert len(report.loaded) == 1
@@ -270,8 +273,8 @@ class TestRowLevelValidation:
     def test_every_rejection_names_its_source_line(self, tmp_path):
         path = write_csv(
             tmp_path,
-            "good,Good,,,,cooked,130,2.7,0.3,28.2,0.4,1,0.2,3,0,,false,true,,false,",
-            "bad,Bad,,,,raw,300,5,2,20,1,0,0,0,0,,false,true,,false,",
+            "good,Good,,,,cooked,130,2.7,0.3,28.2,0.4,1,0.2,3,0,,,,false,",
+            "bad,Bad,,,,raw,300,5,2,20,1,0,0,0,0,,,,false,",
         )
         report = load_ingredient_file(path)
         # Header is line 1, so the bad row is line 3.
@@ -279,7 +282,7 @@ class TestRowLevelValidation:
         assert report.rejected[0].row_id == "bad"
 
     def test_strict_mode_raises_on_any_rejection(self, tmp_path):
-        write_csv(tmp_path, "bad,Bad,,,,raw,300,5,2,20,1,0,0,0,0,,false,true,,false,")
+        write_csv(tmp_path, "bad,Bad,,,,raw,300,5,2,20,1,0,0,0,0,,,,false,")
         with pytest.raises(ValueError, match="rejected rows"):
             load_ingredients(tmp_path, strict=True)
 

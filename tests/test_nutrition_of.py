@@ -7,7 +7,7 @@ import pytest
 from core.foods.models import Component, NutritionVector, RecipeIngredient
 from core.foods.nutrition_of import format_macro, nutrition_of_components, nutrition_of_recipe
 from core.nutrition import citations
-from core.schemas import MACRO_KEYS, DietPattern, RawOrCooked, Region
+from core.schemas import MACRO_KEYS, RawOrCooked, Region
 
 
 class TestPlateTotals:
@@ -194,7 +194,6 @@ class TestUnverifiedEnergyAttribution:
         }
         recipe = Recipe(
             id="mixed", name="mixed", region=Region.SOUTH_INDIAN,
-            diet_patterns=frozenset({DietPattern.VEGETARIAN}),
             ingredients=(
                 RecipeIngredient("verified_plain", 100.0, RawOrCooked.AS_USED),
                 RecipeIngredient("unverified_plain", 100.0, RawOrCooked.AS_USED),

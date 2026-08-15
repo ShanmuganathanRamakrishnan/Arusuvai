@@ -29,8 +29,8 @@ name_ta: சோயா குழம்பு
 name_hi: सोया कुज़म्बु
 
 region: south_indian
-diet_patterns: [vegetarian, vegan]
-# Not jain: onion.
+# Not jain: onion is classed root_vegetable (derived from ingredient classes;
+# see data/recipes/schema.yaml).
 
 category: kuzhambu
 prep_minutes: 30
