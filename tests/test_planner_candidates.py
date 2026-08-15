@@ -2,17 +2,25 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from core.foods import templates
-from core.foods.models import Component
+from core.foods.models import Component, MealTemplate, TemplateSlot
 from core.foods.nutrition_of import nutrition_of_components
 from core.nutrition import citations
-from core.planner.candidates import build_candidate_pool, recipe_allergens
-from core.schemas import DietPattern, Region
+from core.planner.candidates import (
+    build_candidate_pool,
+    recipe_allergens,
+    recipe_classes,
+    recipe_dairy_sourcing_verified,
+)
+from core.schemas import DietPattern, IngredientClass, MealSlot, Region, diet_pattern_permits
 from tests.factories import (
     SOUTH_LUNCH_COMPONENTS,
     SOUTH_LUNCH_INGREDIENTS,
+    make_ingredient,
     make_recipe,
 )
 
@@ -167,6 +175,240 @@ class TestHardFilters:
         assert "veg_a" not in {c.recipe.id for c in pool.by_category.get("poriyal", ())}
         # veg_c is also "poriyal" and carries no allergen, so it must survive.
         assert "veg_c" in {c.recipe.id for c in pool.by_category.get("poriyal", ())}
+
+
+# ------------------------------------------------------------------------
+# R1b (widened scope, 2026-08-15): the permitted-class table and the
+# dairy_sourcing_verified gate are two independent mechanisms inside
+# diet_pattern_permits (core/schemas/common.py) — a recipe passes only if
+# BOTH agree. Finding 48 (docs/audit_log.md) is exactly a case where the
+# class table alone said "permitted" and only the gate was actually
+# blocking. TestHardFilters.test_diet_pattern_excludes_a_dairy_recipe_from_
+# vegan and test_diet_pattern_reaches_parity_for_non_vegetarian exercise the
+# call site; the tests below are written so each mechanism can fail on its
+# own without the other's tests noticing — see docs/design/probes/
+# d4b_mutations.py rows C1 (whole call), D1 (gate only) and D2 (table only).
+# ------------------------------------------------------------------------
+
+
+#: One recipe per IngredientClass, plus one with no class at all, each in the
+#: same "dish" category so a single template slot can offer all of them at
+#: once. dairy comes in both a verified- and an unverified-sourcing variant,
+#: because that split is the entire point of the matrix below: the class is
+#: identical on both, and only dairy_sourcing_verified differs.
+_CLASS_MATRIX_SPECS: dict[str, frozenset[IngredientClass] | None] = {
+    "plain": frozenset(),
+    "dairy_unverified": frozenset({IngredientClass.DAIRY}),
+    "dairy_verified": frozenset({IngredientClass.DAIRY}),
+    "egg": frozenset({IngredientClass.EGG}),
+    "fish": frozenset({IngredientClass.FISH}),
+    "poultry": frozenset({IngredientClass.POULTRY}),
+    "root_veg": frozenset({IngredientClass.ROOT_VEGETABLE}),
+}
+
+_CLASS_MATRIX_INGREDIENTS = {
+    key: make_ingredient(
+        key,
+        energy_kcal=100.0,
+        protein_g=5.0,
+        fat_g=1.0,
+        carb_g=10.0,
+        classes=classes,
+        dairy_sourcing_verified=(key == "dairy_verified"),
+    )
+    for key, classes in _CLASS_MATRIX_SPECS.items()
+}
+
+_CLASS_MATRIX_COMPONENTS = tuple(
+    Component(recipe=make_recipe(key, ingredient), category="dish")
+    for key, ingredient in _CLASS_MATRIX_INGREDIENTS.items()
+)
+
+_CLASS_MATRIX_TEMPLATE = MealTemplate(
+    id="class_matrix",
+    region=Region.SOUTH_INDIAN,
+    meal_slot=MealSlot.LUNCH,
+    slots=(TemplateSlot(name="slot", accepted_categories=frozenset({"dish"})),),
+)
+
+#: Expected survivors per pattern, derived directly from
+#: core.schemas.DIET_PATTERN_PERMITTED_CLASSES plus the jain dairy-sourcing
+#: gate — hand-derived here, not read back from the code under test.
+# JAIN permits {DAIRY}, and only if sourcing is verified: plain, dairy_verified.
+# VEGAN permits {ROOT_VEGETABLE}: plain, root_veg.
+# VEGETARIAN permits {DAIRY, ROOT_VEGETABLE}, sourcing irrelevant outside jain:
+#   plain, dairy_unverified, dairy_verified, root_veg.
+# EGGETARIAN adds EGG: + egg.
+# PESCATARIAN adds FISH, still no POULTRY: + fish.
+# NON_VEGETARIAN permits everything: all seven.
+_EXPECTED_SURVIVORS: dict[DietPattern, frozenset[str]] = {
+    DietPattern.JAIN: frozenset({"plain", "dairy_verified"}),
+    DietPattern.VEGAN: frozenset({"plain", "root_veg"}),
+    DietPattern.VEGETARIAN: frozenset(
+        {"plain", "dairy_unverified", "dairy_verified", "root_veg"}
+    ),
+    DietPattern.EGGETARIAN: frozenset(
+        {"plain", "dairy_unverified", "dairy_verified", "root_veg", "egg"}
+    ),
+    DietPattern.PESCATARIAN: frozenset(
+        {"plain", "dairy_unverified", "dairy_verified", "root_veg", "egg", "fish"}
+    ),
+    DietPattern.NON_VEGETARIAN: frozenset(_CLASS_MATRIX_SPECS),
+}
+
+
+class TestDietPatternPermittedClassTable:
+    @pytest.mark.parametrize("pattern", list(DietPattern))
+    def test_permitted_class_table_is_enforced_and_pool_is_non_empty(self, pattern):
+        # Covers the "existing requirement" half of R1b's widened scope: every
+        # DietPattern reaches a non-empty pool somewhere (the real library has
+        # no egg/fish/poultry rows at all, so this needs the synthetic
+        # matrix), and the permitted-class table itself discriminates — e.g. a
+        # poultry-classed recipe cannot reach a pescatarian pool.
+        pool = build_candidate_pool(
+            _CLASS_MATRIX_COMPONENTS,
+            _CLASS_MATRIX_INGREDIENTS,
+            template=_CLASS_MATRIX_TEMPLATE,
+            diet_pattern=pattern,
+            dev_mode=True,
+        )
+        survivors = {c.recipe.id for c in pool.by_category.get("dish", ())}
+        assert survivors == _EXPECTED_SURVIVORS[pattern]
+        assert survivors, f"{pattern} reached an empty pool against the class matrix"
+
+    def test_poultry_recipe_specifically_cannot_reach_a_pescatarian_pool(self):
+        # Named explicitly, since "pescatarian cannot be expressed by a linear
+        # ladder" is the reason DIET_PATTERN_PERMITTED_CLASSES is a table and
+        # not a nesting order (core/schemas/common.py, DietPattern docstring).
+        pool = build_candidate_pool(
+            _CLASS_MATRIX_COMPONENTS,
+            _CLASS_MATRIX_INGREDIENTS,
+            template=_CLASS_MATRIX_TEMPLATE,
+            diet_pattern=DietPattern.PESCATARIAN,
+            dev_mode=True,
+        )
+        ids = {c.recipe.id for c in pool.by_category.get("dish", ())}
+        assert "poultry" not in ids
+        assert "fish" in ids
+
+
+class TestDairySourcingGate:
+    """The jain dairy-sourcing gate, proven independent of the class table.
+
+    Every test here holds the class table's verdict fixed (dairy is a
+    permitted JAIN class throughout) and varies only
+    ``dairy_sourcing_verified`` — so a mutation that deletes the gate while
+    leaving the class-subset check intact fails these without touching
+    TestDietPatternPermittedClassTable, and a mutation that breaks the class
+    table leaves these unaffected. See d4b_mutations.py row D1.
+    """
+
+    def test_synthetic_unverified_dairy_is_blocked_though_the_class_table_permits_it(self):
+        classes = frozenset({IngredientClass.DAIRY})
+        # Sanity check first: the class table alone (no ingredient context)
+        # says jain permits this. If this line fails, the test below is not
+        # isolating the gate.
+        assert diet_pattern_permits(DietPattern.JAIN, classes)
+        assert not diet_pattern_permits(
+            DietPattern.JAIN, classes, dairy_sourcing_verified=False
+        )
+        assert diet_pattern_permits(
+            DietPattern.JAIN, classes, dairy_sourcing_verified=True
+        )
+
+    def test_gate_blocks_a_pool_candidate_the_class_table_alone_would_admit(self):
+        dairy_component = next(
+            c for c in _CLASS_MATRIX_COMPONENTS if c.recipe.id == "dairy_unverified"
+        )
+        pool = build_candidate_pool(
+            [dairy_component],
+            _CLASS_MATRIX_INGREDIENTS,
+            template=_CLASS_MATRIX_TEMPLATE,
+            diet_pattern=DietPattern.JAIN,
+            dev_mode=True,
+        )
+        assert pool.by_category == {}
+
+        verified_ingredients = dict(_CLASS_MATRIX_INGREDIENTS)
+        verified_ingredients["dairy_unverified"] = replace(
+            verified_ingredients["dairy_unverified"], dairy_sourcing_verified=True
+        )
+        pool_with_verified_sourcing = build_candidate_pool(
+            [dairy_component],
+            verified_ingredients,
+            template=_CLASS_MATRIX_TEMPLATE,
+            diet_pattern=DietPattern.JAIN,
+            dev_mode=True,
+        )
+        assert {c.recipe.id for c in pool_with_verified_sourcing.by_category["dish"]} == {
+            "dairy_unverified"
+        }
+
+    def test_real_curd_dish_is_blocked_from_jain_by_the_gate_not_the_class_table(
+        self, library, ingredients
+    ):
+        # thayir_plain (data/recipes/thayir_sadam_curd.yaml) is classed dairy
+        # only -- no root vegetable -- so DIET_PATTERN_PERMITTED_CLASSES[JAIN]
+        # (= {DAIRY}) alone permits it. Finding 48 (docs/audit_log.md): a
+        # first pass at R1a's derivation read this dish as jain-eligible for
+        # exactly that reason, before the sourcing gate existed.
+        recipe = library.recipes["thayir_plain"]
+        classes = recipe_classes(recipe, ingredients)
+        assert classes == frozenset({IngredientClass.DAIRY})
+        assert diet_pattern_permits(DietPattern.JAIN, classes), (
+            "the class table alone must permit this recipe, or the test below "
+            "proves nothing about the gate specifically"
+        )
+
+        # The real fixture data: curd_dahi's dairy_sourcing_verified is False
+        # (docs/methodology.md, "Dairy sourcing for jain eligibility"), so the
+        # gate -- not the class table -- is what excludes the dish.
+        assert not recipe_dairy_sourcing_verified(recipe, ingredients)
+        assert not diet_pattern_permits(
+            DietPattern.JAIN,
+            classes,
+            dairy_sourcing_verified=recipe_dairy_sourcing_verified(recipe, ingredients),
+        )
+
+        # Flip only curd_dahi's sourcing flag -- nothing about the recipe or
+        # the class table changes -- and the dish becomes jain-eligible.
+        verified_ingredients = dict(ingredients)
+        verified_ingredients["curd_dahi"] = replace(
+            ingredients["curd_dahi"], dairy_sourcing_verified=True
+        )
+        assert recipe_classes(recipe, verified_ingredients) == classes
+        assert recipe_dairy_sourcing_verified(recipe, verified_ingredients)
+        assert diet_pattern_permits(
+            DietPattern.JAIN,
+            classes,
+            dairy_sourcing_verified=recipe_dairy_sourcing_verified(
+                recipe, verified_ingredients
+            ),
+        )
+
+        # And at the pool level: south_lunch's curd_course slot gains
+        # thayir_plain under jain only once sourcing is verified.
+        south_lunch_pool = build_candidate_pool(
+            library.components.values(),
+            ingredients,
+            template=templates.SOUTH_LUNCH,
+            diet_pattern=DietPattern.JAIN,
+            dev_mode=True,
+        )
+        assert "thayir_plain" not in {
+            c.recipe.id for c in south_lunch_pool.by_category.get("curd", ())
+        }
+
+        south_lunch_pool_verified = build_candidate_pool(
+            library.components.values(),
+            verified_ingredients,
+            template=templates.SOUTH_LUNCH,
+            diet_pattern=DietPattern.JAIN,
+            dev_mode=True,
+        )
+        assert "thayir_plain" in {
+            c.recipe.id for c in south_lunch_pool_verified.by_category.get("curd", ())
+        }
 
 
 class TestUncertaintyEligibility:

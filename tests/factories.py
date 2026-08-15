@@ -37,7 +37,7 @@ from core.foods.models import (
     ServingUnit,
     TemplateSlot,
 )
-from core.schemas import MACRO_KEYS, MealSlot, RawOrCooked, Region
+from core.schemas import IngredientClass, MACRO_KEYS, MealSlot, RawOrCooked, Region
 
 _TIGHT_UNCERTAINTY = {m: 0.03 for m in MACRO_KEYS}
 _NO_PROCESS_UNCERTAINTY = {m: 0.0 for m in MACRO_KEYS}
@@ -56,6 +56,8 @@ def make_ingredient(
     calcium_mg: float = 0.0,
     b12_ug: float = 0.0,
     diaas: float | None = None,
+    classes: frozenset[IngredientClass] = frozenset(),
+    dairy_sourcing_verified: bool = False,
 ) -> Ingredient:
     return Ingredient(
         id=id,
@@ -74,6 +76,8 @@ def make_ingredient(
         b12_ug=b12_ug,
         state=RawOrCooked.AS_USED,
         diaas=diaas,
+        classes=classes,
+        dairy_sourcing_verified=dairy_sourcing_verified,
         verified=True,
         composition_uncertainty=_TIGHT_UNCERTAINTY,
     )
