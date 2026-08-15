@@ -1597,6 +1597,40 @@ That last case is pinned in
    now per ingredient line, charging composition and process alike, and
    `_depends_on_unverified` no longer exists.
 
+### The threshold and the day floor, decided (2026-08-15, TASKS_3.md R2)
+
+Phase R's accepted-rung measurement (`docs/design/probes/
+probe_blocking_bounds.py`, walking the relaxation ladder rather than
+checking the unrelaxed target alone) found the quality-protein floor the
+sole cause of more combination failures than every other bound combined —
+1267 across the four templates, and *more* dominant at the rung a profile is
+actually held to than at the unrelaxed target, because it is the one bound
+`RELAXATION_ORDER` never touches. `docs/design/probes/r2_quality_rule.py`
+measured three ways to respond, changing no behaviour and picking nothing:
+today's rule unchanged; the per-day floor described above, actually applied;
+and threshold sensitivity at 0.65 (which admits `tofu_firm`) and 0.70.
+
+**Decided by Adi, 2026-08-15: the threshold stays at 0.75.** Not moved.
+
+**The day-level floor is not adopted, on this measurement.** The probe's
+per-day simulation is an explicitly-labelled *lower bound*: it strips the
+per-meal floor so each meal is solved for macros only, then sums whatever
+qualifying protein that macro-best plate happened to carry against the day
+floor. Today's per-meal rule actively steers the solver toward
+quality-bearing plates at every meal; a plate chosen with no quality
+steering at all carries less of it on average. Measured on the
+`north_indian` day variant (south breakfast + north lunch + north dinner,
+since no region has all three slots yet — R4d): today's rule passes 76.4%
+of the 144-profile grid, the naive per-day sum only 50.0%. That is not
+evidence the per-day floor is worse than the per-meal one; it is evidence
+that comparing them fairly needs a day-aware allocator that can deliberately
+concentrate quality protein into one or two meals, which does not exist yet.
+Building one is its own design task and is explicitly **not on the critical
+path to R3** — R3a (egg) proceeds against the unchanged 0.75 per-meal rule.
+
+This does not change "The day floor is computed and gates on nothing" above:
+`quality_source_day_g` remains displayed, not enforced.
+
 ## Making the south templates reachable (2026-08-07, D3)
 
 Slice 4 left both South Indian templates declining for **every** profile. Three
