@@ -113,12 +113,22 @@ WEB_GATE = "tests/conftest.py"
 #: griddled phulka goes back to displaying the same certainty as raw curd.
 RECIPE_LOADER = "core/foods/recipe_loader.py"
 #: Not a planner module either. Added for R1b (2026-08-15): diet_pattern_permits
-#: holds two independent gates — the permitted-class subset check and the jain
-#: dairy_sourcing_verified check — and C1 in candidates.py only proves the call
-#: site uses *a* gate, not that either sub-mechanism is individually
+#: holds two gates — the permitted-class subset check (D2) and the jain
+#: dairy_sourcing_verified check (D1) — and C1 in candidates.py only proves the
+#: call site uses *a* gate, not that either sub-mechanism is individually
 #: load-bearing. Finding 48 (docs/audit_log.md) is exactly a case where the
 #: class table alone said "permitted" and only the sourcing gate was actually
-#: blocking, so the two need rows that can fail independently of each other.
+#: blocking.
+#:
+#: D1 and D2 are NOT symmetric — corrected 2026-08-15, finding 49
+#: (docs/audit_log.md). Deleting D2 never fails a
+#: TestDairySourcingGate test, so that direction isolates cleanly. Deleting
+#: D1 fails TestDairySourcingGate's three tests AND
+#: TestDietPatternPermittedClassTable's jain row, because that row's expected
+#: survivor set bakes in the gate's effect (it excludes "dairy_unverified"
+#: specifically because of D1). Read the failure list, not just the first
+#: covering test the harness reports, before trusting either row's isolation
+#: claim.
 SCHEMAS_COMMON = "core/schemas/common.py"
 
 MUTATIONS: tuple[Mutation, ...] = (
@@ -615,9 +625,9 @@ OWN_TESTS: dict[str, tuple[str, ...]] = {
     # Same file as NUTRITION_OF's second entry, and for the same reason: a
     # reader editing `test_recipes.py` knows they are editing evidence rules.
     RECIPE_LOADER: ("test_recipes.py",),
-    # TestDietPatternPermittedClassTable and TestDairySourcingGate (R1b) are
-    # written specifically to isolate D1 from D2 — see that file's module
-    # docstring above the two classes.
+    # TestDietPatternPermittedClassTable and TestDairySourcingGate (R1b) target
+    # D1 and D2 respectively, but not symmetrically — see that file's module
+    # docstring above the two classes, and finding 49 (docs/audit_log.md).
     SCHEMAS_COMMON: ("test_planner_candidates.py",),
 }
 

@@ -8,6 +8,84 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-15 — finding 49: R1b's D1/D2 "isolated from each other" claim was wrong in one direction
+
+**What was claimed** (commit `e9b4aa7`, R1b, and the chat report alongside it):
+D1 (the jain dairy-sourcing gate) and D2 (the permitted-class subset check)
+were reported as symmetrically isolated — "a mutation that deletes the gate
+… fails these without touching TestDietPatternPermittedClassTable", and in
+the chat summary, "Deleting the sourcing gate fails all 3
+TestDairySourcingGate tests; the class-table tests stay green." The commit
+message's own transcript technically avoided the false statement (it listed
+which five of six class-table rows stayed green without naming jain, rather
+than saying "the class-table tests stay green" outright) but nothing said
+plainly that the sixth row — jain — did not stay green. Read at normal
+speed, both the commit and the chat report land as a stronger, false claim:
+full symmetry.
+
+**What's actually true**, re-verified by hand (mutate, run, read the whole
+failure list, revert — not just the harness's first-covering-test report):
+
+```
+$ python - <<'PYEOF'   # mutate D1: delete the gate's if-block in
+                        # core/schemas/common.py
+...
+mutated D1
+PYEOF
+$ python -m pytest tests/test_planner_candidates.py -q
+...
+FAILED tests/test_planner_candidates.py::TestDietPatternPermittedClassTable::test_permitted_class_table_is_enforced_and_pool_is_non_empty[jain]
+FAILED tests/test_planner_candidates.py::TestDairySourcingGate::test_synthetic_unverified_dairy_is_blocked_though_the_class_table_permits_it
+FAILED tests/test_planner_candidates.py::TestDairySourcingGate::test_gate_blocks_a_pool_candidate_the_class_table_alone_would_admit
+FAILED tests/test_planner_candidates.py::TestDairySourcingGate::test_real_curd_dish_is_blocked_from_jain_by_the_gate_not_the_class_table
+4 failed, 20 passed
+```
+
+Deleting D1 fails **four** tests, not three: all of `TestDairySourcingGate`,
+plus `TestDietPatternPermittedClassTable`'s jain-parametrized case. That
+row's expected survivor set (`{"plain", "dairy_verified"}`, excluding
+`"dairy_unverified"`) is correct only because of D1 — the synthetic matrix's
+`dairy_unverified`/`dairy_verified` split makes the jain parametrization
+depend on both mechanisms at once. This is not a flaw in the gate or a
+flaw in the class table; it is a coupling in one fixture's one row that the
+original report did not check for and then reported the opposite of.
+
+Deleting D2 remains cleanly isolated — re-confirmed the same way: 7 failures
+(`TestHardFilters::test_diet_pattern_excludes_a_dairy_recipe_from_vegan` +
+all six `TestDietPatternPermittedClassTable` rows/tests), none of them in
+`TestDairySourcingGate`. So the asymmetry is real and specific: D2 → D1's
+tests is a clean cut; D1 → D2's tests is not, on exactly one of six rows.
+
+**Why this happened.** The commit-message transcript was constructed by
+listing which named tests failed and then summarizing — the summary
+("class-table-only tests … stay green") silently dropped jain from the
+"stays green" list without saying it didn't, which reads as an omission an
+inattentive author would not themselves notice was doing rhetorical work.
+The chat report compressed further and lost the hedge entirely. Neither
+was a fabricated transcript — the underlying pytest output was real and
+included in the commit — but the prose summarizing it overclaimed.
+
+**Fix applied**, this entry's own commit: corrected the docstrings in
+`tests/test_planner_candidates.py` (module comment above
+`TestDietPatternPermittedClassTable`, and `TestDairySourcingGate`'s class
+docstring) and the two comments in `docs/design/probes/d4b_mutations.py`
+(`SCHEMAS_COMMON`'s definition, and its `OWN_TESTS` entry) that repeated the
+symmetric-isolation claim, so a reader hitting the code directly gets the
+corrected version, not just this log entry.
+
+*Disposition:* CLOSED — corrected in place, not amended out of history. The
+underlying tests, mutation rows, and R1b result are unchanged and still
+good: D1 and D2 are each still proven load-bearing, D2's isolation is clean,
+and D1's near-isolation (three dedicated tests plus one shared row) is now
+stated accurately instead of rounded up to "independent."
+
+```
+$ python -m pytest tests/ -q -m "not web"
+449 passed, 69 deselected, 1 warning in 111.87s (0:01:51)
+```
+
+---
+
 ## 2026-08-14 — R1a: ingredient classes replace hand-listed diet patterns; finding 48 raised
 
 **Task:** `TASKS_3.md` R1a. `Ingredient.is_animal_product`/`jain_safe` were

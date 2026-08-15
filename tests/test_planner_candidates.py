@@ -185,9 +185,22 @@ class TestHardFilters:
 # class table alone said "permitted" and only the gate was actually
 # blocking. TestHardFilters.test_diet_pattern_excludes_a_dairy_recipe_from_
 # vegan and test_diet_pattern_reaches_parity_for_non_vegetarian exercise the
-# call site; the tests below are written so each mechanism can fail on its
-# own without the other's tests noticing — see docs/design/probes/
-# d4b_mutations.py rows C1 (whole call), D1 (gate only) and D2 (table only).
+# call site; see docs/design/probes/d4b_mutations.py rows C1 (whole call),
+# D1 (gate only) and D2 (table only).
+#
+# The isolation between D1 and D2 is NOT symmetric — corrected 2026-08-15,
+# finding 49 (docs/audit_log.md), after an initial report claimed it was.
+# Deleting D2 (the class-subset check) never fails a TestDairySourcingGate
+# test — that direction is clean. Deleting D1 (the gate) fails all three
+# TestDairySourcingGate tests below AND
+# TestDietPatternPermittedClassTable::…[jain] — because that one
+# parametrization's expected survivor set excludes "dairy_unverified"
+# specifically *because of the gate*, so it is unavoidably sensitive to D1
+# too. TestDairySourcingGate is still what isolates D1 for a reader: those
+# three tests are the ones written to fail on D1 and nothing else, and they
+# do; the class-matrix's other five rows (vegan/vegetarian/eggetarian/
+# pescatarian/non_vegetarian) are the ones that stay green under D1 and go
+# red under D2.
 # ------------------------------------------------------------------------
 
 
@@ -293,14 +306,25 @@ class TestDietPatternPermittedClassTable:
 
 
 class TestDairySourcingGate:
-    """The jain dairy-sourcing gate, proven independent of the class table.
+    """The jain dairy-sourcing gate — the tests that isolate D1 for a reader.
 
     Every test here holds the class table's verdict fixed (dairy is a
     permitted JAIN class throughout) and varies only
-    ``dairy_sourcing_verified`` — so a mutation that deletes the gate while
-    leaving the class-subset check intact fails these without touching
-    TestDietPatternPermittedClassTable, and a mutation that breaks the class
-    table leaves these unaffected. See d4b_mutations.py row D1.
+    ``dairy_sourcing_verified``, so deleting D2 (the class-subset check,
+    d4b_mutations.py) never fails a test in this class — verified by
+    mutating D2 by hand and reading the full failure list, not merely by
+    running the covering-test check.
+
+    The reverse is **not** as clean, corrected 2026-08-15 (finding 49,
+    docs/audit_log.md, after an initial report claimed full symmetry):
+    deleting D1 (this gate) fails all three tests here, but it *also* fails
+    ``TestDietPatternPermittedClassTable``'s jain-parametrized case, because
+    that matrix's expected jain survivor set excludes "dairy_unverified"
+    specifically because of this gate — the two mechanisms are genuinely
+    coupled on that one row of that fixture, not falsely reported as
+    separate. These three tests remain the ones written to fail on D1 and
+    nothing else, and by inspection they do; they are not, however, proof
+    that D1's deletion leaves every other test class untouched.
     """
 
     def test_synthetic_unverified_dairy_is_blocked_though_the_class_table_permits_it(self):
