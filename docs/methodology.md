@@ -1631,7 +1631,37 @@ path to R3** — R3a (egg) proceeds against the unchanged 0.75 per-meal rule.
 This does not change "The day floor is computed and gates on nothing" above:
 `quality_source_day_g` remains displayed, not enforced.
 
-## Making the south templates reachable (2026-08-07, D3)
+### The request-path timing budget (2026-08-16, TASKS_3.md R5)
+
+`plan_meal` (`core/planner/plan.py`) sits behind `POST /api/plan`
+(`api/main.py` calls it exactly once per request) and its cost is a product:
+`enumerate_combinations` over every template slot, times an exhaustive
+integer search per surviving combination in `core.planner.solver.solve`,
+times up to five calls to that solver if `plan_within_ladder` has to walk
+every relaxation rung before accepting or declining. Nobody had measured
+where this gets slow, and R3a is the first commit to add a recipe since this
+whole measurement chain (`docs/design/probes/`) was built — a baseline taken
+after the library grows would not be a baseline, so R5 ran before R3a.
+
+`docs/design/probes/r5_timing_baseline.py` measured wall-clock `plan_meal`
+time and enumerated-combination count across the four templates and three
+diet patterns (`vegetarian`, `vegan`, `non_vegetarian`), for two profile
+shapes: a mid-range reference profile, and a worst-case profile (110 kg,
+`GAIN_MUSCLE`, `HYPERTENSION` + `CHRONIC_KIDNEY_DISEASE`) chosen to force
+`plan_within_ladder` through every unlocked rung. Reference-profile calls
+stayed under ~110ms in every cell. The worst case reached 522.57ms at
+`north_indian/lunch` (vegetarian, 24 enumerated combinations — the largest
+template), because a full ladder walk costs one solver pass per rung against
+the whole enumerated set.
+
+**Confirmed by Adi, 2026-08-16: the budget is 1500ms per `POST /api/plan`
+call** — roughly 3x headroom over today's worst observed case. This is a
+measured-and-confirmed number, not a derived guarantee: R3/R4 grow each
+template's combination count as recipes land, which the solver cost scales
+with, so `r5_timing_baseline.py` is meant to be re-run periodically as the
+library grows, to check the budget still holds — not just once, at this
+baseline. That re-running is not itself part of R5; R5's own job — measure
+before any recipe lands, get a number confirmed — is done.
 
 Slice 4 left both South Indian templates declining for **every** profile. Three
 recipes closed that. No threshold, fraction, DIAAS value or salt line was
