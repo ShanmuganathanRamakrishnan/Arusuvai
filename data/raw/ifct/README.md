@@ -3,8 +3,9 @@
 ## What is actually in here
 
 `fixture_ingredients.csv` is mostly a **hand-entered fixture set**, not an
-IFCT extract, plus four rows updated 2026-07-24 with real IFCT 2017 values.
-28 of its 29 rows have `verified` set to `false`; 25 have an empty
+IFCT extract, plus five rows carrying real IFCT 2017 values: four updated
+2026-07-24, one (`egg_boiled`) added 2026-08-16 (TASKS_3.md R3a — see below).
+29 of its 30 rows have `verified` set to `false`; 25 have an empty
 `ifct_code`. Both are deliberate:
 
 Three of those rows — `paneer_fresh`, `tofu_firm` and `soya_chunks_dry`, added
@@ -79,6 +80,56 @@ acid profile elsewhere in the tables. This isn't an ordinary unverified gap
 that a human opening the PDF could close: a different source entirely (e.g.
 USDA FoodData Central) would be needed, and that is out of scope here. Both
 rows' `source_note` says this explicitly.
+
+## A fifth row carries real IFCT 2017 data, from a different mirror (2026-08-16, TASKS_3.md R3a)
+
+`egg_boiled` (IFCT code M004, "Egg, poultry, whole, boiled", group M) is the
+first ingredient row this build added after R1a's diet-class model landed.
+Its composition (energy, protein, fat, carb, fibre, sodium, iron, calcium)
+was retrieved from **`github.com/nodef/ifct2017`**, not the Zenodo
+re-publication (`ifct2017/ifct2017`) the four rows above used — same
+underlying NIN measurement and the same digitization lineage (`nodef` is the
+actively-maintained source repo the Zenodo releases are cut from), but a
+different distribution, used specifically because the Zenodo mirror's own
+`compositions/index.csv` (same file, byte-for-byte, just re-hosted) truncated
+before reaching group M under this build's fetch tooling on every CDN tried
+(`unpkg`, `jsdelivr`, `raw.githubusercontent.com`) — group M is the 13th of
+20 food groups in file order, and the file is 1.15 MB, well past whatever
+this build's tooling caps a single fetch at. `curl`-ing the raw file directly
+and grepping it locally (rather than through a fetch tool that summarizes
+the page) is what actually got past the cap; that method should work for any
+future row this size or position blocks on. Same evidentiary weight as the
+four rows above: a second party's transcription, not a human having opened
+the primary `IFCT2017.pdf` — `verified=false` for the same reason.
+
+**Vitamin B12 could not come from IFCT at all, for a structural reason, not
+an egg-specific one.** The `compositions/index.csv` schema was checked
+programmatically against every one of its 421 column headers for `b12`,
+`cbl` or `cobal` in any form — zero matches. IFCT 2017's compositions table
+does not tabulate vitamin B12 for *any* food, not just egg. `egg_boiled`'s
+`b12_ug` (1.11) is therefore sourced from a different, DOI-free but
+citable source instead — USDA FoodData Central, SR Legacy, FDC ID 173424
+("Egg, whole, cooked, hard-boiled") — and the row's `source_note` says so in
+capital letters at the point where the value appears, specifically so this
+single field is never mistaken for an IFCT figure while every other field on
+the same row is one. This is a **flagged, single-field exception**, not a
+default: the alternative (leaving `b12_ug` at an implicit `0`, which every
+loader-visible row before this one happened to have as a real possible
+value) would have silently claimed egg has no B12, which is false and would
+have been the exact "silence reads as certainty" failure CLAUDE.md's
+"Things that have gone wrong before" section already lists three instances
+of.
+
+**`diaas` (1.35) is sourced, not authored** — unlike `paneer_fresh`,
+`tofu_firm` and `soya_chunks_dry` above, all three of which are recalled
+from a remembered range with no primary source opened. Fanelli NS, Martins
+JCFR, Stein HH, "The digestible indispensable amino acid score (DIAAS) in
+eggs and egg-containing breakfast meals is greater than in toast breads or
+hash browns served without eggs," *Journal of Nutritional Science*
+2024;13:e68, DOI 10.1017/jns.2024.71 — reports DIAAS = 135% for boiled egg
+under the reference amino-acid pattern for individuals older than 3 years
+(this project plans meals for adults, not infants; the same paper's
+6–36-month reference pattern gives 110% instead, not the figure used here).
 
 ## Conventions
 

@@ -99,8 +99,9 @@ class TestQualification:
     """Which rows clear the bar, and what a missing value means."""
 
     def test_the_threshold_partitions_the_library_where_expected(self, ingredients):
-        # protein.quality_diaas_threshold = 0.75, against the authored DIAAS
-        # figures in data/raw/ifct/fixture_ingredients.csv:
+        # protein.quality_diaas_threshold = 0.75, against the DIAAS figures in
+        # data/raw/ifct/fixture_ingredients.csv:
+        #   egg_boiled      1.35  >= 0.75  qualifies (sourced 2026-08-16, R3a)
         #   curd_dahi       1.09  >= 0.75  qualifies
         #   paneer_fresh    1.00  >= 0.75  qualifies
         #   soya_chunks_dry 0.85  >= 0.75  qualifies
@@ -109,10 +110,10 @@ class TestQualification:
         #   toor_dal_raw    0.60  <  0.75  does NOT
         #   rice_cooked     0.47  <  0.75  does NOT
         qualifying = {i for i, ing in ingredients.items() if ingredient_qualifies(ing)}
-        assert qualifying == {"curd_dahi", "paneer_fresh", "soya_chunks_dry"}
+        assert qualifying == {"egg_boiled", "curd_dahi", "paneer_fresh", "soya_chunks_dry"}
 
     def test_a_missing_diaas_does_not_qualify(self, ingredients):
-        # 17 of the 29 rows carry no DIAAS at all. Absent must read as "does not
+        # 17 of the 30 rows carry no DIAAS at all. Absent must read as "does not
         # qualify", never as "assume the best" -- the same ordering CLAUDE.md's
         # round-4 addendum requires of uncertainty. The cost is real and is
         # recorded in docs/methodology.md: a protein-dense row added without a
