@@ -46,9 +46,16 @@ class TestHardFilters:
     def test_diet_pattern_reaches_parity_for_non_vegetarian(self, library, ingredients):
         # The bug R1a fixed: no recipe in the library ever declared
         # 'non_vegetarian' on the old hand-listed field, so this pattern
-        # returned zero candidates in every slot even though every dish is
-        # edible under it (nothing in the library carries egg, fish or
-        # poultry). Derived eligibility reaches parity with vegetarian.
+        # returned zero candidates in every slot even though every dish was
+        # edible under it. Held as an exact-equality assertion (parity with
+        # vegetarian) until 2026-08-16 (R3a), when mutta_kuzhambu became the
+        # library's first recipe carrying egg -- eligible for
+        # non_vegetarian's pool but not vegetarian's, so exact parity is no
+        # longer the correct claim. What R1a actually fixed still holds and
+        # is what this asserts now: non_vegetarian's pool is every category
+        # vegetarian's is (derived eligibility reaches every slot, not zero
+        # candidates everywhere) PLUS mutta_kuzhambu in kuzhambu, the one
+        # category an egg dish can reach.
         vegetarian_pool = build_candidate_pool(
             library.components.values(),
             ingredients,
@@ -63,7 +70,18 @@ class TestHardFilters:
             diet_pattern=DietPattern.NON_VEGETARIAN,
             dev_mode=True,
         )
-        assert non_veg_pool.by_category == vegetarian_pool.by_category
+
+        def ids(pool, category):
+            return frozenset(c.recipe.id for c in pool.by_category.get(category, ()))
+
+        assert non_veg_pool.by_category.keys() == vegetarian_pool.by_category.keys()
+        for category in vegetarian_pool.by_category:
+            if category == "kuzhambu":
+                assert ids(non_veg_pool, category) == ids(vegetarian_pool, category) | {
+                    "mutta_kuzhambu"
+                }
+            else:
+                assert ids(non_veg_pool, category) == ids(vegetarian_pool, category)
 
     def test_region_mismatch_excludes_a_recipe(self, library, ingredients):
         """The region filter alone, with the category filter held out of it.

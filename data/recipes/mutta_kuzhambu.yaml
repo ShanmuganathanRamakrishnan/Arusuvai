@@ -1,0 +1,104 @@
+# Mutta kuzhambu — boiled eggs simmered in a tamarind-and-sambar-powder
+# gravy. TASKS_3.md R3a: the South Indian half of the egg pair, aimed at the
+# quality-protein floor first (R2's re-derived measurement: the sole cause of
+# more combination failures than every other bound combined, 1267 across the
+# four templates) and the fat_g ceiling second.
+#
+#   100 g egg_boiled x 13.43 g protein/100 g = 13.43 g, all of it qualifying
+#   (egg_boiled DIAAS 1.35 >= protein.quality_diaas_threshold 0.75)
+#   against NutritionTarget.quality_protein_floor_g = 11.2 g -- clears the
+#   per-meal floor on its own, the same shape as soya_kuzhambu beside it.
+#
+# Modelled on soya_kuzhambu's structure (same category, same tamarind/
+# sambar-powder/gingelly-oil/mustard-curry-leaf grammar) with whole boiled
+# egg standing in for rehydrated soya chunks -- the same real Tamil dish
+# (mutta kuzhambu / egg kulambu is ordinary home cooking, not an invention
+# to satisfy the quality rule), not soya_kuzhambu wearing an egg label: no
+# water-absorption line is needed here because the egg is already at its
+# finished, boiled composition (state: cooked), unlike dry soya chunks.
+#
+# `kuzhambu`, so it reaches SOUTH_LUNCH.gravy (required) and also
+# SOUTH_BREAKFAST.gravy_accompaniment, which accepts {sambar, kuzhambu} --
+# same reach as soya_kuzhambu, for the same reason: the TEMPLATE's slot
+# vocabulary decides this, not a category chosen here to hit two slots.
+id: mutta_kuzhambu
+name: Mutta kuzhambu (egg kulambu)
+name_ta: முட்டை குழம்பு
+name_hi: अंडा कुज़म्बु
+
+region: south_indian
+# Not vegan, not vegetarian: egg is classed egg. Not jain: onion is classed
+# root_vegetable (derived from ingredient classes; see
+# data/recipes/schema.yaml).
+
+category: kuzhambu
+prep_minutes: 25
+tags: [lunch, high_protein, eggetarian, tamarind]
+
+serving_unit:
+  measure: katori
+  grams_per_unit: 150.0
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    One katori, the generic katori weight. Two, matching soya_kuzhambu's
+    ceiling and for the same reason: a katori of this already clears the
+    per-meal quality floor on its own, so a wider ceiling would only hand
+    the solver room to close an unrelated gap by volume of the same dish.
+
+# The eggs are boiled (their composition row is already the finished,
+# boiled state) then simmered whole in the gravy to take on the tamarind and
+# spice, not fried first -- so the only registered process on this dish is
+# the tempering oil, which derives a real figure for energy and fat.
+# Simmering does leach minerals into the gravy, which is served, so the loss
+# is small but not measured, and egg_boiled's b12_ug is itself a flagged
+# non-IFCT figure (data/raw/ifct/README.md) rather than a measured one to
+# begin with -- unassessed here for both reasons.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: egg_boiled
+    quantity_g: 100.0
+    state: cooked
+    note: >-
+      Two medium eggs, boiled and halved (~50 g each), simmered whole in the
+      gravy rather than beaten in -- an egg curry, not an egg drop gravy.
+  - id: onion_raw
+    quantity_g: 15.0
+    state: raw
+  - id: tomato_raw
+    quantity_g: 15.0
+    state: raw
+  - id: tamarind_pulp
+    quantity_g: 3.0
+    state: as_used
+  - id: sambar_powder
+    quantity_g: 3.0
+    state: as_used
+  - id: gingelly_oil
+    quantity_g: 5.0
+    state: as_used
+    process: oil_uptake.vegetable_tempering
+    note: >-
+      Retained oil. About 5.3 g goes into the tempering pan
+      (oil_uptake.vegetable_tempering = 0.95).
+  - id: mustard_seed
+    quantity_g: 0.8
+    state: as_used
+  - id: curry_leaves
+    quantity_g: 1.0
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.8
+    state: as_used
+    note: >-
+      0.53% of the finished weight -- the same proportion as soya_kuzhambu,
+      sambar and dal_tadka, salted as a gravy is, with liquid to carry it.
+      An authored quantity, not a measurement.
+  - id: water
+    quantity_g: 6.4
+    state: as_used
+    note: >-
+      What the gravy is loosened with; listed so the masses sum to the
+      katori -- see the file header.
