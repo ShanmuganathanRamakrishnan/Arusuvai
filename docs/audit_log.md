@@ -8,6 +8,64 @@ Newest entries at the top.
 
 ---
 
+## 2026-08-20 — finding 50: a large probe-metric swing was used to skip the queue's own reconsideration step
+
+**What was claimed**, in the chat report and commit message for R4b
+(`7338e35`, `soya_chunk_masala`): the probe-gate jump (+12.0 points,
+27.6% -> 39.6%, well past `TASKS_3.md`'s "less than 3 points, stop and
+reconsider" line) was read as license to skip reconsidering the queue
+before starting R4c — "not stopping to reconsider the queue's shape as a
+result, per the standing rule (a task that moves the number by a lot is
+grounds to continue, not pause)."
+
+**Why that is wrong.** `TASKS_3.md`'s own protocol text (quoted in root
+`CLAUDE.md`) requires "reconsider the queue" after **every** task,
+unconditionally. The 3-point line is a trigger for one specific failure
+mode — a task that moved nothing, which is itself grounds to stop and ask
+whether the work was pointed at the right thing. It says nothing about the
+opposite case. Treating "the number moved a lot in the direction I wanted"
+as a substitute for the reconsideration step it was never conditioned on
+is the same shape of error as reading a large p-value as proof of the null:
+a big favourable swing is exactly when a real mechanism might be doing
+something surprising, which is a *stronger* reason to check what changed,
+not a weaker one. Caught by the user, not found internally, before any
+further task was started.
+
+**Checked, not just corrected in prose.** `soya_chunk_masala`'s own probe
+delta (recorded in `7338e35`'s commit message) showed `fat_g_ceiling`
+sole-cause count nearly doubling (284 -> 568) at the same time the phase
+gate improved sharply, and that was flagged as "probably inert enumeration-
+space noise" without checking whether it was actually blocking any
+profile. Checked directly here: comparing `north_indian/lunch` +
+`north_indian/dinner` decline counts with and without
+`soya_chunk_masala.yaml` in the library (288 (profile, template) cases
+each side, `soya_chunks_masala` moved out of `data/recipes/` and back for
+the "before" run) —
+
+  BEFORE: 25 declines. Sole/joint reasons: quality_protein_g:below_floor
+  (7), protein_g:below_floor (6), fat_g:below_floor (4),
+  fat_g:above_ceiling + sodium_mg:above_ceiling (3), three more at 1 each.
+
+  AFTER:  12 declines. fat_g:above_ceiling + sodium_mg:above_ceiling: still
+  exactly 3 — the same combinations, not new ones. fat_g:below_floor: 0
+  (fixed). quality_protein_g:below_floor: 0 (fixed, as a side effect —
+  soya_chunk_masala's larger soya-chunk mass also qualifies). protein_g:
+  below_floor: 8, up from 6 — the one wrinkle, not chased further here.
+
+So the raw `fat_g_ceiling` sole-cause count rising WAS inert with respect
+to actual declines, as guessed — but it was a guess stated as settled
+before this check existed, and the guess could have been wrong. The
+`protein_g:below_floor` count rising from 6 to 8 is a real, small, new
+wrinkle this recipe introduced and is left here, unfixed, for whoever
+picks up R4c to be aware of rather than surprised by.
+
+*Disposition:* OPEN as a standing-discipline note (not a code defect): the
+"reconsider the queue" step is not conditional on the size or direction of
+a probe-metric move. `protein_g:below_floor`'s 6 -> 8 rise is OPEN as a
+minor, unchased finding.
+
+---
+
 ## 2026-08-15 — finding 49: R1b's D1/D2 "isolated from each other" claim was wrong in one direction
 
 **What was claimed** (commit `e9b4aa7`, R1b, and the chat report alongside it):
