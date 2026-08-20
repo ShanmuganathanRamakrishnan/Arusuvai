@@ -51,11 +51,13 @@ class TestHardFilters:
         # vegetarian) until 2026-08-16 (R3a), when mutta_kuzhambu became the
         # library's first recipe carrying egg -- eligible for
         # non_vegetarian's pool but not vegetarian's, so exact parity is no
-        # longer the correct claim. What R1a actually fixed still holds and
-        # is what this asserts now: non_vegetarian's pool is every category
-        # vegetarian's is (derived eligibility reaches every slot, not zero
-        # candidates everywhere) PLUS mutta_kuzhambu in kuzhambu, the one
-        # category an egg dish can reach.
+        # longer the correct claim. Widened again 2026-08-20 (R4a) when
+        # meen_kuzhambu (fish) landed in the same category. What R1a
+        # actually fixed still holds and is what this asserts now:
+        # non_vegetarian's pool is every category vegetarian's is (derived
+        # eligibility reaches every slot, not zero candidates everywhere)
+        # PLUS mutta_kuzhambu and meen_kuzhambu in kuzhambu, the category
+        # both an egg dish and a fish dish reach.
         vegetarian_pool = build_candidate_pool(
             library.components.values(),
             ingredients,
@@ -78,7 +80,8 @@ class TestHardFilters:
         for category in vegetarian_pool.by_category:
             if category == "kuzhambu":
                 assert ids(non_veg_pool, category) == ids(vegetarian_pool, category) | {
-                    "mutta_kuzhambu"
+                    "mutta_kuzhambu",
+                    "meen_kuzhambu",
                 }
             else:
                 assert ids(non_veg_pool, category) == ids(vegetarian_pool, category)
