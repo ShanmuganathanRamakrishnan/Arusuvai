@@ -1,0 +1,147 @@
+# Soya chunk masala — a drier, oil-forward "bhuna" style, distinct from
+# soya_chunk_curry's thin gravy. TASKS_3.md R4b: "A higher-fat option for the
+# fat_g floor ... some plates are too lean to pass. Opposite direction from
+# R4a; its own dish, not a compromise."
+#
+# Diagnosed with docs/design/probes/r4b_fat_floor_diagnostic.py before
+# writing this file, not guessed at: of the 106 accepted-rung fat_g_floor
+# sole-failures probe_blocking_bounds.py reports template-wide, 106 of them
+# are north_indian/lunch, and 90 of those 106 have NO sabzi at all --
+# category shape (legume_curry, roti), i.e. phulka + soya_chunk_curry alone,
+# 70 of the 90 by recipe-id exactly, split 67 vegetarian / 39 vegan by diet
+# (a plate lean enough to fail is not a vegan-only problem here, though the
+# library's fat asymmetry between diets is real: paneer_fresh is
+# 20.8 g fat/100 g, the only thing that currently rescues these plates for
+# vegetarians via paneer_masala, while tofu_firm -- the one dairy-free sabzi
+# alternative -- is 8.7 g/100 g, roughly a third of that). soya_chunks_dry
+# itself is 0.5 g fat/100 g; soya_chunk_curry's 5 g tempering oil is the same
+# figure used everywhere else in the north_indian library (dal_tadka,
+# paneer_masala, tofu_bhurji, aloo_sabzi all use exactly 5 g), so no existing
+# dish in the required legume_curry/dal slot carries meaningfully more fat
+# than that, for either diet.
+#
+# This dish fixes the specific failing shape directly: same category
+# (legume_curry, so it reaches NORTH_LUNCH.legume_curry and
+# NORTH_DINNER.dal, both required, exactly where soya_chunk_curry reaches),
+# vegan-safe (helps both diets, not one), same core ingredient
+# (soya_chunks_dry, so it is recognisably the same food tradition, not an
+# invented one) -- but roasted down with double the tempering oil and less
+# added water, a real North Indian cooking style ("bhuna" soya/meal-maker
+# masala, cooked drier and richer than a thin curry) rather than
+# soya_chunk_curry with a number changed. No new ingredient sourcing needed:
+# both fat contributors (soya_chunks_dry, sunflower_oil) are already
+# registered rows: this task is a recipe-composition change, not a
+# citations.py change.
+#
+# DOSE, NOT GUESSED TWICE: a first version of this file used 15 g oil (three
+# times the standard 5 g) and was rejected by its own probe delta --
+# committed nowhere, corrected here. Measured directly (not estimated):
+# among the 392 north_indian/lunch (profile, combination) pairs that fail
+# fat_g_floor today, the shortfall (floor minus what the combination can
+# reach) has a MEDIAN of 5.08 g, not the ~9.5 g extra fat 15 g of oil adds.
+# Checked the other direction too: with the 15 g version actually in the
+# library, the combinations that include it overshoot fat_g_ceiling by a
+# MEDIAN of 5.61 g across 216 (profile, combination) pairs -- so the first
+# dose fixed almost nothing on the floor (accepted-rung fat_g_floor sole-
+# cause count went 106 -> 110, i.e. slightly worse) while nearly tripling
+# fat_g_ceiling failures (284 -> 772). 10 g is chosen to land close to the
+# 5.08 g median shortfall rather than the 9.5 g headline gap.
+#
+# 32 g dry soya x 0.5 g fat/100 g = 0.16 g, plus 10 g tempering oil x
+# oil_uptake.vegetable_tempering (0.95) = 9.5 g retained (oil is
+# effectively 100 g fat/100 g) = ~9.66 g fat total, against
+# soya_chunk_curry's 28 g dry x 0.5/100 + 5 g x 0.95 = ~4.9 g -- an increase
+# of ~4.8 g, not ~9.5 g.
+#
+# Protein-quality floor, not the point of this dish but not sacrificed for
+# it either: 32 g x 52 g protein/100 g = 16.64 g, all qualifying
+# (soya_chunks_dry's authored DIAAS 0.85 >= 0.75) against the 11.2 g floor --
+# more qualifying protein than soya_chunk_curry's 28 g line (14.56 g), not
+# less, because the dry-soya mass went up, not down, to make room for the
+# extra oil.
+id: soya_chunk_masala
+name: Soya chunk masala
+name_ta: சோயா மசாலா
+name_hi: सोया मसाला
+
+region: north_indian
+# Not jain: onion and ginger-garlic are both classed root_vegetable (derived
+# from ingredient classes; see data/recipes/schema.yaml). Vegan: no dairy,
+# egg, fish or poultry ingredient on this row.
+
+category: legume_curry
+prep_minutes: 30
+tags: [everyday, lunch, dinner, high_protein, vegan, high_fat]
+
+serving_unit:
+  measure: katori
+  grams_per_unit: 150.0
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    One katori, matching soya_chunk_curry's ceiling and for the same reason:
+    a katori of this already carries meaningfully more protein AND more fat
+    than a katori of the curry version, so a wider ceiling would hand the
+    solver more room than the point of this dish calls for.
+
+# The chunks are boiled to rehydrate, then roasted down in the oil until
+# most of the liquid cooks off (the bhuna step) rather than served as a
+# pourable gravy -- so less of the rehydration water remains in the finished
+# mass than in soya_chunk_curry, and what does is folded into "water" below
+# rather than split into an absorption line and a cooked-off line, since no
+# constant is registered for how much evaporates. The tempering oil is the
+# only registered process on this dish and derives a real figure for energy
+# and fat.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: soya_chunks_dry
+    quantity_g: 32.0
+    state: raw
+    note: >-
+      Dry mass, boiled to rehydrate then roasted down with the onion-tomato
+      masala until most of the liquid cooks off -- see the process note
+      above for why the absorbed and remaining water are not split out.
+  - id: water
+    quantity_g: 46.7
+    state: as_used
+    note: >-
+      What remains in the finished mass after rehydration and roasting-down
+      -- less than soya_chunk_curry's water line (66 g for a smaller, 28 g
+      dry-soya base) because this is a drier, bhuna-style finish, not a
+      pourable gravy. Listed so the masses sum to the katori.
+  - id: onion_raw
+    quantity_g: 30.0
+    state: raw
+    note: More than soya_chunk_curry's 20 g -- caramelised further for the bhuna base.
+  - id: tomato_raw
+    quantity_g: 25.0
+    state: raw
+  - id: sunflower_oil
+    quantity_g: 10.0
+    state: as_used
+    process: oil_uptake.vegetable_tempering
+    note: >-
+      Retained oil. About 10.5 g goes into the pan
+      (oil_uptake.vegetable_tempering = 0.95) -- double soya_chunk_curry's
+      5 g, sized against the measured median fat_g_floor shortfall (see the
+      file header), not against the largest possible gap. A bhuna-style
+      masala genuinely uses more oil than a thin curry; this is not the
+      tempering-oil line quietly inflated to pass a bound.
+  - id: ginger_garlic_paste
+    quantity_g: 3.0
+    state: as_used
+  - id: garam_masala
+    quantity_g: 1.5
+    state: as_used
+    note: Slightly more than soya_chunk_curry's 1.2 g -- a drier masala carries spice more concentrated.
+  - id: green_chilli
+    quantity_g: 1.0
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.8
+    state: as_used
+    note: >-
+      0.53% of the finished weight — the same proportion as soya_chunk_curry
+      and dal_tadka. An authored quantity, not a measurement.

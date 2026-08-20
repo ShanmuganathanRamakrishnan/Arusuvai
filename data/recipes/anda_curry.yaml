@@ -1,0 +1,103 @@
+# Anda curry — boiled eggs in an onion-tomato gravy. TASKS_3.md R3a: the
+# North Indian half of the egg pair, aimed at the quality-protein floor
+# first and the fat_g ceiling second, same reasoning as mutta_kuzhambu
+# beside it.
+#
+#   100 g egg_boiled x 13.43 g protein/100 g = 13.43 g, all of it qualifying
+#   (egg_boiled DIAAS 1.35 >= protein.quality_diaas_threshold 0.75) against
+#   NutritionTarget.quality_protein_floor_g = 11.2 g -- clears the per-meal
+#   floor on its own.
+#
+# Modelled on paneer_masala's structure (same onion-tomato-garam-masala
+# grammar, same tempering oil) with whole boiled egg standing in for cubed
+# paneer -- egg curry is ordinary North Indian home cooking, not an
+# invention to satisfy the quality rule. Unlike paneer_masala, this dish is
+# also a genuinely NEW qualifying sabzi option: paneer_masala is the
+# library's only other quality-qualifying sabzi, and tofu_bhurji's DIAAS
+# (0.65) sits below the 0.75 threshold, so it does not qualify at all.
+#
+# `sabzi`, so it fills NORTH_DINNER.sabzi (required) and NORTH_LUNCH.sabzi
+# (optional) -- the same reach paneer_masala has, and for the same reason:
+# it puts a second qualifying component in a REQUIRED slot of one template.
+id: anda_curry
+name: Anda curry
+name_ta: முட்டை கறி
+name_hi: अंडा करी
+
+region: north_indian
+# Not vegan, not vegetarian: egg is classed egg. Not jain: onion and
+# ginger-garlic are classed root_vegetable (derived from ingredient classes;
+# see data/recipes/schema.yaml).
+
+category: sabzi
+prep_minutes: 25
+tags: [everyday, lunch, dinner, high_protein, eggetarian]
+
+serving_unit:
+  measure: katori
+  grams_per_unit: 150.0
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    One katori, the generic katori weight. Two, matching paneer_masala's
+    ceiling and for the same reason: this already clears the per-meal
+    quality floor on its own, and a wider ceiling would let the solver
+    answer a protein floor with this dish alone rather than by combining
+    components -- the same pile-it-on failure the per-meal protein ceiling
+    exists to stop.
+
+# The eggs are boiled (their composition row is already the finished,
+# boiled state) then simmered whole in the gravy, not fried first -- so the
+# only registered process on this dish is the tempering oil, which derives a
+# real figure for energy and fat. Simmering does leach minerals into the
+# gravy, which is served, so the loss is small but not measured, and
+# egg_boiled's b12_ug is itself a flagged non-IFCT figure
+# (data/raw/ifct/README.md) rather than a measured one to begin with --
+# unassessed here for both reasons.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: egg_boiled
+    quantity_g: 100.0
+    state: cooked
+    note: >-
+      Two medium eggs, boiled and halved (~50 g each), simmered whole in the
+      gravy rather than scrambled in -- an egg curry, not anda bhurji.
+  - id: onion_raw
+    quantity_g: 14.0
+    state: raw
+  - id: tomato_raw
+    quantity_g: 24.0
+    state: raw
+  - id: sunflower_oil
+    quantity_g: 5.0
+    state: as_used
+    process: oil_uptake.vegetable_tempering
+    note: >-
+      Retained oil. About 5.3 g goes into the pan for the masala base and
+      stays in the gravy (oil_uptake.vegetable_tempering = 0.95).
+  - id: ginger_garlic_paste
+    quantity_g: 2.0
+    state: as_used
+  - id: garam_masala
+    quantity_g: 1.0
+    state: as_used
+  - id: green_chilli
+    quantity_g: 1.0
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.8
+    state: as_used
+    note: >-
+      0.53% of the finished weight -- the same proportion as mutta_kuzhambu,
+      soya_kuzhambu and dal_tadka, salted as a gravy is, with liquid to
+      carry it. An authored quantity, not a measurement, and lower than
+      paneer_masala's 0.60% because this gravy carries less added water to
+      season through.
+  - id: water
+    quantity_g: 2.2
+    state: as_used
+    note: >-
+      What the gravy is loosened with; listed so the masses sum to the
+      katori -- see the file header.

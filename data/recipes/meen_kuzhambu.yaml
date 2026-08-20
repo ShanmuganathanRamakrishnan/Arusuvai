@@ -1,0 +1,133 @@
+# Meen kuzhambu — pomfret simmered in a tamarind-and-sambar-powder gravy.
+# TASKS_3.md R4a: "Low-fat qualifying dishes" -- `fat_g` ceiling is the
+# second-largest sole cause of combination failure (R2's re-derived
+# measurement: 223 combinations, second only to the quality-protein floor
+# itself). R4a's own text names fish as one of the foods that should help,
+# alongside curd, soya and egg-white. `pomfret_white_raw` (added R3b,
+# `ab5fe7d`-adjacent commit) is the leanest quality-qualifying protein source
+# in the library and had no recipe yet -- R3b's own scope note deferred the
+# fat_g-ceiling observation to "a follow-on task" pending a recipe to measure
+# it with. This is that recipe.
+#
+# Modelled on mutta_kuzhambu's structure (same category, same tamarind/
+# sambar-powder/gingelly-oil/mustard-curry-leaf grammar), swapping egg for
+# fish -- meen kuzhambu is ordinary South Indian home cooking, not an
+# invention to satisfy the quality rule, the same claim mutta_kuzhambu's
+# header makes for the egg version.
+#
+# Quality-protein floor: 90 g pomfret_white_raw x 19.02 g protein/100 g =
+# 17.12 g, all of it qualifying (pomfret_white_raw DIAAS 1.16 >= 0.75)
+# against NutritionTarget.quality_protein_floor_g = 11.2 g -- clears with
+# more margin than mutta_kuzhambu's egg (17.12 g vs 13.43 g), because fish is
+# a higher-protein-per-gram source at this quantity.
+#
+# fat_g, the actual point of this recipe: 90 g pomfret_white_raw x
+# 5.12 g fat/100 g = 4.61 g, plus the same 5 g tempering oil
+# (oil_uptake.vegetable_tempering = 0.95, ~4.75 g retained) as
+# mutta_kuzhambu = ~9.36 g total. mutta_kuzhambu's egg contributes
+# 10.54 g fat/100 g alone (egg_boiled), before its own tempering oil --
+# meen_kuzhambu is the lower-fat of the two quality-qualifying kuzhambu
+# dishes by a wide margin, which is the mechanism this task is measuring,
+# not an assumption.
+#
+# `kuzhambu`, so it reaches SOUTH_LUNCH.gravy (required) and also
+# SOUTH_BREAKFAST.gravy_accompaniment, which accepts {sambar, kuzhambu} --
+# same reach as mutta_kuzhambu and soya_kuzhambu, for the same reason: the
+# TEMPLATE's slot vocabulary decides this, not a category chosen here to hit
+# two slots.
+id: meen_kuzhambu
+name: Meen kuzhambu (fish curry)
+name_ta: மீன் குழம்பு
+name_hi: मछली कुज़म्बु
+
+region: south_indian
+# Not vegan, not vegetarian, not eggetarian: fish is classed `fish`, reaches
+# pescatarian and non_vegetarian only. Not jain: onion is classed
+# root_vegetable (derived from ingredient classes; see
+# data/recipes/schema.yaml).
+
+category: kuzhambu
+prep_minutes: 30
+tags: [lunch, high_protein, pescatarian, non_vegetarian, tamarind]
+
+serving_unit:
+  measure: katori
+  grams_per_unit: 150.0
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    One katori, the generic katori weight. Two, matching mutta_kuzhambu's and
+    soya_kuzhambu's ceiling and for the same reason: a katori of this already
+    clears the per-meal quality floor on its own, so a wider ceiling would
+    only hand the solver room to close an unrelated gap by volume of the same
+    dish.
+
+# pomfret_white_raw has NO cooked-state IFCT entry (data/raw/ifct/README.md,
+# R3b): the fish is simmered whole in the gravy until cooked through, but its
+# composition row is looked up on the only basis that exists, raw. Per that
+# README's own flag, this UNDERSTATES the finished dish's true protein and
+# fat per gram (cooking concentrates both as water is lost) -- an
+# approximation carried forward, not corrected here, same as chicken. The
+# fat_g comparison in this file's header is therefore, if anything,
+# understated in fish's favour by the same raw-basis gap on both sides
+# (egg_boiled has a real cooked-state row; pomfret_white_raw does not), so it
+# is a conservative comparison, not an inflated one.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: pomfret_white_raw
+    quantity_g: 90.0
+    state: raw
+    note: >-
+      Whole pomfret pieces (~2-3), cleaned and simmered in the gravy rather
+      than fried first -- a fish curry, not a fish fry. Raw-basis
+      composition used for the cooked quantity; see the process note above.
+  - id: onion_raw
+    quantity_g: 15.0
+    state: raw
+  - id: tomato_raw
+    quantity_g: 15.0
+    state: raw
+  - id: tamarind_pulp
+    quantity_g: 4.0
+    state: as_used
+    note: >-
+      Slightly more than mutta_kuzhambu's 3 g -- meen kuzhambu is
+      conventionally a sharper, more tamarind-forward gravy than the egg
+      version.
+  - id: sambar_powder
+    quantity_g: 3.0
+    state: as_used
+  - id: ginger_garlic_paste
+    quantity_g: 2.0
+    state: as_used
+    note: Standard base for a South Indian fish gravy, absent from mutta_kuzhambu.
+  - id: gingelly_oil
+    quantity_g: 5.0
+    state: as_used
+    process: oil_uptake.vegetable_tempering
+    note: >-
+      Retained oil. About 5.3 g goes into the tempering pan
+      (oil_uptake.vegetable_tempering = 0.95), same quantity as
+      mutta_kuzhambu -- the fat_g comparison in the header is not helped by
+      a thinner tempering, only by the protein source itself.
+  - id: mustard_seed
+    quantity_g: 0.8
+    state: as_used
+  - id: curry_leaves
+    quantity_g: 1.0
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.8
+    state: as_used
+    note: >-
+      0.53% of the finished weight -- the same proportion as mutta_kuzhambu,
+      soya_kuzhambu, sambar and dal_tadka, salted as a gravy is, with liquid
+      to carry it. An authored quantity, not a measurement.
+  - id: water
+    quantity_g: 13.4
+    state: as_used
+    note: >-
+      What the gravy is loosened with; listed so the masses sum to the
+      katori -- see the file header.

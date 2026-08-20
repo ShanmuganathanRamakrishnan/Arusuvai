@@ -26,18 +26,32 @@ class TestFixtureSet:
         # 26 rows until 2026-08-02, when D2a added paneer_fresh, tofu_firm and
         # soya_chunks_dry -- the library's first ingredients carrying a DIAAS
         # above 0.62, without which the quality-source rule would decline every
-        # plate.
-        assert len(load_report.loaded) == 29
+        # plate. 29 rows until 2026-08-16, when TASKS_3.md R3a added
+        # egg_boiled, the first ingredient added after R1a's diet-class model.
+        # 32 rows from 2026-08-16's TASKS_3.md R3b, which added
+        # chicken_breast_raw and pomfret_white_raw.
+        assert len(load_report.loaded) == 32
 
     def test_no_ifct_code_is_invented(self, ingredients):
-        # Four rows (rice_milled_raw/A015, rajma_raw/B020, toor_dal_raw/B021,
-        # potato_raw/F006) now carry real IFCT 2017 codes, extracted 2026-07-24
-        # from a machine-readable re-publication of the source tables -- see
-        # each row's source_note. Every other row is still hand-entered, and an
-        # invented-but-plausible code would be worse than an absent one: it
-        # passes every check while being wrong. So real codes are limited to
-        # exactly this known set; nothing else may carry one.
-        coded = {"rice_milled_raw": "A015", "rajma_raw": "B020", "toor_dal_raw": "B021", "potato_raw": "F006"}
+        # Seven rows now carry real IFCT 2017 codes, extracted from a
+        # machine-readable re-publication of the source tables -- see each
+        # row's source_note. Four (rice_milled_raw/A015, rajma_raw/B020,
+        # toor_dal_raw/B021, potato_raw/F006) were extracted 2026-07-24 via
+        # the Sahu & Sahu Zenodo re-publication; egg_boiled/M004 was added
+        # 2026-08-16 via github.com/nodef/ifct2017, a different mirror of the
+        # same digitization (see data/raw/ifct/README.md for why); the same
+        # day, TASKS_3.md R3b added chicken_breast_raw/N003 and
+        # pomfret_white_raw/P057 via the same mirror. Every other row is
+        # still hand-entered, and an invented-but-plausible code would be
+        # worse than an absent one: it passes every check while being wrong.
+        # So real codes are limited to exactly this known set; nothing else
+        # may carry one.
+        coded = {
+            "rice_milled_raw": "A015", "rajma_raw": "B020",
+            "toor_dal_raw": "B021", "potato_raw": "F006",
+            "egg_boiled": "M004",
+            "chicken_breast_raw": "N003", "pomfret_white_raw": "P057",
+        }
         for ingredient_id, ingredient in ingredients.items():
             if ingredient_id in coded:
                 assert ingredient.ifct_code == coded[ingredient_id]
@@ -45,17 +59,18 @@ class TestFixtureSet:
                 assert ingredient.ifct_code is None
 
     def test_unverified_rows_are_reported_not_silently_accepted(self, load_report):
-        # 28 of 29 rows are unverified; only `water` (which has no nutrients to
+        # 31 of 32 rows are unverified; only `water` (which has no nutrients to
         # get wrong) is marked verified. The three protein rows added 2026-08-02
         # (paneer_fresh, tofu_firm, soya_chunks_dry) are unverified like the
         # rest, and their DIAAS figures -- the field the quality-source rule
         # gates on -- are authored from recollection, which each row's
-        # source_note states. The four real-IFCT-code rows above are
-        # NOT included: their values were extracted by this build, not opened
-        # by a human against the primary source, so they stay verified=false
-        # pending that review (see CLAUDE.md, "only a human... may flip that
-        # flag").
-        assert len(load_report.warnings) == 28
+        # source_note states. The seven real-IFCT-code rows above (including
+        # 2026-08-16's egg_boiled, chicken_breast_raw and pomfret_white_raw)
+        # are NOT exempted: their values were extracted by this build, not
+        # opened by a human against the primary source, so they stay
+        # verified=false pending that review (see CLAUDE.md, "only a
+        # human... may flip that flag").
+        assert len(load_report.warnings) == 31
 
     def test_states_parse(self, ingredients):
         assert ingredients["rice_cooked"].state is RawOrCooked.COOKED
@@ -65,6 +80,10 @@ class TestFixtureSet:
     def test_allergens_parse(self, ingredients):
         assert ingredients["gingelly_oil"].allergens == frozenset({"sesame"})
         assert ingredients["rice_cooked"].allergens == frozenset()
+        # TASKS_3.md R3b: fish is a recognised major allergen. Confirms the
+        # allergen vocabulary and the loader handle "fish" like any other
+        # value in the |-separated column -- no special-casing needed.
+        assert ingredients["pomfret_white_raw"].allergens == frozenset({"fish"})
 
     def test_root_vegetable_class_is_stated_not_inferred(self, ingredients):
         # Replaces jain_safe (removed 2026-08-14, TASKS_3.md R1a): jain

@@ -3,9 +3,11 @@
 ## What is actually in here
 
 `fixture_ingredients.csv` is mostly a **hand-entered fixture set**, not an
-IFCT extract, plus four rows updated 2026-07-24 with real IFCT 2017 values.
-28 of its 29 rows have `verified` set to `false`; 25 have an empty
-`ifct_code`. Both are deliberate:
+IFCT extract, plus seven rows carrying real IFCT 2017 values: four updated
+2026-07-24, one (`egg_boiled`) added 2026-08-16 (TASKS_3.md R3a), and two
+more (`chicken_breast_raw`, `pomfret_white_raw`) added the same day
+(TASKS_3.md R3b — see below). 31 of its 32 rows have `verified` set to
+`false`; 25 have an empty `ifct_code`. Both are deliberate:
 
 Three of those rows — `paneer_fresh`, `tofu_firm` and `soya_chunks_dry`, added
 2026-08-02 — deserve a specific warning beyond the general one below. Their
@@ -79,6 +81,183 @@ acid profile elsewhere in the tables. This isn't an ordinary unverified gap
 that a human opening the PDF could close: a different source entirely (e.g.
 USDA FoodData Central) would be needed, and that is out of scope here. Both
 rows' `source_note` says this explicitly.
+
+## A fifth row carries real IFCT 2017 data, from a different mirror (2026-08-16, TASKS_3.md R3a)
+
+`egg_boiled` (IFCT code M004, "Egg, poultry, whole, boiled", group M) is the
+first ingredient row this build added after R1a's diet-class model landed.
+Its composition (energy, protein, fat, carb, fibre, sodium, iron, calcium)
+was retrieved from **`github.com/nodef/ifct2017`**, not the Zenodo
+re-publication (`ifct2017/ifct2017`) the four rows above used — same
+underlying NIN measurement and the same digitization lineage (`nodef` is the
+actively-maintained source repo the Zenodo releases are cut from), but a
+different distribution, used specifically because the Zenodo mirror's own
+`compositions/index.csv` (same file, byte-for-byte, just re-hosted) truncated
+before reaching group M under this build's fetch tooling on every CDN tried
+(`unpkg`, `jsdelivr`, `raw.githubusercontent.com`) — group M is the 13th of
+20 food groups in file order, and the file is 1.15 MB, well past whatever
+this build's tooling caps a single fetch at. `curl`-ing the raw file directly
+and grepping it locally (rather than through a fetch tool that summarizes
+the page) is what actually got past the cap; that method should work for any
+future row this size or position blocks on. Same evidentiary weight as the
+four rows above: a second party's transcription, not a human having opened
+the primary `IFCT2017.pdf` — `verified=false` for the same reason.
+
+**Vitamin B12 could not come from IFCT at all, for a structural reason, not
+an egg-specific one.** The `compositions/index.csv` schema was checked
+programmatically against every one of its 421 column headers for `b12`,
+`cbl` or `cobal` in any form — zero matches. IFCT 2017's compositions table
+does not tabulate vitamin B12 for *any* food, not just egg. `egg_boiled`'s
+`b12_ug` (1.11) is therefore sourced from a different, DOI-free but
+citable source instead — USDA FoodData Central, SR Legacy, FDC ID 173424
+("Egg, whole, cooked, hard-boiled") — and the row's `source_note` says so in
+capital letters at the point where the value appears, specifically so this
+single field is never mistaken for an IFCT figure while every other field on
+the same row is one. This is a **flagged, single-field exception**, not a
+default: the alternative (leaving `b12_ug` at an implicit `0`, which every
+loader-visible row before this one happened to have as a real possible
+value) would have silently claimed egg has no B12, which is false and would
+have been the exact "silence reads as certainty" failure CLAUDE.md's
+"Things that have gone wrong before" section already lists three instances
+of.
+
+**`diaas` (1.35) is sourced, not authored** — unlike `paneer_fresh`,
+`tofu_firm` and `soya_chunks_dry` above, all three of which are recalled
+from a remembered range with no primary source opened. Fanelli NS, Martins
+JCFR, Stein HH, "The digestible indispensable amino acid score (DIAAS) in
+eggs and egg-containing breakfast meals is greater than in toast breads or
+hash browns served without eggs," *Journal of Nutritional Science*
+2024;13:e68, DOI 10.1017/jns.2024.71 — reports DIAAS = 135% for boiled egg
+under the reference amino-acid pattern for individuals older than 3 years
+(this project plans meals for adults, not infants; the same paper's
+6–36-month reference pattern gives 110% instead, not the figure used here).
+
+## Two more rows carry real IFCT 2017 data, with a derived (not quoted) DIAAS (2026-08-16, TASKS_3.md R3b)
+
+`chicken_breast_raw` (IFCT code N003, group N — Poultry) and
+`pomfret_white_raw` (IFCT code P057, group P — Marine Fish) were added on the
+same footing as `egg_boiled` for macro composition: retrieved from
+`github.com/nodef/ifct2017`'s `compositions/index.csv`, `verified=false` for
+the same reason (a second party's transcription, not a human having opened
+the primary `IFCT2017.pdf`). Both reconcile cleanly under this build's
+Atwater check. `chicken_breast_raw` uses N003 (breast) rather than N001
+(leg): N001's own stated energy fails Atwater reconciliation by roughly 2x
+(383.6 kcal stated vs 191.5 kcal implied by its protein and fat) — an
+internal error in that IFCT row, found by this build's own check, not used
+anywhere.
+
+**Neither row has a cooked-state IFCT entry.** Unlike egg (which had a real
+`M004`, "boiled"), IFCT's poultry and marine-fish groups are tabulated
+raw-only. Both rows are therefore used **as raw** for what will be a cooked
+quantity in any recipe built on them — an unresolved approximation, larger
+than the accepted onion/tomato-in-gravy convention, because meat loses
+substantially more mass to water on cooking than a vegetable does. No yield
+factor is registered in `core/nutrition/citations.py` to correct for this,
+and none was sourced in this task. Flagged here and in each row's
+`source_note`; a future task should either source a cooked-state IFCT/USDA
+entry or register a meat-specific cooking-yield factor.
+
+**B12** for both rows is a single-field, flagged exception to the IFCT
+sourcing above, the same pattern `egg_boiled` established: IFCT tabulates no
+B12 for any food. `chicken_breast_raw`'s `b12_ug` (0.34) is USDA FoodData
+Central FDC ID 171477 ("Chicken, broilers or fryers, breast, meat only,
+cooked, roasted"). `pomfret_white_raw`'s `b12_ug` (1.86) is USDA FDC ID
+175177 ("Fish, tilapia, cooked, dry heat") — **not pomfret**, which USDA does
+not carry; tilapia stands in as the closest available lean-whitefish match,
+the same substitution used for the DIAAS derivation below.
+
+### `diaas` on both rows is DERIVED BY THIS BUILD, not quoted from a published score
+
+This is a third, weaker evidentiary tier below `egg_boiled`'s "sourced, not
+authored" DIAAS (itself already one step below a primary source a human has
+opened): a published score is copied from a paper; a **derived** score is
+computed here, by this build, by combining a published *digestibility* input
+with a separately sourced *amino-acid-content* table against the published
+FAO reference pattern. Every place either number appears — this README, the
+CSV `source_note`, and any future recipe file's header comment — must say
+"derived", not "sourced", for exactly this reason. The computation follows
+FAO Food and Nutrition Paper 92 (2013), *Dietary protein quality evaluation
+in human nutrition: Report of an FAO Expert Consultation*, Table 5's "older
+child, adolescent, adult" scoring pattern (mg/g protein: His 16, Ile 30,
+Leu 61, Lys 48, SAA 23, AAA 41, Thr 25, Trp 6.6, Val 40) — the same pattern
+`egg_boiled`'s quoted DIAAS itself rests on, read here directly from the FAO
+PDF. For each indispensable amino acid, `ratio = content_mg_per_g_protein ×
+true_ileal_digestibility ÷ reference_mg_per_g_protein`; the DIAAS is the
+*minimum* ratio across all amino acids assessed (the limiting amino acid),
+not truncated at 100% — DIAAS scores for single foods are not capped, unlike
+PDCAAS; FAO 2013's own worked example caps only mixed-diet calculations.
+Where only one member of a combined group (SAA = Met+Cys, AAA = Phe+Tyr) had
+a measured digestibility figure, that figure was applied to the whole
+group's content — the same convention the source papers themselves use when
+only one group member was assayed.
+
+**Why amino-acid *content* was sourced from USDA, not from this file's own
+IFCT columns.** IFCT's amino-acid columns were checked against typical
+physiological ranges before use — the same discipline this build already
+applies to macro energy via Atwater reconciliation, extended here to amino
+acids because DIAAS is highly sensitive to whichever one is limiting. Three
+implausible values turned up this way: IFCT's cysteine figure for N003
+(chicken breast) implies roughly 92 mg cysteine per g protein against a
+normal range near 13 mg/g; Rohu (S006) shows a similarly inflated cysteine
+figure; and IFCT's phenylalanine figure for P057 (Pomfret) implies roughly
+64 mg/g protein against a typical range of 38–42 mg/g. These are scattered
+per-row/per-amino-acid errors, not a single correctable scale bug, so IFCT's
+amino-acid columns are not used anywhere in either derivation below. Amino-
+acid content for both rows instead comes from USDA FoodData Central — the
+same cooked chicken-breast (FDC 171477) and tilapia (FDC 175177) items used
+for B12 above.
+
+**Chicken — digestibility.** Kashyap S, Shivakumar N, Varkey A, Duraisamy R,
+Thomas T, Preston T, Devi S, Kurpad AV, "Ileal digestibility of intrinsically
+labeled hen's egg and meat protein determined with the dual stable isotope
+tracer method in Indian adults," *Am J Clin Nutr* 2018;108(5):980–987, DOI
+10.1093/ajcn/nqy178 (open access, CC BY 4.0, full text at
+eprints.gla.ac.uk/187598/1/187598.pdf) — Table 4, true ileal digestibility in
+healthy Indian adults, cooked (pressure-cooked, pooled breast/wing/
+thigh/drumstick) chicken meat, the same preparation this project's chicken
+recipes use: methionine 92.7%, phenylalanine 94.4%, threonine 93.7%, lysine
+95.5%, leucine 89.1%, isoleucine 88.8%, valine 89.6%. Tryptophan (95.9%) is
+from the same lab's follow-up paper, Kashyap S, Devi S, Pasanna RM, Preston
+T, Kurpad AV, "True Digestibility of Tryptophan in Plant and Animal
+Protein," *J Nutr* 2024;154(11):3203–3209, DOI 10.1016/j.tjnut.2024.09.014,
+PMID 39307282 — the Trp figure only, read from the freely visible PubMed
+abstract; the paper's own full DIAAS table is paywalled (confirmed
+not-open-access via the Unpaywall API) and was never reached. **Histidine is
+unassessed, not guessed**: no histidine digestibility figure was found in
+either paper, and none was estimated to fill the gap. Of the 8 amino acids
+that do have both a digestibility and a content figure, **leucine is
+limiting at 109.6%** (valine close behind at 111.1%); the resulting DIAAS is
+**1.10**, reported to 2 significant figures because histidine, once
+measured, could in principle move the true score. This 8-of-9, Indian-adult,
+same-preparation dataset is a stronger foundation for chicken specifically
+than the pig-model alternative below — real adult humans, not a cross-species
+model, eating chicken cooked the way this project's recipes cook it.
+
+**Fish — digestibility, and a named cross-species substitution.** Hodgkinson
+SM, Stroebinger N, Stein HH, Fanelli NS, de Vries S, van der Wielen N,
+Hendriks WH, Moughan PJ, "True Ileal Amino Acid Digestibility of Human Foods
+Classified According to Food Type as Determined in the Growing Pig," *J
+Nutrition* 2025;155:3384–3400 — a 97-food pig-model study. Its "Fish, white"
+column was identified as **tilapia** (fillets, boiled 10 min then diced) by
+elimination: the same table (Table 2) carries separate "Salmon" and
+"Sardines" columns elsewhere, so "Fish, white" is the third tested species,
+and "white" matches tilapia's white flesh against salmon's pink and
+sardines' oily, dark flesh. Pomfret itself was not among the three fish
+species Hodgkinson et al. tested. Tilapia was chosen as its proxy — over
+salmon or sardines — because tilapia and pomfret are both lean, white-
+fleshed fish of similar macro-composition (roughly 19–20% protein, under 6%
+fat), where salmon and sardines are both markedly fattier, oilier fish and
+would be a worse structural match. To keep the derivation internally
+coherent, **both** the digestibility figures and the amino-acid-content
+figures used are tilapia's (Hodgkinson for digestibility, USDA FDC 175177
+for content) — not tilapia digestibility mixed with Pomfret's own (already
+distrusted, see above) amino-acid content. The result is therefore a
+**tilapia** DIAAS, applied to Pomfret as the best available proxy — a second,
+distinct approximation layered on top of "derived, not quoted," named here
+and in the row's `source_note` rather than left implicit. All 9 indispensable
+amino acids have both a digestibility and a content figure for this
+substitution (no gap, unlike chicken); **valine is limiting at 115.8%**, so
+the resulting DIAAS is **1.16**.
 
 ## Conventions
 
