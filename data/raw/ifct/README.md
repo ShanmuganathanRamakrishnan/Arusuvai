@@ -259,6 +259,65 @@ amino acids have both a digestibility and a content figure for this
 substitution (no gap, unlike chicken); **valine is limiting at 115.8%**, so
 the resulting DIAAS is **1.16**.
 
+## A sixth row carries a real, published DIAAS and USDA composition — not IFCT, and stronger than the derived-DIAAS tier above (2026-08-22, TASKS_3.md R4c)
+
+`soya_flour_defatted` is not IFCT data at all — this build has no primary IFCT
+entry for soya flour, and neither of the previous two evidentiary tiers
+(`egg_boiled`'s IFCT-sourced macros with a quoted DIAAS from a second paper, or
+`pomfret_white_raw`'s IFCT macros with a DIAAS *derived by this build* from raw
+FAO amino-acid tables) applied. This row uses a **published, quoted DIAAS** —
+the strongest tier yet, one step below a primary source a human has opened —
+paired with USDA FoodData Central composition, because no IFCT row exists to
+pair it with.
+
+**DIAAS 1.05**, Mathai JC, Liu Y, Stein HH, "Values for digestible
+indispensable amino acid scores (DIAAS) for some dairy and plant proteins may
+better describe protein quality than values calculated using the concept for
+protein digestibility-corrected amino acid scores (PDCAAS)," *British Journal
+of Nutrition* (2017) 117:490–499, DOI 10.1017/S0007114517000125 — Table 7,
+"3 years and above" row (the adult FAO 2013 reference amino-acid pattern, the
+same standard `egg_boiled`, `chicken_breast_raw` and `pomfret_white_raw` are
+matched to). Soya flour scores 105% (DIAAS 1.05), sulfur amino acids
+first-limiting. The same table's soy protein isolate scores 98% and soy
+protein concentrate 73% (below the 0.75 threshold) — soya flour, not one of
+the other two soy products, is the row added here, because it is the one that
+qualifies and the one whose composition is independently available (below).
+
+The paper's own Table 1 states the tested soya flour was 52.29% crude protein
+(Archer Daniels Midland Company). That figure is not this row's `protein_g` —
+it constrains which composition source may honestly stand in for the same
+product, per CLAUDE.md invariant 3 ("a citation must match the mechanism, not
+just exist").
+
+**Composition**: USDA FoodData Central, SR Legacy, FDC ID 174275, "Soy flour,
+defatted," published 2019-04-01 — protein 51.46 g, fat 1.22 g,
+carbohydrate-by-difference 33.92 g, fibre 17.50 g, sodium 20 mg, iron 9.24 mg,
+calcium 241 mg, vitamin B-12 0 µg (reported, not absent — the correct
+biological fact for a plant food, not a missing-data gap the way `chicken_breast_raw`'s
+b12 substitution was). 51.46% protein is a close match to the DIAAS paper's own
+52.29%, not the mismatched full-fat soy flour composition (much higher fat,
+lower protein density per 100 g) that a less careful pairing would have used.
+A second FDC entry (Foundation Foods, FDC ID 1104705, published 2020-10-30:
+protein 51.1 g, fat 3.33 g, fibre 24.3 g) was checked and set aside — less
+aligned on fat and fibre, no reason to prefer it over SR Legacy 174275.
+Cross-checked against USDA Agriculture Handbook 8-16 (secondary citation,
+via fearn.pair.com): sodium 20 mg, iron 9.24 mg and calcium 241 mg match
+174275 exactly; protein/carb differ slightly (47.0 g / 38.4 g) across
+editions, expected for different lots and years, not a discrepancy that
+changes which row this is.
+
+Energy reconciles under this build's own Atwater convention (see Conventions
+below): 51.46×4 + 1.22×9 + (33.92−17.50)×4 + 17.50×2 = 317.6 kcal against the
+stated 327 kcal — 2.9% off, well inside the 15% tolerance.
+
+`verified=false`, same as every other row in this file, regardless of this
+row's stronger sourcing tier: CLAUDE.md invariant 4 requires a human to have
+opened the primary source before `verified=true` — the Mathai/Liu/Stein PDF
+and the USDA FDC API were read and queried by this assistant, which does not
+satisfy that rule. `classes=''` (plant protein, no `IngredientClass` applies)
+and `allergens='soya'`, matching `tofu_firm` and `soya_chunks_dry`'s existing
+convention for soya-derived rows.
+
 ## Conventions
 
 - One row per (food, state). `state` is `raw`, `cooked` or `as_used`.
