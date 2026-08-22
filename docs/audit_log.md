@@ -115,6 +115,65 @@ instruction — not carried further without direction.
 
 ---
 
+## 2026-08-22 — R6: the serving-granularity gap is real, current, and not honestly recoverable
+
+**What was measured.** `docs/design/probes/r6_serving_granularity_gap.py`
+(committed), same 144-profile x 4-template grid every other probe here uses.
+For every combination that survives `feasible_combinations` (the O(1) bound
+pre-filter) but `solve_combination` rejects at every legal integer count —
+the exact gap TASKS_3.md's R6 text names — the probe tries widening ONE
+component's `max_count` by +1, or its `min_count` by -1, in isolation
+(`dataclasses.replace` on a throwaway copy, never touching a recipe file), to
+see whether the smallest possible widening would let the solver succeed.
+
+**The number itself has grown, and that is expected, not a regression.**
+TASKS_3.md's R6 text cites 512 gap-instances. Re-measured on today's library
+(after R3a/R3b/R4a/R4b/R4c and R1a's ingredient-class model, none of which
+existed when 512 was recorded): **2093**. More recipes and more profiles that
+can now reach further templates mechanically enumerate more combinations,
+and more of those combinations sit in the bound-feasible-but-unsolved gap —
+consistent with finding 51's own observation that `south_indian/lunch`'s
+bound-reachable rate (70/72) vastly exceeds its solved rate, and that this
+specific gap is what R6 was written to explain.
+
+**Recoverable, mechanically: 93 of 2093 (4.4%).** Only by widening one of
+five recipes' ranges: `soya_chunk_curry` (43), `soya_idli` (36),
+`onion_raita` (8), `soya_kuzhambu` (5), `thayir_plain` (1). Lowering a
+`min_count` by 1 recovered nothing anywhere — the gap is entirely a ceiling
+problem, not a floor one.
+
+**Recoverable, honestly: 0 of 2093.** Every one of the five recipes above
+already carries an EXPLICIT, PRIOR reason its current ceiling must not move,
+written into its own file before this investigation and for reasons that had
+nothing to do with solver granularity:
+
+- `soya_chunk_curry.yaml`, `soya_kuzhambu.yaml`: "a katori of this carries
+  roughly [two/three] times the protein of a katori of [dal/sambar], so the
+  same ceiling would hand the solver [four/three] times the room to close a
+  protein gap by volume."
+- `onion_raita.yaml`: "a plate carrying three katoris of it is one the
+  solver invented to reach a protein floor, not one anyone was served."
+- `thayir_plain` (`thayir_sadam_curd.yaml`): "curd is the one component here
+  the solver could otherwise use to answer protein cheaply... three katoris
+  of curd is not how the meal ends."
+- `soya_idli.yaml`: "Six is a large breakfast and an ordinary one" — a real
+  portion-size judgment, not a solver accommodation; a seventh is not.
+
+Widening any of the five for this task would be exactly what TASKS_3.md's own
+standing rule forbids: "Never adjust a threshold, bound or serving range
+**for the purpose of** making the planner pass." Each was already reasoned
+about once, independently of R6, and each reasoning still holds.
+
+**Disposition.** No recipe file changed. "Very little is recoverable" —
+TASKS_3.md's own stated acceptable answer — is the honest one, and in this
+case it rounds down further, to zero. The gap (2093 instances, concentrated
+in combinations built around `soya_chunk_curry`/`soya_chunk_masala`/
+`soya_kuzhambu`/`masala_dosa` — dishes the solver keeps stretching toward a
+protein floor) is a real, current, and apparently structural property of this
+library's serving-unit design, not a coarse-graining bug to fix.
+
+---
+
 ---
 
 ## 2026-08-20 — finding 50: a large probe-metric swing was used to skip the queue's own reconsideration step
