@@ -61,6 +61,58 @@ to the template the task targeted, and traced to a specific, reversible
 mechanism. Logged as a worked example of finding 50's rule applied
 successfully, not as a new defect.
 
+## 2026-08-22 — finding 51: south_indian/lunch's 6.2% has two separate causes, neither an R4d problem
+
+**What was investigated.** Per this session's own reconsideration step after
+R4c, `south_indian/lunch` is now the only template below TASKS_3.md's 30%
+floor (6.2%, 9/144). The next queued task, R4d, is scoped to MISSING meal
+types (North breakfast, South dinner, snacks) and does not touch this
+template at all, so before doing R4d the queue was checked for whether it
+should be reordered — not reshaped silently, reported here instead.
+
+**Finding, part 1 — vegan south_lunch is a hard structural zero, not a
+rankability problem.** `SOUTH_LUNCH.curd_course` is REQUIRED
+(`accepted_categories={"curd", "buttermilk"}`, `templates.py`), and the only
+recipe in either category, `thayir_plain`, is dairy. There is no
+`buttermilk`-category recipe in the library at all. Built the candidate pool
+for `south_indian/lunch` under `DietPattern.VEGAN` directly: **0 combinations
+enumerate**, for every vegan profile, unconditionally — not a bound failure,
+not a declined plan, the template cannot be assembled at all. This alone caps
+`south_indian/lunch`'s achievable rankability at 50% (72 of 144 profiles are
+vegan) regardless of anything else the library does.
+
+**Finding, part 2 — among vegetarian profiles, the real blocker is the
+solver's integer counts, not missing recipes.** A bound-reachability check
+(same `broken_bounds` logic `probe_blocking_bounds.py` and the R4b diagnostic
+use — continuous macro bounds, no integer-count search) found 70 of 72
+vegetarian `south_indian/lunch` profiles have a combination with **no broken
+bound at all** at the ladder's own accepted target. But
+`probe_rank_input2.py`'s real number — which additionally requires
+`core.planner.solver.solve` to find a legal INTEGER unit-count assignment —
+counts only 9 of 144 (all vegetarian, since vegan is structurally 0) with
+>= 2 such plates: roughly 9/72 ≈ 12.5% of the profiles a bound-only check
+says should pass 97% of the time. That gap is the signature TASKS_3.md's own
+R6 task names: "512 combination-instances cleared the O(1) feasibility filter
+and were still rejected by the solver — no whole number of servings lands
+inside the bounds. More recipes do not fix these." `south_indian/lunch` looks
+like exactly the template R6 was written for, not a recipe-library gap.
+
+**Why this is not an R4-shaped fix.** `south_indian/lunch`'s pool is thin
+(2 rice/mixed-rice, 4 gravy, 2 vegetable, 1 curd — for vegetarian; 0 curd
+options for vegan) but bound-reachable at close to full rate already; the
+scarce resource here is INTEGER-count solvability and a vegan curd/buttermilk
+substitute, neither of which "add one more recipe of the type R4a/b/c added"
+addresses on its own.
+
+**Disposition.** Not fixed here — reported per this session's queue
+protocol rather than reshaped into new work. Two candidate next tasks, not
+yet queued: (a) R6 as already specified, now with `south_indian/lunch` as a
+concrete, measured target case; (b) a vegan-safe buttermilk/curd substitute
+recipe for `SOUTH_LUNCH.curd_course`, structurally required before vegan
+`south_indian/lunch` can ever pass regardless of (a). Left for a human
+decision on ordering, per this task's own "investigate south lunch first"
+instruction — not carried further without direction.
+
 ---
 
 ---
