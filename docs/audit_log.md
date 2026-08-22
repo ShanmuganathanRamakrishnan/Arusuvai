@@ -6,6 +6,173 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-08-22 — R4c reconsideration: a large favourable swing, checked this time before moving on
+
+**What happened.** TASKS_3.md R4c ("a vegan-safe qualifying protein source")
+added `soya_flour_defatted` (DIAAS 1.05, sourced from Mathai, Liu & Stein 2017,
+Br J Nutr 117:490–499, DOI 10.1017/S0007114517000125) and a new recipe,
+`soya_idli`, reaching `SOUTH_BREAKFAST.tiffin_item` — the required slot
+finding 25 named as the one no south-breakfast dish could carry a
+high-quality protein source in. `probe_rank_input2.py`'s primary
+(accepted-rung) exit-condition number moved from 39.6% (228/576) to 49.7%
+(286/576), entirely on `south_indian/breakfast`: 29.2% (42/144) → 69.4%
+(100/144).
+
+**Why this entry exists at all, given the number moved the right way.**
+Finding 50 (below) is the standing correction: "reconsider the queue" is
+unconditional, not a check that gets skipped once a metric clears some
+threshold in the favourable direction. A +20-point swing on one template is,
+if anything, a LARGER move than finding 50's own +12.0 that triggered the
+correction — so it was reconciled properly rather than taken on faith,
+per that correction.
+
+**How it was reconciled** (not just asserted):
+
+1. Re-ran `probe_rank_input2.py` against the exact pre-R4c tree, by
+   `git stash push -u` on the R4c changes, re-running the probe, then
+   `git stash apply` (never bare `stash pop`, per this session's own
+   worktree-safety rule) to restore them. Baseline: overall 39.6%,
+   `south_indian/breakfast` 29.2%, `south_indian/lunch` 6.2%,
+   `north_indian/lunch` 63.2%, `north_indian/dinner` 59.7% — matching the
+   standing numbers TASKS_3.md already recorded before this task, confirming
+   the stash round-trip reproduced the right state.
+2. Compared template-by-template: `south_indian/lunch`, `north_indian/lunch`
+   and `north_indian/dinner` are BIT-FOR-BIT IDENTICAL before and after (9/144,
+   91/144, 86/144 respectively, both runs) — expected, since R4c touched no
+   recipe or ingredient reachable by those templates' categories. Only
+   `south_indian/breakfast` moved, and only in the direction the new recipe's
+   mechanism predicts.
+3. Traced the mechanism directly, not just the aggregate count: solved the
+   real reference profile's `south_breakfast` plate before and after. Before:
+   idli + soya_kuzhambu + coconut_chutney + thayir_plain, quality protein
+   17.495 g (needs the curd course to clear the floor). After: soya_idli x6 +
+   sambar x2 + coconut_chutney x3, quality protein 12.3504 g — all of it from
+   `soya_idli`'s own soya flour, no curd or kuzhambu needed. Disqualifying
+   `soya_flour_defatted` alone (DIAAS forced to 0.50) reverts the solved plan
+   to the exact pre-R4c plate and figure (17.495 g) — confirms the swing is
+   this ingredient's effect and nothing else, the same before/after-DIAAS
+   perturbation `TestThePerturbationTest` already required of the rule itself.
+4. Ran the full suite (`PYTHONHASHSEED=0 FORCE_COLOR=0 PY_COLORS=0 python -m
+   pytest tests/ -q -m "not web"`) after restoring: 449 passed, 0 failed,
+   confirming no other template's tests regressed.
+
+**Disposition.** No correction needed this time — the swing is real, isolated
+to the template the task targeted, and traced to a specific, reversible
+mechanism. Logged as a worked example of finding 50's rule applied
+successfully, not as a new defect.
+
+## 2026-08-22 — finding 51: south_indian/lunch's 6.2% has two separate causes, neither an R4d problem
+
+**What was investigated.** Per this session's own reconsideration step after
+R4c, `south_indian/lunch` is now the only template below TASKS_3.md's 30%
+floor (6.2%, 9/144). The next queued task, R4d, is scoped to MISSING meal
+types (North breakfast, South dinner, snacks) and does not touch this
+template at all, so before doing R4d the queue was checked for whether it
+should be reordered — not reshaped silently, reported here instead.
+
+**Finding, part 1 — vegan south_lunch is a hard structural zero, not a
+rankability problem.** `SOUTH_LUNCH.curd_course` is REQUIRED
+(`accepted_categories={"curd", "buttermilk"}`, `templates.py`), and the only
+recipe in either category, `thayir_plain`, is dairy. There is no
+`buttermilk`-category recipe in the library at all. Built the candidate pool
+for `south_indian/lunch` under `DietPattern.VEGAN` directly: **0 combinations
+enumerate**, for every vegan profile, unconditionally — not a bound failure,
+not a declined plan, the template cannot be assembled at all. This alone caps
+`south_indian/lunch`'s achievable rankability at 50% (72 of 144 profiles are
+vegan) regardless of anything else the library does.
+
+**Finding, part 2 — among vegetarian profiles, the real blocker is the
+solver's integer counts, not missing recipes.** A bound-reachability check
+(same `broken_bounds` logic `probe_blocking_bounds.py` and the R4b diagnostic
+use — continuous macro bounds, no integer-count search) found 70 of 72
+vegetarian `south_indian/lunch` profiles have a combination with **no broken
+bound at all** at the ladder's own accepted target. But
+`probe_rank_input2.py`'s real number — which additionally requires
+`core.planner.solver.solve` to find a legal INTEGER unit-count assignment —
+counts only 9 of 144 (all vegetarian, since vegan is structurally 0) with
+>= 2 such plates: roughly 9/72 ≈ 12.5% of the profiles a bound-only check
+says should pass 97% of the time. That gap is the signature TASKS_3.md's own
+R6 task names: "512 combination-instances cleared the O(1) feasibility filter
+and were still rejected by the solver — no whole number of servings lands
+inside the bounds. More recipes do not fix these." `south_indian/lunch` looks
+like exactly the template R6 was written for, not a recipe-library gap.
+
+**Why this is not an R4-shaped fix.** `south_indian/lunch`'s pool is thin
+(2 rice/mixed-rice, 4 gravy, 2 vegetable, 1 curd — for vegetarian; 0 curd
+options for vegan) but bound-reachable at close to full rate already; the
+scarce resource here is INTEGER-count solvability and a vegan curd/buttermilk
+substitute, neither of which "add one more recipe of the type R4a/b/c added"
+addresses on its own.
+
+**Disposition.** Not fixed here — reported per this session's queue
+protocol rather than reshaped into new work. Two candidate next tasks, not
+yet queued: (a) R6 as already specified, now with `south_indian/lunch` as a
+concrete, measured target case; (b) a vegan-safe buttermilk/curd substitute
+recipe for `SOUTH_LUNCH.curd_course`, structurally required before vegan
+`south_indian/lunch` can ever pass regardless of (a). Left for a human
+decision on ordering, per this task's own "investigate south lunch first"
+instruction — not carried further without direction.
+
+---
+
+---
+
+## 2026-08-20 — finding 50: a large probe-metric swing was used to skip the queue's own reconsideration step
+
+**What was claimed**, in the chat report and commit message for R4b
+(`7338e35`, `soya_chunk_masala`): the probe-gate jump (+12.0 points,
+27.6% -> 39.6%, well past `TASKS_3.md`'s "less than 3 points, stop and
+reconsider" line) was read as license to skip reconsidering the queue
+before starting R4c — "not stopping to reconsider the queue's shape as a
+result, per the standing rule (a task that moves the number by a lot is
+grounds to continue, not pause)."
+
+**Why that is wrong.** `TASKS_3.md`'s own protocol text (quoted in root
+`CLAUDE.md`) requires "reconsider the queue" after **every** task,
+unconditionally. The 3-point line is a trigger for one specific failure
+mode — a task that moved nothing, which is itself grounds to stop and ask
+whether the work was pointed at the right thing. It says nothing about the
+opposite case. Treating "the number moved a lot in the direction I wanted"
+as a substitute for the reconsideration step it was never conditioned on
+is the same shape of error as reading a large p-value as proof of the null:
+a big favourable swing is exactly when a real mechanism might be doing
+something surprising, which is a *stronger* reason to check what changed,
+not a weaker one. Caught by the user, not found internally, before any
+further task was started.
+
+**Checked, not just corrected in prose.** `soya_chunk_masala`'s own probe
+delta (recorded in `7338e35`'s commit message) showed `fat_g_ceiling`
+sole-cause count nearly doubling (284 -> 568) at the same time the phase
+gate improved sharply, and that was flagged as "probably inert enumeration-
+space noise" without checking whether it was actually blocking any
+profile. Checked directly here: comparing `north_indian/lunch` +
+`north_indian/dinner` decline counts with and without
+`soya_chunk_masala.yaml` in the library (288 (profile, template) cases
+each side, `soya_chunks_masala` moved out of `data/recipes/` and back for
+the "before" run) —
+
+  BEFORE: 25 declines. Sole/joint reasons: quality_protein_g:below_floor
+  (7), protein_g:below_floor (6), fat_g:below_floor (4),
+  fat_g:above_ceiling + sodium_mg:above_ceiling (3), three more at 1 each.
+
+  AFTER:  12 declines. fat_g:above_ceiling + sodium_mg:above_ceiling: still
+  exactly 3 — the same combinations, not new ones. fat_g:below_floor: 0
+  (fixed). quality_protein_g:below_floor: 0 (fixed, as a side effect —
+  soya_chunk_masala's larger soya-chunk mass also qualifies). protein_g:
+  below_floor: 8, up from 6 — the one wrinkle, not chased further here.
+
+So the raw `fat_g_ceiling` sole-cause count rising WAS inert with respect
+to actual declines, as guessed — but it was a guess stated as settled
+before this check existed, and the guess could have been wrong. The
+`protein_g:below_floor` count rising from 6 to 8 is a real, small, new
+wrinkle this recipe introduced and is left here, unfixed, for whoever
+picks up R4c to be aware of rather than surprised by.
+
+*Disposition:* OPEN as a standing-discipline note (not a code defect): the
+"reconsider the queue" step is not conditional on the size or direction of
+a probe-metric move. `protein_g:below_floor`'s 6 -> 8 rise is OPEN as a
+minor, unchased finding.
+
 ---
 
 ## 2026-08-15 — finding 49: R1b's D1/D2 "isolated from each other" claim was wrong in one direction

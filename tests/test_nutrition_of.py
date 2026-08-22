@@ -314,7 +314,12 @@ class TestEligibilityConsequence:
     #: row — the same doubt twice. What separates this population from the rest
     #: of the library is not "cooks without oil", it is "cooks a raw-basis row
     #: with no constant describing the step".
-    NO_OIL_COOKED = ("idli", "phulka")
+    #:
+    #: `soya_idli` (TASKS_3.md R4c, 2026-08-22) joined 2026-08-22: same
+    #: fermented-batter-then-steamed preparation as `idli`, same raw-basis
+    #: rice/urad/soya-flour rows with no process constant, same
+    #: `process_uncertainty_unassessed` declaration for every macro it carries.
+    NO_OIL_COOKED = ("idli", "phulka", "soya_idli")
 
     def test_every_recipe_sits_at_exactly_its_registered_band(
         self, library, ingredients
