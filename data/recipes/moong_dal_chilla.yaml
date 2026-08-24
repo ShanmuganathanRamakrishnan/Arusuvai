@@ -1,0 +1,89 @@
+# Moong dal chilla — a savoury pancake of ground, spiced moong dal batter,
+# spread thin and griddled on a tawa. A real, everyday North Indian
+# breakfast dish in its own right, not invented to balance a target: it is
+# the standard high-protein, low-oil breakfast alternative to a paratha,
+# named alongside poha and paratha as a common North Indian breakfast in the
+# same sources consulted for aloo_paratha.yaml.
+#
+# TASKS_3.md R4d follow-up, added after aloo_paratha/paneer_paratha/
+# plain_paratha/phulka, paired with onion_raita, were measured against the
+# breakfast target and found unable to satisfy the protein floor (28 g), fat
+# ceiling (~22.6 g) and carb floor (~75.2 g) together at any serving count:
+# paratha-family dishes carry too much fat once served in the quantity
+# needed to reach the protein floor, and phulka alone cannot reach the
+# protein floor at any legal count. Ground dal is the standard fix for
+# exactly this shape of gap in Indian home cooking (a protein-dense,
+# low-fat course) — this recipe brings that food group into the template
+# rather than inventing a fourth bread variant. Built on moong_dal_raw
+# (`data/raw/ifct/fixture_ingredients.csv`), a new ingredient row sourced
+# for this recipe.
+id: moong_dal_chilla
+name: Moong dal chilla
+name_ta: பாசி பருப்பு சில்லா
+name_hi: मूंग दाल चीला
+
+region: north_indian
+# Not vegan: onion_raw is jain-unsafe (root_vegetable class), but nothing
+# here is dairy or egg, so this dish is vegan-eligible in its own right —
+# it does not touch NORTH_BREAKFAST's separate vegan structural gap, which
+# is entirely about curd_or_raita's only current filler being dairy.
+# Not jain: onion_raw is classed root_vegetable.
+
+category: dal_chilla
+prep_minutes: 20
+tags: [pancake, breakfast, high_protein, everyday]
+
+serving_unit:
+  measure: dosa
+  grams_per_unit: 81.0
+  min_count: 1
+  default_count: 2
+  max_count: 5
+  note: >-
+    Reuses the generic dosa measure family (a spread, griddled batter item is
+    the same kind of serving unit) rather than inventing a new one, with
+    grams_per_unit overridden to 81.0 g — this recipe's own summed
+    ingredient weight, thinner and lighter than a masala dosa. Five is a
+    plausible ceiling for a protein-dense pancake eaten as a full breakfast
+    course rather than a side.
+
+# has_process is True (the oil line carries a process key) — see
+# aloo_paratha.yaml's header for what that does and does not cover for the
+# loader's earned-zero check.
+
+ingredients:
+  - id: moong_dal_raw
+    quantity_g: 30.0
+    state: raw
+    note: >-
+      Soaked and ground into batter; recorded on the raw (dry) basis with the
+      soak/grind water listed explicitly below, the same shape phulka's
+      dough water uses — no separate yield factor invented for the
+      soak-and-grind step.
+  - id: water
+    quantity_g: 40.0
+    state: as_used
+    note: >-
+      Batter water retained in the finished pancake. A thin, pourable batter
+      needs proportionally more water than phulka's dough, hence the higher
+      ratio to dry weight.
+  - id: onion_raw
+    quantity_g: 8.0
+    state: raw
+    note: Finely chopped into the batter, the ordinary preparation.
+  - id: green_chilli
+    quantity_g: 0.5
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.4
+    state: as_used
+  - id: sunflower_oil
+    quantity_g: 2.1
+    state: as_used
+    process: oil_uptake.dosa_griddled
+    note: >-
+      Retained oil. About 3.0 g is spooned onto the tawa around and under
+      the spreading batter, the same mechanism masala_dosa's own oil line
+      describes — reused here rather than oil_uptake.paratha_griddled
+      because this is a thin spread batter, not folded dough; 2.1 g stays
+      with the finished pancake (oil_uptake.dosa_griddled = 0.70).

@@ -278,6 +278,7 @@ REVIEWED_MECHANISM_MATCHES: dict[str, str] = {
     "yield.potato_boiled": "reviewed: near-unity mass change on boiling whole potato, applied to boiled potato",
     "oil_uptake.dosa_griddled": "reviewed: NO matching primary source; project estimate, mechanism stated honestly",
     "oil_uptake.vegetable_tempering": "reviewed: NO matching primary source; project estimate",
+    "oil_uptake.paratha_griddled": "reviewed: NO matching primary source; project estimate, distinct constant from oil_uptake.dosa_griddled because dough brushed with oil differs from batter spooned around a griddle -- same underlying Evidence, different applied_to",
     "process.unassessed_uncertainty": "reviewed: NO matching primary source; project estimate standing in for an unmeasured process",
     "composition.unverified_secondary": "reviewed: NO matching primary source; project estimate of transcription-plus-analytical error",
     "composition.verified_primary": "reviewed: NO matching primary source; project estimate of analytical spread",
@@ -738,6 +739,38 @@ OIL_UPTAKE_TEMPERING = register_constant(
             "gravy or tossed with vegetables; nearly all of it is served"
         ),
         uncertainty=0.10,
+    )
+)
+# TASKS_3.md R4d (North Indian breakfast). A distinct constant from
+# oil_uptake.dosa_griddled rather than a reuse of it: dosa's own applied_to
+# names what it measures precisely -- oil spooned around and under a
+# *spreading batter* -- and a paratha is rolled *dough*, brushed with oil/ghee
+# on both faces while pan-frying, which retains more surface oil than a thin
+# batter does (visible sheen on a finished paratha is the ordinary marker of
+# this). Reusing dosa_griddled's number for a different substrate would be
+# exactly the phenomenon-mismatch CLAUDE.md invariant 3 warns against, even
+# though both are surface-application, non-immersion griddling and so both
+# properly cite the same underlying Evidence (`project_oil_uptake_estimate`,
+# whose own phenomenon text already covers "oil applied to a hot flat griddle
+# (tawa)... a surface-application mechanism" broadly, not dosa specifically).
+OIL_UPTAKE_PARATHA = register_constant(
+    Constant(
+        key="oil_uptake.paratha_griddled",
+        value=0.80,
+        unit="fraction of applied oil retained",
+        evidence_id="project_oil_uptake_estimate",
+        applied_to=(
+            "ghee or oil brushed onto both faces of a rolled, stuffed paratha "
+            "while pan-frying on a tawa - surface application, not immersion "
+            "frying; retains more than a spread dosa batter because the dough "
+            "is folded and re-brushed rather than a single thin layer"
+        ),
+        uncertainty=0.20,
+        note=(
+            "Estimated on the high side, same convention as "
+            "oil_uptake.dosa_griddled: uncertain data must make a recipe "
+            "harder to use, never easier to pass."
+        ),
     )
 )
 

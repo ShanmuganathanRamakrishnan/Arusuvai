@@ -1,0 +1,98 @@
+# Aloo paratha — potato-stuffed wholewheat flatbread, pan-fried on a tawa.
+#
+# TASKS_3.md R4d (North Indian breakfast). The library's first recipe for
+# `category: paratha`, a category the template vocabulary already anticipated
+# — NORTH_DINNER.bread has accepted {"roti", "paratha"} since that template
+# was written, with zero paratha recipes to fill it until now (see
+# phulka.yaml's own header). This dish incidentally fills that gap too, not
+# just NORTH_BREAKFAST's own paratha_base slot — an unanticipated-but-traced
+# effect, same discipline as finding 50.
+#
+# Sourced as a real, everyday dish, not invented for the template: stuffed
+# parathas (aloo, gobi, paneer, mooli) served with curd, butter and pickle are
+# named as the archetypal North Indian breakfast by every source consulted
+# (e.g. "Top 10 North Indian Breakfast Recipes", vegrecipesofindia.com;
+# "Top 10 North Indian Breakfast", clubmahindra.com — retrieved 2026-08-24).
+# Aloo (potato) is the most commonly named filling, chosen here for that
+# reason and because both its ingredients (wheat_atta_raw, potato_boiled)
+# already have sourced composition rows — no new ingredient needed.
+id: aloo_paratha
+name: Aloo paratha
+name_ta: உருளைக்கிழங்கு பராத்தா
+name_hi: आलू पराठा
+
+region: north_indian
+# Not vegan: no dairy or egg ingredient at all — every line here is plant
+# food, so this dish is itself vegan-eligible. (The template's curd_or_raita
+# slot is a separate matter — see core/foods/templates.py's NORTH_BREAKFAST
+# comment on why that slot is a known vegan structural zero for now.)
+# Not jain: potato is classed root_vegetable (derived from ingredient
+# classes; see data/raw/ifct/README.md).
+
+category: paratha
+prep_minutes: 30
+tags: [bread, breakfast, stuffed, everyday]
+
+serving_unit:
+  measure: roti
+  grams_per_unit: 99.2
+  min_count: 1
+  default_count: 2
+  max_count: 4
+  note: >-
+    Overrides the generic 45 g roti weight, the same way masala_dosa overrides
+    the generic dosa weight — a stuffed, pan-fried paratha is a heavier dish
+    than a plain phulka by construction (dough shell + potato filling + oil),
+    and 99.2 g is this recipe's own summed ingredient weight, not a rounded
+    guess. Two is the ordinary breakfast serving; four is a large one, well
+    short of phulka's six-roti ceiling because a paratha carries more per
+    piece.
+
+# has_process is True below (the oil line carries a 'process:' key), so the
+# loader's earned-zero check (core/foods/recipe_loader.py,
+# _check_zero_process_is_earned) passes without every other raw-basis macro
+# needing its own justification — the same treatment carrot_poriyal's
+# tempering oil line gets. Documented rather than left implicit: this means
+# wheat_atta_raw's and potato_boiled's own macros derive a computed 0.0
+# process uncertainty even though griddling is a real, unquantified step for
+# the dough. Same known gap as phulka's moisture-loss uncertainty and
+# carrot_poriyal's sauteing uncertainty — not new to this recipe.
+
+ingredients:
+  - id: wheat_atta_raw
+    quantity_g: 38.0
+    state: raw
+    note: >-
+      Dough shell for one paratha — thicker and larger than phulka's 29 g,
+      since it has to wrap a filling.
+  - id: water
+    quantity_g: 20.0
+    state: as_used
+    note: Dough water retained in the finished bread, same treatment as phulka's.
+  - id: potato_boiled
+    quantity_g: 35.0
+    state: cooked
+    note: Mashed potato filling, spiced and folded into the dough before rolling.
+  - id: green_chilli
+    quantity_g: 0.5
+    state: raw
+    note: Finely chopped into the filling.
+  - id: garam_masala
+    quantity_g: 0.3
+    state: as_used
+    note: Stirred into the mashed potato filling.
+  - id: salt_iodised
+    quantity_g: 0.6
+    state: as_used
+    note: >-
+      Split across the dough and the filling in practice; recorded as one
+      line since both use the same ingredient at the same finished-dish
+      concentration.
+  - id: sunflower_oil
+    quantity_g: 4.8
+    state: as_used
+    process: oil_uptake.paratha_griddled
+    note: >-
+      Retained oil/ghee. About 6.0 g is brushed onto the tawa and both faces
+      of the paratha while pan-frying; 4.8 g stays with the finished bread
+      (oil_uptake.paratha_griddled = 0.80).

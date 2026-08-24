@@ -96,6 +96,27 @@ class TestTemplatesAreNotUniform:
         assert templates.SOUTH_DINNER.id == "south_dinner"
         assert templates.SOUTH_DINNER.meal_slot is MealSlot.DINNER
 
+    def test_lookup_finds_north_breakfast(self):
+        # Added 2026-08-24 (TASKS_3.md R4d) alongside NORTH_BREAKFAST itself.
+        t = templates.template_for(Region.NORTH_INDIAN, MealSlot.BREAKFAST)
+        assert t is templates.NORTH_BREAKFAST
+
+    def test_north_breakfast_bread_is_optional_unlike_every_other_template(self):
+        # NORTH_BREAKFAST does NOT mirror an existing grammar the way
+        # SOUTH_DINNER mirrors SOUTH_LUNCH -- it was built from scratch after
+        # a required two-slot (bread + curd) grammar proved structurally
+        # unable to satisfy the protein/quality-protein/fat/carb targets
+        # together (docs/audit_log.md 2026-08-24). Pin the two properties
+        # that make its shape genuinely different: bread_base is optional,
+        # and a separate protein_course slot (moong_dal_chilla) is required
+        # in its own right, not folded into bread_base.
+        bread_slot = next(s for s in templates.NORTH_BREAKFAST.slots if s.name == "bread_base")
+        protein_slot = next(s for s in templates.NORTH_BREAKFAST.slots if s.name == "protein_course")
+        assert bread_slot.required is False
+        assert bread_slot.min_selections == 0
+        assert protein_slot.required is True
+        assert "dal_chilla" in protein_slot.accepted_categories
+
     def test_missing_grammar_raises_rather_than_substituting_another_region(self):
         with pytest.raises(KeyError, match="no meal template"):
             templates.template_for(Region.NORTH_INDIAN, MealSlot.SNACK)

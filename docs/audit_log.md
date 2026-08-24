@@ -6,6 +6,126 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-08-24 — NORTH_BREAKFAST added; lands below the 30% per-template floor, documented not gamed (R4d, north breakfast sub-task)
+
+**What was done.** Per the user's explicit choice, R4d's next sub-task after
+SOUTH_DINNER was North Indian breakfast — genuinely new work, no existing
+grammar to reuse (unlike SOUTH_DINNER's deliberate mirror of SOUTH_LUNCH).
+Four structural blockers were hit in sequence during design; at each, work
+stopped and the user was asked how to proceed (CLAUDE.md's "if a task is
+substantially larger than described, stop and say so before doing the work"),
+and each time chose to keep going:
+
+1. **Structural zero.** An initial single-paratha-variant `bread_base` +
+   `curd_or_raita` grammar had exactly one legal combination in the whole
+   pool — added a second paratha (`plain_paratha.yaml`, sharing
+   `aloo_paratha`'s wheat/water/oil ratios minus the potato filling).
+2. **Quality-protein floor unreachable.** `onion_raita` alone tops out at
+   7.94g qualifying protein against an 11.2g floor, and by that serving
+   level energy/fat already breach their ceilings — a paneer paratha
+   (`paneer_paratha.yaml`, DIAAS 1.00 filling) was added to put a
+   quality-protein source directly in the bread slot.
+3. **Systemic 0% across all 144 profiles.** Every paratha variant is too
+   fat-dense/carb-light for the breakfast target at any serving count that
+   also clears the protein floor. `bread_base` was widened to also accept
+   `roti` (reusing the existing `phulka` recipe) — a genuine dietary
+   alternative, not a gamed range.
+4. **Still 0% with phulka.** Range-checking showed `phulka`+`raita`'s own fat
+   range never reaches the fat floor (too lean), while `paratha`+`raita`
+   combos always breach the fat ceiling before the protein floor. A real
+   3-slot tension (protein floor 28g, quality-protein floor 11.2g, fat
+   ceiling ~22.6g, carb floor ~75.2g) that no 2-component bread+curd
+   combination can satisfy together. Added a third, separate required slot
+   (`protein_course`, filled by a new `moong_dal_chilla.yaml` — a moong dal
+   pancake, protein-dense and low-fat, the standard fix for this shape of gap
+   in Indian home cooking) and made `bread_base` optional (a chilla-only
+   breakfast is realistic, not invented).
+
+This moved the template from a guaranteed 0% to 4/144 = 2.8% pooled (vegan
+0/72 = 0.0%, vegetarian 4/72 = 5.6%) — still below the 30% per-template floor.
+Asked the user whether to land here or keep tuning; chosen: keep tuning. A
+brute-force exhaustive search over all legal integer serving-count triples of
+`paneer_paratha` + `moong_dal_chilla` + `onion_raita` against the hardest
+reference profile (weight 70kg, MAINTAIN, VEGETARIAN, no clinical flags)
+confirmed no exact integer solution exists: the closest combination (1
+paratha, 2 chilla, 1 raita) misses on carb (short ~4g), quality-protein
+(short ~0.83g) and energy (short ~14.7kcal) simultaneously; every other
+combination trades those misses for a fat-ceiling breach instead. A
+considered non-gaming lever — correcting `paneer_paratha`'s dough:filling
+ratio from 35g:35g to ~40g:35g wheat, matching `aloo_paratha`'s own ~52:48
+ratio — was evaluated by hand and found to close only the carb/energy misses
+(+~3.5g carb, +~17kcal), not the quality-protein one, since wheat's DIAAS
+(0.45) sits below the 0.75 qualifying threshold. It was not applied: it would
+not have moved any profile from fail to pass, only reduced the margin on a
+miss that stays a miss. No further non-gaming lever was found. Per the
+project's standing rule (never widen a bound "for the purpose of" passing —
+`onion_raita`'s own `max_count` ceiling was explicitly left untouched, since
+its file header names that ceiling as a deliberate anti-gaming choice), the
+task lands here: below-floor, fully documented, rather than closed by
+loosening a constraint that does not genuinely support it.
+
+**Vegan structural zero (separate, undisturbed by this task):**
+`curd_or_raita`'s only filler eligible for `north_indian` is `onion_raita`
+(dairy), so no vegan plate can ever fill that slot — 0/72 = 0.0% vegan
+against this template is a hard structural floor, not a tuning gap, until a
+non-dairy north_indian raita/curd recipe is added.
+
+**New nutrition constant.** `oil_uptake.paratha_griddled` (`core/nutrition/
+citations.py`) — 0.80 fraction retained, reusing `PROJECT_OIL_UPTAKE_ESTIMATE`
+Evidence (broad "oil applied to a hot flat griddle" phenomenon, already
+covering surface-application mechanics) with `applied_to` text specific to a
+folded, re-brushed paratha rather than a spread dosa batter. `verified=False`
+(no human has opened a matching primary source), same convention as
+`oil_uptake.dosa_griddled`.
+
+**New ingredient.** `moong_dal_raw` (`data/raw/ifct/fixture_ingredients.csv`)
+— sourced from USDA FDC 174256 ("Mung beans, mature seeds, raw," retrieved
+2026-08-24). The mechanism caveat is stated plainly in the row's own
+`source_note`: FDC has no split-dehusked-moong-dal-specific entry, so this
+reuses the whole-mung-bean composition — close but not identical. Atwater
+reconciliation is 296.4 vs. 347 stated kcal, 14.6% off, inside the 15%
+tolerance but at its edge. DIAAS is 0.60, explicitly stated as REUSED from
+this project's own toor_dal/rajma/urad_dal precedent, not a fresh
+measurement, and explicitly below `protein.quality_diaas_threshold` (0.75) —
+this ingredient does not count as quality protein anywhere in the system.
+
+**Before/after, full `probe_rank_input2.py` grid** (5 templates/720 cases
+before, 6 templates/864 cases after):
+
+| | before (5 templates) | after (6 templates) |
+|---|---|---|
+| overall | 376/720 = 52.2% | 392/864 = 45.4% |
+| `south_indian/breakfast` | 117/144 = 81.2% | 117/144 = 81.2% (identical) |
+| `south_indian/lunch` | 33/144 = 22.9% (BELOW FLOOR) | 33/144 = 22.9% (identical, still BELOW FLOOR) |
+| `south_indian/dinner` | 49/144 = 34.0% | 49/144 = 34.0% (identical) |
+| `north_indian/breakfast` | — | 4/144 = 2.8% (NEW, BELOW FLOOR) |
+| `north_indian/lunch` | 91/144 = 63.2% | 91/144 = 63.2% (identical) |
+| `north_indian/dinner` | 86/144 = 59.7% (2026-08-24 south-dinner entry) | 98/144 = 68.1% |
+
+The four templates untouched by this task are bit-for-bit identical to the
+south-dinner entry's own "after" figures except `north_indian/dinner`, which
+moved 86/144→98/144 between that run and this one — not caused by this task
+(neither `NORTH_DINNER` nor any recipe it uses was touched here); most likely
+attributable to library changes landed between the two runs (R4c's
+`soya_flour_defatted`/`soya_idli`, R4b's `soya_chunk_masala`). Not
+investigated further here — logged, not fixed, per the "don't fix things you
+notice in passing" queue rule; worth a dedicated finding if it recurs
+unexplained. Overall percentage moving 52.2%→45.4% is arithmetic (averaging
+in a template at 2.8% pulls the mean down), not a regression in any other
+template. The exit condition (overall ≥50%, no template <30%) remains unmet:
+now for three reasons instead of one (`south_indian/lunch`,
+`north_indian/breakfast`, and the overall fraction itself).
+
+**Disposition.** Landed as-is: below the 30% per-template floor, fully
+documented, no bound widened to force a pass. `NORTH_BREAKFAST` is real and
+loadable (added to `web/dashboard.html`'s plate picker with its low pass rate
+named in the surrounding comment) — the low rankability is a known limitation
+of the current 4-recipe library against this profile grid's protein/quality-
+protein/fat/carb tension, not a defect to hide. Full test suite (`python -m
+pytest tests/ -q -m "not web"`): 457 passed, 0 failed (up from 455; two
+row-count assertions in `tests/test_ifct_loader.py` bumped 34→35 loaded rows
+and 33→34 warnings for the new `moong_dal_raw` row).
+
 ## 2026-08-24 — SOUTH_DINNER added, mirrors SOUTH_LUNCH's grammar exactly (R4d, south dinner sub-task)
 
 **What was done.** TASKS_3.md R4d as written bundled at least three distinct

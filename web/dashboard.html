@@ -63,17 +63,23 @@
              Meal templates and the build-status table" — repo files nobody
              outside the codebase can open. Same fact, same honesty, addressed
              to the person using the product. -->
-        <p class="ob-step-sub">These five are the only region-and-meal combinations with verified recipe data
+        <p class="ob-step-sub">These six are the only region-and-meal combinations with verified recipe data
           today. One plate is solved per request, not a full day.</p>
       </div>
       <div class="ob-col-controls">
         <!-- Region-grouped plate cards, ported from Arusuvai Dashboard v2.dc.html.
-             The two regions and five (region, meal_slot) pairs are the real,
+             The two regions and six (region, meal_slot) pairs are the real,
              hardcoded set core/planner has templates for today (see the
              build-status table) -- not invented from the mockup. South Indian
              dinner joined 2026-08-24 (TASKS_3.md R4d): it mirrors South Indian
              lunch's own grammar, so it earns a third South Indian card rather
-             than a new region group. Card "name"
+             than a new region group. North Indian breakfast joined the same
+             day: it does NOT mirror an existing grammar (three courses, one
+             optional) and its own rankability is below the per-template floor
+             (2.8% pooled, docs/audit_log.md 2026-08-24) -- the card is added
+             because the template and recipes are real and loadable, not
+             because the plate reliably solves; the low pass rate is a known,
+             documented limitation, not a reason to hide the option. Card "name"
              is the region only and "note" is a generic, uniformly-true line:
              the mockup's per-card dish names ("Pongal, sambar & chutney") are
              not ported, because the solver -- not this page -- decides which
@@ -107,6 +113,12 @@
           <div class="dash-plate-region">
             <div class="dash-plate-region-head"><span class="dash-plate-region-label">North Indian</span><span class="dash-plate-region-rule" aria-hidden="true"></span></div>
             <div class="dash-plate-grid">
+              <label class="dash-plate-card">
+                <input type="radio" name="plate" value="north_indian:breakfast">
+                <span class="dash-plate-card-head"><span class="dash-plate-slot">Breakfast</span><span class="dash-plate-dot" aria-hidden="true"></span></span>
+                <span class="dash-plate-name">North Indian</span>
+                <span class="dash-plate-note">Solved fresh from today's recipe library.</span>
+              </label>
               <label class="dash-plate-card">
                 <input type="radio" name="plate" value="north_indian:lunch">
                 <span class="dash-plate-card-head"><span class="dash-plate-slot">Lunch</span><span class="dash-plate-dot" aria-hidden="true"></span></span>

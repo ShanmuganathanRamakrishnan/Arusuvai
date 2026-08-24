@@ -78,11 +78,11 @@ grid for the same reason: a flag can lock a rung out of the ladder entirely
 (`core.planner.validator.LOCKED_CONSTRAINTS`), which changes how far the
 ladder can walk, not just what target it starts from.
 
-144 profiles x 5 templates = 720 (profile, template) cases. SOUTH_DINNER
-joined 2026-08-24 (TASKS_3.md R4d) -- the count and every per-template line
-below derive from ``TEMPLATES`` and ``len(TEMPLATES)`` rather than being
-hardcoded, so this docstring is the only place the arithmetic needed
-updating.
+144 profiles x 6 templates = 864 (profile, template) cases. SOUTH_DINNER and
+NORTH_BREAKFAST both joined 2026-08-24 (TASKS_3.md R4d) -- the count and
+every per-template line below derive from ``TEMPLATES`` and
+``len(TEMPLATES)`` rather than being hardcoded, so this docstring is the
+only place the arithmetic needed updating.
 
 Run from the repo root:
 
@@ -117,12 +117,13 @@ TEMPLATES = (
     (Region.SOUTH_INDIAN, MealSlot.BREAKFAST),
     (Region.SOUTH_INDIAN, MealSlot.LUNCH),
     (Region.SOUTH_INDIAN, MealSlot.DINNER),
+    (Region.NORTH_INDIAN, MealSlot.BREAKFAST),
     (Region.NORTH_INDIAN, MealSlot.LUNCH),
     (Region.NORTH_INDIAN, MealSlot.DINNER),
 )
 
 lib = load_library()
-# 720 cells' worth of "N recipe(s) kept past their eligibility ceiling" and
+# 864 cells' worth of "N recipe(s) kept past their eligibility ceiling" and
 # combination-count logging would drown the table below; the numbers this
 # probe reports do not come from the log.
 logging.disable(logging.WARNING)
