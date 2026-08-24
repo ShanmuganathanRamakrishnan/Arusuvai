@@ -167,10 +167,23 @@ class TestADeclineCarriesItsNumbersNotJustItsProse:
     """
 
     def _decline(self):
+        # Repointed 2026-08-24 (follow-up to finding 51): the previous
+        # profile (weight_kg=74, goal=maintain) stopped declining once
+        # soya_curd (data/recipes/soya_curd.yaml) gave south_lunch's
+        # curd_course a lower-sodium option, freeing enough sodium headroom
+        # to pass with only mild relaxation. This profile (weight_kg=55,
+        # goal=lose_fat) still declines: its protein floor is locked by
+        # chronic_kidney_disease's clinical flag (per-kg protein requirement
+        # scales with weight; lose_fat's lower energy budget cannot supply
+        # 55 kg's locked floor from this template's candidates), and a locked
+        # floor is never relaxed regardless of what fills curd_course.
+        # Confirmed directly: actual 29.6 g vs bound 34.6 g, kind
+        # below_floor, locked_by chronic_kidney_disease.
         return client.post(
             "/api/plan",
             json=_body(
-                weight_kg=74, height_cm=176, age_years=31, diet="vegetarian",
+                weight_kg=55, height_cm=176, age_years=31, goal="lose_fat",
+                diet="vegetarian",
                 clinical_flags=["chronic_kidney_disease"],
                 region="south_indian", meal_slot="lunch",
             ),

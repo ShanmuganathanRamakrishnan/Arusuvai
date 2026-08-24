@@ -125,9 +125,15 @@ class TestSouthBreakfastCanReachAQualitySource:
         )
 
     def test_the_curd_slot_has_a_candidate(self, ingredients, library):
+        # Two candidates as of 2026-08-24 (TASKS_3.md follow-up to finding
+        # 51): soya_curd, vegan-safe fermented-soymilk curd, joined
+        # thayir_plain here once it was added to close SOUTH_LUNCH's vegan
+        # structural zero -- see data/recipes/soya_curd.yaml. Both are
+        # vegetarian-eligible (this pool is built VEGETARIAN), so both appear.
         template, pool = self._pool(ingredients, library)
         assert [c.id for c in pool.for_slot(template.slot("curd_course"))] == [
-            "thayir_plain@curd"
+            "soya_curd@curd",
+            "thayir_plain@curd",
         ]
 
     def test_a_breakfast_without_curd_still_enumerates(self, ingredients, library):
