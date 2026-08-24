@@ -1,0 +1,65 @@
+# Soya curd — a fermented-soymilk curd, the vegan-safe answer to
+# thayir_plain's dairy curd_dahi. TASKS_3.md follow-up to finding 51
+# (docs/audit_log.md, 2026-08-22): SOUTH_LUNCH.curd_course is required and
+# accepts only the `curd`/`buttermilk` categories; thayir_plain was the
+# library's only recipe in either, and it is dairy, so vegan south_indian/
+# lunch enumerated zero combinations -- a structural zero, not a bound
+# failure. This recipe closes that gap with one dish in the same category,
+# not by touching the template or the category vocabulary.
+#
+# It is a REAL preparation, not one invented to satisfy the template: soy-milk
+# curd/yogurt as a dairy-curd substitute is a documented South Indian home
+# recipe (see e.g. "Soya milk curd" / "Soy Milk yogurt recipe",
+# swayampaaka.com/basic-recipes/soy-milk-yogurt-recipe-soya-milk-curd/,
+# retrieved 2026-08-24) -- fermented soymilk set the same way dairy milk is
+# set into dahi, using a starter culture. Same dish class as thayir_plain
+# (set curd, spooned out, cooling, no cooking step at the point of serving),
+# different base.
+id: soya_curd
+preparation: uncooked
+name: Soya curd
+name_ta: சோயா தயிர்
+name_hi: सोया दही
+
+region: south_indian
+# No dairy class on soya_curd_plain (fermented soymilk), so this dish carries
+# no dairy classification and is vegan-eligible by the same class-derivation
+# mechanism as soya_idli/soya_chunk_curry -- see core/schemas/common.py.
+
+category: curd
+prep_minutes: 2
+tags: [lunch, cooling, quick, vegan]
+
+serving_unit:
+  measure: katori
+  grams_per_unit: 150.0
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    Same katori weight and count range as thayir_plain -- same dish format
+    (set curd, spooned out at the end of a meal), same reason the ceiling is
+    2: this is not the component the solver should be able to use to answer
+    protein cheaply, and three katoris of curd is not how the meal ends. No
+    new range is introduced; the existing dairy-curd range is reused because
+    nothing about the base (soy vs. dairy) changes how much curd a meal
+    plausibly carries.
+
+# Nothing is cooked at the point of serving (set curd, spooned out), same as
+# thayir_plain -- see that recipe's header and docs/audit_log.md finding 2.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: soya_curd_plain
+    quantity_g: 145.0
+    state: as_used
+  - id: water
+    quantity_g: 4.5
+    state: as_used
+    note: Whisked in to loosen set soy curd to a spoonable consistency, same as thayir_plain.
+  - id: salt_iodised
+    quantity_g: 0.5
+    state: as_used
+    note: >-
+      0.33% of the finished weight, same ratio as thayir_plain -- salted at
+      the table and lightly, an authored quantity, not a measurement.

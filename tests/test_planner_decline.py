@@ -331,12 +331,17 @@ class TestAnEmptyPoolNamesTheCourseThatIsMissing:
 class TestAgainstTheRealLibrary:
     """The plumbing, end to end, on the data the product actually ships."""
 
-    def test_a_vegan_south_lunch_names_the_curd_course(self):
-        # SOUTH_LUNCH's curd_course is required and accepts curd/buttermilk
-        # only; the library's `thayir_plain` is the sole filler and it is not
-        # vegan. This is the one profile/template pair in the real library that
-        # enumerates zero combinations, and until 2026-08-08 it declined with
-        # "no recipe combination survived filtering" -- true, and useless.
+    def test_a_vegan_south_lunch_now_gets_a_plate(self):
+        # Until 2026-08-24, SOUTH_LUNCH.curd_course was required and accepted
+        # only curd/buttermilk; the library's sole filler, thayir_plain, was
+        # dairy, so this was the one profile/template pair in the real
+        # library that enumerated zero combinations -- a structural zero, not
+        # a bound failure (finding 51, docs/audit_log.md, 2026-08-22). This
+        # test used to assert that decline by name (empty_pool,
+        # blocking_slots == ("curd_course",)); soya_curd
+        # (data/recipes/soya_curd.yaml), a vegan-safe fermented-soymilk curd,
+        # now fills the slot, so the decline no longer happens. Asserted here
+        # as a real plate, not just absence of the old violation.
         library = load_library()
         profile = Profile(
             weight_kg=70.0, height_cm=175.0, age_years=28, sex=Sex.MALE,
@@ -351,10 +356,8 @@ class TestAgainstTheRealLibrary:
             diet_pattern=profile.diet,
             profile=profile,
         )
-        assert outcome.plan is None
-        (violation,) = outcome.result.violations
-        assert violation.reach == "empty_pool"
-        assert violation.blocking_slots == ("curd_course",)
+        assert outcome.plan is not None
+        assert outcome.plan.unit_counts.get("soya_curd@curd", 0) >= 1
 
     def test_the_reference_profile_still_gets_a_plate_on_all_four_templates(self):
         # D3's result, re-asserted here because D4 changed the decline path and

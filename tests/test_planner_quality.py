@@ -307,50 +307,50 @@ class TestAgainstTheRealLibrary:
             assert outcome.plan.quality_protein_g >= _MEAL_QUALITY_FLOOR_G
 
     def test_the_reference_breakfast_plate_is_soya_idli_sambar_chutney(self, real):
-        # Re-measured 2026-08-22 (TASKS_3.md R4c): adding soya_idli changed
-        # which plate the solver actually prefers, not just which ones pass.
-        # soya_idli alone clears the quality floor at its own max count (6 x
-        # 4.0 g soya_flour_defatted x 51.46/100 = 12.3504 g >= 11.2 g), so the
-        # solver no longer needs soya_kuzhambu's gravy slot or thayir_plain's
-        # curd slot to satisfy slice 4, and picks sambar + coconut_chutney on
-        # other grounds (energy/sodium fit) instead. This is the solver's own
-        # choice, re-derived here rather than asserted from the old plate.
+        # Re-measured 2026-08-24 (follow-up to finding 51): soya_curd
+        # (data/recipes/soya_curd.yaml) joined thayir_plain as the second
+        # curd_course candidate, and the solver now picks soya_curd -- lower
+        # sodium per serving (soya_curd_plain 13 mg/100 g vs curd_dahi
+        # 45 mg/100 g) leaves more sodium headroom for the rest of the plate.
+        # soya_idli itself is unchanged and still alone clears the quality
+        # floor at its own max count (6 x 4.0 g soya_flour_defatted x
+        # 51.46/100 = 12.3504 g >= 11.2 g), so sambar/coconut_chutney counts
+        # are still picked on energy/sodium fit, not quality. Re-derived from
+        # the solver's own current choice, not asserted from the old plate.
         outcome = _plan(real, Region.SOUTH_INDIAN, MealSlot.BREAKFAST)
         assert outcome.result.relaxation_applied == ()
         assert outcome.plan.unit_counts == {
             "soya_idli@tiffin": 6,
-            "sambar@sambar": 2,
-            "coconut_chutney@chutney": 3,
+            "sambar@sambar": 1,
+            "coconut_chutney@chutney": 4,
+            "soya_curd@curd": 1,
         }
         assert outcome.plan.quality_protein_g == pytest.approx(12.3504, abs=1e-3)
 
-    def test_the_reference_lunch_still_needs_three_rungs_and_why(self, real):
-        # south_lunch passes, but not unrelaxed, and the reason is sodium rather
-        # than quality: clearing the 39.2 g protein floor forces 2 katoris of
-        # soya_kuzhambu (647.0 mg), and the required curd course (261.9) plus
-        # the required vegetable leave the base almost no room -- which is why
-        # the rice_base the solver picks is steamed_rice at 2.0 mg, not
-        # sambar_sadam at 408.6. The plate lands at 1391.1 mg against the
-        # 1400 mg hard ceiling: 8.9 mg of headroom. Energy tolerance is the rung
-        # that lets it in at 848.1 kcal against an unrelaxed 854.9 floor.
+    def test_the_reference_lunch_now_passes_unrelaxed(self, real):
+        # Until 2026-08-24, south_lunch needed three relaxation rungs to pass
+        # (sodium was the binding constraint: thayir_plain's curd_dahi is
+        # 45 mg sodium/100 g). soya_curd (data/recipes/soya_curd.yaml) is
+        # sourced at 13 mg sodium/100 g (soya_curd_plain) -- less than a third
+        # -- and the solver now prefers it over thayir_plain for the same
+        # curd_course slot, which alone frees enough sodium headroom to clear
+        # the 1400 mg ceiling with no rung relaxed at all. This is a real
+        # measured effect of adding one recipe, re-derived here rather than
+        # asserted from the pre-fix plate.
         outcome = _plan(real, Region.SOUTH_INDIAN, MealSlot.LUNCH)
-        assert outcome.result.relaxation_applied == (
-            "sodium_max_fibre_min",
-            "fat_carb_tolerance",
-            "energy_tolerance",
-        )
+        assert outcome.result.relaxation_applied == ()
         assert outcome.plan.unit_counts == {
             "steamed_rice@rice": 1,
             "soya_kuzhambu@kuzhambu": 2,
             "carrot_poriyal@poriyal": 2,
-            "thayir_plain@curd": 1,
+            "soya_curd@curd": 1,
         }
         point = nutrition_of_components(
             [(real.recipes.components[c.split("@")[0]], n)
              for c, n in outcome.plan.unit_counts.items()],
             real.ingredients,
         ).point
-        assert point.sodium_mg == pytest.approx(1391.1, abs=0.5)
+        assert point.sodium_mg == pytest.approx(1344.737, abs=0.5)
 
     def test_the_decline_never_shows_a_reader_the_identifier(self, real):
         # A Violation macro is a stable token crossing the API; the sentence a
@@ -484,16 +484,17 @@ class TestThePerturbationTest:
     """CLAUDE.md's round-4 rule: move the input and watch the output move."""
 
     def test_disqualifying_soya_flour_moves_the_south_breakfast_figure(self, real):
-        # Re-derived 2026-08-22 (TASKS_3.md R4c): the reference plate no longer
-        # uses curd_dahi at all (see the plate test above), so a curd
-        # perturbation is no longer the one that moves this plate -- checked
-        # directly below, before reaching for the ingredient that does.
-        # Disqualifying soya_flour_defatted (the source soya_idli carries) is
-        # the perturbation that now changes the SHAPE of the accepted plan: the
-        # solver falls back to the pre-R4c plate (idli + soya_kuzhambu +
-        # coconut_chutney + thayir_plain, 17.495 g -- see test_planner_quality's
-        # earlier history), because that is again the best-scoring plan that
-        # clears the floor once soya_idli's own contribution is gone.
+        # Re-derived 2026-08-24 (follow-up to finding 51): the reference plate
+        # uses soya_curd, not curd_dahi, for its curd course (see the plate
+        # test above), so a curd_dahi perturbation is not the one that moves
+        # this plate -- checked directly below, before reaching for the
+        # ingredient that does. Disqualifying soya_flour_defatted (the source
+        # soya_idli carries) is the perturbation that changes the SHAPE of
+        # the accepted plan: the solver falls back to plain idli, and now
+        # picks soya_curd@curd:2 (not thayir_plain) for the curd course even
+        # in this fallback plate -- soya_curd is lower-sodium than
+        # thayir_plain, so it is preferred whenever it is a legal candidate,
+        # not only in the specific reference plate above.
         before = _plan(real, Region.SOUTH_INDIAN, MealSlot.BREAKFAST)
         after_curd = _plan(
             _with_diaas(real, "curd_dahi", 0.50),
@@ -506,20 +507,21 @@ class TestThePerturbationTest:
             MealSlot.BREAKFAST,
         )
         assert before.plan.quality_protein_g == pytest.approx(12.3504, abs=1e-3)
-        # Disqualifying curd changes nothing: the accepted plate never used it.
+        # Disqualifying curd_dahi changes nothing: the accepted plate never
+        # used it (it uses soya_curd for the curd course).
         assert after_curd.plan is not None
         assert after_curd.plan.unit_counts == before.plan.unit_counts
         assert after_curd.plan.quality_protein_g == pytest.approx(12.3504, abs=1e-3)
-        # Disqualifying soya flour instead reverts the plate to the
-        # soya_kuzhambu-based one, and its quality figure with it.
+        # Disqualifying soya flour instead reverts the plate to a plain-idli
+        # one, and its quality figure with it.
         assert after_soya_flour.plan is not None
         assert after_soya_flour.plan.unit_counts == {
-            "idli@tiffin": 6,
+            "idli@tiffin": 4,
             "soya_kuzhambu@kuzhambu": 1,
             "coconut_chutney@chutney": 2,
-            "thayir_plain@curd": 1,
+            "soya_curd@curd": 2,
         }
-        assert after_soya_flour.plan.quality_protein_g == pytest.approx(17.495, abs=1e-3)
+        assert after_soya_flour.plan.quality_protein_g == pytest.approx(13.0, abs=1e-3)
 
     def test_disqualifying_all_three_sources_puts_south_breakfast_back_in_decline(self, real):
         # The stronger half of the same perturbation, and the one that keeps a

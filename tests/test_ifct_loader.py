@@ -30,8 +30,10 @@ class TestFixtureSet:
         # egg_boiled, the first ingredient added after R1a's diet-class model.
         # 32 rows from 2026-08-16's TASKS_3.md R3b, which added
         # chicken_breast_raw and pomfret_white_raw. 33 rows from 2026-08-22's
-        # TASKS_3.md R4c, which added soya_flour_defatted.
-        assert len(load_report.loaded) == 33
+        # TASKS_3.md R4c, which added soya_flour_defatted. 34 rows from
+        # 2026-08-24's follow-up to finding 51, which added soya_curd_plain
+        # to close SOUTH_LUNCH's vegan structural zero.
+        assert len(load_report.loaded) == 34
 
     def test_no_ifct_code_is_invented(self, ingredients):
         # Seven rows now carry real IFCT 2017 codes, extracted from a
@@ -60,7 +62,7 @@ class TestFixtureSet:
                 assert ingredient.ifct_code is None
 
     def test_unverified_rows_are_reported_not_silently_accepted(self, load_report):
-        # 32 of 33 rows are unverified; only `water` (which has no nutrients to
+        # 33 of 34 rows are unverified; only `water` (which has no nutrients to
         # get wrong) is marked verified. The three protein rows added 2026-08-02
         # (paneer_fresh, tofu_firm, soya_chunks_dry) are unverified like the
         # rest, and their DIAAS figures -- the field the quality-source rule
@@ -74,8 +76,12 @@ class TestFixtureSet:
         # TASKS_3.md R4c) has a genuinely PUBLISHED DIAAS, not an authored one
         # -- and stays unverified for the identical reason: this assistant
         # read the paper and queried USDA FDC, not a human opening either
-        # primary source.
-        assert len(load_report.warnings) == 32
+        # primary source. soya_curd_plain (2026-08-24, follow-up to finding 51)
+        # carries no DIAAS claim at all -- it exists only to fill a required
+        # category slot for vegan diets -- and stays unverified for the same
+        # reason as every other row: the USDA FDC API was queried by this
+        # assistant, not opened by a human.
+        assert len(load_report.warnings) == 33
 
     def test_states_parse(self, ingredients):
         assert ingredients["rice_cooked"].state is RawOrCooked.COOKED

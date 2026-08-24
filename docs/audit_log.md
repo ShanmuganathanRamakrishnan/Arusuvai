@@ -6,6 +6,104 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-08-24 — soya_curd closes finding 51's vegan structural zero; south_lunch moves further than expected
+
+**What was done.** Finding 51 (below) established that `SOUTH_LUNCH.curd_course`
+is required, accepts only `curd`/`buttermilk`, and the library's sole filler,
+`thayir_plain`, is dairy — so vegan `south_indian/lunch` enumerated zero
+combinations, a structural zero no relaxation rung could reach. Per explicit
+instruction, this was closed with one recipe, sourced with the same discipline
+as R4c: `soya_curd` (`data/recipes/soya_curd.yaml`), a real South Indian dish
+(fermented soymilk set into curd the same way dairy milk becomes dahi — see
+e.g. "Soya milk curd", swayampaaka.com), built on a new ingredient row,
+`soya_curd_plain` (`data/raw/ifct/fixture_ingredients.csv`, documented in
+`data/raw/ifct/README.md`). Composition: USDA FDC 175227 "SILK Plain soy
+yogurt" (energy 66 kcal, protein 2.64 g, fat 1.76 g, carb 9.69 g, fibre 0.4 g,
+sodium 13 mg, calcium 132 mg — Atwater-reconciles to 64.36 kcal, 2.5% off,
+inside the 15% tolerance). Iron (0.44 mg/100 g) is a named cross-product
+substitution from FDC 175218 "SILK Plain, soymilk" (same brand, same "Plain"
+formulation, same publication batch) because FDC 175227 carries no iron row
+at all — confirmed by reading its full nutrient list, not inferred from a
+blank field. No DIAAS is claimed: this ingredient exists only to fill a
+required category slot for vegan diets, not to qualify as a protein source.
+`verified=false`, per CLAUDE.md invariant 4 (a human, not this assistant, must
+open the primary source). The template and category vocabulary were not
+touched.
+
+**Before/after, git-stash based** (same method as the R4c reconciliation
+above): `probe_rank_input2.py`'s primary accepted-rung number, and a
+diet-split variant restricted to `south_indian/lunch` (per explicit
+instruction, since vegan and vegetarian are two different problems there):
+
+| | before | after |
+|---|---|---|
+| overall (576 cases) | 286/576 = 49.7% | 327/576 = 56.8% |
+| `south_indian/breakfast` | 100/144 = 69.4% | 117/144 = 81.2% |
+| `south_indian/lunch` | 9/144 = 6.2% (still BELOW FLOOR) | 33/144 = 22.9% (still BELOW FLOOR) |
+| `north_indian/lunch` | 91/144 = 63.2% | 91/144 = 63.2% (bit-for-bit identical) |
+| `north_indian/dinner` | 86/144 = 59.7% | 86/144 = 59.7% (bit-for-bit identical) |
+| `south_indian/lunch`, vegan only (72 cases) | 0/72 = 0.0% | 12/72 = 16.7% |
+| `south_indian/lunch`, vegetarian only (72 cases) | 9/72 = 12.5% | 21/72 = 29.2% |
+
+The overall figure clears the 50% exit-condition threshold for the first time.
+`south_indian/lunch` itself is still below the 30% per-template floor, so the
+exit condition as a whole is still not met — this task closed the structural
+zero it targeted, not the floor.
+
+**Two effects, not one — reconciled rather than taken on faith (finding 50's
+rule).** The vegan column moving 0.0%→16.7% is the targeted fix and needs no
+further explanation. Two effects were NOT anticipated and were traced before
+being accepted:
+
+1. **Vegetarian `south_indian/lunch` also moved (12.5%→29.2%), and every
+   south_lunch reference plate now solves at rung 0** — `curd_dahi` (in
+   `thayir_plain`) is 45 mg sodium/100 g; `soya_curd_plain` is 13 mg/100 g,
+   under a third. Sodium was the binding constraint in this template
+   (finding 50's own trace showed south_lunch landing 8.9 mg under its 1400 mg
+   ceiling). The solver now prefers `soya_curd` over `thayir_plain` for the
+   curd course whenever both are legal candidates — confirmed directly:
+   the real-library reference plate (`tests/test_planner_quality.py`,
+   `test_the_reference_lunch_now_passes_unrelaxed`) went from needing three
+   relaxation rungs (`sodium_max_fibre_min`, `fat_carb_tolerance`,
+   `energy_tolerance`) to zero, sodium landing at 1344.7 mg against the same
+   1400 mg ceiling — this is an incidental consequence of the ingredient's
+   real composition, not something aimed at.
+2. **`south_indian/breakfast` also moved (69.4%→81.2%)**, despite this task
+   targeting `south_lunch`: `SOUTH_BREAKFAST.curd_course` is optional and
+   already accepted `thayir_plain`; `soya_curd` is now a second legal
+   candidate there too, which widens the combination space directly (more
+   candidates per optional slot means more distinct combinations), not
+   through any sodium mechanism. Confirmed via the real-library reference
+   breakfast plate, which now uses `soya_curd` for its own curd course
+   (`test_the_reference_breakfast_plate_is_soya_idli_sambar_chutney`).
+
+Both effects are logged, not folded silently into "the fix worked" — per
+finding 50's standing rule that a favourable swing gets reconciled the same
+way an unfavourable one would.
+
+**A previously-declining API test stopped declining.**
+`tests/test_api_targets.py::TestADeclineCarriesItsNumbersNotJustItsProse`'s
+fixture profile (weight_kg=74, goal=maintain, vegetarian, CKD,
+south_indian/lunch) passed with only mild relaxation after this change —
+the same sodium mechanism as above. Its own comment anticipated this
+("if the library grows so that it passes... must be repointed rather than
+deleted"); repointed to weight_kg=55/goal=lose_fat, same other fields, which
+still declines — confirmed directly: `protein_g` 29.6 g against a 34.6 g
+floor, locked by the CKD clinical flag (`locked_by: chronic_kidney_disease`),
+a bound relaxation cannot touch regardless of what fills `curd_course`.
+
+**Full suite**: `PYTHONHASHSEED=0 FORCE_COLOR=0 PY_COLORS=0 python -m pytest
+tests/ -q -m "not web"` — 449 passed, 0 failed, run after the stash
+round-trip completed (working tree restored via `git stash apply`, never bare
+`pop`, entry dropped after confirming restoration).
+
+**Disposition.** Fixed. One recipe, one ingredient row, no template or
+category vocabulary change. `south_indian/lunch` remains below the 30% floor;
+R6 already established (below) that no further serving-range widening is
+honestly available, so closing that floor fully would need either a new
+recipe/ingredient reaching a currently-thin category, or a deliberate
+decision to accept the floor as currently unreachable for this template.
+
 ## 2026-08-22 — R4c reconsideration: a large favourable swing, checked this time before moving on
 
 **What happened.** TASKS_3.md R4c ("a vegan-safe qualifying protein source")
@@ -112,6 +210,65 @@ recipe for `SOUTH_LUNCH.curd_course`, structurally required before vegan
 `south_indian/lunch` can ever pass regardless of (a). Left for a human
 decision on ordering, per this task's own "investigate south lunch first"
 instruction — not carried further without direction.
+
+---
+
+## 2026-08-22 — R6: the serving-granularity gap is real, current, and not honestly recoverable
+
+**What was measured.** `docs/design/probes/r6_serving_granularity_gap.py`
+(committed), same 144-profile x 4-template grid every other probe here uses.
+For every combination that survives `feasible_combinations` (the O(1) bound
+pre-filter) but `solve_combination` rejects at every legal integer count —
+the exact gap TASKS_3.md's R6 text names — the probe tries widening ONE
+component's `max_count` by +1, or its `min_count` by -1, in isolation
+(`dataclasses.replace` on a throwaway copy, never touching a recipe file), to
+see whether the smallest possible widening would let the solver succeed.
+
+**The number itself has grown, and that is expected, not a regression.**
+TASKS_3.md's R6 text cites 512 gap-instances. Re-measured on today's library
+(after R3a/R3b/R4a/R4b/R4c and R1a's ingredient-class model, none of which
+existed when 512 was recorded): **2093**. More recipes and more profiles that
+can now reach further templates mechanically enumerate more combinations,
+and more of those combinations sit in the bound-feasible-but-unsolved gap —
+consistent with finding 51's own observation that `south_indian/lunch`'s
+bound-reachable rate (70/72) vastly exceeds its solved rate, and that this
+specific gap is what R6 was written to explain.
+
+**Recoverable, mechanically: 93 of 2093 (4.4%).** Only by widening one of
+five recipes' ranges: `soya_chunk_curry` (43), `soya_idli` (36),
+`onion_raita` (8), `soya_kuzhambu` (5), `thayir_plain` (1). Lowering a
+`min_count` by 1 recovered nothing anywhere — the gap is entirely a ceiling
+problem, not a floor one.
+
+**Recoverable, honestly: 0 of 2093.** Every one of the five recipes above
+already carries an EXPLICIT, PRIOR reason its current ceiling must not move,
+written into its own file before this investigation and for reasons that had
+nothing to do with solver granularity:
+
+- `soya_chunk_curry.yaml`, `soya_kuzhambu.yaml`: "a katori of this carries
+  roughly [two/three] times the protein of a katori of [dal/sambar], so the
+  same ceiling would hand the solver [four/three] times the room to close a
+  protein gap by volume."
+- `onion_raita.yaml`: "a plate carrying three katoris of it is one the
+  solver invented to reach a protein floor, not one anyone was served."
+- `thayir_plain` (`thayir_sadam_curd.yaml`): "curd is the one component here
+  the solver could otherwise use to answer protein cheaply... three katoris
+  of curd is not how the meal ends."
+- `soya_idli.yaml`: "Six is a large breakfast and an ordinary one" — a real
+  portion-size judgment, not a solver accommodation; a seventh is not.
+
+Widening any of the five for this task would be exactly what TASKS_3.md's own
+standing rule forbids: "Never adjust a threshold, bound or serving range
+**for the purpose of** making the planner pass." Each was already reasoned
+about once, independently of R6, and each reasoning still holds.
+
+**Disposition.** No recipe file changed. "Very little is recoverable" —
+TASKS_3.md's own stated acceptable answer — is the honest one, and in this
+case it rounds down further, to zero. The gap (2093 instances, concentrated
+in combinations built around `soya_chunk_curry`/`soya_chunk_masala`/
+`soya_kuzhambu`/`masala_dosa` — dishes the solver keeps stretching toward a
+protein floor) is a real, current, and apparently structural property of this
+library's serving-unit design, not a coarse-graining bug to fix.
 
 ---
 

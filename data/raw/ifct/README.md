@@ -318,6 +318,58 @@ satisfy that rule. `classes=''` (plant protein, no `IngredientClass` applies)
 and `allergens='soya'`, matching `tofu_firm` and `soya_chunks_dry`'s existing
 convention for soya-derived rows.
 
+## A seventh row closes a structural zero rather than adding a qualifying protein (2026-08-24, TASKS_3.md follow-up to finding 51)
+
+`soya_curd_plain` is not sourced to make anything qualify as a protein source
+— unlike `soya_flour_defatted` above, no DIAAS is claimed or derived here, and
+the `diaas` column is left blank on purpose. Its job is narrower: finding 51
+(`docs/audit_log.md`, 2026-08-22) established that `SOUTH_LUNCH.curd_course`
+is a *required* slot accepting only the `curd`/`buttermilk` categories, and
+the library's only recipe in either category was `thayir_plain`, which is
+dairy. Vegan `south_indian/lunch` therefore enumerated **zero** combinations
+— not a bound failure any relaxation rung could reach, a structural absence
+of any eligible recipe. This row and the recipe built on it
+(`data/recipes/soya_curd.yaml`) exist to close exactly that gap, with one real
+dish, without touching the template or the category vocabulary.
+
+**Composition**: USDA FoodData Central, SR Legacy, FDC ID 175227, "SILK Plain
+soy yogurt," published 2019-04-01, retrieved 2026-08-24 — energy 66 kcal,
+protein 2.64 g, fat 1.76 g, carbohydrate-by-difference 9.69 g, fibre 0.4 g,
+sodium 13 mg, calcium 132 mg, vitamin B-12 0 µg (reported, not absent — an
+unfortified soy product, the same "correct biological zero, not a missing-data
+gap" distinction `soya_flour_defatted`'s b12 makes above). Energy reconciles
+under this build's Atwater convention: 2.64×4 + 1.76×9 + (9.69−0.4)×4 + 0.4×2
+= 64.36 kcal against the stated 66 kcal — 2.5% off, well inside the 15%
+tolerance.
+
+**Iron is a cross-product substitution**, named plainly rather than left
+blank: FDC 175227's full nutrient list carries no iron row at all — confirmed
+by reading the complete list returned by the FDC API, not inferred from an
+absent field, per this project's own "silence must cost more, not less" rule
+(CLAUDE.md, same concern `chicken_breast_raw`'s B12 gap raised). FDC ID
+175218, "SILK Plain, soymilk" — same brand, same "Plain" unsweetened
+formulation, same SR Legacy publication batch (2019-04-01, very likely the
+same manufacturer submission cycle as the yogurt item) — reports iron 0.44 mg
+per 100 g; that figure is used here. This is one step weaker than a
+same-product measurement, flagged rather than hidden: fermenting soymilk into
+yogurt does not itself add or remove iron, but the two products' own
+formulations are not guaranteed identical. No iron figure for the yogurt item
+itself, and no closer proxy, was found in FDC.
+
+**Mechanism-match check** (CLAUDE.md invariant 3): FDC 175227 is a plain,
+unsweetened cultured soy yogurt — the same preparation as the recipe this row
+feeds (soymilk set into curd with a starter culture, the same way dairy milk
+becomes dahi), not a sweetened or flavoured soy yogurt, which would misstate
+`carb_g`.
+
+`verified=false`, same as every row in this file: CLAUDE.md invariant 4
+requires a human to have opened the primary source before `verified=true` —
+the USDA FDC API was queried by this assistant, which does not satisfy that
+rule. `classes=''` (fermented soymilk carries no dairy classification, so this
+row is vegan-eligible by the same class-derivation mechanism as
+`soya_flour_defatted`) and `allergens='soya'`, matching the existing
+soya-derived-row convention.
+
 ## Conventions
 
 - One row per (food, state). `state` is `raw`, `cooked` or `as_used`.
