@@ -182,11 +182,19 @@ def rendered_text() -> dict[str, list[str]]:
         # claimed to sweep while never selecting a plate that declines
         # (`docs/audit_log.md` finding 36).
         #
-        # south_indian:lunch is the one of the four that declines for the CKD
-        # profile above; the other three pass. Measured against the live API
-        # rather than assumed -- if the library changes so that it passes, the
-        # reachability test below goes red rather than this sweep quietly
-        # covering a second success view.
+        # south_indian:lunch was chosen here as the plate that declines for
+        # the CKD profile above. south_indian:dinner joined the plate picker
+        # 2026-08-24 (TASKS_3.md R4d), making five options total, but that is
+        # not what makes this comment stale: checked live 2026-08-24 while
+        # touching this file for the south_dinner card, this exact profile
+        # (weight_kg=74, goal=maintain) NO LONGER declines for south_indian:
+        # lunch -- plan_within_ladder returns a plan, not None -- the same
+        # sodium-mechanism side effect noted in tests/test_api_targets.py's
+        # decline-fixture repoint (commit b28447f, finding 51 follow-up), just
+        # not caught in this file at the time. Logged as a new finding in
+        # docs/audit_log.md rather than fixed here -- this test's own repoint
+        # is a distinct reviewable idea from the south_dinner template this
+        # commit is actually about.
         page.click('input[name="plate"][value="south_indian:lunch"]')
         page.click("#dashGenerate")
         page.wait_for_timeout(3500)

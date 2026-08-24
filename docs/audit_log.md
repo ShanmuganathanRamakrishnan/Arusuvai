@@ -6,6 +6,103 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-08-24 — SOUTH_DINNER added, mirrors SOUTH_LUNCH's grammar exactly (R4d, south dinner sub-task)
+
+**What was done.** TASKS_3.md R4d as written bundled at least three distinct
+new templates (North Indian breakfast, South Indian dinner, snacks for both
+regions) into one task; per CLAUDE.md invariant 8 and the queue protocol, the
+user was asked how to split it and chose South Indian dinner first. Added
+`SOUTH_DINNER` to `core/foods/templates.py`: a `MealTemplate` for
+`(Region.SOUTH_INDIAN, MealSlot.DINNER)` that deliberately mirrors
+`SOUTH_LUNCH`'s five slots and categories exactly (rice_base, gravy,
+vegetable, curd_course, crisp) — a South Indian family dinner is, in the
+ordinary case, the same meal grammar as lunch, unlike `SOUTH_BREAKFAST`
+(documented structural difference from lunch) or `NORTH_DINNER` (counted-bread
+grammar, genuinely different from `NORTH_LUNCH`'s rice option). No genuine
+structural difference was identified for south dinner, so none was invented;
+a real one, if found later, earns its own slot list the way south_breakfast's
+did. Zero new recipes or ingredients were needed — the sub-task closes using
+the existing South Indian library alone. Wired into `ALL_TEMPLATES`, `__all__`,
+`docs/design/probes/probe_rank_input2.py`'s `TEMPLATES` tuple (with its
+docstring's hardcoded "4 templates / 576 cases" arithmetic corrected — the
+per-template report lines already derived from `TEMPLATES` dynamically, so
+only the prose needed fixing), the `web/dashboard.html` plate picker (a third
+South Indian card, `south_indian:dinner`, matching the existing card markup;
+the "these N are the only combinations" copy line updated 4→5), and
+`tests/test_templates_and_portions.py` (a lookup test and a test pinning the
+mirrored-grammar design choice as intentional). `tests/test_planner_plan.py`'s
+per-template tests and `tests/test_recipes.py`'s category-union test both
+parametrize over `ALL_TEMPLATES` already, so they picked up `SOUTH_DINNER`
+with no edit needed.
+
+**Verified the "reuses much of south lunch" premise before committing to the
+design**, not after: a standalone measurement (isolated from the full probe
+grid) showed `south_indian/dinner` clears the 30% per-template floor using
+existing recipes alone — vegetarian 34/72 = 47.2%, vegan 15/72 = 20.8%, pooled
+49/144 = 34.0%.
+
+**Before/after, full `probe_rank_input2.py` grid** (4 templates/576 cases
+before adding `SOUTH_DINNER`, 5 templates/720 cases after — not a git-stash
+diff this time, since the "before" figures are the same ones already recorded
+in the 2026-08-24 entry above and were re-checked for exact match rather than
+re-run):
+
+| | before (4 templates) | after (5 templates) |
+|---|---|---|
+| overall | 327/576 = 56.8% | 376/720 = 52.2% |
+| `south_indian/breakfast` | 117/144 = 81.2% | 117/144 = 81.2% (identical) |
+| `south_indian/lunch` | 33/144 = 22.9% (BELOW FLOOR) | 33/144 = 22.9% (identical, still BELOW FLOOR) |
+| `south_indian/dinner` | — | 49/144 = 34.0% (NEW, clears floor) |
+| `north_indian/lunch` | 91/144 = 63.2% | 91/144 = 63.2% (identical) |
+| `north_indian/dinner` | 86/144 = 59.7% | 86/144 = 59.7% (identical) |
+
+The four pre-existing templates are bit-for-bit identical before and after,
+confirming isolation — `south_indian/dinner`'s addition did not perturb any
+other template's combinatorics, as expected (it is a structurally separate
+template sharing no recipe eligibility mechanism with the others beyond the
+common library). The overall percentage moving 56.8%→52.2% is arithmetic, not
+regression: averaging in a template that individually passes (34.0% > 30%
+floor) but sits below the pre-existing mean pulls the mean down. The exit
+condition (overall ≥ 50%, no template < 30%) is still not met, because
+`south_indian/lunch` remains below its own floor — unchanged by this task,
+which did not touch that template.
+
+**A new finding surfaced while editing `web/dashboard.html` for this
+sub-task, not fixed here.** `tests/test_web_no_identifiers.py`'s browser
+sweep selects `south_indian:lunch` specifically because it is expected to
+decline for a fixture CKD profile (weight_kg=74, height_cm=176, age=31,
+vegetarian, `chronic_kidney_disease`), and asserts the decline actually
+rendered. Checked live (`plan_within_ladder` invoked directly against that
+exact profile and `south_indian/lunch`): **it no longer declines** —
+`outcome.plan is not None`. This is the identical sodium-mechanism side
+effect the 2026-08-24 entry above already found and fixed in
+`tests/test_api_targets.py` (commit `b28447f`) — the same profile, in a
+different test file, that commit's own repoint never touched because these
+`web`-marked browser tests skip by default unless
+`FOODAI_WEB_TESTS=required` is set, so the existing suite run did not surface
+it. The stale comment in that test file has been corrected to state the
+finding plainly rather than repeat the now-false decline claim; the test's
+own fixture profile has **not** been repointed — that is a distinct
+reviewable idea from the `south_dinner` template this commit is about, per
+CLAUDE.md invariant 8 and the "do not fix things noticed in passing" rule.
+Whoever picks this up next: repoint following the same method as the API
+test's repoint above (search for a profile that still genuinely declines on
+a locked CKD floor for `south_indian/lunch`), then re-run under
+`FOODAI_WEB_TESTS=required` to confirm.
+
+**Full suite**: see transcript below, run with the browser-required flag off
+(per the pattern established for template-only, non-web changes; this task
+did not change any behaviour the `web`-marked tests exercise beyond the
+plate-picker markup, which those tests do not assert on — the stale comment
+above is a data finding, not code this commit changes).
+
+**Disposition.** Fixed (the sub-task's own goal — `SOUTH_DINNER` added,
+clears its own floor, wired everywhere the template roster is consumed).
+Not fixed, logged: the `test_web_no_identifiers.py` stale-decline-fixture
+issue found in passing. `south_indian/lunch` remains below the 30% floor;
+North Indian breakfast and snacks (both regions) remain the rest of R4d,
+unstarted, per the user's explicit "South dinner first" direction.
+
 ## 2026-08-24 — soya_curd closes finding 51's vegan structural zero; south_lunch moves further than expected
 
 **What was done.** Finding 51 (below) established that `SOUTH_LUNCH.curd_course`

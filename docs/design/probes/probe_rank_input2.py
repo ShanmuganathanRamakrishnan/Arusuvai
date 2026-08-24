@@ -78,7 +78,11 @@ grid for the same reason: a flag can lock a rung out of the ladder entirely
 (`core.planner.validator.LOCKED_CONSTRAINTS`), which changes how far the
 ladder can walk, not just what target it starts from.
 
-144 profiles x 4 templates = 576 (profile, template) cases.
+144 profiles x 5 templates = 720 (profile, template) cases. SOUTH_DINNER
+joined 2026-08-24 (TASKS_3.md R4d) -- the count and every per-template line
+below derive from ``TEMPLATES`` and ``len(TEMPLATES)`` rather than being
+hardcoded, so this docstring is the only place the arithmetic needed
+updating.
 
 Run from the repo root:
 
@@ -112,12 +116,13 @@ PER_TEMPLATE_FLOOR = 0.30
 TEMPLATES = (
     (Region.SOUTH_INDIAN, MealSlot.BREAKFAST),
     (Region.SOUTH_INDIAN, MealSlot.LUNCH),
+    (Region.SOUTH_INDIAN, MealSlot.DINNER),
     (Region.NORTH_INDIAN, MealSlot.LUNCH),
     (Region.NORTH_INDIAN, MealSlot.DINNER),
 )
 
 lib = load_library()
-# 576 cells' worth of "N recipe(s) kept past their eligibility ceiling" and
+# 720 cells' worth of "N recipe(s) kept past their eligibility ceiling" and
 # combination-count logging would drown the table below; the numbers this
 # probe reports do not come from the log.
 logging.disable(logging.WARNING)
@@ -262,7 +267,7 @@ def main() -> None:
     print("same logic as plan_within_ladder):")
     _report("accepted-rung rankability", accepted_per_template, total_cases, accepted_pass)
 
-    print("Rung distribution across all 576 cases (where the ladder stopped, "
+    print(f"Rung distribution across all {total_cases} cases (where the ladder stopped, "
           "including declines):")
     for rung, n in sorted(rung_labels.items(), key=lambda kv: -kv[1]):
         print(f"  {rung:24s}: {n}")

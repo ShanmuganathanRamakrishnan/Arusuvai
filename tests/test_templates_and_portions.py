@@ -68,6 +68,34 @@ class TestTemplatesAreNotUniform:
         t = templates.template_for(Region.SOUTH_INDIAN, MealSlot.BREAKFAST)
         assert t is templates.SOUTH_BREAKFAST
 
+    def test_lookup_finds_south_dinner(self):
+        # Added 2026-08-24 (TASKS_3.md R4d) alongside SOUTH_DINNER itself --
+        # the earlier lookup test only ever exercised south_indian/breakfast.
+        t = templates.template_for(Region.SOUTH_INDIAN, MealSlot.DINNER)
+        assert t is templates.SOUTH_DINNER
+
+    def test_south_dinner_mirrors_south_lunch_deliberately(self):
+        # SOUTH_DINNER was built to reuse SOUTH_LUNCH's grammar exactly --
+        # rice + gravy + variable-length vegetable + curd + optional crisp --
+        # rather than invent a distinct dinner shape with no documented real-
+        # world basis. This test pins that as an intentional design choice: if
+        # the two ever diverge, it should be because a genuine difference was
+        # identified (the way south_breakfast's was), not by accident.
+        lunch_shape = tuple(
+            (s.name, s.accepted_categories, s.required, s.min_selections, s.max_selections)
+            for s in templates.SOUTH_LUNCH.slots
+        )
+        dinner_shape = tuple(
+            (s.name, s.accepted_categories, s.required, s.min_selections, s.max_selections)
+            for s in templates.SOUTH_DINNER.slots
+        )
+        assert dinner_shape == lunch_shape
+        # Distinct template identity and id despite the identical grammar --
+        # template_for still resolves by (region, meal_slot), not by shape.
+        assert templates.SOUTH_DINNER is not templates.SOUTH_LUNCH
+        assert templates.SOUTH_DINNER.id == "south_dinner"
+        assert templates.SOUTH_DINNER.meal_slot is MealSlot.DINNER
+
     def test_missing_grammar_raises_rather_than_substituting_another_region(self):
         with pytest.raises(KeyError, match="no meal template"):
             templates.template_for(Region.NORTH_INDIAN, MealSlot.SNACK)

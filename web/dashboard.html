@@ -63,14 +63,17 @@
              Meal templates and the build-status table" — repo files nobody
              outside the codebase can open. Same fact, same honesty, addressed
              to the person using the product. -->
-        <p class="ob-step-sub">These four are the only region-and-meal combinations with verified recipe data
+        <p class="ob-step-sub">These five are the only region-and-meal combinations with verified recipe data
           today. One plate is solved per request, not a full day.</p>
       </div>
       <div class="ob-col-controls">
         <!-- Region-grouped plate cards, ported from Arusuvai Dashboard v2.dc.html.
-             The two regions and four (region, meal_slot) pairs are the real,
+             The two regions and five (region, meal_slot) pairs are the real,
              hardcoded set core/planner has templates for today (see the
-             build-status table) -- not invented from the mockup. Card "name"
+             build-status table) -- not invented from the mockup. South Indian
+             dinner joined 2026-08-24 (TASKS_3.md R4d): it mirrors South Indian
+             lunch's own grammar, so it earns a third South Indian card rather
+             than a new region group. Card "name"
              is the region only and "note" is a generic, uniformly-true line:
              the mockup's per-card dish names ("Pongal, sambar & chutney") are
              not ported, because the solver -- not this page -- decides which
@@ -89,6 +92,12 @@
               <label class="dash-plate-card">
                 <input type="radio" name="plate" value="south_indian:lunch">
                 <span class="dash-plate-card-head"><span class="dash-plate-slot">Lunch</span><span class="dash-plate-dot" aria-hidden="true"></span></span>
+                <span class="dash-plate-name">South Indian</span>
+                <span class="dash-plate-note">Solved fresh from today's recipe library.</span>
+              </label>
+              <label class="dash-plate-card">
+                <input type="radio" name="plate" value="south_indian:dinner">
+                <span class="dash-plate-card-head"><span class="dash-plate-slot">Dinner</span><span class="dash-plate-dot" aria-hidden="true"></span></span>
                 <span class="dash-plate-name">South Indian</span>
                 <span class="dash-plate-note">Solved fresh from today's recipe library.</span>
               </label>

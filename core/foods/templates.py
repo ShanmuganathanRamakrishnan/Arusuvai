@@ -33,7 +33,9 @@ from core.schemas import MealSlot, Region
 __all__ = [
     "SOUTH_BREAKFAST",
     "SOUTH_LUNCH",
+    "SOUTH_DINNER",
     "NORTH_DINNER",
+    "NORTH_LUNCH",
     "ALL_TEMPLATES",
     "template_for",
 ]
@@ -122,6 +124,51 @@ SOUTH_LUNCH = MealTemplate(
     ),
 )
 
+#: TASKS_3.md R4d ("South dinner reuses much of South lunch"). A South Indian
+#: family dinner is, in the ordinary case, the same meal grammar as lunch —
+#: rice + sambar/kuzhambu/rasam + one or two poriyals + a closing curd course
+#: — not a structurally different plate the way NORTH_DINNER's counted-bread
+#: grammar differs from NORTH_LUNCH's rice option. Portions run smaller at
+#: dinner in practice, but that is a serving-count fact the solver already
+#: handles per meal-target, not a slot-shape fact this grammar needs to
+#: encode. Deliberately mirrors SOUTH_LUNCH's five slots and categories
+#: exactly rather than inventing a distinct dinner grammar with no comparable
+#: real-world basis in this project's own domain modelling — a genuine
+#: difference would earn its own slot list the way south_breakfast's does;
+#: none was identified here, so none is asserted.
+SOUTH_DINNER = MealTemplate(
+    id="south_dinner",
+    region=Region.SOUTH_INDIAN,
+    meal_slot=MealSlot.DINNER,
+    slots=(
+        TemplateSlot(
+            name="rice_base",
+            accepted_categories=frozenset({"rice", "mixed_rice"}),
+        ),
+        TemplateSlot(
+            name="gravy",
+            accepted_categories=frozenset({"sambar", "kuzhambu", "rasam"}),
+        ),
+        TemplateSlot(
+            name="vegetable",
+            accepted_categories=frozenset({"poriyal", "kootu"}),
+            min_selections=1,
+            max_selections=2,
+        ),
+        TemplateSlot(
+            name="curd_course",
+            accepted_categories=frozenset({"curd", "buttermilk"}),
+        ),
+        TemplateSlot(
+            name="crisp",
+            accepted_categories=frozenset({"appalam", "pickle"}),
+            required=False,
+            min_selections=0,
+            max_selections=1,
+        ),
+    ),
+)
+
 NORTH_DINNER = MealTemplate(
     id="north_dinner",
     region=Region.NORTH_INDIAN,
@@ -189,6 +236,7 @@ NORTH_LUNCH = MealTemplate(
 ALL_TEMPLATES: tuple[MealTemplate, ...] = (
     SOUTH_BREAKFAST,
     SOUTH_LUNCH,
+    SOUTH_DINNER,
     NORTH_LUNCH,
     NORTH_DINNER,
 )
