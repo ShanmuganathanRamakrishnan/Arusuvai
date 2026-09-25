@@ -848,6 +848,17 @@ can. The first draft of those tests passed against the defect they were written
 to catch — see the audit log for why, and for the pattern this is the second
 instance of.
 
+## A snack has no fat or carb floor (2026-09-25)
+
+Every other slot still takes the day's fat and carbohydrate bounds scaled by
+its energy share. A snack keeps the scaled **ceilings** but has **no floor**
+on either — owner decision, `docs/audit_log.md` 2026-09-25 "snack fat/carb
+floors". Scaled floors made a snack a balanced small meal (≈23–32% of energy
+from fat, ≈47–63% from carbohydrate), which declined ordinary lopsided snacks
+such as a lean chaat or a low-carb tikka. Fat and carbohydrate ranges are
+daily guidance. **Limitation:** one plate is solved per request, so nothing
+yet checks that the rest of the day makes up what a snack leaves out.
+
 ## Sodium is a day budget, not a share of one (2026-08-02)
 
 Until 2026-08-02 every bound in a day target was scaled to a meal by the meal's
