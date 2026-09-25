@@ -143,6 +143,60 @@ def test_different_slots_scale_the_same_day_target_differently():
     assert breakfast.floor("protein_g") != dinner.floor("protein_g")
 
 
+class TestASnackHasNoFatOrCarbFloor:
+    """Owner decision 2026-09-25 (docs/audit_log.md, snack fat/carb floors).
+
+    A snack keeps its fat and carb ceilings but has no floor on either, so a
+    lean chaat or a low-carb tikka is not declined for being lopsided. Every
+    other slot keeps both bounds.
+    """
+
+    def test_snack_drops_both_floors_and_keeps_both_ceilings(self):
+        snack = meal_target(_day(), MealSlot.SNACK)  # x0.10
+        assert snack.floor("fat_g") is None
+        assert snack.floor("carb_g") is None
+        # 69.0 x 0.10 = 6.9 ; 287.5 x 0.10 = 28.75
+        assert snack.ceiling("fat_g") == pytest.approx(6.9)
+        assert snack.ceiling("carb_g") == pytest.approx(28.75)
+        # Points stay: they are what the ladder widens ceilings around.
+        # 60.0 x 0.10 = 6.0 ; 250.0 x 0.10 = 25.0
+        assert snack.point("fat_g") == pytest.approx(6.0)
+        assert snack.point("carb_g") == pytest.approx(25.0)
+
+    def test_only_fat_and_carb_lose_a_floor_on_a_snack(self):
+        snack = meal_target(_day(), MealSlot.SNACK)
+        # 1900 x 0.10 = 190.0 ; fibre 28.0 x 0.10 = 2.8 ; protein guard 15.0
+        # (TestProteinHasPerMealBounds below).
+        assert snack.floor("energy_kcal") == pytest.approx(190.0)
+        assert snack.floor("fibre_g") == pytest.approx(2.8)
+        assert snack.floor("protein_g") == pytest.approx(15.0)
+
+    @pytest.mark.parametrize(
+        "slot", [MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER]
+    )
+    def test_every_other_slot_keeps_both_floors(self, slot):
+        # 51.0 and 212.5 are the day floors in _day(); the slot's own share.
+        target = meal_target(_day(), slot)
+        fraction = meal_energy_fraction(slot)
+        assert target.floor("fat_g") == pytest.approx(51.0 * fraction)
+        assert target.floor("carb_g") == pytest.approx(212.5 * fraction)
+
+    def test_the_fat_carb_rung_does_not_restore_a_dropped_floor(self):
+        # The ladder's fat_carb rung re-derives bounds around the point; it
+        # must widen the ceilings and leave the absent floors absent.
+        from core.nutrition import citations
+        from core.planner.validator import _relax_fat_carb
+
+        relaxed = _relax_fat_carb(meal_target(_day(), MealSlot.SNACK), frozenset())
+        assert relaxed.floor("fat_g") is None
+        assert relaxed.floor("carb_g") is None
+        tol = citations.value_of("tolerance.fat_carb_relaxed")
+        assert tol == 0.25
+        # 6.0 x 1.25 = 7.5 ; 25.0 x 1.25 = 31.25
+        assert relaxed.ceiling("fat_g") == pytest.approx(7.5)
+        assert relaxed.ceiling("carb_g") == pytest.approx(31.25)
+
+
 class TestProteinHasPerMealBounds:
     """Slice 3: no meal empty of protein, no meal packed with it.
 

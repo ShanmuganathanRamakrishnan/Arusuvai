@@ -6,6 +6,65 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-25 — snack fat/carb floors: dropped for snacks, ceilings kept — owner decision
+
+**Decision (project owner, 2026-09-25): a snack has no fat floor and no carb
+floor. Its fat and carb ceilings stay**, as do its points, energy band,
+protein floor and guard, quality-protein floor, fibre floor and sodium.
+Breakfast, lunch and dinner are unchanged. Implemented as
+`_FLOORLESS_BY_SLOT` in `core/nutrition/meal_target.py`.
+
+**Why.** `meal_target` scaled every day bound by the slot's energy share,
+so a snack had to carry the day's macro split in miniature (≈23–32% of
+energy from fat, ≈47–63% from carbohydrate): a balanced small meal. Both
+North Indian snack dishes are ordinary and lopsided — the chaat ≈9% fat, the
+tikka ≈30% carbohydrate — and both were declined for it (entry below). Fat
+and carbohydrate ranges are daily guidance; a lean or low-carb snack does
+not breach them.
+
+**Cost, stated.** The planner solves one plate per request. Nothing yet
+checks that the rest of the day makes up what a snack leaves out.
+
+**Measured before deciding**, in-memory what-ifs patching the probe
+functions' own `__globals__` (the method corrected in the entry below),
+profiles with 0 / 1 / 2+ plates:
+
+| change | south snack | north snack |
+|---|---|---|
+| none | 119 / 25 / 0 | 144 / 0 / 0 |
+| no snack fat/carb floor | 116 / 28 / 0 | 86 / 58 / 0 |
+| chaat + tikka on one plate | — | 98 / 46 / 0 |
+| both | — | 56 / 42 / 46 |
+| (rejected) fat/carb band ±50% | 116 / 28 / 0 | 114 / 26 / 4 |
+| (rejected) fat/carb band ±75% | 116 / 28 / 0 | 94 / 46 / 4 |
+
+The owner chose "both", saved as two commits: this floor change, then the
+mixed plate.
+
+**This commit, measured on the tree** (`probe_rank_input2.py`): other six
+templates unchanged; declined 490 → 429 (North snack 58, South snack 3
+now plan); two-plate counts unchanged at 391/1152, since no snack yet offers
+two plates.
+
+**Deletion check.** Replacing `floors.pop(macro, None)` with `pass` turns
+two tests red —
+`TestASnackHasNoFatOrCarbFloor::test_snack_drops_both_floors_and_keeps_both_ceilings`
+and `::test_the_fat_carb_rung_does_not_restore_a_dropped_floor` — 2 failed,
+470 passed; restored.
+
+**Second commit: chaat + tikka on one plate.** `NORTH_SNACK.snack` takes
+`max_selections=2`; with one chaat and one tikka in the library that can only
+be the pair. Measured on the tree, profiles with 0 / 1 / 2+ plates: north
+snack **56 / 42 / 46 — 46/144 = 31.9%, above the 30% floor**, matching the
+what-if; rung-0-only 28/144. South snack 116 / 28 / 0, unchanged by this
+commit. Grid 437/1152 = 37.9% (from 391); declined 429 → 399. Other six
+templates unchanged. Deletion check: `max_selections=1` on that line alone
+turns `test_north_snack_offers_two_dish_kinds_and_an_optional_drink` red
+(1 failed, 471 passed); restored. Only that shape pin catches it — no
+behaviour test does, same as SOUTH_SNACK's shape. (A first attempt at this
+mutation hit all four `max_selections=2` lines in the file and failed 9
+tests; discarded as not measuring this mechanism.)
+
 ## 2026-09-25 — North Indian snack: NORTH_SNACK plans 0/144 — each dish misses a different floor; saved, not tuned, no web card
 
 TASKS_3.md R4d, North Indian snack, built with two main dishes from the start

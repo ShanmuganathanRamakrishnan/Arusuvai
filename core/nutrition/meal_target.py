@@ -39,6 +39,17 @@ day protein floor applied identically to every slot, because the rule it
 implements is "no meal is pure lentil", which is a statement about each plate
 rather than a share of anything. See :func:`_quality_protein_floor`.
 
+**No floor**, for fat and carbohydrate on a snack only (owner decision
+2026-09-25, docs/audit_log.md "snack fat/carb floors"): the proportional rule
+above gives a snack the whole day's macro split in miniature, so a snack had
+to be a balanced small meal. Ordinary snacks are lopsided -- a chaat is lean,
+a tikka is low in carbohydrate -- and fat and carbohydrate ranges are daily
+guidance, which one lean or low-carb snack does not breach. The *ceilings*
+stay, as do the points, protein, the quality floor, fibre and sodium. The
+cost, stated: the planner solves one plate per request, so nothing yet checks
+that the rest of the day makes up what a snack leaves out. See
+``_FLOORLESS_BY_SLOT``.
+
 ## The first-meal problem, and the guard
 
 A remaining-budget check alone puts **no limit whatsoever** on the first meal of
@@ -180,6 +191,17 @@ def _quality_protein_floor(day_target: NutritionTarget) -> float | None:
     return citations.value_of("protein.quality_meal_floor_fraction") * day_floor
 
 
+#: Macros whose per-meal floor is dropped for a slot, ceiling kept. Snack
+#: only, fat and carb only -- see the module docstring's "No floor" rule.
+#: Dropping the floor rather than widening it is deliberate: the ladder's
+#: fat_carb rung re-derives only bounds that exist (``_widen_band`` checks
+#: ``if macro in floors``), so an absent floor stays absent at every rung,
+#: while the ceiling it widens still stands.
+_FLOORLESS_BY_SLOT: Mapping[MealSlot, frozenset[str]] = {
+    MealSlot.SNACK: frozenset({"fat_g", "carb_g"}),
+}
+
+
 def meal_target(
     day_target: NutritionTarget,
     meal_slot: MealSlot,
@@ -200,6 +222,8 @@ def meal_target(
     floors = _scaled(day_target.floors)
     ceilings = _scaled(day_target.ceilings)
     points = _scaled(day_target.points)
+    for macro in _FLOORLESS_BY_SLOT.get(meal_slot, frozenset()):
+        floors.pop(macro, None)
 
     _apply_protein_meal_bounds(day_target, floors, ceilings)
     # Carried, not scaled: a hard ceiling is a bound on one plate already, not a
