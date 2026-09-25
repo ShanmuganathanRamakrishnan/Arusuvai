@@ -33,7 +33,10 @@ from core.schemas import MealSlot, Region
 __all__ = [
     "SOUTH_BREAKFAST",
     "SOUTH_LUNCH",
+    "SOUTH_DINNER",
+    "NORTH_BREAKFAST",
     "NORTH_DINNER",
+    "NORTH_LUNCH",
     "ALL_TEMPLATES",
     "template_for",
 ]
@@ -122,6 +125,51 @@ SOUTH_LUNCH = MealTemplate(
     ),
 )
 
+#: TASKS_3.md R4d ("South dinner reuses much of South lunch"). A South Indian
+#: family dinner is, in the ordinary case, the same meal grammar as lunch —
+#: rice + sambar/kuzhambu/rasam + one or two poriyals + a closing curd course
+#: — not a structurally different plate the way NORTH_DINNER's counted-bread
+#: grammar differs from NORTH_LUNCH's rice option. Portions run smaller at
+#: dinner in practice, but that is a serving-count fact the solver already
+#: handles per meal-target, not a slot-shape fact this grammar needs to
+#: encode. Deliberately mirrors SOUTH_LUNCH's five slots and categories
+#: exactly rather than inventing a distinct dinner grammar with no comparable
+#: real-world basis in this project's own domain modelling — a genuine
+#: difference would earn its own slot list the way south_breakfast's does;
+#: none was identified here, so none is asserted.
+SOUTH_DINNER = MealTemplate(
+    id="south_dinner",
+    region=Region.SOUTH_INDIAN,
+    meal_slot=MealSlot.DINNER,
+    slots=(
+        TemplateSlot(
+            name="rice_base",
+            accepted_categories=frozenset({"rice", "mixed_rice"}),
+        ),
+        TemplateSlot(
+            name="gravy",
+            accepted_categories=frozenset({"sambar", "kuzhambu", "rasam"}),
+        ),
+        TemplateSlot(
+            name="vegetable",
+            accepted_categories=frozenset({"poriyal", "kootu"}),
+            min_selections=1,
+            max_selections=2,
+        ),
+        TemplateSlot(
+            name="curd_course",
+            accepted_categories=frozenset({"curd", "buttermilk"}),
+        ),
+        TemplateSlot(
+            name="crisp",
+            accepted_categories=frozenset({"appalam", "pickle"}),
+            required=False,
+            min_selections=0,
+            max_selections=1,
+        ),
+    ),
+)
+
 NORTH_DINNER = MealTemplate(
     id="north_dinner",
     region=Region.NORTH_INDIAN,
@@ -186,9 +234,90 @@ NORTH_LUNCH = MealTemplate(
     ),
 )
 
+#: TASKS_3.md R4d ("North Indian breakfast" — the genuinely new piece, unlike
+#: SOUTH_DINNER above, which reused SOUTH_LUNCH's grammar wholesale). A stuffed
+#: paratha served with curd/raita and pickle is named as the archetypal North
+#: Indian breakfast by every source consulted (see aloo_paratha.yaml's own
+#: header) — structurally distinct from both NORTH_LUNCH (rice-or-roti base,
+#: a legume curry) and NORTH_DINNER (roti, dal, sabzi): no dal course at
+#: breakfast, no rice option, and a curd/raita course that lunch and dinner
+#: only offer optionally is close to standard here.
+#:
+#: `bread_base` accepts {"roti", "paratha"}, not paratha alone, and is
+#: OPTIONAL rather than required — both measured before committing to the
+#: narrower/required versions and reverted when they failed. First revert:
+#: a paratha's added oil makes it fat-dense enough (and, by the same token,
+#: carb-light enough) that no combination of aloo/paneer/plain paratha and
+#: onion_raita, at any legal serving count, could satisfy the breakfast
+#: target's carb floor and fat ceiling together — phulka (dry-griddled, no
+#: oil, already in the library for NORTH_DINNER) was added for its far
+#: better carb:fat ratio, a genuine everyday North Indian breakfast food in
+#: its own right, not invented to pass this template. Second revert: even
+#: with all four bread candidates, the two-slot template (bread + curd)
+#: still could not satisfy the protein floor (28 g) and fat ceiling (~22.6 g)
+#: together — protein-dense breads carry too much fat, and phulka alone
+#: cannot reach the protein floor at any count. `protein_course`
+#: (moong_dal_chilla — see its own header) closes that gap: a genuine,
+#: separately-named North Indian breakfast dish, high-protein and low-fat,
+#: not a bread substitute. Making `bread_base` optional rather than required
+#: alongside it is itself realistic, not just numerically convenient: a
+#: chilla-only breakfast with no separate bread is an ordinary meal, not an
+#: invented one.
+#:
+#: Known limitation, stated before it is discovered rather than after
+#: (finding 51's lesson): `curd_or_raita`'s only current filler is
+#: onion_raita, which is dairy-classed and therefore not vegan-eligible.
+#: Vegan north_indian/breakfast is a structural zero today, the same shape of
+#: gap soya_curd closed for vegan south_indian/lunch — closing it the same way
+#: needs a north-region vegan curd/raita dish, deliberately left for a
+#: separate task rather than folded into this one.
+NORTH_BREAKFAST = MealTemplate(
+    id="north_breakfast",
+    region=Region.NORTH_INDIAN,
+    meal_slot=MealSlot.BREAKFAST,
+    slots=(
+        TemplateSlot(
+            name="bread_base",
+            accepted_categories=frozenset({"roti", "paratha"}),
+            required=False,
+            min_selections=0,
+            max_selections=1,
+        ),
+        TemplateSlot(
+            name="protein_course",
+            accepted_categories=frozenset({"dal_chilla"}),
+        ),
+        TemplateSlot(
+            name="curd_or_raita",
+            accepted_categories=frozenset({"curd", "raita"}),
+        ),
+        # Pickle has no filler in the library yet, same as SOUTH_LUNCH's
+        # `crisp` slot (appalam/pickle) — optional so its emptiness is not a
+        # structural block, real the moment a pickle recipe lands.
+        TemplateSlot(
+            name="pickle",
+            accepted_categories=frozenset({"pickle"}),
+            required=False,
+            min_selections=0,
+            max_selections=1,
+        ),
+        # Mirrors SOUTH_BREAKFAST.beverage — also currently unfilled, also
+        # optional for the same reason.
+        TemplateSlot(
+            name="beverage",
+            accepted_categories=frozenset({"beverage"}),
+            required=False,
+            min_selections=0,
+            max_selections=1,
+        ),
+    ),
+)
+
 ALL_TEMPLATES: tuple[MealTemplate, ...] = (
     SOUTH_BREAKFAST,
     SOUTH_LUNCH,
+    SOUTH_DINNER,
+    NORTH_BREAKFAST,
     NORTH_LUNCH,
     NORTH_DINNER,
 )

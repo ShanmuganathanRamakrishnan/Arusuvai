@@ -1,0 +1,70 @@
+# Plain paratha — layered wholewheat flatbread, pan-fried with oil worked
+# between the folds. No filling, unlike aloo_paratha — this is the everyday
+# "sada"/"lachha" paratha eaten with curd and pickle when there is no stuffing
+# on hand, a real and separately-named dish, not a thinned-out copy of the
+# stuffed one.
+#
+# TASKS_3.md R4d follow-up, added alongside aloo_paratha: with only one
+# paratha recipe, NORTH_BREAKFAST.paratha_base had exactly one candidate and
+# the template could never show 2+ valid plate combinations for any
+# profile, whatever the target — a structural ceiling, not a data-thinness
+# one. This recipe gives that slot a genuine second candidate, using only
+# ingredients already in the library (wheat_atta_raw, sunflower_oil,
+# salt_iodised, water) — no new ingredient row.
+#
+# What makes it a paratha and not a second phulka: the oil worked into the
+# dough during folding and retained on the tawa while griddling — phulka is
+# dry-griddled by construction (see phulka.yaml's own header) and this dish
+# is not.
+id: plain_paratha
+name: Plain paratha
+name_ta: வெற்று பராத்தா
+name_hi: सादा पराठा
+
+region: north_indian
+# Jain-safe: flour, water, salt and oil only — no onion, no garlic, no root
+# vegetable, unlike aloo_paratha (potato).
+
+category: paratha
+prep_minutes: 20
+tags: [bread, breakfast, everyday]
+
+serving_unit:
+  measure: roti
+  grams_per_unit: 58.4
+  min_count: 1
+  default_count: 2
+  max_count: 5
+  note: >-
+    Overrides the generic 45 g roti weight — the added lamination oil makes
+    this heavier than a phulka but lighter than the stuffed aloo_paratha, and
+    58.4 g is this recipe's own summed ingredient weight. Five is a plausible
+    large-breakfast ceiling, between phulka's six (no filling, no oil, purely
+    grain) and aloo_paratha's four (much heavier per piece).
+
+# has_process is True (the oil line carries a process key), so the loader's
+# earned-zero check passes the same way aloo_paratha's and carrot_poriyal's
+# do — see aloo_paratha.yaml's header for the fuller explanation of what that
+# does and does not cover.
+
+ingredients:
+  - id: wheat_atta_raw
+    quantity_g: 35.0
+    state: raw
+    note: Slightly more than phulka's 29 g — enough dough to fold and layer.
+  - id: water
+    quantity_g: 19.0
+    state: as_used
+    note: Dough water retained in the finished bread, same treatment as phulka's.
+  - id: salt_iodised
+    quantity_g: 0.4
+    state: as_used
+    note: About the same proportion as phulka's dough.
+  - id: sunflower_oil
+    quantity_g: 4.0
+    state: as_used
+    process: oil_uptake.paratha_griddled
+    note: >-
+      Retained oil. About 5.0 g is worked between the folds and brushed on
+      the tawa while pan-frying; 4.0 g stays with the finished bread
+      (oil_uptake.paratha_griddled = 0.80).

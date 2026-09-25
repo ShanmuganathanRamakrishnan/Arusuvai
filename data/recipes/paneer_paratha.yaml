@@ -1,0 +1,79 @@
+# Paneer paratha — wholewheat flatbread stuffed with crumbled paneer,
+# pan-fried on a tawa. One of the four archetypal stuffed-paratha fillings
+# named alongside aloo, gobhi and mooli by every source consulted for
+# aloo_paratha.yaml (retrieved 2026-08-24).
+#
+# TASKS_3.md R4d follow-up, added after measuring that aloo_paratha and
+# plain_paratha, even paired with the maximum onion_raita serving the
+# template allows, cannot clear R2's quality-protein floor: curd alone tops
+# out at 7.94g of qualifying protein (2 katoris x 128g curd_dahi x 3.1g/100g,
+# fully DIAAS-qualifying) against an 11.2g floor, and by that same serving
+# level energy and fat already exceed their ceilings — a structural gap, not
+# a thin-serving one. Paneer is DIAAS 1.00 (`data/raw/ifct/fixture_ingredients.csv`)
+# against wheat's 0.45 (below the qualifying threshold) and potato's none at
+# all, so this dish puts a genuine quality-protein source directly in the
+# paratha_base slot rather than depending entirely on the curd_or_raita side
+# dish to carry the floor. Uses paneer_fresh, already in the ingredient set
+# (sourced for paneer_masala) — no new ingredient row.
+id: paneer_paratha
+name: Paneer paratha
+name_ta: பன்னீர் பராத்தா
+name_hi: पनीर पराठा
+
+region: north_indian
+# Not vegan: paneer_fresh is classed dairy. Not jain: onion is not an
+# ingredient here, but garam masala's own composition carries no root
+# vegetable of its own — jain-safe by ingredient composition, same as
+# plain_paratha.
+
+category: paratha
+prep_minutes: 30
+tags: [bread, breakfast, stuffed, everyday]
+
+serving_unit:
+  measure: roti
+  grams_per_unit: 93.3
+  min_count: 1
+  default_count: 2
+  max_count: 4
+  note: >-
+    Same range as aloo_paratha's — another stuffed, pan-fried paratha of
+    comparable weight (93.3 g, this recipe's own summed ingredient weight).
+
+# has_process is True (the oil line carries a process key) — see
+# aloo_paratha.yaml's header for what that does and does not cover for the
+# loader's earned-zero check.
+
+ingredients:
+  - id: wheat_atta_raw
+    quantity_g: 35.0
+    state: raw
+    note: Dough shell for one paratha, same as aloo_paratha's own quantity.
+  - id: water
+    quantity_g: 18.0
+    state: as_used
+    note: Dough water retained in the finished bread, same treatment as phulka's.
+  - id: paneer_fresh
+    quantity_g: 35.0
+    state: as_used
+    note: Crumbled paneer filling, spiced and folded into the dough before rolling.
+  - id: green_chilli
+    quantity_g: 0.5
+    state: raw
+    note: Finely chopped into the filling.
+  - id: garam_masala
+    quantity_g: 0.3
+    state: as_used
+    note: Stirred into the crumbled paneer filling.
+  - id: salt_iodised
+    quantity_g: 0.5
+    state: as_used
+    note: Split across the dough and the filling in practice, one line here.
+  - id: sunflower_oil
+    quantity_g: 4.0
+    state: as_used
+    process: oil_uptake.paratha_griddled
+    note: >-
+      Retained oil/ghee. About 5.0 g is brushed onto the tawa and both faces
+      of the paratha while pan-frying; 4.0 g stays with the finished bread
+      (oil_uptake.paratha_griddled = 0.80).

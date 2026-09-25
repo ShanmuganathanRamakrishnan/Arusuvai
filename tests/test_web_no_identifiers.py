@@ -161,7 +161,7 @@ def rendered_text() -> dict[str, list[str]]:
                 credentials: 'include', headers: j, body: JSON.stringify({email, password})});
               await fetch('http://localhost:8000/api/profile', {method: 'PUT',
                 credentials: 'include', headers: j, body: JSON.stringify({
-                  age_years: 31, sex: 'male', weight_kg: 74, height_cm: 176,
+                  age_years: 31, sex: 'male', weight_kg: 88, height_cm: 176,
                   activity: 'moderate', goal: 'maintain', diet: 'vegetarian',
                   clinical_flags: ['chronic_kidney_disease']})});
             }""",
@@ -182,11 +182,19 @@ def rendered_text() -> dict[str, list[str]]:
         # claimed to sweep while never selecting a plate that declines
         # (`docs/audit_log.md` finding 36).
         #
-        # south_indian:lunch is the one of the four that declines for the CKD
-        # profile above; the other three pass. Measured against the live API
-        # rather than assumed -- if the library changes so that it passes, the
-        # reachability test below goes red rather than this sweep quietly
-        # covering a second success view.
+        # south_indian:lunch is the plate that declines for the CKD profile
+        # above. Repointed 2026-09-25 (docs/audit_log.md, 2026-08-24 SOUTH_DINNER
+        # entry's finding): the old weight_kg=74 stopped declining once
+        # soya_curd gave south_lunch a lower-sodium curd_course -- the same
+        # side effect tests/test_api_targets.py was repointed for in b28447f.
+        # That test moved to a locked *protein* decline; this one cannot,
+        # because the assertions below also require the decline to name
+        # sodium. weight_kg=88 declines on sodium alone, locked by
+        # chronic_kidney_disease (1962.9 mg vs 1400.0 mg). Sodium misses are
+        # not monotonic in weight -- 74, 78 and 79 pass while 76, 77 and 80
+        # decline -- so 88 was picked from the middle of 83..91, the
+        # contiguous run that declines on sodium alone. If it ever passes,
+        # search again rather than delete the assertion.
         page.click('input[name="plate"][value="south_indian:lunch"]')
         page.click("#dashGenerate")
         page.wait_for_timeout(3500)
