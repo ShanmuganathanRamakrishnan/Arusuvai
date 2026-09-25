@@ -319,7 +319,11 @@ class TestEligibilityConsequence:
     #: fermented-batter-then-steamed preparation as `idli`, same raw-basis
     #: rice/urad/soya-flour rows with no process constant, same
     #: `process_uncertainty_unassessed` declaration for every macro it carries.
-    NO_OIL_COOKED = ("idli", "phulka", "soya_idli")
+    #:
+    #: `soya_chana_chaat` (TASKS_3.md R4d, 2026-09-25) joined the same way:
+    #: `soya_chunks_dry` is a raw-basis row soaked in hot water, and the dish
+    #: has no oil line, so it declares every macro unassessed.
+    NO_OIL_COOKED = ("idli", "phulka", "soya_idli", "soya_chana_chaat")
 
     def test_every_recipe_sits_at_exactly_its_registered_band(
         self, library, ingredients

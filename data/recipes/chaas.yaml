@@ -1,0 +1,62 @@
+# Chaas — thin salted buttermilk: curd whisked with a lot of water, salt and
+# green chilli.
+#
+# TASKS_3.md R4d (North Indian snack). The ordinary North Indian drink beside
+# a snack or after a meal; the North counterpart of neer_mor, which is
+# region south_indian and so never enters a North template. Category
+# buttermilk: of the North templates only NORTH_SNACK.drink accepts it, so
+# this adds nothing to North breakfast, lunch or dinner.
+#
+# Added as the snack plate's small optional extra, for the reason
+# core/foods/templates.py's header gives for such slots. Proportions are the
+# ordinary one part curd to three parts water, as in neer_mor, and not tuned.
+# Left out, stated: roasted cumin, mint and coriander are usual in masala
+# chaas, but none has a row in the ingredient table, so this is plain salted
+# chaas.
+id: chaas
+preparation: uncooked
+name: Chaas
+name_ta: மோர்
+name_hi: छाछ
+
+region: north_indian
+# Dairy via curd_dahi's class, so not vegan (derived from ingredient classes;
+# see data/recipes/schema.yaml).
+
+category: buttermilk
+prep_minutes: 3
+tags: [snack, beverage, cooling, quick]
+
+serving_unit:
+  measure: cup
+  name: glass
+  grams_per_unit: 200.0
+  min_count: 1
+  default_count: 1
+  max_count: 1
+  note: >-
+    One glass, shown as "glass" on the generic cup measure with its weight
+    overridden to the summed mass below, as for neer_mor. The ceiling is one
+    for neer_mor's reason: a thin drink beside a snack, not a course.
+
+# Nothing is cooked (whisked curd and water), same as neer_mor.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: curd_dahi
+    quantity_g: 50.0
+    state: as_used
+    note: About a quarter of the glass -- the ordinary thin-buttermilk proportion.
+  - id: water
+    quantity_g: 148.7
+    state: as_used
+  - id: salt_iodised
+    quantity_g: 0.8
+    state: as_used
+    note: >-
+      0.40% of the finished weight, neer_mor's proportion. An authored
+      quantity, not a measurement.
+  - id: green_chilli
+    quantity_g: 0.5
+    state: raw
+    note: Crushed into the drink.

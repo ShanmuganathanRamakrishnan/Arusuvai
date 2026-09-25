@@ -6,6 +6,75 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-25 — North Indian snack: NORTH_SNACK plans 0/144 — each dish misses a different floor; saved, not tuned, no web card
+
+TASKS_3.md R4d, North Indian snack, built with two main dishes from the start
+per the pass-mark decision (entry below). Owner chose, after seeing the
+numbers, to save it as it is and withhold the web card.
+
+**What was added.** `oil_uptake.tikka_pan_roasted` (0.90, project estimate,
+unverified — commit cf7f089). `soya_chana_chaat` (category `chaat`, vegan,
+half-katori unit), `soya_tikka` (category `tikka`, 4-piece plate, max 3),
+`chaas` (category `buttermilk`, north_indian), and `NORTH_SNACK` (required
+`snack` accepting {chaat, tikka}; optional `drink`).
+
+**Result.** `probe_rank_input2.py`, north_indian/snack: **0/144 plan at all**
+(every case declines; declined 346 → 490 of the grid). Other seven templates
+unchanged. Full grid 391/1152 = 33.9%.
+
+**Correction.** Before building, the owner was told the chaat "should give
+two plates to roughly the profiles the sundal serves". **That was wrong.**
+The sundal's fat comes from coconut and tempering oil; the chaat has almost
+none, and the snack target has a fat floor.
+
+**Why, measured per unit** (`nutrition_of_components`, point values):
+
+| dish | kcal | protein g | fat g | carb g |
+|---|---|---|---|---|
+| soya_chana_chaat (half katori) | 100.3 | 8.5 | 1.0 | 14.8 |
+| soya_tikka (4 pieces) | 71.9 | 6.8 | 2.6 | 5.4 |
+| chaas (glass) | 30.2 | 1.6 | 2.0 | 1.5 |
+
+Against the reference snack target (70 kg maintain: 244–270 kcal, fat
+6.7–9.0 g, carb 30.1–40.7 g), arithmetic from the rows above:
+
+| plate | kcal | fat g | carb g | fails |
+|---|---|---|---|---|
+| 2 chaat + chaas | 230 | 4.0 | 31.2 | energy, fat floor |
+| 3 chaat | 301 | 3.0 | 44.5 | energy, fat floor, carb ceiling |
+| 3 tikka | 216 | 7.9 | 16.3 | energy, carb floor |
+| 3 tikka + chaas | 246 | 9.9 | 17.8 | fat ceiling, carb floor |
+
+The chaat is too lean; the tikka too low in carbohydrate. The ladder's
+`fat_carb_tolerance` rung does not close either gap. What-if, in memory only
+(no file changed): letting the main slot hold one chaat **and** one tikka
+together still plans 0/144.
+
+**Not done, and why.** No oil, sev or coconut added to the chaat and no
+bread added to the tikka: each would be moving a dish to fit a window. The
+open question the numbers raise is a target one — whether a snack should
+carry the same fat and carb floors as a meal, which appear to exclude many
+ordinary lopsided snacks. That is the owner's decision, left as its own task.
+
+**No web card.** `web/dashboard.html` is unchanged: a North Indian snack card
+that never solves would tell the user something false. The reason is
+recorded at `NORTH_SNACK` in `core/foods/templates.py`.
+
+**The chaat declares every macro unassessed.** Its soya soak is a process on
+a raw-basis row and it has no oil line, so the loader (rightly) refused a
+0.0 process band. It joins `NO_OIL_COOKED` in `tests/test_nutrition_of.py`
+with idli, phulka and soya_idli; outside `dev_mode` it is not plannable.
+
+**Logged, not fixed.** `soya_chana_sundal` (and any soya-chunk dish with an
+oil line) soaks the same raw-basis row, but its oil line satisfies the
+loader, so its protein band shows 0.25 while the chaat's shows 0.45. The
+oil constant covers the oil, not the soak. Same shape as finding 41: a
+process with no registered constant, hidden by an unrelated one.
+
+**Test repointed.** `test_missing_grammar_raises_rather_than_substituting_another_region`
+used (NORTH_INDIAN, SNACK); every regional pair now has a template, so it
+uses (PAN_INDIAN, SNACK).
+
 ## 2026-09-25 — pass mark stays at two plates for every slot, snacks included — owner decision
 
 **Decision (project owner, 2026-09-25): `MIN_VALID_PLATES` stays 2 for
