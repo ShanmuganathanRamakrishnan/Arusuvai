@@ -35,7 +35,9 @@ class TestFixtureSet:
         # to close SOUTH_LUNCH's vegan structural zero. 35 rows from
         # 2026-08-24's TASKS_3.md R4d north-breakfast work, which added
         # moong_dal_raw (sourced from USDA FDC 174256) for moong_dal_chilla.
-        assert len(load_report.loaded) == 35
+        # 36 rows from 2026-09-25's TASKS_3.md R4d South-snack work, which
+        # added chickpea_boiled (USDA FDC 173757) for soya_chana_sundal.
+        assert len(load_report.loaded) == 36
 
     def test_no_ifct_code_is_invented(self, ingredients):
         # Seven rows now carry real IFCT 2017 codes, extracted from a
@@ -85,8 +87,10 @@ class TestFixtureSet:
         # assistant, not opened by a human. moong_dal_raw (2026-08-24,
         # TASKS_3.md R4d) reuses this project's own toor_dal/rajma DIAAS
         # precedent (0.60) rather than a fresh measurement, and stays
-        # unverified for the identical reason.
-        assert len(load_report.warnings) == 34
+        # unverified for the identical reason. chickpea_boiled (2026-09-25,
+        # TASKS_3.md R4d South snack) carries no DIAAS claim and stays
+        # unverified for the same reason: FDC queried by the assistant.
+        assert len(load_report.warnings) == 35
 
     def test_states_parse(self, ingredients):
         assert ingredients["rice_cooked"].state is RawOrCooked.COOKED
