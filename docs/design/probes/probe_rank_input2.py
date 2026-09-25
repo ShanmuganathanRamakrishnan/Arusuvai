@@ -106,6 +106,9 @@ from core.schemas import (
 )
 
 #: >= this many valid plates is "offering choice" for the exit condition.
+#: Applies to every template, snacks included (owner decision 2026-09-25,
+#: docs/audit_log.md): a one-dish slot meets it with two different dishes,
+#: not a lower bar.
 MIN_VALID_PLATES = 2
 
 #: This fraction of (profile, template) cases must clear MIN_VALID_PLATES.
