@@ -1578,8 +1578,11 @@ PROTEIN_QUALITY_MEAL_FLOOR_FRACTION = register_constant(
             "beneath, because nothing apportions the day quality floor across "
             "slots. The cost of flat is real and is not hidden -- a snack slot "
             "gets the same 11.2 g floor as a lunch, on a quarter of the "
-            "energy. No template exists for the snack slot today, so that "
-            "case is unexercised rather than resolved."
+            "energy. Exercised since 2026-09-25 by SOUTH_SNACK (corrected "
+            "in place; this said no snack template existed): the floor "
+            "cuts one-plate snack coverage from 46/144 to 25/144 profiles "
+            "but is not why none reach two plates -- see docs/audit_log.md "
+            "2026-09-25."
         ),
     )
 )

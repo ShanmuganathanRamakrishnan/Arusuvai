@@ -130,8 +130,11 @@ class TestSouthBreakfastCanReachAQualitySource:
         # thayir_plain here once it was added to close SOUTH_LUNCH's vegan
         # structural zero -- see data/recipes/soya_curd.yaml. Both are
         # vegetarian-eligible (this pool is built VEGETARIAN), so both appear.
+        # Three as of 2026-09-25 (R4d): neer_mor, category buttermilk, which
+        # this slot already accepted -- see data/recipes/neer_mor.yaml.
         template, pool = self._pool(ingredients, library)
         assert [c.id for c in pool.for_slot(template.slot("curd_course"))] == [
+            "neer_mor@buttermilk",
             "soya_curd@curd",
             "thayir_plain@curd",
         ]

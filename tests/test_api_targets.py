@@ -167,6 +167,15 @@ class TestADeclineCarriesItsNumbersNotJustItsProse:
     """
 
     def _decline(self):
+        # Repointed again 2026-09-25 (R4d, neer_mor): 55 kg stopped declining
+        # once neer_mor (data/recipes/neer_mor.yaml, category buttermilk) gave
+        # south_lunch's curd_course a ~31 kcal option. The energy it freed let
+        # two katori of soya_kuzhambu fit: 36.5 g protein vs the locked 34.6 g
+        # floor, 1226 mg sodium under the 1400 mg ceiling -- a real pass, not a
+        # loosened bound. 70 kg lose_fat still declines on the same locked
+        # floor: actual 39.2 g vs bound 44.1 g, locked_by
+        # chronic_kidney_disease. The 2026-08-24 note below is kept as history.
+        #
         # Repointed 2026-08-24 (follow-up to finding 51): the previous
         # profile (weight_kg=74, goal=maintain) stopped declining once
         # soya_curd (data/recipes/soya_curd.yaml) gave south_lunch's
@@ -182,7 +191,7 @@ class TestADeclineCarriesItsNumbersNotJustItsProse:
         return client.post(
             "/api/plan",
             json=_body(
-                weight_kg=55, height_cm=176, age_years=31, goal="lose_fat",
+                weight_kg=70, height_cm=176, age_years=31, goal="lose_fat",
                 diet="vegetarian",
                 clinical_flags=["chronic_kidney_disease"],
                 region="south_indian", meal_slot="lunch",

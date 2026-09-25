@@ -117,6 +117,24 @@ class TestTemplatesAreNotUniform:
         assert protein_slot.required is True
         assert "dal_chilla" in protein_slot.accepted_categories
 
+    def test_lookup_finds_south_snack(self):
+        # Added 2026-09-25 (TASKS_3.md R4d) alongside SOUTH_SNACK itself.
+        t = templates.template_for(Region.SOUTH_INDIAN, MealSlot.SNACK)
+        assert t is templates.SOUTH_SNACK
+
+    def test_south_snack_is_one_dish_and_an_optional_drink(self):
+        # Pin the shape docs/audit_log.md 2026-09-25 explains the low pass
+        # rate by: exactly one required slot (sundal) and one optional drink.
+        # A later edit that adds a required course, or makes the drink
+        # required, changes the plate count the entry reports.
+        by_name = {s.name: s for s in templates.SOUTH_SNACK.slots}
+        assert set(by_name) == {"sundal", "drink"}
+        assert by_name["sundal"].required is True
+        assert by_name["sundal"].accepted_categories == frozenset({"sundal"})
+        assert by_name["drink"].required is False
+        assert by_name["drink"].min_selections == 0
+        assert by_name["drink"].max_selections == 1
+
     def test_missing_grammar_raises_rather_than_substituting_another_region(self):
         with pytest.raises(KeyError, match="no meal template"):
             templates.template_for(Region.NORTH_INDIAN, MealSlot.SNACK)

@@ -6,6 +6,114 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-25 — South Indian snack: SOUTH_SNACK lands at 0/144, below the 30% floor — documented, not gamed
+
+TASKS_3.md R4d, South Indian snack. Three pieces, saved in two commits:
+
+- `chickpea_boiled` (USDA FDC 173757, `verified=false`) — commit d89d908.
+- `neer_mor.yaml` (category `buttermilk`), alone, because
+  `SOUTH_BREAKFAST.curd_course` and `SOUTH_LUNCH.curd_course` already accept
+  that category — commit f32c84a.
+- `soya_chana_sundal.yaml` (category `sundal`, half-katori unit, approved by
+  the owner) with the `SOUTH_SNACK` template — this commit. They go together
+  because `tests/test_recipes.py` needs every recipe category to be accepted
+  by some template.
+
+**Result.** `probe_rank_input2.py`, 144 profiles, south_indian/snack:
+**0/144 reach the two-plate pass mark**; 25/144 get one valid plate; 119/144
+get none. The rung-0-only line is also 0/144.
+
+**Why, structurally.** A snack's energy window is roughly 20–35 kcal wide. The
+template has one required dish and one optional drink, and portions move in
+whole units. The only two plates are "sundal" and "sundal + neer mor", 31 kcal
+apart, so they rarely fit the same window. Two plates would need a second
+sundal or a second snack dish, not a wider bound. Heavier lose_fat profiles
+also need more quality protein per kcal than a sundal carries (110 kg
+lose_fat: 19.8 g within ≤ 268 kcal).
+
+**The quality-protein floor, tested as the entry below asked.** The 2026-09-25
+floor decision said to revisit "only if a real snack template fails on this
+bound". Measured with the floor set to 0 in-process (measurement only, no
+file changed): 46/144 get one plate, still 0/144 get two. So the floor costs
+21 profiles their only plate but is **not** why the snack misses the pass
+mark. That is evidence for a future decision, not a decision; the floor stays
+flat.
+
+**neer_mor's side effect on the other templates** (before = d89d908,
+after = + neer_mor, each a separate worktree with its own `data/`):
+
+| template | before | after |
+|---|---|---|
+| south_indian/breakfast | 117 | 114 |
+| south_indian/lunch | 33 | 33 |
+| south_indian/dinner | 49 | 51 |
+| north_indian/* | unchanged | unchanged |
+| overall (864) | 392 | 391 |
+
+The breakfast drop is the ladder, not the food. 95 kg lose_fat vegetarian
+(no flag, hypertension, CKD) went from 2 plates at `fat_carb_tolerance` to 1
+plate at `rung_0`: neer mor lets an earlier rung plan, and the ladder stops at
+the first rung that plans. Other breakfast profiles gained plates.
+
+It also made `tests/test_api_targets.py`'s CKD decline fixture pass, honestly:
+55 kg lose_fat lunch now fits 2 katori soya_kuzhambu with neer mor, 36.5 g
+protein against the locked 34.6 g floor, 1226 mg sodium under 1400 mg.
+Repointed to 70 kg, which still declines on the locked floor (39.2 g vs
+44.1 g).
+
+**Full grid after this commit**, 1008 cases: 391/1008 = 38.8% (the other six
+templates match the neer_mor row above; the drop from 45.3% is the extra
+template's zeros, arithmetic not regression).
+
+**Corrected in place.** `core/nutrition/citations.py`
+(`protein.quality_meal_floor_fraction` note), `core/nutrition/meal_target.py`
+and `docs/methodology.md` said no snack template existed. Each now carries a
+dated correction.
+
+**Logged, not fixed.** `web/dashboard-copy.js` `PLATE_LABELS` has no entry for
+`south_indian:dinner`, `north_indian:breakfast` or `south_indian:snack`. The
+success card falls back to `humanise()`, e.g. "South indian · snack": readable,
+not wrong, but not the written label. Predates this task for the first two.
+
+**Open.** Whether a two-plate pass mark fits a one-dish meal slot at all is a
+question for the owner, not something to settle by adding filler dishes.
+North Indian snack not started.
+
+## 2026-09-25 — snack quality-protein floor: kept flat, decided before any snack template exists
+
+**Decision (project owner, 2026-09-25): `protein.quality_meal_floor_fraction`
+stays flat at 0.10 for every slot, snack included.** Asked before R4d's snack
+templates were started, because `core/nutrition/citations.py` and
+`docs/methodology.md` both record the snack case as "unexercised rather than
+resolved".
+
+**What was measured.** Reference profile (70 kg, male, 175 cm, 28 y,
+moderate, maintain, vegetarian): snack target energy 244.3–270.0 kcal,
+protein ≥ 16.8 g, fat ≤ 9.0 g, carb 30.1–40.7 g; quality floor 0.10 × 112 =
+11.2 g, same as lunch. Cost of 11.2 g protein from each library ingredient
+with DIAAS ≥ 0.75:
+
+| ingredient | grams | kcal | fat g |
+|---|---|---|---|
+| soya_chunks_dry | 22 | 74 | 0.1 |
+| soya_flour_defatted | 22 | 71 | 0.3 |
+| pomfret_white_raw | 59 | 72 | 3.0 |
+| chicken_breast_raw | 51 | 86 | 4.6 |
+| egg_boiled | 83 | 123 | 8.8 |
+| paneer_fresh | 61 | 181 | 12.7 — over the fat ceiling alone |
+| curd_dahi | 361 | 217 | 14.5 — over the fat ceiling alone |
+
+So the flat floor does not make a snack unreachable; it makes every snack
+soya-, fish-, chicken- or egg-based, and every vegetarian or vegan snack
+soya-based. The alternative offered — exempt the snack slot, on the grounds
+that the floor's stated purpose is "no *meal* is pure lentil" — was declined:
+changing the bound before a single snack plate had been tried would be a
+number moved for convenience. **Revisit only if a real snack template fails
+on this bound**, with that failure as the evidence.
+
+Ingredient-level arithmetic only; no snack template, recipe or plan was
+built or solved for this entry.
+
 ## 2026-09-25 — north_indian/dinner's 86→98/144 is aloo_paratha filling NORTH_DINNER.bread — explained, not a defect
 
 Addresses the unexplained move logged in the 2026-08-24 NORTH_BREAKFAST entry

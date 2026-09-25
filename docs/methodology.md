@@ -1558,7 +1558,14 @@ That last case is pinned in
    a snack at a quarter of a lunch's energy. Flat is deliberate — the design
    wants most of a day's quality protein free to land in one or two meals, and a
    per-slot share would contradict that — but no template exists for the snack
-   slot today, so the case is unexercised rather than resolved.
+   slot today, so the case is unexercised rather than resolved. *(Corrected
+   2026-09-25: `SOUTH_SNACK` now exercises it. The floor cuts one-plate snack
+   coverage from 46/144 to 25/144 profiles, but it is not why none reach two
+   plates; see `docs/audit_log.md`, 2026-09-25, South Indian snack.)*
+   **Decided 2026-09-25: kept flat for snacks too**, before any snack template
+   was built. It leaves snacks reachable but soya-, fish-, chicken- or
+   egg-based (paneer and curd breach the snack fat ceiling first). See
+   `docs/audit_log.md`, 2026-09-25.
 2. **The decline can now hide the other reasons.** When a bound is *unreachable*,
    `_blocking_violations` reports it from its first branch and returns
    immediately, so the energy, fat and sodium misses that came from the later
