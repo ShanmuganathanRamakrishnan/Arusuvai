@@ -36,6 +36,7 @@ __all__ = [
     "SOUTH_DINNER",
     "NORTH_BREAKFAST",
     "SOUTH_SNACK",
+    "NORTH_SNACK",
     "NORTH_DINNER",
     "NORTH_LUNCH",
     "ALL_TEMPLATES",
@@ -351,12 +352,48 @@ SOUTH_SNACK = MealTemplate(
     ),
 )
 
+#: TASKS_3.md R4d ("North Indian snack", 2026-09-25). One main snack dish --
+#: a chaat or a tikka -- with a glass of chaas beside it, or without. Built
+#: with two genuinely different main dishes from the start
+#: (soya_chana_chaat, soya_tikka), per the owner's 2026-09-25 decision that
+#: the two-plate pass mark stays for snacks and is met with more dishes, not
+#: a lower bar (docs/audit_log.md 2026-09-25). Same shape as SOUTH_SNACK:
+#: one required dish, one optional ~30 kcal drink.
+#:
+#: Plans 0/144 profiles, stated before anyone measures it (docs/audit_log.md
+#: 2026-09-25, North Indian snack): the chaat is too lean for the snack's fat
+#: floor, the tikka too low in carbohydrate for its carb floor. Both are
+#: ordinary dishes and neither was tuned. For that reason web/dashboard.html
+#: deliberately offers no North Indian snack card: a card that never solves
+#: would tell the user something false.
+NORTH_SNACK = MealTemplate(
+    id="north_snack",
+    region=Region.NORTH_INDIAN,
+    meal_slot=MealSlot.SNACK,
+    slots=(
+        TemplateSlot(
+            name="snack",
+            accepted_categories=frozenset({"chaat", "tikka"}),
+        ),
+        # Optional for SOUTH_SNACK.drink's reason. Region filtering keeps
+        # neer_mor (south_indian) out; chaas is the North filler.
+        TemplateSlot(
+            name="drink",
+            accepted_categories=frozenset({"buttermilk"}),
+            required=False,
+            min_selections=0,
+            max_selections=1,
+        ),
+    ),
+)
+
 ALL_TEMPLATES: tuple[MealTemplate, ...] = (
     SOUTH_BREAKFAST,
     SOUTH_LUNCH,
     SOUTH_DINNER,
     NORTH_BREAKFAST,
     SOUTH_SNACK,
+    NORTH_SNACK,
     NORTH_LUNCH,
     NORTH_DINNER,
 )

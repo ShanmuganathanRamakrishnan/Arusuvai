@@ -1,0 +1,105 @@
+# Soya chana chaat — boiled chickpeas and soaked soya chunks tossed with raw
+# onion, tomato, green chilli, tamarind water and garam masala. No cooking
+# after the boil and soak, no oil.
+#
+# TASKS_3.md R4d (North Indian snack). Chana chaat is the ordinary North Indian
+# street and home snack, and the library's first recipe in `category: chaat`.
+# One of two main dishes NORTH_SNACK offers from the start, per the owner's
+# 2026-09-25 decision that snacks meet the two-plate pass mark with genuinely
+# different dishes (docs/audit_log.md 2026-09-25); the other is soya_tikka.
+#
+# Why soya is in it, the same reason as soya_chana_sundal: the snack slot's
+# flat quality-protein floor, and chickpea carries no qualifying DIAAS in this
+# library. Soya chunks in chana chaat are a common home variation.
+#
+# What is left out, stated rather than hidden: lemon juice, chaat masala,
+# roasted cumin and fresh coriander are usual, but none has a row in the
+# ingredient table. Tamarind water supplies the sourness instead (imli chaat)
+# and garam masala the spice. Together the missing items would be about 2 g
+# of an 80 g serving.
+#
+# Portion: the half-katori unit soya_chana_sundal uses, approved by the owner
+# for that dish, reused so the two regions' snack units are comparable. The
+# chickpea:soya proportion was set as an ordinary home proportion before any
+# probe run, and is not tuned.
+id: soya_chana_chaat
+name: Soya chana chaat
+name_ta: சோயா சனா சாட்
+name_hi: सोया चना चाट
+
+region: north_indian
+# Vegan: every line is plant (derived from ingredient classes; see
+# data/recipes/schema.yaml). Not jain: onion_raw is classed root_vegetable.
+
+category: chaat
+prep_minutes: 15
+tags: [snack, legume, chaat, high_protein, vegan]
+
+serving_unit:
+  measure: katori
+  name: half katori
+  grams_per_unit: 80.0
+  min_count: 1
+  default_count: 2
+  max_count: 4
+  note: >-
+    A half katori (80 g, the summed mass below), the same unit as
+    soya_chana_sundal and for the same reason: chaat is served in small
+    bowls or leaf cups. Four is the ceiling, two full katoris, so the
+    solver cannot close a protein gap by volume.
+
+# Boiled and drained (chickpeas) or soaked in hot water and squeezed (soya
+# chunks); the rest is raw. The soya soak is a real process on a raw-basis
+# row, and no oil line carries a registered constant, so every macro is
+# declared unassessed and takes the registered wide band
+# (process.unassessed_uncertainty) rather than a 0.0 with nothing behind it.
+# This is the cost of an oil-free dish in this library, accepted rather than
+# avoided by calling the dish uncooked: the band exceeds the eligibility
+# ceilings, so outside dev_mode this recipe is not plannable.
+process_uncertainty_unassessed:
+  [energy_kcal, protein_g, fat_g, carb_g, fibre_g, sodium_mg, iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: chickpea_boiled
+    quantity_g: 35.0
+    state: cooked
+    note: >-
+      Boiled, drained weight. The row is FDC 173757's cooked, unsalted
+      figure, so no yield factor applies.
+  - id: soya_chunks_dry
+    quantity_g: 10.0
+    state: raw
+    note: >-
+      Dry mass. Soaked in hot water and squeezed; the water the chunks hold
+      is the line below, as in soya_chana_sundal.
+  - id: water
+    quantity_g: 19.5
+    state: as_used
+    note: >-
+      Water retained by the squeezed chunks, about twice their dry mass,
+      rounded so the masses sum to the unit.
+  - id: onion_raw
+    quantity_g: 7.0
+    state: raw
+    note: Finely chopped, raw.
+  - id: tomato_raw
+    quantity_g: 6.0
+    state: raw
+    note: Finely chopped, raw.
+  - id: tamarind_pulp
+    quantity_g: 1.5
+    state: as_used
+    note: Thinned with a spoon of water and poured over, in place of lemon.
+  - id: green_chilli
+    quantity_g: 0.3
+    state: raw
+  - id: garam_masala
+    quantity_g: 0.2
+    state: as_used
+    note: Sprinkled over, standing in for chaat masala (not in the table).
+  - id: salt_iodised
+    quantity_g: 0.5
+    state: as_used
+    note: >-
+      0.63% of the finished weight, soya_chana_sundal's proportion. An
+      authored quantity, not a measurement.

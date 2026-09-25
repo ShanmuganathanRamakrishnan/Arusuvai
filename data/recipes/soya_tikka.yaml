@@ -1,0 +1,95 @@
+# Soya tikka — soaked soya chunks marinated in curd, ginger-garlic and garam
+# masala, then tossed with onion on a hot pan or tawa in a little oil until
+# charred at the edges.
+#
+# TASKS_3.md R4d (North Indian snack). Soya tikka is the ordinary vegetarian
+# stand-in for paneer or chicken tikka at North Indian homes and street
+# stalls; this is the library's first recipe in `category: tikka`. The second
+# main dish NORTH_SNACK offers (the other is soya_chana_chaat), per the
+# owner's 2026-09-25 decision that snacks meet the two-plate pass mark with
+# genuinely different dishes.
+#
+# Chosen, and stated as chosen, because it is protein-dense for its energy:
+# heavier lose_fat profiles need more quality protein per kcal than a chaat or
+# sundal carries (docs/audit_log.md 2026-09-25, South Indian snack). Known
+# before measuring: it is low in carbohydrate, so it is expected to miss the
+# snack's carb floor for many profiles. That is the dish, not a defect to tune.
+#
+# Left out, stated: capsicum and fresh coriander are usual but have no row in
+# the ingredient table; tomato stands in for the capsicum pieces.
+id: soya_tikka
+name: Soya tikka
+name_ta: சோயா டிக்கா
+name_hi: सोया टिक्का
+
+region: north_indian
+# Not vegan: curd_dahi is dairy-classed. Not jain: onion_raw is classed
+# root_vegetable. Both derived from ingredient classes (see
+# data/recipes/schema.yaml).
+
+category: tikka
+prep_minutes: 30
+tags: [snack, pan_roasted, high_protein]
+
+serving_unit:
+  measure: katori
+  name: small plate (4 pieces)
+  grams_per_unit: 60.0
+  min_count: 1
+  default_count: 2
+  max_count: 3
+  note: >-
+    Four pieces with their onion and tomato (60 g, the summed mass below),
+    shown on the generic katori measure with its weight overridden. Two
+    plates (8 pieces) is the ordinary snack portion; three (12 pieces) is
+    the ceiling, beyond which this is a meal, not a snack.
+
+# Soaked and squeezed, marinated, pan-roasted. Losses to the soak water and
+# the pan are real and unmeasured; the oil carries a registered constant.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: soya_chunks_dry
+    quantity_g: 12.0
+    state: raw
+    note: >-
+      Dry mass. Soaked in hot water and squeezed; the water the chunks hold
+      is the line below, as in soya_chana_sundal.
+  - id: water
+    quantity_g: 23.0
+    state: as_used
+    note: >-
+      Water retained by the squeezed chunks, about twice their dry mass,
+      rounded so the masses sum to the unit.
+  - id: curd_dahi
+    quantity_g: 12.0
+    state: as_used
+    note: Marinade that clings to the pieces; the rest stays in the bowl.
+  - id: onion_raw
+    quantity_g: 6.0
+    state: raw
+    note: Onion petals roasted alongside the pieces.
+  - id: tomato_raw
+    quantity_g: 3.0
+    state: raw
+    note: A few pieces, standing in for capsicum (not in the table).
+  - id: ginger_garlic_paste
+    quantity_g: 1.0
+    state: as_used
+  - id: garam_masala
+    quantity_g: 0.5
+    state: as_used
+  - id: salt_iodised
+    quantity_g: 0.5
+    state: as_used
+    note: >-
+      0.83% of the finished weight -- a marinated, dry-roasted piece is
+      salted a little more than a tossed legume. An authored quantity, not
+      a measurement.
+  - id: sunflower_oil
+    quantity_g: 2.0
+    state: as_used
+    process: oil_uptake.tikka_pan_roasted
+    note: >-
+      Retained oil. About 2.2 g goes into the pan for four pieces and the
+      pieces take up nearly all of it (oil_uptake.tikka_pan_roasted = 0.90).

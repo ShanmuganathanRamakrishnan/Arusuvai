@@ -135,9 +135,31 @@ class TestTemplatesAreNotUniform:
         assert by_name["drink"].min_selections == 0
         assert by_name["drink"].max_selections == 1
 
+    def test_lookup_finds_north_snack(self):
+        # Added 2026-09-25 (TASKS_3.md R4d) alongside NORTH_SNACK itself.
+        t = templates.template_for(Region.NORTH_INDIAN, MealSlot.SNACK)
+        assert t is templates.NORTH_SNACK
+
+    def test_north_snack_offers_two_dish_kinds_and_an_optional_drink(self):
+        # Pin what the owner's 2026-09-25 pass-mark decision rests on: the
+        # main slot accepts two categories (chaat, tikka), so two different
+        # dishes can make two plates; the drink stays optional.
+        by_name = {s.name: s for s in templates.NORTH_SNACK.slots}
+        assert set(by_name) == {"snack", "drink"}
+        assert by_name["snack"].required is True
+        assert by_name["snack"].accepted_categories == frozenset({"chaat", "tikka"})
+        assert by_name["drink"].required is False
+        assert by_name["drink"].min_selections == 0
+        assert by_name["drink"].max_selections == 1
+
     def test_missing_grammar_raises_rather_than_substituting_another_region(self):
+        # Repointed 2026-09-25: this used (NORTH_INDIAN, SNACK), which
+        # NORTH_SNACK now fills. Every (south/north, slot) pair has a template
+        # since then, so the missing pair is PAN_INDIAN's -- a region whose
+        # recipes enter both regional plans but which has no plate shape of
+        # its own, and must not borrow one.
         with pytest.raises(KeyError, match="no meal template"):
-            templates.template_for(Region.NORTH_INDIAN, MealSlot.SNACK)
+            templates.template_for(Region.PAN_INDIAN, MealSlot.SNACK)
 
     def test_max_components_counts_variable_length_slots(self):
         # south lunch: rice 1 + gravy 1 + vegetable up to 2 + curd 1 + crisp 1 = 6

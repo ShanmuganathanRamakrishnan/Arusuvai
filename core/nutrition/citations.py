@@ -279,6 +279,7 @@ REVIEWED_MECHANISM_MATCHES: dict[str, str] = {
     "oil_uptake.dosa_griddled": "reviewed: NO matching primary source; project estimate, mechanism stated honestly",
     "oil_uptake.vegetable_tempering": "reviewed: NO matching primary source; project estimate",
     "oil_uptake.paratha_griddled": "reviewed: NO matching primary source; project estimate, distinct constant from oil_uptake.dosa_griddled because dough brushed with oil differs from batter spooned around a griddle -- same underlying Evidence, different applied_to",
+    "oil_uptake.tikka_pan_roasted": "reviewed: NO matching primary source; project estimate, distinct constant because porous rehydrated soya pieces tossed in oil on a pan differ from both a spread batter and a brushed dough -- same underlying Evidence, different applied_to",
     "process.unassessed_uncertainty": "reviewed: NO matching primary source; project estimate standing in for an unmeasured process",
     "composition.unverified_secondary": "reviewed: NO matching primary source; project estimate of transcription-plus-analytical error",
     "composition.verified_primary": "reviewed: NO matching primary source; project estimate of analytical spread",
@@ -764,6 +765,34 @@ OIL_UPTAKE_PARATHA = register_constant(
             "while pan-frying on a tawa - surface application, not immersion "
             "frying; retains more than a spread dosa batter because the dough "
             "is folded and re-brushed rather than a single thin layer"
+        ),
+        uncertainty=0.20,
+        note=(
+            "Estimated on the high side, same convention as "
+            "oil_uptake.dosa_griddled: uncertain data must make a recipe "
+            "harder to use, never easier to pass."
+        ),
+    )
+)
+
+# TASKS_3.md R4d (North Indian snack, soya_tikka). A distinct constant for the
+# same reason oil_uptake.paratha_griddled is one: the substrate differs.
+# Rehydrated soya chunks are porous and are tossed in the oil with their
+# marinade on a hot pan or tawa, so the pieces take up nearly all of it and
+# little is left in the pan. Surface application on a flat pan, not immersion
+# frying -- the same mechanism `project_oil_uptake_estimate` states, applied to
+# a different food. No measured source exists for this dish.
+OIL_UPTAKE_TIKKA = register_constant(
+    Constant(
+        key="oil_uptake.tikka_pan_roasted",
+        value=0.90,
+        unit="fraction of applied oil retained",
+        evidence_id="project_oil_uptake_estimate",
+        applied_to=(
+            "oil tossed with marinated, rehydrated soya chunk pieces and "
+            "onion on a hot pan or tawa until charred at the edges - surface "
+            "application, not immersion frying; porous pieces take up most "
+            "of the oil"
         ),
         uncertainty=0.20,
         note=(
