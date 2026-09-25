@@ -6,6 +6,41 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-25 — snack quality-protein floor: kept flat, decided before any snack template exists
+
+**Decision (project owner, 2026-09-25): `protein.quality_meal_floor_fraction`
+stays flat at 0.10 for every slot, snack included.** Asked before R4d's snack
+templates were started, because `core/nutrition/citations.py` and
+`docs/methodology.md` both record the snack case as "unexercised rather than
+resolved".
+
+**What was measured.** Reference profile (70 kg, male, 175 cm, 28 y,
+moderate, maintain, vegetarian): snack target energy 244.3–270.0 kcal,
+protein ≥ 16.8 g, fat ≤ 9.0 g, carb 30.1–40.7 g; quality floor 0.10 × 112 =
+11.2 g, same as lunch. Cost of 11.2 g protein from each library ingredient
+with DIAAS ≥ 0.75:
+
+| ingredient | grams | kcal | fat g |
+|---|---|---|---|
+| soya_chunks_dry | 22 | 74 | 0.1 |
+| soya_flour_defatted | 22 | 71 | 0.3 |
+| pomfret_white_raw | 59 | 72 | 3.0 |
+| chicken_breast_raw | 51 | 86 | 4.6 |
+| egg_boiled | 83 | 123 | 8.8 |
+| paneer_fresh | 61 | 181 | 12.7 — over the fat ceiling alone |
+| curd_dahi | 361 | 217 | 14.5 — over the fat ceiling alone |
+
+So the flat floor does not make a snack unreachable; it makes every snack
+soya-, fish-, chicken- or egg-based, and every vegetarian or vegan snack
+soya-based. The alternative offered — exempt the snack slot, on the grounds
+that the floor's stated purpose is "no *meal* is pure lentil" — was declined:
+changing the bound before a single snack plate had been tried would be a
+number moved for convenience. **Revisit only if a real snack template fails
+on this bound**, with that failure as the evidence.
+
+Ingredient-level arithmetic only; no snack template, recipe or plan was
+built or solved for this entry.
+
 ## 2026-09-25 — north_indian/dinner's 86→98/144 is aloo_paratha filling NORTH_DINNER.bread — explained, not a defect
 
 Addresses the unexplained move logged in the 2026-08-24 NORTH_BREAKFAST entry
