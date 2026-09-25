@@ -6,6 +6,41 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-25 — pass mark stays at two plates for every slot, snacks included — owner decision
+
+**Decision (project owner, 2026-09-25): `MIN_VALID_PLATES` stays 2 for
+every template, snacks included.** A snack meets it the same way a lunch
+does: with genuinely different dishes, not a lower bar.
+
+**Why it was asked.** SOUTH_SNACK landed at 0/144 (entry below). The
+question was whether "two distinct plates" fits a one-dish slot at all.
+
+**Correction to how the question was first put.** It was framed to the owner
+as "a one-dish snack can't reach two plates". **That was wrong.** A plate is
+a distinct combination of dishes, not a distinct portion count, so a
+one-dish template with two sundal recipes has two plates. The wall is one
+recipe, not one slot.
+
+**Measured.** `probe_rank_input2.py`'s own `profiles()` and
+`accepted_rung_valid_plate_count`, south_indian/snack, with an in-memory
+identical copy of `soya_chana_sundal` added (a ceiling, not a real dish; no
+file changed):
+
+| | 0 plates | 1 plate | ≥ 2 plates |
+|---|---|---|---|
+| library as is | 119 | 25 | 0 |
+| + identical second sundal | 119 | 0 | 25 |
+
+So a second dish lifts every profile that gets a snack to the pass mark,
+but 119/144 still get none. The option declined — count one plate as a pass
+for snacks — would score 25/144 = 17.4%, still below the 30% floor. It
+changes the label, not the result, and leaves the ranking step nothing to
+rank.
+
+**What follows.** The snack gap is a library problem: more genuinely
+different snack dishes, each chosen as an ordinary snack first and measured
+after, never tuned to a window.
+
 ## 2026-09-25 — South Indian snack: SOUTH_SNACK lands at 0/144, below the 30% floor — documented, not gamed
 
 TASKS_3.md R4d, South Indian snack. Three pieces, saved in two commits:
@@ -77,6 +112,8 @@ not wrong, but not the written label. Predates this task for the first two.
 
 **Open.** Whether a two-plate pass mark fits a one-dish meal slot at all is a
 question for the owner, not something to settle by adding filler dishes.
+*(Settled 2026-09-25, entry above: the mark stays at two; snacks need more
+real dishes.)*
 North Indian snack not started.
 
 ## 2026-09-25 — snack quality-protein floor: kept flat, decided before any snack template exists
