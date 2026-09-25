@@ -46,9 +46,22 @@ Against the reference snack target (70 kg maintain: 244–270 kcal, fat
 | 3 tikka + chaas | 246 | 9.9 | 17.8 | fat ceiling, carb floor |
 
 The chaat is too lean; the tikka too low in carbohydrate. The ladder's
-`fat_carb_tolerance` rung does not close either gap. What-if, in memory only
-(no file changed): letting the main slot hold one chaat **and** one tikka
-together still plans 0/144.
+`fat_carb_tolerance` rung does not close either gap.
+
+**CORRECTED 2026-09-25, same day — the sentence that stood here was false.**
+It read: "What-if, in memory only (no file changed): letting the main slot
+hold one chaat **and** one tikka together still plans 0/144." That what-if
+never ran. It patched the dict `runpy.run_path` returns, which is a *copy*
+of the probe's globals, so the probe kept calling the real `template_for`
+and simply re-measured the template as built. Re-run by patching the probe
+functions' own `__globals__` (asserted to be the dict they read): **chaat +
+tikka on one plate gives 46/144 one plate, 0/144 two** (0/1/2+ =
+98/46/0). The same commit message (36132d5) and PR #10's first description
+carry the false figure. The two earlier in-memory what-ifs on 2026-09-25
+(quality floor off; identical second sundal) patched a shared module or
+object rather than that dict, and their numbers moved, so they did run.
+Lesson, same family as findings 11 and 18: a what-if that returns the
+baseline unchanged must be checked for having run at all.
 
 **Not done, and why.** No oil, sev or coconut added to the chaat and no
 bread added to the tikka: each would be moving a dish to fit a window. The
