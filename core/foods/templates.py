@@ -35,6 +35,7 @@ __all__ = [
     "SOUTH_LUNCH",
     "SOUTH_DINNER",
     "NORTH_BREAKFAST",
+    "SOUTH_SNACK",
     "NORTH_DINNER",
     "NORTH_LUNCH",
     "ALL_TEMPLATES",
@@ -313,11 +314,49 @@ NORTH_BREAKFAST = MealTemplate(
     ),
 )
 
+#: TASKS_3.md R4d ("South Indian snack", 2026-09-25). The ordinary Tamil
+#: evening snack: a katori of sundal -- boiled legumes tempered with mustard,
+#: urad dal and curry leaves, finished with coconut -- with a glass of neer mor
+#: (thin spiced buttermilk) beside it, or without. One required dish and one
+#: optional drink; no base, no curry, no side, because a snack is not a small
+#: lunch.
+#:
+#: Below the per-template floor, stated before anyone measures it
+#: (docs/audit_log.md 2026-09-25): 0/144 profiles reach the two-plate pass
+#: mark, 25/144 get one valid plate. The cause is structural, not a thin
+#: library. The snack's energy window is roughly 20-35 kcal wide, and a
+#: one-dish plate moves in whole units: the only other plate is the same
+#: sundal plus neer mor, 31 kcal away, so two plates rarely both fit one
+#: window. Heavier lose_fat profiles also need more quality protein per kcal
+#: than a sundal carries. No bound was widened to change either number.
+SOUTH_SNACK = MealTemplate(
+    id="south_snack",
+    region=Region.SOUTH_INDIAN,
+    meal_slot=MealSlot.SNACK,
+    slots=(
+        TemplateSlot(
+            name="sundal",
+            accepted_categories=frozenset({"sundal"}),
+        ),
+        # Optional for the reason this module's header gives: a ~31 kcal extra
+        # the solver can use to close a small energy gap. A sundal alone is a
+        # complete snack.
+        TemplateSlot(
+            name="drink",
+            accepted_categories=frozenset({"buttermilk"}),
+            required=False,
+            min_selections=0,
+            max_selections=1,
+        ),
+    ),
+)
+
 ALL_TEMPLATES: tuple[MealTemplate, ...] = (
     SOUTH_BREAKFAST,
     SOUTH_LUNCH,
     SOUTH_DINNER,
     NORTH_BREAKFAST,
+    SOUTH_SNACK,
     NORTH_LUNCH,
     NORTH_DINNER,
 )

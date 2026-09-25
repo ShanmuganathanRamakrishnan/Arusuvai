@@ -165,7 +165,9 @@ def _quality_protein_floor(day_target: NutritionTarget) -> float | None:
 
     The cost of flat, stated rather than discovered: a snack gets the same
     floor as a lunch on a quarter of the energy. No template exists for the
-    snack slot today, so the case is unexercised, not solved.
+    snack slot today, so the case is unexercised, not solved. (Corrected
+    2026-09-25: SOUTH_SNACK now exercises it -- docs/audit_log.md
+    2026-09-25.)
 
     Returns ``None`` when the day target states no protein floor, for the same
     reason ``_apply_protein_meal_bounds`` returns early: inventing a bound here

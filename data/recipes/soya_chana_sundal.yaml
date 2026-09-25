@@ -1,0 +1,112 @@
+# Soya chana sundal — boiled chickpeas and soya chunks tempered with mustard,
+# urad dal and curry leaves, finished with grated coconut.
+#
+# TASKS_3.md R4d (South Indian snack). Sundal is the ordinary Tamil evening
+# snack (maalai sitrundi) — a boiled legume, tempered and tossed with coconut —
+# and the library's first recipe in `category: sundal`.
+#
+# Why soya is in it at all, stated rather than implied: the snack slot carries
+# the same flat quality-protein floor as every other slot
+# (protein.quality_meal_floor_fraction, kept flat for snacks by the owner's
+# 2026-09-25 decision — docs/audit_log.md). Chickpea carries no qualifying
+# DIAAS in this library, so a plain chana sundal cannot clear that floor at
+# any portion a snack can hold. Soya chunks are the qualifying source here;
+# the chickpeas carry the carbohydrate a snack needs and soya alone lacks.
+#
+# The proportion is the common home one — equal cups of soaked soya chunks and
+# boiled chickpeas. Stated plainly, both portion choices were made with the
+# snack target already known (docs/audit_log.md 2026-09-25):
+#
+# * First drafted as one full katori (160 g, 262.5 kcal, 11.4 g quality
+#   protein). Prototyped against the 144-profile grid it planned 0/144: a
+#   snack's energy window is ~10% of the day and narrow, and whole 262 kcal
+#   steps land inside it for almost no profile. Exempting snacks from the
+#   quality floor moved that only to 2/144, so the floor was not the cause.
+# * The unit was then set to a half katori (80 g), with the owner's approval,
+#   because sundal is ordinarily served in small cups by the spoonful. The
+#   ratio did not change; every line below is exactly half the first draft.
+#   The ceiling (4 half-katoris) is the same total as the first draft's 2.
+id: soya_chana_sundal
+name: Soya chana sundal
+name_ta: சோயா கொண்டைக்கடலை சுண்டல்
+name_hi: सोया चना सुंडल
+
+region: south_indian
+# Vegan: every line is plant (derived from ingredient classes; see
+# data/recipes/schema.yaml). Contains soya and coconut allergens via its
+# ingredient rows.
+
+category: sundal
+prep_minutes: 20
+tags: [snack, legume, tempered, high_protein, vegan]
+
+serving_unit:
+  measure: katori
+  name: half katori
+  grams_per_unit: 80.0
+  min_count: 1
+  default_count: 2
+  max_count: 4
+  note: >-
+    A half katori (80 g, the summed mass below): sundal is served by the
+    spoonful in small cups, so a half katori is a real serving, not an
+    arithmetic slice. Four is the ceiling -- two full katoris, the same total
+    as soya_chunk_curry's ceiling and for the same reason: more would hand the
+    solver room to close a protein gap by volume.
+
+# Boiled and drained (chickpeas) or soaked and squeezed (soya chunks), then
+# tossed in a tempering. Leaching into the discarded water is real and
+# unmeasured; the tempering oil carries a registered constant.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: chickpea_boiled
+    quantity_g: 40.0
+    state: cooked
+    note: >-
+      Boiled, drained weight — a quarter cup. The row is FDC 173757's
+      cooked, unsalted figure, so no yield factor applies.
+  - id: soya_chunks_dry
+    quantity_g: 11.0
+    state: raw
+    note: >-
+      Dry mass, about a quarter cup. Soaked in hot water and squeezed; the water
+      the chunks hold after squeezing is the line below rather than a yield
+      multiplication here, as in soya_chunk_curry.
+  - id: water
+    quantity_g: 22.25
+    state: as_used
+    note: >-
+      Water retained by the squeezed chunks, about twice their dry mass.
+      Listed so the masses sum to the katori.
+  - id: coconut_fresh
+    quantity_g: 4.0
+    state: raw
+    note: Grated, stirred through at the end, as in a poriyal.
+  - id: gingelly_oil
+    quantity_g: 1.25
+    state: as_used
+    process: oil_uptake.vegetable_tempering
+    note: >-
+      Retained oil. About 1.3 g goes into the pan for the tempering and
+      stays with the legumes (oil_uptake.vegetable_tempering = 0.95).
+  - id: urad_dal_raw
+    quantity_g: 0.25
+    state: raw
+    note: Tempering only — fried in the oil with the mustard seed.
+  - id: mustard_seed
+    quantity_g: 0.25
+    state: as_used
+  - id: curry_leaves
+    quantity_g: 0.25
+    state: raw
+  - id: green_chilli
+    quantity_g: 0.25
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.5
+    state: as_used
+    note: >-
+      0.63% of the finished weight, carrot_poriyal's proportion — a dry,
+      tossed side salted the same way. An authored quantity, not a
+      measurement.
