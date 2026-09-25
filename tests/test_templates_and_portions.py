@@ -143,11 +143,15 @@ class TestTemplatesAreNotUniform:
     def test_north_snack_offers_two_dish_kinds_and_an_optional_drink(self):
         # Pin what the owner's 2026-09-25 pass-mark decision rests on: the
         # main slot accepts two categories (chaat, tikka), so two different
-        # dishes can make two plates; the drink stays optional.
+        # dishes can make two plates; the drink stays optional. The main slot
+        # takes one or two dishes (chaat + tikka together) -- owner decision
+        # 2026-09-25, docs/audit_log.md "snack fat/carb floors".
         by_name = {s.name: s for s in templates.NORTH_SNACK.slots}
         assert set(by_name) == {"snack", "drink"}
         assert by_name["snack"].required is True
         assert by_name["snack"].accepted_categories == frozenset({"chaat", "tikka"})
+        assert by_name["snack"].min_selections == 1
+        assert by_name["snack"].max_selections == 2
         assert by_name["drink"].required is False
         assert by_name["drink"].min_selections == 0
         assert by_name["drink"].max_selections == 1

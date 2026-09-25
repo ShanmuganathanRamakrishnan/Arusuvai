@@ -360,12 +360,16 @@ SOUTH_SNACK = MealTemplate(
 #: a lower bar (docs/audit_log.md 2026-09-25). Same shape as SOUTH_SNACK:
 #: one required dish, one optional ~30 kcal drink.
 #:
-#: Plans 0/144 profiles, stated before anyone measures it (docs/audit_log.md
-#: 2026-09-25, North Indian snack): the chaat is too lean for the snack's fat
-#: floor, the tikka too low in carbohydrate for its carb floor. Both are
-#: ordinary dishes and neither was tuned. For that reason web/dashboard.html
-#: deliberately offers no North Indian snack card: a card that never solves
-#: would tell the user something false.
+#: As first built it planned 0/144 (docs/audit_log.md 2026-09-25, North
+#: Indian snack): the chaat was too lean for the snack's fat floor, the tikka
+#: too low in carbohydrate for its carb floor. Two owner decisions the same
+#: day changed that without touching either dish: snacks lost their fat/carb
+#: floors (core/nutrition/meal_target.py), and `snack` below takes up to two
+#: dishes, so a plate can be a chaat with a few tikka pieces -- an ordinary
+#: mixed snack plate, and the only way two different plates reach one
+#: profile's narrow window (docs/audit_log.md 2026-09-25, snack fat/carb
+#: floors). With only one chaat and one tikka in the library, two selections
+#: can only be that pair.
 NORTH_SNACK = MealTemplate(
     id="north_snack",
     region=Region.NORTH_INDIAN,
@@ -374,6 +378,7 @@ NORTH_SNACK = MealTemplate(
         TemplateSlot(
             name="snack",
             accepted_categories=frozenset({"chaat", "tikka"}),
+            max_selections=2,
         ),
         # Optional for SOUTH_SNACK.drink's reason. Region filtering keeps
         # neer_mor (south_indian) out; chaas is the North filler.

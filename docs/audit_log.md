@@ -52,6 +52,19 @@ two tests red —
 and `::test_the_fat_carb_rung_does_not_restore_a_dropped_floor` — 2 failed,
 470 passed; restored.
 
+**Second commit: chaat + tikka on one plate.** `NORTH_SNACK.snack` takes
+`max_selections=2`; with one chaat and one tikka in the library that can only
+be the pair. Measured on the tree, profiles with 0 / 1 / 2+ plates: north
+snack **56 / 42 / 46 — 46/144 = 31.9%, above the 30% floor**, matching the
+what-if; rung-0-only 28/144. South snack 116 / 28 / 0, unchanged by this
+commit. Grid 437/1152 = 37.9% (from 391); declined 429 → 399. Other six
+templates unchanged. Deletion check: `max_selections=1` on that line alone
+turns `test_north_snack_offers_two_dish_kinds_and_an_optional_drink` red
+(1 failed, 471 passed); restored. Only that shape pin catches it — no
+behaviour test does, same as SOUTH_SNACK's shape. (A first attempt at this
+mutation hit all four `max_selections=2` lines in the file and failed 9
+tests; discarded as not measuring this mechanism.)
+
 ## 2026-09-25 — North Indian snack: NORTH_SNACK plans 0/144 — each dish misses a different floor; saved, not tuned, no web card
 
 TASKS_3.md R4d, North Indian snack, built with two main dishes from the start
