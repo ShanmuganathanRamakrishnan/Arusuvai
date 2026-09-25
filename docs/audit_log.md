@@ -6,6 +6,49 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-25 — web decline fixture repointed: the CKD profile declines on sodium again — **FIXED**
+
+Addresses the finding raised in the 2026-08-24 SOUTH_DINNER entry below:
+`tests/test_web_no_identifiers.py`'s CKD profile (weight_kg=74) no longer
+declined for `south_indian/lunch`, so `test_every_view_was_actually_reached`
+failed under `FOODAI_WEB_TESTS=required`.
+
+**Not caused by the open PR.** Checked against `origin/main` (`b8142bd`) in a
+separate worktree, with the API and static server *also* started from that
+worktree: same failure, same assertion. (A first attempt ran main's tests
+against servers still serving the PR branch; that comparison was discarded,
+not reported.)
+
+**Why not reuse `test_api_targets.py`'s repoint (weight_kg=55,
+goal=lose_fat).** That profile declines on a locked *protein* floor. This
+test also asserts the decline names sodium or salt, so it needs a sodium
+decline. Searched vegetarian + `chronic_kidney_disease`, male, 31 y,
+176 cm, moderate, `maintain`, via `POST /api/plan`:
+
+| weight_kg | result | sodium actual vs bound (mg) |
+|---|---|---|
+| 74 | passes | — |
+| 76, 77 | declines, sodium only | 1560.3 vs 1400.0 |
+| 78, 79 | passes | — |
+| 80 | declines, sodium only | 1654.5 vs 1400.0 |
+| 83–91 | declines, sodium only | 1808.0–2276.6 vs 1400.0 |
+| 92–95 | declines, sodium + protein floor | 2276.6 vs 1400.0 |
+
+Sodium misses are not monotonic in weight, so 80 sat next to passing
+weights. **88** was chosen from the middle of the 83–91 run: 1962.9 mg vs
+1400.0 mg, `locked_by: chronic_kidney_disease`. Only the weight changed;
+every other field of the profile is as before. `test_web_decline_copy.py`
+and `test_web_wizard_layout.py` also use weight_kg=74 but neither depends on
+a real decline (one stubs `/api/plan`, the other has no clinical flag); left
+alone.
+
+**Red before, green after.** Before: under `FOODAI_WEB_TESTS=required`,
+`1 failed, 525 passed`, the failure being
+`test_every_view_was_actually_reached` ("the decline section did not
+render"). After: `526 passed, 1 warning in 161.17s`, API and static server
+started from this worktree (API's warning path confirmed
+`...worktrees\r1a-ingredient-classes\api\main.py`).
+
 ## 2026-08-24 — NORTH_BREAKFAST added; lands below the 30% per-template floor, documented not gamed (R4d, north breakfast sub-task)
 
 **What was done.** Per the user's explicit choice, R4d's next sub-task after
