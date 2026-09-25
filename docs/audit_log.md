@@ -6,6 +6,41 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-25 — north_indian/dinner's 86→98/144 is aloo_paratha filling NORTH_DINNER.bread — explained, not a defect
+
+Addresses the unexplained move logged in the 2026-08-24 NORTH_BREAKFAST entry
+below. That entry said the move was "not caused by this task (neither
+`NORTH_DINNER` nor any recipe it uses was touched here)" and guessed at R4b/R4c.
+**Both halves were wrong.** `NORTH_DINNER.bread` has accepted
+`{"roti", "paratha"}` since it was written, and that commit added the library's
+first three `category: paratha` recipes. `aloo_paratha.yaml`'s own header
+already says it "incidentally fills that gap too" — the entry contradicted a
+file in its own commit.
+
+**Measured, not read.** `probe_rank_input2.py`'s own
+`accepted_rung_valid_plate_count` and `profiles()`, north_indian/dinner only,
+each tree a separate `git worktree` (code *and* `data/` from that tree):
+
+| tree | north_indian/dinner |
+|---|---|
+| A: `bb8af95` (before NORTH_BREAKFAST) | 86/144 |
+| B: `08ef4b0` (NORTH_BREAKFAST) | 98/144 |
+| C: `08ef4b0` minus `aloo_`/`plain_`/`paneer_paratha.yaml` | 86/144, row-for-row identical to A |
+| `422f769` (main today) | 98/144, row-for-row identical to B |
+
+Removing the three parathas restores every one of the 144 rows, so they
+account for the whole move and nothing else between the two runs moved it.
+40 profiles gained valid plates (none lost any); 12 crossed
+`MIN_VALID_PLATES = 2` from 1 to 2, all at rung 0: 45 kg `gain_muscle`
+vegetarian and vegan, and 55 kg `maintain` vegan, each under all four
+clinical-flag settings. For 45 kg vegetarian and 55 kg vegan the new second
+plate is `aloo_paratha + soya_chunk_curry + aloo_sabzi`, next to the existing
+`phulka + soya_chunk_masala + aloo_sabzi`.
+
+**Disposition: explained, no code change.** A paratha at dinner is what the
+template already allowed; the bread slot simply had no recipe before. Whether
+a paratha *should* be a dinner option is a product question, not raised here.
+
 ## 2026-09-25 — web decline fixture repointed: the CKD profile declines on sodium again — **FIXED**
 
 Addresses the finding raised in the 2026-08-24 SOUTH_DINNER entry below:
@@ -147,7 +182,7 @@ before, 6 templates/864 cases after):
 
 The four templates untouched by this task are bit-for-bit identical to the
 south-dinner entry's own "after" figures except `north_indian/dinner`, which
-moved 86/144→98/144 between that run and this one — not caused by this task
+moved 86/144→98/144 between that run and this one — *[corrected 2026-09-25: wrong; this task's `aloo_paratha` caused all of it — see that date's entry]* not caused by this task
 (neither `NORTH_DINNER` nor any recipe it uses was touched here); most likely
 attributable to library changes landed between the two runs (R4c's
 `soya_flour_defatted`/`soya_idli`, R4b's `soya_chunk_masala`). Not
