@@ -64,6 +64,41 @@ NORTH_BREAKFAST 4 → 7/144; vegetarian 0 / 1 / 2+ 34 / 31 / 7 (was
 Other seven templates unchanged. Grid 559 → 562; declined 371 → 346.
 Suite on this tree: 477 passed, 68 skipped.
 
+**Commit 3 — `soya_keema_paratha`.** `paneer_paratha`'s dough, oil and
+spice lines unchanged, its 35 g paneer filling replaced by 35 g soya keema
+(10 g dry soya chunks, 20 g retained water, 5 g onion); `paratha`, vegan,
+93.3 g unit, counts 1–4. Measured on the tree:
+
+| | vegetarian 0 / 1 / 2+ | vegan 0 / 1 / 2+ | NORTH_BREAKFAST 2+ |
+|---|---|---|---|
+| before this task | 59 / 9 / 4 | 72 / 0 / 0 | 4/144 (2.8%) |
+| after commit 3 | 17 / 20 / 35 | 54 / 18 / 0 | **35/144 (24.3%)** |
+
+**Still below the 30% floor (43).** Vegans can now get a North breakfast
+(18/72) but never two plates: the keema paratha is their only qualifying
+source, so exactly one bread choice can pass. A second vegan qualifying
+dish is what a further gain needs; not attempted here.
+
+Side effect: the paratha also fills NORTH_DINNER's bread slot, north
+dinner 114 → 122. Grid 562 → **598/1152 = 51.9%**, above the 50% overall
+exit condition for the first time; the exit condition is still unmet
+because `south_indian/lunch` (33) and `north_indian/breakfast` (35) are
+below the per-template floor. Declined 346 → 311.
+
+**Verification.** `FOODAI_WEB_TESTS=required python -m pytest tests/ -q
+-p no:cacheprovider`: first run 1 failed, 544 passed —
+`tests/test_web_no_identifiers.py::test_every_view_was_actually_reached`,
+failure message not captured. That file alone: 12 passed. Full run again:
+545 passed, 1 warning. **Logged as intermittent, not fixed, cause not
+known.**
+
+**Noticed, not fixed:** `web/dashboard.html`'s plate-picker comment still
+gives North Indian breakfast as 2.8% and the South snack as 0/144; both
+are stale. A source comment, not shown to users.
+
+**Disposition:** three dishes landed; NORTH_BREAKFAST 4 → 35/144, still
+below floor, documented, not tuned.
+
 ## 2026-09-26 — sundal quarter katori: South snack 67/144, above the 30% floor — owner decision
 
 **Decision (project owner, 2026-09-26):** both sundals

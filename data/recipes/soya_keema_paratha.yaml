@@ -1,0 +1,84 @@
+# Soya keema paratha — whole-wheat paratha stuffed with spiced, minced soya
+# (soya keema), pan-fried on a tawa. An ordinary North Indian home
+# breakfast, made the way aloo or paneer paratha is.
+#
+# TASKS_3.md R4d (North Indian breakfast). Measured 2026-09-26: no vegan
+# NORTH_BREAKFAST plate can reach the quality-protein floor, because the only
+# vegan ingredients that qualify are soya_chunks_dry (DIAAS 0.85) and
+# soya_flour_defatted, and no north_indian breakfast dish contains either.
+#
+# Proportions, fixed before any probe run: paneer_paratha's dough, oil,
+# chilli, garam masala and salt lines unchanged, and its 35 g paneer filling
+# replaced by 35 g of soya keema -- soaked, squeezed, minced soya chunks at
+# twice-dry-mass retained water, as in every soya-chunk recipe here, with a
+# little onion. Soya granules are the same product minced finer, so the
+# soya_chunks_dry row is reused.
+id: soya_keema_paratha
+name: Soya keema paratha
+name_ta: சோயா கீமா பராத்தா
+name_hi: सोया कीमा पराठा
+
+region: north_indian
+# Vegan: every line is plant (derived from ingredient classes; see
+# data/recipes/schema.yaml). Not jain: onion_raw is classed root_vegetable.
+
+category: paratha
+prep_minutes: 35
+tags: [bread, stuffed, breakfast, high_protein, vegan]
+
+serving_unit:
+  measure: roti
+  grams_per_unit: 93.3
+  min_count: 1
+  default_count: 2
+  max_count: 4
+  note: >-
+    One paratha (93.3 g, the summed mass below). paneer_paratha's range, for
+    its reason: another stuffed, pan-fried paratha of the same weight.
+
+# Soaked and squeezed, then fried into the filling and griddled. Losses to
+# the soak water and the pan are real and unmeasured; the oil carries a
+# registered constant. Same declaration as soya_tikka.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: wheat_atta_raw
+    quantity_g: 35.0
+    state: raw
+    note: Dough shell for one paratha, paneer_paratha's line.
+  - id: soya_chunks_dry
+    quantity_g: 10.0
+    state: raw
+    note: >-
+      Dry mass. Soaked in hot water, squeezed and minced for the filling.
+  - id: water
+    quantity_g: 38.0
+    state: as_used
+    note: >-
+      18 g dough water (paneer_paratha's line) plus 20 g water retained by
+      the squeezed soya, about twice its dry mass. One line so the ids stay
+      unique.
+  - id: onion_raw
+    quantity_g: 5.0
+    state: raw
+    note: Finely chopped, fried into the keema.
+  - id: green_chilli
+    quantity_g: 0.5
+    state: raw
+    note: Finely chopped into the filling, paneer_paratha's line.
+  - id: garam_masala
+    quantity_g: 0.3
+    state: as_used
+    note: Stirred into the filling, paneer_paratha's line.
+  - id: salt_iodised
+    quantity_g: 0.5
+    state: as_used
+    note: Split across the dough and the filling in practice, one line here.
+  - id: sunflower_oil
+    quantity_g: 4.0
+    state: as_used
+    process: oil_uptake.paratha_griddled
+    note: >-
+      Retained oil, paneer_paratha's line: about 5.0 g brushed on the tawa
+      and both faces while pan-frying; 4.0 g stays
+      (oil_uptake.paratha_griddled = 0.80).
