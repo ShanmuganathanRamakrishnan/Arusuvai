@@ -6,6 +6,55 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-26 — North Indian breakfast dishes: soya onion raita, paneer moong chilla, soya keema paratha
+
+**Diagnosis first** (in-memory what-ifs patching the probe's own
+`__globals__`, nothing changed on disk). NORTH_BREAKFAST stood at 4/144
+two-plate, profiles with 0 / 1 / 2+ plates by diet:
+
+| what-if | vegetarian | vegan |
+|---|---|---|
+| none | 59 / 9 / 4 | 72 / 0 / 0 |
+| no quality-protein floor | 14 / 23 / 35 | 72 / 0 / 0 |
+| no fat ceiling | 33 / 35 / 4 | 72 / 0 / 0 |
+| no fat/carb bounds at all | 26 / 42 / 4 | 72 / 0 / 0 |
+
+Two causes. (1) Vegan is a structural zero: `curd_or_raita` is required and
+its only north_indian filler, `onion_raita`, is dairy (already logged
+2026-08-24). (2) Vegetarian plates are held mainly by the quality-protein
+floor: only `paneer_paratha` and `onion_raita` carry qualifying protein.
+
+**CORRECTION, before any dish was written.** I first told the owner a
+soya-curd raita would carry qualifying protein. It does not:
+`soya_curd_plain` has no DIAAS in the ingredient table. The only vegan rows
+that qualify are `soya_chunks_dry` (0.85) and `soya_flour_defatted` (1.05).
+The owner then chose three dishes instead of two, each proportioned from an
+existing recipe before any probe run.
+
+**Commit 1 — `soya_onion_raita`.** `onion_raita` gram for gram with
+`soya_curd_plain` in place of `curd_dahi`; `north_indian`, `raita`,
+uncooked. Makes a vegan North breakfast buildable; cannot make one pass.
+Measured on the tree (`probe_rank_input2.py`):
+
+- NORTH_BREAKFAST 4/144, unchanged. Vegan 72 cases move from `empty_pool`
+  to `declined` — which is why the probe's declined count rises 303 → 371
+  while nothing got worse.
+- Side effect, the raita also fills the optional raita slot in NORTH_LUNCH
+  and NORTH_DINNER: north lunch 91 → 118, north dinner 98 → 114.
+- Grid 516 → 559/1152.
+
+Two tests in `tests/test_planner_quality.py` moved with it, both corrected
+in place with a dated note: the tofu perturbation plate now carries one
+soya raita and one phulka fewer (the tofu-and-dal core it exists to show is
+unchanged), and the diet-decides-the-plate test is repointed from north
+dinner — where both diets now get the same all-plant plate — to north
+lunch, where they still differ. Deletion check on the repointed test:
+bypassing `diet_pattern_permits` in `core/planner/candidates.py` turns it
+red (6 failed in that file, it among them); restored.
+
+`python -m pytest tests/ -q -p no:cacheprovider` on this commit's tree:
+477 passed, 68 skipped.
+
 ## 2026-09-26 — sundal quarter katori: South snack 67/144, above the 30% floor — owner decision
 
 **Decision (project owner, 2026-09-26):** both sundals
