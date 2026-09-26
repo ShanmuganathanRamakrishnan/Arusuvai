@@ -1,0 +1,101 @@
+# Soya chunk sundal ("meal maker sundal") — soaked soya chunks tempered with
+# mustard, urad dal and curry leaves, with a little onion, finished with grated
+# coconut.
+#
+# TASKS_3.md R4d (more South Indian snack dishes). A common Tamil home snack in
+# its own right, the second recipe in `category: sundal` beside
+# soya_chana_sundal, so SOUTH_SNACK now has two dishes to choose from.
+#
+# Chosen, and stated as chosen, for its quality protein per calorie. On
+# 2026-09-25, 112 of the 116 profiles that got no South snack declined on the
+# quality-protein floor (docs/audit_log.md 2026-09-25, South snack dishes):
+# soya_chana_sundal carries about 4.3 g per 100 kcal, and heavier lose_fat
+# profiles need up to about 7.4. Peanut or green gram sundal, the task's own
+# examples, carry no qualifying protein in this library, so they could not
+# move that floor; the owner chose this dish instead.
+#
+# Proportions, so they are not tuned: the tempering, coconut and salt lines
+# are exactly soya_chana_sundal's half-katori lines, unchanged. The chickpeas
+# are replaced by soya chunks and 10 g of onion, the usual addition in this
+# dish; the soya fills the rest of the half katori at the same
+# twice-dry-mass retained water as every soya-chunk recipe here. Fixed before
+# any probe run.
+id: soya_chunk_sundal
+name: Soya chunk sundal
+name_ta: சோயா சுண்டல்
+name_hi: सोया सुंडल
+
+region: south_indian
+# Vegan: every line is plant (derived from ingredient classes; see
+# data/recipes/schema.yaml). Not jain: onion_raw is classed root_vegetable.
+
+category: sundal
+prep_minutes: 20
+tags: [snack, tempered, high_protein, vegan]
+
+serving_unit:
+  measure: katori
+  name: half katori
+  grams_per_unit: 80.0
+  min_count: 1
+  default_count: 2
+  max_count: 4
+  note: >-
+    A half katori (80 g, the summed mass below), the same unit and ceiling as
+    soya_chana_sundal, for the same reasons: sundal is served by the spoonful
+    in small cups, and four half-katoris is two full katoris.
+
+# Soaked in hot water and squeezed, then tossed in a tempering. Leaching into
+# the discarded soak water is real and unmeasured; the tempering oil carries a
+# registered constant. The soak itself has none -- the gap logged in
+# docs/audit_log.md 2026-09-25 (North Indian snack) for soya_chana_sundal,
+# same shape as finding 41, applies here too.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: soya_chunks_dry
+    quantity_g: 21.0
+    state: raw
+    note: >-
+      Dry mass. Soaked in hot water and squeezed; the water the chunks hold
+      is the line below, as in soya_chana_sundal.
+  - id: water
+    quantity_g: 42.25
+    state: as_used
+    note: >-
+      Water retained by the squeezed chunks, about twice their dry mass,
+      rounded so the masses sum to the half katori.
+  - id: onion_raw
+    quantity_g: 10.0
+    state: raw
+    note: Finely chopped, sauteed briefly in the tempering.
+  - id: coconut_fresh
+    quantity_g: 4.0
+    state: raw
+    note: Grated, stirred through at the end -- soya_chana_sundal's line.
+  - id: gingelly_oil
+    quantity_g: 1.25
+    state: as_used
+    process: oil_uptake.vegetable_tempering
+    note: >-
+      Retained oil, soya_chana_sundal's line: about 1.3 g goes into the pan
+      and stays with the dish (oil_uptake.vegetable_tempering = 0.95).
+  - id: urad_dal_raw
+    quantity_g: 0.25
+    state: raw
+    note: Tempering only — fried in the oil with the mustard seed.
+  - id: mustard_seed
+    quantity_g: 0.25
+    state: as_used
+  - id: curry_leaves
+    quantity_g: 0.25
+    state: raw
+  - id: green_chilli
+    quantity_g: 0.25
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.5
+    state: as_used
+    note: >-
+      0.63% of the finished weight, soya_chana_sundal's line and proportion.
+      An authored quantity, not a measurement.

@@ -6,6 +6,59 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-26 — soya chunk sundal: South snack declines 116 → 47, still 0/144 at two plates — the limit is energy granularity, not protein
+
+**What was added.** `data/recipes/soya_chunk_sundal.yaml` ("meal maker
+sundal"), `category: sundal`, the second dish `SOUTH_SNACK.sundal` can
+take. Chosen by the owner for its quality protein per kcal, since 112 of
+the 116 South snack declines were on the quality-protein floor (entry
+2026-09-25, South Indian snack). Proportions fixed before any probe run:
+tempering, coconut and salt lines are `soya_chana_sundal`'s unchanged;
+chickpeas replaced by 21 g dry soya chunks (with 42.25 g retained water)
+and 10 g onion. Per 80 g half katori: 104.2 kcal, 11.3 g protein.
+
+**Measured on the tree** (`probe_rank_input2.py`), South snack profiles with
+0 / 1 / 2+ plates: **47 / 97 / 0** (was 116 / 28 / 0). Declined 399 → 330
+across the grid. Two-plate count unchanged at 437/1152 = 37.9%; other seven
+templates unchanged.
+
+Which plate each planned profile gets (at the accepted rung):
+
+| plate | profiles |
+|---|---|
+| soya_chunk_sundal | 51 |
+| soya_chunk_sundal + neer_mor | 22 |
+| soya_chana_sundal | 20 |
+| soya_chana_sundal + neer_mor | 4 |
+| declined | 47 |
+
+No profile gets two. The two sundals split the grid; they never both fit.
+
+**CORRECTION to my own premise.** Before building it I told the owner the
+quality-protein floor was what kept the South snack from two plates. It was
+what kept it from *one*. The two-plate limit is energy granularity:
+
+- The snack energy window at rung 0 is about ±5% of 10% of the day —
+  e.g. 166.0–183.4 kcal (45 kg lose_fat), 303.2–335.1 kcal (110 kg maintain):
+  17–32 kcal wide.
+- Portions are whole half-katoris: 104.2 kcal (chunk), 131.3 kcal (chana),
+  plus 0 or 1 neer mor at 30.9 kcal. Reachable totals, 1–4 units:
+  chunk 104, 208, 313, 417 (+31); chana 131, 263, 394, 525 (+31).
+- Counting only whether a plate can land in the rung-0 window at any unit
+  count — ignoring every other bound and every rung — profiles with
+  0 / 1 / 2+ plates: **24 / 112 / 8**. At most 8/144 = 5.6% could ever
+  get two plates from these four combinations; the floor is 30% (43).
+
+More dishes of this size will not fix that on their own. Settling it is an
+owner decision, measured in the next entry when made.
+
+**Verification.** `FOODAI_WEB_TESTS=required python -m pytest tests/ -q
+-p no:cacheprovider`: 540 passed, 1 warning. No new gate, so no deletion
+check.
+
+**Disposition:** dish saved; South snack stays below floor, documented, not
+tuned.
+
 ## 2026-09-25 — snack fat/carb floors: dropped for snacks, ceilings kept — owner decision
 
 **Decision (project owner, 2026-09-25): a snack has no fat floor and no carb
