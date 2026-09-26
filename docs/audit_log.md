@@ -6,6 +6,32 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-26 — sundal quarter katori: South snack 67/144, above the 30% floor — owner decision
+
+**Decision (project owner, 2026-09-26):** both sundals
+(`soya_chana_sundal`, `soya_chunk_sundal`) are served in quarter katoris
+(40 g), counts 1–8, default 4. The second of the two changes chosen together
+(entry above, snack energy band). Every ingredient line is exactly half the
+half-katori line, so the recipe ratio is unchanged; the ceiling of 8 is the
+same 320 g total as the old 4. Per unit (measured): chana 65.6 kcal, chunk 52.1 kcal —
+half the half-katori figures in the soya chunk sundal entry below.
+
+**Why.** A quarter katori is about two serving spoonfuls, the way sundal is
+ordinarily served; it halves the energy step the solver has to land in the
+snack band.
+
+**Measured on the tree** (`probe_rank_input2.py`), profiles with 0 / 1 / 2+
+plates: South snack **20 / 57 / 67 — 67/144 = 46.5%, above the 30% floor**,
+matching the what-if in the entry above; rung-0-only 64/144. North snack
+56 / 30 / 58, unchanged by this commit. Other six templates unchanged. Grid
+516/1152 = 44.8% (from 473); declined 330 → 303.
+
+**Verification.** `FOODAI_WEB_TESTS=required python -m pytest tests/ -q
+-p no:cacheprovider`: 545 passed, 1 warning. Data change only; no new gate,
+so no deletion check.
+
+**Disposition:** implemented. South snack no longer below floor.
+
 ## 2026-09-26 — snack energy band: ±10% before any relaxation — owner decision
 
 **Decision (project owner, 2026-09-26): a snack's energy band is ±10% around
