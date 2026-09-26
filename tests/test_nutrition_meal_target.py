@@ -143,6 +143,41 @@ def test_different_slots_scale_the_same_day_target_differently():
     assert breakfast.floor("protein_g") != dinner.floor("protein_g")
 
 
+class TestASnackHasAWiderEnergyBand:
+    """Owner decision 2026-09-26 (docs/audit_log.md, snack energy band).
+
+    A snack's energy band is +/-10% around its point (tolerance.energy_snack),
+    not the day's +/-5% scaled down. Every other slot keeps the scaled band.
+    """
+
+    def test_snack_band_is_ten_percent_around_its_point(self):
+        snack = meal_target(_day(), MealSlot.SNACK)  # x0.10
+        # point 2000 x 0.10 = 200.0 ; 200 x 0.90 = 180.0 ; 200 x 1.10 = 220.0
+        assert snack.point("energy_kcal") == pytest.approx(200.0)
+        assert snack.floor("energy_kcal") == pytest.approx(180.0)
+        assert snack.ceiling("energy_kcal") == pytest.approx(220.0)
+
+    @pytest.mark.parametrize(
+        "slot", [MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER]
+    )
+    def test_every_other_slot_keeps_the_scaled_five_percent_band(self, slot):
+        # 1900 and 2100 are the day band in _day(); the slot's own share.
+        target = meal_target(_day(), slot)
+        fraction = meal_energy_fraction(slot)
+        assert target.floor("energy_kcal") == pytest.approx(1900.0 * fraction)
+        assert target.ceiling("energy_kcal") == pytest.approx(2100.0 * fraction)
+
+    def test_the_energy_rung_leaves_a_snack_band_unchanged(self):
+        # The ladder's energy rung re-bands at tolerance.energy_relaxed (0.10),
+        # the same value, so for a snack it widens nothing.
+        from core.planner.validator import _relax_energy
+
+        snack = meal_target(_day(), MealSlot.SNACK)
+        relaxed = _relax_energy(snack, frozenset())
+        assert relaxed.floor("energy_kcal") == pytest.approx(180.0)
+        assert relaxed.ceiling("energy_kcal") == pytest.approx(220.0)
+
+
 class TestASnackHasNoFatOrCarbFloor:
     """Owner decision 2026-09-25 (docs/audit_log.md, snack fat/carb floors).
 
@@ -165,9 +200,10 @@ class TestASnackHasNoFatOrCarbFloor:
 
     def test_only_fat_and_carb_lose_a_floor_on_a_snack(self):
         snack = meal_target(_day(), MealSlot.SNACK)
-        # 1900 x 0.10 = 190.0 ; fibre 28.0 x 0.10 = 2.8 ; protein guard 15.0
-        # (TestProteinHasPerMealBounds below).
-        assert snack.floor("energy_kcal") == pytest.approx(190.0)
+        # Energy point 2000 x 0.10 = 200.0, band +/-10% (TestASnackHasAWider
+        # EnergyBand below) -> 180.0 ; fibre 28.0 x 0.10 = 2.8 ; protein guard
+        # 15.0 (TestProteinHasPerMealBounds below).
+        assert snack.floor("energy_kcal") == pytest.approx(180.0)
         assert snack.floor("fibre_g") == pytest.approx(2.8)
         assert snack.floor("protein_g") == pytest.approx(15.0)
 

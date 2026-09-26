@@ -859,6 +859,19 @@ such as a lean chaat or a low-carb tikka. Fat and carbohydrate ranges are
 daily guidance. **Limitation:** one plate is solved per request, so nothing
 yet checks that the rest of the day makes up what a snack leaves out.
 
+## A snack's energy band is ±10% (2026-09-26)
+
+Every other slot takes the day's ±5% energy band scaled by its share. A snack's
+band is re-derived around its own energy point at `tolerance.energy_snack`
+(0.10) — owner decision, `docs/audit_log.md` 2026-09-26 "snack energy band".
+At 10% of the day the scaled ±5% band is only 17–32 kcal wide, and snack
+dishes come in whole units of roughly 100–130 kcal, so almost no profile could
+reach two different plates. 0.10 is the band the ladder's energy rung already
+accepts for any meal, so for a snack that rung changes nothing.
+**Limitation:** a snack may land up to 10% off its energy share before any
+relaxation; one plate is solved per request, so nothing yet balances that
+against the rest of the day.
+
 ## Sodium is a day budget, not a share of one (2026-08-02)
 
 Until 2026-08-02 every bound in a day target was scaled to a meal by the meal's

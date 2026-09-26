@@ -50,6 +50,14 @@ cost, stated: the planner solves one plate per request, so nothing yet checks
 that the rest of the day makes up what a snack leaves out. See
 ``_FLOORLESS_BY_SLOT``.
 
+**Energy band**, for a snack only (owner decision 2026-09-26, docs/audit_log.md
+"snack energy band"): re-derived around the meal's energy point at
+``tolerance.energy_snack`` (0.10) instead of the day's 0.05 scaled down. At
+10% of the day the default band is 17-32 kcal wide, and a plate made of whole
+100-130 kcal units almost never lands in it two different ways. 0.10 is the
+band the ladder's energy rung already accepts for every meal, so for a snack
+that rung changes nothing. See ``_ENERGY_TOLERANCE_BY_SLOT``.
+
 ## The first-meal problem, and the guard
 
 A remaining-budget check alone puts **no limit whatsoever** on the first meal of
@@ -79,7 +87,7 @@ from __future__ import annotations
 from typing import Mapping
 
 from core.nutrition import citations
-from core.nutrition.target import NutritionTarget
+from core.nutrition.target import NutritionTarget, band
 from core.schemas import DayLedger, MealSlot
 
 __all__ = ["meal_energy_fraction", "meal_target", "spent_before"]
@@ -202,6 +210,14 @@ _FLOORLESS_BY_SLOT: Mapping[MealSlot, frozenset[str]] = {
 }
 
 
+#: Slots whose energy band is re-derived around the meal's energy point at a
+#: registered tolerance, rather than the day band scaled down. Snack only --
+#: see the module docstring's "Energy band" rule.
+_ENERGY_TOLERANCE_BY_SLOT: Mapping[MealSlot, str] = {
+    MealSlot.SNACK: "tolerance.energy_snack",
+}
+
+
 def meal_target(
     day_target: NutritionTarget,
     meal_slot: MealSlot,
@@ -224,6 +240,11 @@ def meal_target(
     points = _scaled(day_target.points)
     for macro in _FLOORLESS_BY_SLOT.get(meal_slot, frozenset()):
         floors.pop(macro, None)
+    tolerance_key = _ENERGY_TOLERANCE_BY_SLOT.get(meal_slot)
+    if tolerance_key is not None and "energy_kcal" in points:
+        floors["energy_kcal"], ceilings["energy_kcal"] = band(
+            points["energy_kcal"], citations.value_of(tolerance_key)
+        )
 
     _apply_protein_meal_bounds(day_target, floors, ceilings)
     # Carried, not scaled: a hard ceiling is a bound on one plate already, not a

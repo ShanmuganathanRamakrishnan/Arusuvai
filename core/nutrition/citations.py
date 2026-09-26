@@ -287,6 +287,7 @@ REVIEWED_MECHANISM_MATCHES: dict[str, str] = {
     "eligibility.max_energy_uncertainty": "reviewed: project decision, no physical process claimed",
     "tolerance.energy_default": "reviewed: project decision, no physical process claimed",
     "tolerance.energy_relaxed": "reviewed: project decision, no physical process claimed",
+    "tolerance.energy_snack": "reviewed: project decision, no physical process claimed",
     "tolerance.fat_carb_default": "reviewed: project decision, no physical process claimed",
     "tolerance.fat_carb_relaxed": "reviewed: project decision, no physical process claimed",
     "tolerance.protein_relaxed_fraction": "reviewed: project decision, no physical process claimed",
@@ -935,6 +936,22 @@ TOLERANCE_ENERGY_RELAXED = register_constant(
         unit="fraction",
         evidence_id="project_decision",
         applied_to="the widened energy band at relaxation ladder step 3",
+        uncertainty=0.0,
+    )
+)
+# A snack's energy band before any relaxation (owner decision 2026-09-26,
+# docs/audit_log.md "snack energy band"). Not literature: a snack is 10% of the
+# day, so the 5% default is a 17-32 kcal window, and whole serving units of
+# 100-130 kcal almost never land in it two different ways. Set equal to
+# tolerance.energy_relaxed, a band the ladder already accepts for every meal,
+# so the ladder's energy rung is a no-op for a snack.
+TOLERANCE_ENERGY_SNACK = register_constant(
+    Constant(
+        key="tolerance.energy_snack",
+        value=0.10,
+        unit="fraction",
+        evidence_id="project_decision",
+        applied_to="the +/- band around a snack's energy target before any relaxation",
         uncertainty=0.0,
     )
 )

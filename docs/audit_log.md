@@ -6,6 +6,128 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-26 — sundal quarter katori: South snack 67/144, above the 30% floor — owner decision
+
+**Decision (project owner, 2026-09-26):** both sundals
+(`soya_chana_sundal`, `soya_chunk_sundal`) are served in quarter katoris
+(40 g), counts 1–8, default 4. The second of the two changes chosen together
+(entry above, snack energy band). Every ingredient line is exactly half the
+half-katori line, so the recipe ratio is unchanged; the ceiling of 8 is the
+same 320 g total as the old 4. Per unit (measured): chana 65.6 kcal, chunk 52.1 kcal —
+half the half-katori figures in the soya chunk sundal entry below.
+
+**Why.** A quarter katori is about two serving spoonfuls, the way sundal is
+ordinarily served; it halves the energy step the solver has to land in the
+snack band.
+
+**Measured on the tree** (`probe_rank_input2.py`), profiles with 0 / 1 / 2+
+plates: South snack **20 / 57 / 67 — 67/144 = 46.5%, above the 30% floor**,
+matching the what-if in the entry above; rung-0-only 64/144. North snack
+56 / 30 / 58, unchanged by this commit. Other six templates unchanged. Grid
+516/1152 = 44.8% (from 473); declined 330 → 303.
+
+**Verification.** `FOODAI_WEB_TESTS=required python -m pytest tests/ -q
+-p no:cacheprovider`: 545 passed, 1 warning. Data change only; no new gate,
+so no deletion check.
+
+**Disposition:** implemented. South snack no longer below floor.
+
+## 2026-09-26 — snack energy band: ±10% before any relaxation — owner decision
+
+**Decision (project owner, 2026-09-26): a snack's energy band is ±10% around
+its energy point**, registered as `tolerance.energy_snack` (0.10) and applied
+in `meal_target` via `_ENERGY_TOLERANCE_BY_SLOT`. Breakfast, lunch and dinner
+keep the day's ±5% scaled down. The first of two changes the owner chose
+together; the second (quarter-katori sundals) is its own commit.
+
+**Why.** Entry below (soya chunk sundal): the scaled ±5% band is 17–32 kcal
+wide for a snack, and whole 104–131 kcal units almost never land in it two
+ways. 0.10 equals `tolerance.energy_relaxed`, which the ladder already accepts
+for every meal, so the ladder's energy rung is now a no-op for a snack
+(tested).
+
+**Measured before deciding** (in-memory what-ifs patching the probe's own
+`__globals__`; quarter-katori rows on a scratch copy of `core/`, `data/` and
+the probe with both sundals halved to 40 g units, counts 1–8), profiles with
+0 / 1 / 2+ plates:
+
+| change | south snack | north snack |
+|---|---|---|
+| none | 47 / 97 / 0 | 56 / 42 / 46 |
+| band ±10% | 47 / 73 / 24 | 56 / 30 / 58 |
+| band ±15% | 19 / 73 / 52 | 52 / 34 / 58 |
+| quarter katori | 20 / 89 / 35 | 56 / 42 / 46 |
+| quarter katori + band ±10% (**chosen**) | 20 / 57 / 67 | 56 / 30 / 58 |
+
+The ±15% row is approximate: the energy rung re-bands at 0.10 and can
+narrow a ±15% band on that rung. Not investigated, as it was not chosen.
+
+**This commit, measured on the tree** (`probe_rank_input2.py`): South snack
+47 / 73 / 24 (24/144 = 16.7%, still below floor until the portion commit);
+North snack 56 / 30 / 58 (40.3%, was 31.9%). Other six templates unchanged.
+Grid 473/1152 = 41.1% (from 437); declined 330, unchanged.
+
+**Deletion check.** Replacing the `if tolerance_key is not None and
+"energy_kcal" in points:` guard with `if False:` turns two tests red —
+`TestASnackHasAWiderEnergyBand::test_snack_band_is_ten_percent_around_its_point`
+and `TestASnackHasNoFatOrCarbFloor::test_only_fat_and_carb_lose_a_floor_on_a_snack`
+— 2 failed, 475 passed; restored, 477 passed.
+
+**Disposition:** implemented.
+
+## 2026-09-26 — soya chunk sundal: South snack declines 116 → 47, still 0/144 at two plates — the limit is energy granularity, not protein
+
+**What was added.** `data/recipes/soya_chunk_sundal.yaml` ("meal maker
+sundal"), `category: sundal`, the second dish `SOUTH_SNACK.sundal` can
+take. Chosen by the owner for its quality protein per kcal, since 112 of
+the 116 South snack declines were on the quality-protein floor (entry
+2026-09-25, South Indian snack). Proportions fixed before any probe run:
+tempering, coconut and salt lines are `soya_chana_sundal`'s unchanged;
+chickpeas replaced by 21 g dry soya chunks (with 42.25 g retained water)
+and 10 g onion. Per 80 g half katori: 104.2 kcal, 11.3 g protein.
+
+**Measured on the tree** (`probe_rank_input2.py`), South snack profiles with
+0 / 1 / 2+ plates: **47 / 97 / 0** (was 116 / 28 / 0). Declined 399 → 330
+across the grid. Two-plate count unchanged at 437/1152 = 37.9%; other seven
+templates unchanged.
+
+Which plate each planned profile gets (at the accepted rung):
+
+| plate | profiles |
+|---|---|
+| soya_chunk_sundal | 51 |
+| soya_chunk_sundal + neer_mor | 22 |
+| soya_chana_sundal | 20 |
+| soya_chana_sundal + neer_mor | 4 |
+| declined | 47 |
+
+No profile gets two. The two sundals split the grid; they never both fit.
+
+**CORRECTION to my own premise.** Before building it I told the owner the
+quality-protein floor was what kept the South snack from two plates. It was
+what kept it from *one*. The two-plate limit is energy granularity:
+
+- The snack energy window at rung 0 is about ±5% of 10% of the day —
+  e.g. 166.0–183.4 kcal (45 kg lose_fat), 303.2–335.1 kcal (110 kg maintain):
+  17–32 kcal wide.
+- Portions are whole half-katoris: 104.2 kcal (chunk), 131.3 kcal (chana),
+  plus 0 or 1 neer mor at 30.9 kcal. Reachable totals, 1–4 units:
+  chunk 104, 208, 313, 417 (+31); chana 131, 263, 394, 525 (+31).
+- Counting only whether a plate can land in the rung-0 window at any unit
+  count — ignoring every other bound and every rung — profiles with
+  0 / 1 / 2+ plates: **24 / 112 / 8**. At most 8/144 = 5.6% could ever
+  get two plates from these four combinations; the floor is 30% (43).
+
+More dishes of this size will not fix that on their own. Settling it is an
+owner decision, measured in the next entry when made.
+
+**Verification.** `FOODAI_WEB_TESTS=required python -m pytest tests/ -q
+-p no:cacheprovider`: 540 passed, 1 warning. No new gate, so no deletion
+check.
+
+**Disposition:** dish saved; South snack stays below floor, documented, not
+tuned.
+
 ## 2026-09-25 — snack fat/carb floors: dropped for snacks, ceilings kept — owner decision
 
 **Decision (project owner, 2026-09-25): a snack has no fat floor and no carb
