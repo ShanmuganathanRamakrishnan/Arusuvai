@@ -55,6 +55,15 @@ red (6 failed in that file, it among them); restored.
 `python -m pytest tests/ -q -p no:cacheprovider` on this commit's tree:
 477 passed, 68 skipped.
 
+**Commit 2 — `paneer_moong_chilla`.** Every `moong_dal_chilla` line
+unchanged plus 20 g paneer (about 100 g for five chillas); `dal_chilla`,
+101 g unit, counts 1–4 (one below the plain chilla's 5, the library's
+existing plain-to-stuffed step for parathas). Measured on the tree:
+NORTH_BREAKFAST 4 → 7/144; vegetarian 0 / 1 / 2+ 34 / 31 / 7 (was
+59 / 9 / 4) — 25 vegetarian profiles gain a first plate, few a second.
+Other seven templates unchanged. Grid 559 → 562; declined 371 → 346.
+Suite on this tree: 477 passed, 68 skipped.
+
 ## 2026-09-26 — sundal quarter katori: South snack 67/144, above the 30% floor — owner decision
 
 **Decision (project owner, 2026-09-26):** both sundals

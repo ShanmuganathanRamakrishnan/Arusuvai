@@ -1,0 +1,70 @@
+# Paneer moong chilla — moong dal chilla with grated paneer spread over the
+# batter on the tawa and folded in, an ordinary North Indian breakfast.
+#
+# TASKS_3.md R4d (North Indian breakfast). Measured 2026-09-26: vegetarian
+# NORTH_BREAKFAST plates are held back mainly by the quality-protein floor;
+# only paneer_paratha and onion_raita carry qualifying protein, and
+# moong_dal_raw (DIAAS 0.60) does not. Paneer (DIAAS 1.00) in the chilla puts
+# qualifying protein in the protein course itself.
+#
+# Proportions, fixed before any probe run: every moong_dal_chilla line
+# unchanged, plus 20 g paneer -- the common home quantity of about 100 g
+# paneer for five chillas.
+id: paneer_moong_chilla
+name: Paneer moong chilla
+name_ta: பன்னீர் பாசி பருப்பு சில்லா
+name_hi: पनीर मूंग चीला
+
+region: north_indian
+# Not vegan: paneer_fresh is dairy-classed. Not jain: onion_raw is classed
+# root_vegetable.
+
+category: dal_chilla
+prep_minutes: 25
+tags: [pancake, breakfast, high_protein, everyday]
+
+serving_unit:
+  measure: dosa
+  grams_per_unit: 101.0
+  min_count: 1
+  default_count: 2
+  max_count: 4
+  note: >-
+    One stuffed chilla (101 g, the summed mass below), on the dosa measure
+    with its weight overridden, as moong_dal_chilla. Ceiling 4, one below
+    the plain chilla's 5 -- the same step the library already takes from
+    plain_paratha (5) to the stuffed parathas (4).
+
+# has_process is True (the oil line carries a process key), as in
+# moong_dal_chilla.
+
+ingredients:
+  - id: moong_dal_raw
+    quantity_g: 30.0
+    state: raw
+    note: Soaked and ground into batter, moong_dal_chilla's line.
+  - id: water
+    quantity_g: 40.0
+    state: as_used
+    note: Batter water retained in the finished pancake, moong_dal_chilla's line.
+  - id: paneer_fresh
+    quantity_g: 20.0
+    state: as_used
+    note: Grated, spread over the batter on the tawa and folded in.
+  - id: onion_raw
+    quantity_g: 8.0
+    state: raw
+    note: Finely chopped into the batter.
+  - id: green_chilli
+    quantity_g: 0.5
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.4
+    state: as_used
+  - id: sunflower_oil
+    quantity_g: 2.1
+    state: as_used
+    process: oil_uptake.dosa_griddled
+    note: >-
+      Retained oil, moong_dal_chilla's line: about 3.0 g spooned around the
+      spreading batter, 2.1 g stays (oil_uptake.dosa_griddled = 0.70).
