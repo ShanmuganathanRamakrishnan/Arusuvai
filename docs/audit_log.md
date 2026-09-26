@@ -6,6 +6,49 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-26 — snack energy band: ±10% before any relaxation — owner decision
+
+**Decision (project owner, 2026-09-26): a snack's energy band is ±10% around
+its energy point**, registered as `tolerance.energy_snack` (0.10) and applied
+in `meal_target` via `_ENERGY_TOLERANCE_BY_SLOT`. Breakfast, lunch and dinner
+keep the day's ±5% scaled down. The first of two changes the owner chose
+together; the second (quarter-katori sundals) is its own commit.
+
+**Why.** Entry below (soya chunk sundal): the scaled ±5% band is 17–32 kcal
+wide for a snack, and whole 104–131 kcal units almost never land in it two
+ways. 0.10 equals `tolerance.energy_relaxed`, which the ladder already accepts
+for every meal, so the ladder's energy rung is now a no-op for a snack
+(tested).
+
+**Measured before deciding** (in-memory what-ifs patching the probe's own
+`__globals__`; quarter-katori rows on a scratch copy of `core/`, `data/` and
+the probe with both sundals halved to 40 g units, counts 1–8), profiles with
+0 / 1 / 2+ plates:
+
+| change | south snack | north snack |
+|---|---|---|
+| none | 47 / 97 / 0 | 56 / 42 / 46 |
+| band ±10% | 47 / 73 / 24 | 56 / 30 / 58 |
+| band ±15% | 19 / 73 / 52 | 52 / 34 / 58 |
+| quarter katori | 20 / 89 / 35 | 56 / 42 / 46 |
+| quarter katori + band ±10% (**chosen**) | 20 / 57 / 67 | 56 / 30 / 58 |
+
+The ±15% row is approximate: the energy rung re-bands at 0.10 and can
+narrow a ±15% band on that rung. Not investigated, as it was not chosen.
+
+**This commit, measured on the tree** (`probe_rank_input2.py`): South snack
+47 / 73 / 24 (24/144 = 16.7%, still below floor until the portion commit);
+North snack 56 / 30 / 58 (40.3%, was 31.9%). Other six templates unchanged.
+Grid 473/1152 = 41.1% (from 437); declined 330, unchanged.
+
+**Deletion check.** Replacing the `if tolerance_key is not None and
+"energy_kcal" in points:` guard with `if False:` turns two tests red —
+`TestASnackHasAWiderEnergyBand::test_snack_band_is_ten_percent_around_its_point`
+and `TestASnackHasNoFatOrCarbFloor::test_only_fat_and_carb_lose_a_floor_on_a_snack`
+— 2 failed, 475 passed; restored, 477 passed.
+
+**Disposition:** implemented.
+
 ## 2026-09-26 — soya chunk sundal: South snack declines 116 → 47, still 0/144 at two plates — the limit is energy granularity, not protein
 
 **What was added.** `data/recipes/soya_chunk_sundal.yaml` ("meal maker
