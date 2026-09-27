@@ -6,6 +6,37 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-27 — intermittent web failure: 25 reruns, not reproduced — still open
+
+Follows up the failure logged in the 2026-09-26 North Indian breakfast
+entry: `tests/test_web_no_identifiers.py::test_every_view_was_actually_reached`
+failed once in a full run, message not captured, then passed.
+
+**Reruns, on `main` at `697d046`, both servers started from this checkout:**
+
+| run | how | result |
+|---|---|---|
+| 20 × | that file alone | `12 passed` every time |
+| 3 × | that file alone, CPU loaded (2 busy processes per core, 20 cores) | `12 passed` in 51.26 s, 57.91 s, 63.18 s |
+| 2 × | full suite, `FOODAI_WEB_TESTS=required` | `545 passed, 1 warning` in 177.73 s and 169.97 s |
+
+Plus the four full runs already recorded as green on 2026-09-26/27. The
+failure has not come back in 25 runs today.
+
+**Leading suspect, not confirmed.** The fixture reads the dashboard after
+fixed waits (`wait_for_timeout(3500)` after each Generate click), not after
+waiting for the result to appear. `POST /api/plan` for this profile took
+2.01–2.04 s on every one of 18 direct calls (6 plates × 3), so the margin is
+about 1.5 s. But the timing held at ~2.0 s and the test still passed under
+heavy CPU load, so load alone did not break it. Other web tests each use their
+own account, so shared server state is not an obvious cause either.
+
+**Disposition: not fixed, cause unknown.** Changing the fixed waits to
+wait-for-element would be a reasonable hardening but, with no reproduction,
+there is no red run to show it addresses this failure; left alone. If it fails
+again, save the full output (`... 2>&1 | tee`) before rerunning — the missing
+message is the whole reason this is still open.
+
 ## 2026-09-27 — South Indian lunch: sodium guard is the main limit; soya chunk poriyal lifts SOUTH_LUNCH 33 → 78/144
 
 **Diagnosis first** (in-memory what-ifs patching the probe's own
