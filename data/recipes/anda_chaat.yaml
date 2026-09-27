@@ -1,0 +1,79 @@
+# Anda chaat (egg chaat) — boiled eggs, halved or chopped, topped with raw
+# onion, tomato, green chilli, a tangy sauce and a pinch of masala. An
+# ordinary North Indian street and home snack.
+#
+# TASKS_3.md N2 (owner, 2026-09-27: egg and chicken dishes for breakfast and
+# snacks). north_indian/snack was identical for eggetarian and vegetarian
+# profiles (docs/audit_log.md 2026-09-27, non-vegetarian baseline): no egg
+# dish fits its slots. This is the egg dish that fits `category: chaat`
+# without widening the template, and it uses boiled egg -- the one egg row
+# in the ingredient table describes exactly this food, so no raw-egg data is
+# needed for it.
+#
+# Proportions, fixed before any probe run: one large boiled egg (about 50 g
+# edible) per unit, with soya_chana_chaat's onion, tomato, tamarind,
+# chilli and masala lines scaled to the plate, and its 0.63% salt.
+#
+# Left out, stated, as in soya_chana_chaat: chaat masala, lemon and fresh
+# coriander have no row in the ingredient table; garam masala and tamarind
+# stand in.
+id: anda_chaat
+name: Anda chaat
+name_ta: முட்டை சாட்
+name_hi: अंडा चाट
+
+region: north_indian
+# Eggetarian, not vegetarian: egg_boiled is egg-classed. Not jain: onion_raw
+# is classed root_vegetable. Both derived from ingredient classes (see
+# data/recipes/schema.yaml).
+
+category: chaat
+# Nothing is heated, drained, griddled or fried by this recipe: the egg row
+# is IFCT's boiled (served-basis) composition, and the rest is raw.
+preparation: uncooked
+prep_minutes: 10
+tags: [snack, chaat, high_protein, eggetarian, no_cook]
+
+serving_unit:
+  measure: katori
+  name: plate (1 egg)
+  grams_per_unit: 68.4
+  min_count: 1
+  default_count: 2
+  max_count: 3
+  note: >-
+    One egg with its toppings (68.4 g, the summed mass below), on the
+    generic katori measure with its weight overridden. Two eggs is the
+    ordinary plate; three is the ceiling, so the solver cannot close a
+    protein gap by stacking eggs into a meal.
+
+ingredients:
+  - id: egg_boiled
+    quantity_g: 50.0
+    state: cooked
+    note: One large hard-boiled egg, shelled, halved or chopped.
+  - id: onion_raw
+    quantity_g: 8.0
+    state: raw
+    note: Finely chopped, raw.
+  - id: tomato_raw
+    quantity_g: 8.0
+    state: raw
+    note: Finely chopped, raw.
+  - id: tamarind_pulp
+    quantity_g: 1.5
+    state: as_used
+    note: Thinned with a spoon of water and poured over, soya_chana_chaat's line.
+  - id: green_chilli
+    quantity_g: 0.3
+    state: raw
+  - id: garam_masala
+    quantity_g: 0.2
+    state: as_used
+    note: Sprinkled over, standing in for chaat masala (not in the table).
+  - id: salt_iodised
+    quantity_g: 0.4
+    state: as_used
+    note: >-
+      0.58% of the plate, near soya_chana_chaat's 0.63%. An authored
+      quantity, not a measurement.

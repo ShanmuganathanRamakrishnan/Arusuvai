@@ -1,0 +1,98 @@
+# Chicken tikka — boneless chicken breast pieces marinated in curd,
+# ginger-garlic and garam masala, then tossed with onion on a hot pan or tawa
+# in a little oil until charred at the edges. The home, pan-roasted version
+# of the tandoor dish.
+#
+# TASKS_3.md N2 (owner, 2026-09-27: egg and chicken dishes for breakfast and
+# snacks). Measured first (docs/audit_log.md 2026-09-27, non-vegetarian
+# baseline): north_indian/snack is identical for vegetarian, eggetarian and
+# non-vegetarian profiles, because no animal dish fits its slots. This is
+# the dish soya_tikka's own header names as the one it stands in for.
+#
+# Proportions, fixed before any probe run: soya_tikka's method and lines,
+# with its 35 g of soaked soya replaced by 80 g raw chicken breast -- four
+# bite-sized pieces of about 20 g, a common home quantity (500 g chicken
+# for four people as a starter is 125 g each; this is four of their six or
+# so pieces). Marinade scaled to the chicken at ordinary home ratios: curd
+# 20% of the chicken, ginger-garlic paste 3%, salt about 1.1%.
+#
+# RAW-WEIGHT BASIS, stated because the dashboard now shows grams (G1):
+# chicken_breast_raw is IFCT's raw composition and no cooked chicken entry or
+# sourced cooking yield exists here (data/raw/ifct/fixture_ingredients.csv).
+# So the 110.8 g per plate below is the weight of what goes into the pan,
+# not what comes out -- the finished pieces weigh less, by an amount not
+# measured here. The nutrition is that of 80 g raw chicken either way;
+# per gram of finished dish it is UNDERSTATED, never overstated.
+#
+# Left out, stated: capsicum, lemon and fresh coriander are usual but have no
+# row in the ingredient table (as in soya_tikka); tomato stands in for the
+# capsicum pieces.
+id: chicken_tikka
+name: Chicken tikka
+name_ta: சிக்கன் டிக்கா
+name_hi: चिकन टिक्का
+
+region: north_indian
+# Not vegetarian: chicken_breast_raw is poultry-classed. Not vegan: curd_dahi
+# is dairy-classed. Both derived from ingredient classes (see
+# data/recipes/schema.yaml).
+
+category: tikka
+prep_minutes: 40
+tags: [snack, pan_roasted, high_protein, non_vegetarian]
+
+serving_unit:
+  measure: katori
+  name: small plate (4 pieces)
+  grams_per_unit: 110.8
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    Four pieces with their onion and tomato (110.8 g, the summed raw mass
+    below), on the generic katori measure with its weight overridden, as
+    soya_tikka. One plate is the ordinary snack portion; two (eight pieces,
+    160 g of chicken) is the ceiling, beyond which this is a meal.
+
+# Marinated and pan-roasted. Losses to the pan are real and unmeasured; the
+# oil carries a registered constant. Same declaration as soya_tikka.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: chicken_breast_raw
+    quantity_g: 80.0
+    state: raw
+    note: >-
+      Raw, boneless, skinless, cut into four pieces. Raw-basis composition;
+      see the header.
+  - id: curd_dahi
+    quantity_g: 16.0
+    state: as_used
+    note: Marinade that clings to the pieces; the rest stays in the bowl.
+  - id: onion_raw
+    quantity_g: 6.0
+    state: raw
+    note: Onion petals roasted alongside the pieces, soya_tikka's line.
+  - id: tomato_raw
+    quantity_g: 3.0
+    state: raw
+    note: A few pieces, standing in for capsicum (not in the table).
+  - id: ginger_garlic_paste
+    quantity_g: 2.4
+    state: as_used
+  - id: garam_masala
+    quantity_g: 0.5
+    state: as_used
+  - id: salt_iodised
+    quantity_g: 0.9
+    state: as_used
+    note: >-
+      About 1.1% of the chicken, 0.81% of the plate -- soya_tikka's 0.83%.
+      An authored quantity, not a measurement.
+  - id: sunflower_oil
+    quantity_g: 2.0
+    state: as_used
+    process: oil_uptake.chicken_tikka_pan_roasted
+    note: >-
+      Retained oil. About 2.5 g goes into the pan for four pieces and
+      2.0 g stays (oil_uptake.chicken_tikka_pan_roasted = 0.80).

@@ -6,6 +6,126 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-27 — North Indian snack: chicken tikka and anda chaat (N2, first pair)
+
+**Owner decision (2026-09-27):** N2 is "variety first" — egg and chicken dishes
+for breakfasts and snacks, where the N1 baseline found no animal dish at all.
+Order: the two North snack dishes first, because they fit the template and
+the ingredient table as they stand. Egg breakfasts need a raw-egg row, and the
+North breakfast protein course and South snack need their templates widened;
+those come after, each its own step.
+
+**A second probe, because a plate count cannot see variety.**
+`probe_nonveg.py` counts plates; north_indian/snack already had 2+ plates for
+58/72 bodies under every diet, so an added dish is invisible there.
+`docs/design/probes/probe_nonveg_variety.py` (new) asks: for how many of the
+72 bodies is at least one valid plate, at the accepted rung, built with an
+egg, fish or poultry ingredient? Same solved set as the base probe.
+
+**Chicken tikka** (`data/recipes/chicken_tikka.yaml`): four bite-sized pieces
+from 80 g raw chicken breast, soya_tikka's method and lines, marinade scaled
+at ordinary home ratios; 110.8 g per plate, counts 1–2. Proportions fixed
+before any probe run.
+
+- *New constant, not a reuse.* `oil_uptake.tikka_pan_roasted` is applied to
+  porous rehydrated soya chunks; chicken pieces are not porous, so reusing it
+  would be a real citation describing the wrong food (invariant 3).
+  `oil_uptake.chicken_tikka_pan_roasted` = 0.80, `project_oil_uptake_estimate`,
+  high side by the same convention, recorded as "NO matching primary source".
+- *Raw-weight basis, stated in the file.* No cooked chicken row or sourced
+  yield exists, so the plate's 110.8 g is what goes into the pan. Since G1 the
+  dashboard shows that figure. Nutrition per gram of finished dish is
+  understated, never overstated.
+- *Measured.* Plate counts unchanged (north_indian/snack non-veg 4 / 10 / 58).
+  Variety, non-vegetarian north snack: **0 → 4/72** bodies.
+- *Why so few, diagnosed* (70 kg maintain, snack band 231–283 kcal, fat
+  ceiling 9.0 g unrelaxed): one plate is 168.9 kcal / **9.9 g fat**, two are
+  337.9 kcal / 19.9 g. Below the energy band at one plate, far above it at
+  two, and over the fat ceiling either way. 7.2 of the 9.9 g comes from
+  `chicken_breast_raw`'s IFCT N003 figure of 9.0 g fat / 100 g, high for
+  skinless breast. **Not tuned, not replaced.** Recorded as a question for
+  the human review of that row (`verified=False`): whether N003's fat figure
+  is what the primary IFCT table says.
+
+**Anda chaat** (`data/recipes/anda_chaat.yaml`): one large boiled egg (50 g)
+per unit with soya_chana_chaat's toppings scaled; 68.4 g, counts 1–3,
+`preparation: uncooked` (the egg row is IFCT's boiled, served-basis
+composition — the one egg dish that needs no raw-egg data). 83.0 kcal,
+7.0 g protein per egg. Proportions fixed before any probe run.
+
+- *Measured.* Plate counts unchanged for 2+ (58/72, every diet); 24 bodies
+  per egg-permitting diet gain extra valid plates. Vegetarian column
+  identical, so nothing leaks to vegetarian plans. Variety, north snack:
+  eggetarian **0 → 24/72**, non-vegetarian **4 → 24/72**.
+
+**Verification.** `FOODAI_WEB_TESTS=required python -m pytest tests/ -q
+-p no:cacheprovider`: `548 passed, 1 warning in 176.38s`, both dishes
+present. Variety probe, three runs on one tree (both files moved aside, then
+tikka restored, then chaat):
+
+| north_indian/snack | eggetarian | non_vegetarian |
+|---|---|---|
+| neither dish | 0 | 0 |
+| + chicken tikka | 0 | 4 |
+| + anda chaat | 24 | 24 |
+
+Every other template's row is identical across the three runs.
+
+**Disposition:** North snack now offers egg eaters an egg plate for a third
+of bodies. Chicken tikka is correct as authored and mostly unplannable at a
+snack's size; the chicken fat figure is the open question, not the recipe.
+
+## 2026-09-27 — non-vegetarian baseline (N1): egg and non-veg profiles already match vegetarian; the animal dishes add little
+
+**Why.** Owner asked for chicken, egg and fish dishes so that macros are
+"filled much more easily". `probe_rank_input2.py` has only ever measured
+vegetarian and vegan profiles, so that premise was unmeasured. Measured first,
+no recipe changed.
+
+**Method.** `docs/design/probes/probe_nonveg.py` (new) runs the base probe's
+own `accepted_rung_valid_plate_count`, loaded unmodified, over its 72-body grid
+(6 weights x 3 goals x 4 flag-sets) once per diet. Library today: three
+animal-protein dishes, all gravies — `anda_curry` (north, egg),
+`mutta_kuzhambu` (south, egg), `meen_kuzhambu` (south, fish). No chicken dish.
+
+**Result** (`PYTHONPATH=. python docs/design/probes/probe_nonveg.py`),
+profiles with 0 / 1 / 2+ valid plates, 72 per cell:
+
+| template | vegetarian | eggetarian | non_vegetarian |
+|---|---|---|---|
+| south_indian/breakfast | 4 / 12 / 56 | 4 / 12 / 56 | 4 / 8 / 60 |
+| south_indian/lunch | 6 / 28 / 38 | 6 / 27 / 39 | 2 / 13 / 57 |
+| south_indian/dinner | 11 / 7 / 54 | 10 / 7 / 55 | 2 / 24 / 46 |
+| north_indian/breakfast | 1 / 18 / 53 | 1 / 18 / 53 | 1 / 18 / 53 |
+| south_indian/snack | 2 / 19 / 51 | 2 / 19 / 51 | 2 / 19 / 51 |
+| north_indian/snack | 4 / 10 / 58 | 4 / 10 / 58 | 4 / 10 / 58 |
+| north_indian/lunch | 3 / 6 / 63 | 3 / 6 / 63 | 3 / 6 / 63 |
+| north_indian/dinner | 1 / 8 / 63 | 1 / 8 / 63 | 1 / 8 / 63 |
+| **2+ total** | **436/576** | **438/576** | **451/576** |
+
+Bodies crossing to 2+ versus vegetarian: eggetarian 2 (one each south lunch
+and dinner); non_vegetarian 29 (south lunch 22, south breakfast 7). North
+lunch and dinner gain extra plates for ~50 bodies under both diets, but every
+one of those bodies already had 2+.
+
+**The premise, stated plainly: mostly wrong as a coverage claim.** Egg and
+non-veg profiles already get two plates as often as vegetarians (75.7% /
+76.0% / 78.3%). Egg dishes change almost nothing (+2); fish helps South
+Indian lunch (38 → 57). Breakfasts and snacks cannot change at all: no
+animal dish exists for them. What the gap is, is variety — an eggetarian is
+never offered an egg breakfast — not whether a plate can be built.
+
+**Counter-intuitive, checked, not a defect.** South Indian dinner is *lower*
+for non-veg (46 vs 54). Confirmed for 8 bodies, e.g. 70 kg lose_fat:
+vegetarian 6 plates at `protein_tolerance`, non_vegetarian 1 plate at
+`fat_carb_tolerance`. The fish plate lets the ladder stop at an earlier,
+stricter rung where fewer plates fit — a closer plate, fewer alternatives. The
+probe's docstring first claimed the non-veg count could only equal or exceed
+vegetarian; corrected before commit.
+
+**Disposition:** baseline recorded; N2's scope is the owner's call (variety
+dishes for breakfast/snack vs. lunch/dinner protein). No code change.
+
 ## 2026-09-27 — portions shown in grams beside the household unit (G1) — owner decision
 
 **Owner decision (2026-09-27):** show every portion in grams as well as its

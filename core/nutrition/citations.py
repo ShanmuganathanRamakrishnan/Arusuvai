@@ -280,6 +280,7 @@ REVIEWED_MECHANISM_MATCHES: dict[str, str] = {
     "oil_uptake.vegetable_tempering": "reviewed: NO matching primary source; project estimate",
     "oil_uptake.paratha_griddled": "reviewed: NO matching primary source; project estimate, distinct constant from oil_uptake.dosa_griddled because dough brushed with oil differs from batter spooned around a griddle -- same underlying Evidence, different applied_to",
     "oil_uptake.tikka_pan_roasted": "reviewed: NO matching primary source; project estimate, distinct constant because porous rehydrated soya pieces tossed in oil on a pan differ from both a spread batter and a brushed dough -- same underlying Evidence, different applied_to",
+    "oil_uptake.chicken_tikka_pan_roasted": "reviewed: NO matching primary source; project estimate, distinct from oil_uptake.tikka_pan_roasted because lean chicken breast pieces are not porous the way rehydrated soya chunks are -- same underlying Evidence, different applied_to",
     "process.unassessed_uncertainty": "reviewed: NO matching primary source; project estimate standing in for an unmeasured process",
     "composition.unverified_secondary": "reviewed: NO matching primary source; project estimate of transcription-plus-analytical error",
     "composition.verified_primary": "reviewed: NO matching primary source; project estimate of analytical spread",
@@ -794,6 +795,34 @@ OIL_UPTAKE_TIKKA = register_constant(
             "onion on a hot pan or tawa until charred at the edges - surface "
             "application, not immersion frying; porous pieces take up most "
             "of the oil"
+        ),
+        uncertainty=0.20,
+        note=(
+            "Estimated on the high side, same convention as "
+            "oil_uptake.dosa_griddled: uncertain data must make a recipe "
+            "harder to use, never easier to pass."
+        ),
+    )
+)
+
+# TASKS_3.md N2 (North Indian snack, chicken_tikka). Not
+# oil_uptake.tikka_pan_roasted: that constant's applied_to is porous,
+# rehydrated soya chunk pieces that take up nearly all the oil. Lean chicken
+# breast pieces are not porous; more of the oil stays in the pan or runs off
+# as the pieces char. Same mechanism (surface application on a flat pan, not
+# immersion frying), different substrate. No measured source exists for this
+# dish either; 0.80 sits at the high end of what a non-porous piece plausibly
+# keeps, by the same convention as every oil constant here.
+OIL_UPTAKE_CHICKEN_TIKKA = register_constant(
+    Constant(
+        key="oil_uptake.chicken_tikka_pan_roasted",
+        value=0.80,
+        unit="fraction of applied oil retained",
+        evidence_id="project_oil_uptake_estimate",
+        applied_to=(
+            "oil tossed with curd-marinated chicken breast pieces and onion on "
+            "a hot pan or tawa until charred at the edges - surface "
+            "application, not immersion frying; lean, non-porous pieces"
         ),
         uncertainty=0.20,
         note=(
