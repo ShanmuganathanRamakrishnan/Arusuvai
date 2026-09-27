@@ -1,0 +1,81 @@
+# Soya chunk poriyal ("meal maker poriyal") — soaked soya chunks sauteed
+# with onion in a mustard and curry-leaf tempering, finished with grated
+# coconut. An ordinary Tamil lunch side.
+#
+# TASKS_3.md R4d (South Indian lunch). Measured 2026-09-27
+# (docs/audit_log.md, South Indian lunch): SOUTH_LUNCH is held mainly by the
+# per-plate sodium guard (1400 mg for every profile) and then the protein
+# floor. Every gravy and vegetable katori adds roughly 250-450 mg sodium,
+# and the vegetable slot's fillers are carrot dishes that add almost no
+# protein for their salt (carrot_poriyal: 1.0 g protein, 240 mg sodium).
+# This dish puts protein in the vegetable slot for the same salt.
+#
+# Proportions, fixed before any probe run: carrot_poriyal's lines unchanged,
+# its 60 g carrot replaced by 20 g dry soya chunks and 40 g retained water
+# (twice the dry mass, as in every soya-chunk recipe here) -- the same 60 g.
+id: soya_chunk_poriyal
+name: Soya chunk poriyal
+name_ta: மீல் மேக்கர் பொரியல்
+name_hi: सोया चंक्स की सूखी सब्ज़ी
+
+region: south_indian
+# Vegan: every line is plant (derived from ingredient classes; see
+# data/recipes/schema.yaml). Not jain: onion is classed root_vegetable.
+
+category: poriyal
+prep_minutes: 25
+tags: [lunch, high_protein, vegan]
+
+serving_unit:
+  measure: katori
+  name: katori
+  grams_per_unit: 80.0
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    carrot_poriyal's small 80 g katori and ceiling of two, for its reasons:
+    a poriyal is a dry side, and a third katori is a different dish.
+
+# Soaked and squeezed, then sauteed. Losses to the soak water are real and
+# unmeasured; the oil carries a registered constant.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: soya_chunks_dry
+    quantity_g: 20.0
+    state: raw
+    note: Dry mass. Soaked in hot water, squeezed, roughly chopped.
+  - id: water
+    quantity_g: 41.5
+    state: as_used
+    note: >-
+      40 g retained by the squeezed chunks (twice their dry mass) plus
+      carrot_poriyal's 1.5 g steaming splash, one line so ids stay unique.
+  - id: coconut_fresh
+    quantity_g: 8.0
+    state: raw
+    note: Stirred through at the end, carrot_poriyal's line.
+  - id: onion_raw
+    quantity_g: 6.0
+    state: raw
+  - id: gingelly_oil
+    quantity_g: 2.5
+    state: as_used
+    process: oil_uptake.vegetable_tempering
+    note: >-
+      Retained oil, carrot_poriyal's line: about 2.6 g goes in the pan and
+      stays (oil_uptake.vegetable_tempering = 0.95).
+  - id: mustard_seed
+    quantity_g: 0.5
+    state: as_used
+  - id: curry_leaves
+    quantity_g: 0.5
+    state: raw
+  - id: green_chilli
+    quantity_g: 0.5
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.5
+    state: as_used
+    note: carrot_poriyal's line, 0.63% of the finished weight.

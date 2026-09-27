@@ -6,6 +6,64 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-27 — South Indian lunch: sodium guard is the main limit; soya chunk poriyal lifts SOUTH_LUNCH 33 → 78/144
+
+**Diagnosis first** (in-memory what-ifs patching the probe's own
+`__globals__`, one bound removed at a time; nothing changed on disk).
+SOUTH_LUNCH two-plate count, 33/144 today:
+
+| bound removed | 2+ plates |
+|---|---|
+| none | 33 |
+| fat ceiling / carb floor / quality floor | 33 each |
+| energy ceiling | 35 |
+| carb ceiling / fibre floor | 37 each |
+| energy floor | 40 |
+| fat floor | 41 |
+| protein floor | 51 |
+| **sodium ceiling** | **83** |
+
+The per-plate sodium guard (`day_budget.absurdity_fraction` 0.70 × 2000 mg
+= 1400 mg, identical for every profile at lunch) is the main limit, then the
+protein floor. Each gravy or vegetable katori adds about 240–440 mg sodium,
+and plates need several to reach the protein floor. The vegetable slot's
+only fillers are carrot dishes: `carrot_poriyal` carries 1.0 g protein for
+240 mg sodium. The guard is a registered owner decision and was not touched.
+
+**What was added.** `data/recipes/soya_chunk_poriyal.yaml` ("meal maker
+poriyal"): `carrot_poriyal`'s lines unchanged, its 60 g carrot replaced by
+20 g dry soya chunks and 40 g retained water; `south_indian`, `poriyal`,
+vegan, 80 g katori, counts 1–2. Proportions fixed before any probe run.
+
+**Measured** (`probe_rank_input2.py`). First on a branch off main without
+`moong_soya_chilla`:
+
+- SOUTH_LUNCH 33 → **78/144 = 54.2%**, above the 30% floor.
+- Side effect, the poriyal also fills SOUTH_DINNER's vegetable slot:
+  51 → 92/144.
+- Other six templates unchanged. Grid 598 → **684/1152 = 59.4%**.
+- Then rebased onto `moong_soya_chilla` (entry below) and measured again
+  on that tree: SOUTH_LUNCH 78, SOUTH_DINNER 92, NORTH_BREAKFAST 85, other
+  templates as above. Grid **734/1152 = 63.7%**, every template at or above
+  30% — **the probe reports `exit condition met: True`**, the first time.
+
+**Two test fixtures repointed**, both because a profile they relied on to
+decline now passes; no assertion changed:
+
+- `tests/test_api_targets.py` decline: 70 kg → **100 kg** lose_fat
+  vegetarian CKD, still a locked protein decline (57.2 g vs 63.0 g).
+  80, 85, 95, 100, 110 decline; 90 passes.
+- `tests/test_web_no_identifiers.py` sodium decline: 88 kg → **121 kg**
+  maintain vegetarian CKD, sodium alone (2281.1 mg vs 1400.0 mg), the middle
+  of the contiguous 118–125 run found by scanning 45–130 kg.
+
+**Verification.** `FOODAI_WEB_TESTS=required python -m pytest tests/ -q
+-p no:cacheprovider`: 545 passed, 1 warning — on the branch off main, and
+again on the rebased tree with `moong_soya_chilla`. No new gate, so no
+deletion check.
+
+**Disposition:** SOUTH_LUNCH above floor; probe exit condition met.
+
 ## 2026-09-27 — moong soya chilla: NORTH_BREAKFAST 35 → 85/144, above the 30% floor
 
 **What was added.** `data/recipes/moong_soya_chilla.yaml`: `moong_dal_chilla`
