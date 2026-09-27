@@ -6,6 +6,44 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-27 — portions shown in grams beside the household unit (G1) — owner decision
+
+**Owner decision (2026-09-27):** show every portion in grams as well as its
+katori/roti/dosa count, for easy measuring. Grams only: no ml for liquids,
+because converting needs a per-dish density and none is sourced here.
+
+**What changed.** `ComponentOut` gains `grams` = `unit_count` x the recipe's
+own `grams_per_unit`, via `ServingUnit.grams_for`. Required, not defaulted
+(finding 40). The dashboard's dish row reads `5 × roti · 225 g` instead of
+`5 × roti`, grams rounded to whole. No planner change: the solver still picks
+whole units, and the grams are the figure the plate's nutrition was already
+computed from. No new constant.
+
+**Tests, each shown red first by hand:**
+
+- `tests/test_api_targets.py::TestEachPortionCarriesItsWeight` reads each
+  dish's `grams_per_unit` from its YAML, not through `core`. With the server
+  sending `grams_per_unit` alone (count dropped): `assert 45.0 == 225.0`,
+  red. Restored: green.
+- `tests/test_web_portion_grams.py` (new) drives the real `POST /api/plan`
+  and compares each rendered row with the response that produced it. With
+  the grams removed from the row: `portion not shown as 'N × unit · G g':
+  '5 × roti'`, red. With `c.unit_count` rendered in place of `c.grams`:
+  `assert 5 == 225`, red. Restored: green.
+
+**Verification.** `FOODAI_WEB_TESTS=required python -m pytest tests/ -q
+-p no:cacheprovider`: `548 passed, 1 warning in 170.84s`. In the browser,
+north_indian lunch for a 70 kg vegetarian: `5 × roti · 225 g`,
+`1 × katori · 150 g`, `2 × katori · 300 g`.
+
+**Noticed, not fixed — raw category token on the plate.** The same dish
+row's role line renders `component.category` as-is, so Soya chunk masala
+shows `Legume_curry` (CSS capitalises `legume_curry`). This is the
+identifier-in-copy class `tests/test_web_no_identifiers.py` exists to catch,
+and it misses it because its one success view (the CKD profile's
+south_indian breakfast) has no underscored category on its plate. Two
+defects: the missing label map, and a sweep that cannot see it. Left open.
+
 ## 2026-09-27 — intermittent web failure: 25 reruns, not reproduced — still open
 
 Follows up the failure logged in the 2026-09-26 North Indian breakfast

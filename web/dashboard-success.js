@@ -122,7 +122,7 @@
         `<div class="dash-dish-name">${c.recipe_name}</div>` +
         `<div class="dash-dish-role">${c.category}</div>` +
         `</div>` +
-        `<span class="dash-dish-qty">${c.unit_count} × ${c.unit_name}</span>`;
+        `<span class="dash-dish-qty">${c.unit_count} × ${c.unit_name} · ${Math.round(c.grams)} g</span>`;
       wrap.appendChild(row);
     });
 

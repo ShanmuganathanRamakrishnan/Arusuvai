@@ -439,6 +439,9 @@ def plan(body: PlanRequestIn) -> PlanOut:
                     category=component.category,
                     unit_count=outcome.plan.counts_for(component),
                     unit_name=component.recipe.serving_unit.name,
+                    grams=component.recipe.serving_unit.grams_for(
+                        outcome.plan.counts_for(component)
+                    ),
                 )
             )
         point = outcome.plan.estimate.point

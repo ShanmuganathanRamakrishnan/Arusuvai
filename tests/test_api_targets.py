@@ -152,6 +152,39 @@ class TestPlanProvenanceReachesTheClient:
         assert est["unverified_energy_fraction"] == pytest.approx(1.0)
 
 
+class TestEachPortionCarriesItsWeight:
+    """TASKS_3.md G1: a portion is shown in grams beside its household unit.
+
+    The expected weight is read straight from the recipe's YAML, not through
+    ``core``, so a server that reported some other figure -- a default, the
+    per-unit weight without the count, a rounded value -- would disagree with
+    the file a person can open and check.
+    """
+
+    def _plan(self):
+        return client.post(
+            "/api/plan",
+            json=_body(diet="vegetarian", region="north_indian", meal_slot="lunch"),
+        ).json()
+
+    def test_every_component_weighs_its_count_times_its_unit(self):
+        import yaml
+        from pathlib import Path
+
+        data = self._plan()
+        assert data["passed"] is True, data["disclosure"]
+        assert data["components"], "a passing plate with no components weighs nothing"
+        recipes = Path(__file__).resolve().parent.parent / "data" / "recipes"
+        for c in data["components"]:
+            doc = yaml.safe_load((recipes / f"{c['recipe_id']}.yaml").read_text(encoding="utf-8"))
+            per_unit = float(doc["serving_unit"]["grams_per_unit"])
+            assert c["grams"] == pytest.approx(c["unit_count"] * per_unit), c
+            # The count alone would pass the line above only if the unit
+            # weighed 1 g; no recipe does, so this pins "count x unit" and not
+            # "count" or "unit".
+            assert per_unit > 1.0
+
+
 class TestADeclineCarriesItsNumbersNotJustItsProse:
     """`docs/audit_log.md` finding 31, the server half.
 
