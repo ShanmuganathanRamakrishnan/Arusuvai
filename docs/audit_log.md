@@ -50,14 +50,19 @@ bodies, against the target the ladder stopped on):
   snack ceilings of 7–11 g, so two eggs miss at every body tested.
 
 **Not tuned.** Shrinking the egg, cutting the oil or adding a vegetable to
-make a number pass is fitting the recipe to the target. Both files are held
-back, not committed, pending an owner decision. Recorded here so the
-measurement is not lost if they are dropped.
+make a number pass is fitting the recipe to the target.
+
+**Owner decision (2026-09-27): keep both in the library, unplaced.** They
+load, are correct as authored, and appear in no plan today; they are ready
+if the South breakfast fat ceiling or the South snack's shape is revisited.
+Committed separately after egg bhurji, as their own reviewable ideas.
 
 **Verification.** Egg bhurji only in the tree:
 `FOODAI_WEB_TESTS=required python -m pytest tests/ -q -p no:cacheprovider`
 → `548 passed, 1 warning in 175.22s (0:02:55)`. A recipe adds no gate, so
 there is no deletion test; the probe table is its evidence.
+All three in the tree, same command: `548 passed, 1 warning in 169.58s
+(0:02:49)`.
 
 ## 2026-09-27 — egg category (N2c): North breakfast protein course and South snack accept an egg dish — owner decision
 
