@@ -6,6 +6,83 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-27 — shown plate for egg and non-veg (N3): the diet setting now shows on the plate — owner report
+
+**Owner report (2026-09-27):** "I still am unable to see non vegetarian
+dishes; it still gives me veg dishes such as soya chunk poriyal for South
+dinner." Asked to check every meal.
+
+**Diagnosis.** The diet setting did reach the planner (`api/main.py` passes
+`body.diet` to `plan_meal`; the candidate pool included the animal dishes).
+The dashboard shows one plate, the one `plan_within_ladder` returns, and it
+returned `solved[0]`, the plate nearest to target. Soya plates were nearest
+nearly everywhere. So a non-vegetarian was *permitted* egg, fish and chicken
+and almost never *shown* any. Two separate causes, measured:
+
+1. **Selection** — valid animal plates existed and lost on nearness.
+2. **Library** — for some templates no valid animal plate exists at all. The
+   owner's own South dinner case (70 kg, maintain) is this one: 14 valid
+   plates, none with egg, fish or chicken.
+
+**Measured** (`docs/design/probes/probe_nonveg_shown.py`, new): bodies of 72
+whose *shown* plate has an egg, fish or poultry dish / whose *valid* plates
+include one, calling `plan_meal` exactly as the API does.
+
+| template | eggetarian before | after | non_vegetarian before | after |
+|---|---|---|---|---|
+| south_indian/breakfast | 0 / 0 | 0 / 0 | 14 / 47 | **47** / 47 |
+| south_indian/lunch | 0 / 1 | **1** / 1 | 28 / 38 | **38** / 38 |
+| south_indian/dinner | 1 / 1 | 1 / 1 | 26 / 34 | **34** / 34 |
+| north_indian/breakfast | 28 / 32 | **32** / 32 | 28 / 32 | **32** / 32 |
+| south_indian/snack | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 |
+| north_indian/snack | 8 / 24 | **24** / 24 | 8 / 24 | **24** / 24 |
+| north_indian/lunch | 13 / 51 | **51** / 51 | 13 / 51 | **51** / 51 |
+| north_indian/dinner | 0 / 47 | **47** / 47 | 0 / 47 | **47** / 47 |
+
+The "before" run imported the planner before the change was written; the
+"after" run is the same script on the changed tree.
+
+**Change.** `plan_within_ladder` takes an optional `prefer`: among the
+plates valid at the rung the ladder stopped on, return the nearest one it
+accepts, else the nearest plate. `plan_meal` supplies one for any diet
+permitting egg, fish or poultry. It never widens a target, never moves the
+ladder to a later rung, never touches a unit count (invariant 1 unaffected:
+no quantity is chosen by anything new). Vegetarian, vegan and jain get no
+preference and the same plate as before.
+
+**What this does not fix.** The second column. Where no valid animal plate
+exists (eggetarian South meals, South snack, 25 of 72 non-veg bodies at
+South breakfast, 34 at lunch, 38 at dinner) the plate is still vegetarian.
+That is a recipe gap: the library's animal dishes are anda_chaat,
+anda_curry, chicken_tikka, egg_bhurji, egg_dosa, meen_kuzhambu,
+mutta_kuzhambu, muttai_podimas -- no chicken main anywhere, no fish in the
+North, nothing animal for the South vegetable course.
+
+**Tests.** `tests/test_shown_plate_preference.py`, 11 tests: preferred plate
+over a nearer one, fallback to nearest, preference never moves the rung,
+preference applies on a relaxed rung, which diets prefer, and a wiring test
+on the owner's North dinner case. Mutation rows N3a–N3d added to
+`docs/design/probes/d4b_mutations.py`:
+
+```
+N3a  covered      tests/test_shown_plate_preference.py::TestPreferChoosesAmongValidPlates::test_the_nearest_preferred_plate_is_shown_over_a_nearer_one
+N3b  covered      tests/test_shown_plate_preference.py::TestPreferChoosesAmongValidPlates::test_the_nearest_preferred_plate_is_shown_over_a_nearer_one
+N3c  covered      tests/test_shown_plate_preference.py::TestPreferChoosesAmongValidPlates::test_the_preference_also_applies_on_a_relaxed_rung
+N3d  covered      tests/test_shown_plate_preference.py::TestTheRealDinner::test_a_non_vegetarian_north_dinner_shows_an_animal_protein_dish
+4 mechanisms: 4 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+N3d (the `plan_meal` hookup) is caught only by the real-library wiring
+test; no synthetic test reaches `plan_meal`'s preference. Stated, not
+hidden.
+
+Full suite: `FOODAI_WEB_TESTS=required python -m pytest tests/ -q
+-p no:cacheprovider` → `559 passed, 1 warning in 286.69s (0:04:46)`.
+Browser, by hand, fresh account, 70 kg non_vegetarian: North dinner shows
+`['Phulka', 'Dal tadka', 'Anda curry']`; South dinner still shows
+`['Steamed rice', 'Sambar', 'Carrot poriyal', 'Soya chunk poriyal',
+'Neer mor']` -- cause 2, as measured.
+
 ## 2026-09-27 — egg breakfasts and snack (N2d): egg bhurji places; egg dosa and muttai podimas written, measured, and place nowhere
 
 **What was written.** Three egg dishes, proportions fixed before any probe

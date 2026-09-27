@@ -130,6 +130,12 @@ RECIPE_LOADER = "core/foods/recipe_loader.py"
 #: covering test the harness reports, before trusting either row's isolation
 #: claim.
 SCHEMAS_COMMON = "core/schemas/common.py"
+#: Added for N3 (2026-09-27): `plan_meal` hands the ladder a preference for
+#: an animal-protein plate when the diet permits one. Remove it and a
+#: non-vegetarian is shown the nearest (soya) plate again -- the owner's
+#: reported defect (docs/audit_log.md 2026-09-27, shown plate for egg and
+#: non-veg).
+PLAN = "core/planner/plan.py"
 
 MUTATIONS: tuple[Mutation, ...] = (
     # ---------------------------------------------------------------- candidates
@@ -593,6 +599,30 @@ MUTATIONS: tuple[Mutation, ...] = (
         "        return False\n",
         "",
     ),
+    # ------------------------------------------------ shown-plate preference (N3)
+    Mutation(
+        "N3a", VALIDATOR, "_pick honours prefer among valid plates",
+        "        if prefer is not None:\n"
+        "            for plan in solved:\n"
+        "                if prefer(plan):\n"
+        "                    return plan\n",
+        "",
+    ),
+    Mutation(
+        "N3b", VALIDATOR, "rung 0 returns the picked plate, not solved[0]",
+        "        plan = _pick(solved)\n        return LadderOutcome(",
+        "        plan = solved[0]\n        return LadderOutcome(",
+    ),
+    Mutation(
+        "N3c", VALIDATOR, "a relaxed rung returns the picked plate, not solved[0]",
+        "        plan = _pick(solved)\n        disclosure = None",
+        "        plan = solved[0]\n        disclosure = None",
+    ),
+    Mutation(
+        "N3d", PLAN, "plan_meal passes the diet's animal-protein preference",
+        "        prefer=_animal_protein_preference(diet_pattern, library.ingredients),\n",
+        "",
+    ),
 )
 
 
@@ -611,7 +641,7 @@ OWN_TESTS: dict[str, tuple[str, ...]] = {
     SOLVER: ("test_planner_solver.py", "test_planner_quality.py"),
     VALIDATOR: (
         "test_planner_validator.py", "test_planner_decline.py",
-        "test_planner_quality.py",
+        "test_planner_quality.py", "test_shown_plate_preference.py",
     ),
     # `test_recipes.py` is scoped here too: it is where the derived-uncertainty
     # rules live, and a reader editing it knows they are editing evidence
@@ -629,6 +659,7 @@ OWN_TESTS: dict[str, tuple[str, ...]] = {
     # D1 and D2 respectively, but not symmetrically — see that file's module
     # docstring above the two classes, and finding 49 (docs/audit_log.md).
     SCHEMAS_COMMON: ("test_planner_candidates.py",),
+    PLAN: ("test_shown_plate_preference.py",),
 }
 
 

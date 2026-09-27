@@ -999,6 +999,7 @@ def plan_within_ladder(
     *,
     profile: Profile | None = None,
     empty_required_slots: tuple[str, ...] = (),
+    prefer: Callable[[SolvedPlan], bool] | None = None,
 ) -> LadderOutcome:
     """Solve, and if nothing is feasible, walk the ladder in order.
 
@@ -1016,6 +1017,14 @@ def plan_within_ladder(
     the tight one, declining plans it should have found. Running it inside is
     also faster, since each rung's solve sees fewer combinations.
 
+    ``prefer`` chooses *among* the plates already valid at the rung the
+    ladder stopped on: the nearest-to-target plate it accepts, else the
+    nearest plate overall. It never widens a target, never moves the ladder
+    to a later rung, and never touches a unit count -- a preference with no
+    valid plate to satisfy it changes nothing. Owner report 2026-09-27: a
+    non-vegetarian was shown soya at every dinner although valid egg plates
+    existed (docs/audit_log.md 2026-09-27, shown plate for egg and non-veg).
+
     ``empty_required_slots`` is which of the template's required courses had no
     legal selection, when ``combinations`` is empty because of that. This
     function cannot work it out for itself — it receives combinations, not a
@@ -1031,11 +1040,21 @@ def plan_within_ladder(
     def _attempt(t: NutritionTarget) -> tuple[SolvedPlan, ...]:
         return solve(feasible_combinations(combinations, t, ingredients), t, ingredients)
 
+    def _pick(solved: tuple[SolvedPlan, ...]) -> SolvedPlan:
+        # `solved` is already nearest-first, so the first preferred plate is
+        # the nearest preferred one.
+        if prefer is not None:
+            for plan in solved:
+                if prefer(plan):
+                    return plan
+        return solved[0]
+
     solved = _attempt(target)
     if solved:
+        plan = _pick(solved)
         return LadderOutcome(
-            plan=solved[0],
-            result=validate(solved[0], target, profile=profile),
+            plan=plan,
+            result=validate(plan, target, profile=profile),
             target_used=target,
         )
 
@@ -1056,7 +1075,7 @@ def plan_within_ladder(
         if not solved:
             continue
 
-        plan = solved[0]
+        plan = _pick(solved)
         disclosure = None
         if any(
             s.requires_disclosure for s in RELAXATION_ORDER if s.name in applied
