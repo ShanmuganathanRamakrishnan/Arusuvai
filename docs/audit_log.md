@@ -6,6 +6,43 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-27 — raw whole egg row (N2b): IFCT M001, DIAAS matched to fried and scrambled egg
+
+**Why.** Egg dosa and egg bhurji cook raw egg on a pan. The only egg row was
+`egg_boiled` (M004), a boiled egg. Using it for those dishes would be a real
+figure describing the wrong food, the invariant 3 failure. Before any egg
+breakfast is written, the right row has to exist.
+
+**Added** `egg_whole_raw`, IFCT 2017 **M001**, from the same
+`nodef/ifct2017` file and by the same curl-and-grep method as M004. 564 kJ =
+134.8 kcal (Atwater 135.5). Protein 13.28 g, fat 9.15 g, sodium 123.0 mg,
+iron 1.82 mg, calcium 49.44 mg per 100 g. Rejected: M007 "omlet", whose fat
+(11.6 g) very likely already includes frying fat that recipes add as their
+own oil line.
+
+**DIAAS: sourced, and the preparation checked, not assumed.** Fanelli et al.
+2024, Table 8, >3-years pattern, read from the open-access full text
+(PMC11658930): fried 135%, boiled 135%, scrambled 137%. Recorded 1.35, the
+lower of the two pan-cooked forms. PubMed returned a bot check and was not
+used. B12 0.89 µg, USDA FDC 171287. `verified=false`.
+
+**Tests.** Four listing tests updated deliberately (row count 36 → 37;
+real-code set gains M001; unverified-row warnings 35 → 36; qualifying set
+gains `egg_whole_raw`). Deletion check, row removed: `3 failed, 57 passed`
+(`test_every_fixture_row_loads`,
+`test_unverified_rows_are_reported_not_silently_accepted`,
+`test_the_threshold_partitions_the_library_where_expected`). The code-set test
+does not react to a missing row by design, because it guards against
+invented codes. Restored: `python -m pytest tests/ -q -p no:cacheprovider`,
+`478 passed, 70 skipped, 1 warning`. No recipe uses the row yet, so no plan
+changes.
+
+**Noticed, not fixed — nothing stops a raw-egg row in a no-cook dish.** This
+row's DIAAS describes cooked egg. A recipe declaring `preparation: uncooked`
+with an `egg_whole_raw` line would load and be credited 1.35 for raw egg,
+whose protein is less digestible and was not measured. The limit is stated
+in the row's `source_note`; no loader rule enforces it. Left open.
+
 ## 2026-09-27 — North Indian snack: chicken tikka and anda chaat (N2, first pair)
 
 **Owner decision (2026-09-27):** N2 is "variety first" — egg and chicken dishes

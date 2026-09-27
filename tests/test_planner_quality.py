@@ -102,6 +102,8 @@ class TestQualification:
         # protein.quality_diaas_threshold = 0.75, against the DIAAS figures in
         # data/raw/ifct/fixture_ingredients.csv:
         #   egg_boiled         1.35  >= 0.75  qualifies (sourced 2026-08-16, R3a)
+        #   egg_whole_raw      1.35  >= 0.75  qualifies (sourced 2026-09-27, N2b;
+        #                                     fried/scrambled egg, Fanelli 2024)
         #   pomfret_white_raw  1.16  >= 0.75  qualifies (derived 2026-08-16, R3b)
         #   chicken_breast_raw 1.10  >= 0.75  qualifies (derived 2026-08-16, R3b)
         #   curd_dahi          1.09  >= 0.75  qualifies
@@ -116,6 +118,7 @@ class TestQualification:
         assert qualifying == {
             "egg_boiled", "curd_dahi", "paneer_fresh", "soya_chunks_dry",
             "chicken_breast_raw", "pomfret_white_raw", "soya_flour_defatted",
+            "egg_whole_raw",
         }
 
     def test_a_missing_diaas_does_not_qualify(self, ingredients):

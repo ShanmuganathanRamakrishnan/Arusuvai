@@ -370,6 +370,34 @@ row is vegan-eligible by the same class-derivation mechanism as
 `soya_flour_defatted`) and `allergens='soya'`, matching the existing
 soya-derived-row convention.
 
+## Raw whole egg, for pan-cooked egg dishes (2026-09-27, TASKS_3.md N2b)
+
+`egg_whole_raw` is IFCT 2017 **M001** ("Egg, poultry, whole, raw"), taken
+from the same `github.com/nodef/ifct2017` file and by the same method as
+`egg_boiled`: curl the raw `compositions/index.csv`, then grep it locally.
+564 kJ = 134.8 kcal, against 135.5 kcal implied by its own protein and fat.
+It exists because `egg_boiled` describes a boiled egg. Using it for egg
+cooked on a pan (egg dosa, bhurji) would be a correct figure for the wrong
+food.
+
+- **Not M007 ("omlet").** That entry is a finished dish, and its fat (11.6 g
+  against 9.15 g raw) very likely includes frying fat. Recipes here add oil
+  as their own line, with a registered process constant, so M007 would count
+  the oil twice.
+- **Raw-weight basis.** A recipe that cooks this row counts the egg at its
+  raw mass, with no cooking yield, the same stance as `chicken_breast_raw`.
+  Per gram of finished dish, the nutrition is understated, never overstated.
+- **DIAAS 1.35, sourced and matched to the preparation.** Fanelli et al.,
+  2024 (DOI 10.1017/jns.2024.71), Table 8, using the >3-years pattern:
+  fried 135%, boiled 135%, scrambled 137%. Read from the Europe PMC
+  open-access full text, PMC11658930. 1.35 is the lower of the two
+  pan-cooked forms. The study measured **cooked** egg only, so the figure
+  does not describe this row eaten raw.
+- **B12 comes from USDA, not IFCT.** 0.89 µg per 100 g, FDC 171287 ("Egg,
+  whole, raw, fresh"), fetched 2026-09-27. IFCT has no B12 column.
+- `verified=false`: the assistant read the mirror, the paper and the FDC
+  record; no human has opened the primary sources yet.
+
 ## Conventions
 
 - One row per (food, state). `state` is `raw`, `cooked` or `as_used`.
