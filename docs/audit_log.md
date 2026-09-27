@@ -6,6 +6,59 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-27 — egg breakfasts and snack (N2d): egg bhurji places; egg dosa and muttai podimas written, measured, and place nowhere
+
+**What was written.** Three egg dishes, proportions fixed before any probe
+run, each on the new raw-egg row (N2b) and each for a slot opened in N2c or
+already open:
+
+- *Egg bhurji* (North breakfast protein course, category `egg`): one large
+  raw egg with half of tofu_bhurji's onion, tomato, oil, paste, masala and
+  chilli; 80.4 g per egg, counts 1–4. 100.3 kcal, 7.0 g protein, 7.2 g fat.
+- *Egg dosa* (South breakfast, a `tiffin`): masala_dosa's dosa lines
+  unchanged plus one raw egg, 5 g onion, 0.5 g chilli, 0.3 g salt; 145.8 g,
+  counts 1–3. 223.9 kcal, 10.9 g protein, 8.3 g fat, 377.8 mg sodium.
+- *Muttai podimas* (South snack, category `egg`): one raw egg with
+  carrot_poriyal's tempering lines and 10 g onion; 64.4 g per egg, counts
+  1–3. 96.8 kcal, 6.9 g protein, 7.3 g fat, 0.3 g fibre.
+
+**Measured.** Both probes, on a copy of the tree without the three files
+and on the tree with them, run side by side. Plate counts
+(`probe_nonveg.py`) identical in every cell, every diet, before and after:
+2+ totals 436 / 438 / 451 of 576. Variety (`probe_nonveg_variety.py`),
+bodies of 72 with a valid plate containing an egg, fish or poultry dish:
+
+| template | eggetarian before → after | non_vegetarian before → after |
+|---|---|---|
+| north_indian/breakfast | 0 → **32** | 0 → **32** |
+| south_indian/breakfast | 0 → **0** | 47 → 47 |
+| south_indian/snack | 0 → **0** | 0 → 0 |
+
+Every other row identical. Vegetarian column identical, so nothing leaks.
+
+**Why egg dosa and podimas place nowhere, diagnosed** (every count
+assignment of every combination containing the dish, three eggetarian
+bodies, against the target the ladder stopped on):
+
+- *Egg dosa.* The rest of a South breakfast (chutney, kuzhambu) already
+  carries fat. Closest plates: 55 kg lose_fat, fat 42 g vs 16 g ceiling;
+  70 kg maintain, fat 26 g vs 23 g and carbs 61 g under a 75 g floor at one
+  dosa; 95 kg gain_muscle, sodium 1497 mg vs 1400 mg, the only miss.
+- *Muttai podimas.* A South snack is one dish plus an optional buttermilk,
+  and egg brings no fibre, so the snack's fibre floor (3–5 g) fails at
+  every count for all three bodies. Fat is also over: 7.3 g per egg against
+  snack ceilings of 7–11 g, so two eggs miss at every body tested.
+
+**Not tuned.** Shrinking the egg, cutting the oil or adding a vegetable to
+make a number pass is fitting the recipe to the target. Both files are held
+back, not committed, pending an owner decision. Recorded here so the
+measurement is not lost if they are dropped.
+
+**Verification.** Egg bhurji only in the tree:
+`FOODAI_WEB_TESTS=required python -m pytest tests/ -q -p no:cacheprovider`
+→ `548 passed, 1 warning in 175.22s (0:02:55)`. A recipe adds no gate, so
+there is no deletion test; the probe table is its evidence.
+
 ## 2026-09-27 — egg category (N2c): North breakfast protein course and South snack accept an egg dish — owner decision
 
 **Owner decision (2026-09-27):** egg dishes for breakfasts and snacks. Two
