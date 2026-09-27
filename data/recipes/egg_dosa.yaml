@@ -1,0 +1,82 @@
+# Egg dosa (muttai dosai) -- a plain dosa with an egg broken over it on the
+# tawa, spread across the batter with a little onion and chilli, and cooked
+# through with the dosa. An ordinary Tamil breakfast and tiffin-shop dish.
+#
+# TASKS_3.md N2d (owner, 2026-09-27: egg dishes for breakfasts). Measured
+# first (docs/audit_log.md 2026-09-27, non-vegetarian baseline): no egg dish
+# fits SOUTH_BREAKFAST, so an eggetarian there is offered nothing of their
+# own. A dosa is a tiffin, which SOUTH_BREAKFAST's tiffin slot already takes.
+#
+# Proportions, fixed before any probe run: masala_dosa's "dosa itself" lines
+# unchanged (26 g rice, 9 g urad, 51 g water, 3.5 g retained oil), plus one
+# large egg (50 g, raw) with 5 g onion, 0.5 g chilli and 0.3 g more salt.
+# No extra oil: the egg cooks on the dosa, in the oil already on the tawa.
+#
+# RAW-EGG BASIS: egg_whole_raw is IFCT M001 (raw); its DIAAS is the fried-egg
+# figure, which is how the egg is cooked here (data/raw/ifct/README.md). The
+# 145.8 g per dosa is the mass that goes onto the tawa, not what comes off.
+id: egg_dosa
+name: Egg dosa
+name_ta: முட்டை தோசை
+name_hi: अंडा डोसा
+
+region: south_indian
+# Eggetarian, not vegetarian: egg_whole_raw is egg-classed. Not jain:
+# onion_raw is classed root_vegetable. Both derived from ingredient classes.
+
+category: tiffin
+prep_minutes: 15
+tags: [breakfast, fermented, griddled, eggetarian, high_protein]
+
+serving_unit:
+  measure: dosa
+  grams_per_unit: 145.8
+  min_count: 1
+  default_count: 2
+  max_count: 3
+  note: >-
+    One egg dosa (145.8 g, the summed mass below), overriding the generic
+    dosa weight as masala_dosa does. masala_dosa's count range.
+
+# As masala_dosa: micronutrient retention through fermentation and griddling
+# is not measured. The egg is cooked from raw on the tawa and no constant
+# covers that either.
+process_uncertainty_unassessed: [fibre_g, iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: rice_milled_raw
+    quantity_g: 26.0
+    state: raw
+    note: Soaked and ground into batter, masala_dosa's line.
+  - id: urad_dal_raw
+    quantity_g: 9.0
+    state: raw
+    note: masala_dosa's line.
+  - id: water
+    quantity_g: 51.0
+    state: as_used
+    note: Water held in the fermented batter, masala_dosa's line.
+  - id: gingelly_oil
+    quantity_g: 3.5
+    state: as_used
+    process: oil_uptake.dosa_griddled
+    note: >-
+      Retained oil, masala_dosa's line (oil_uptake.dosa_griddled). The egg
+      cooks in the same oil; none is added for it.
+  - id: egg_whole_raw
+    quantity_g: 50.0
+    state: raw
+    note: One large egg, broken over the dosa and spread across it.
+  - id: onion_raw
+    quantity_g: 5.0
+    state: raw
+    note: Finely chopped, scattered over the egg.
+  - id: green_chilli
+    quantity_g: 0.5
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.8
+    state: as_used
+    note: >-
+      masala_dosa's 0.5 g for the dosa plus 0.3 g beaten into the egg. An
+      authored quantity, not a measurement.

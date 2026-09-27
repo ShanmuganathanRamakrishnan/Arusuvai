@@ -1,0 +1,76 @@
+# Muttai podimas -- Tamil-style scrambled egg: eggs scrambled into onion and
+# green chilli in a mustard and curry-leaf tempering. A side, and on its own
+# an evening snack.
+#
+# TASKS_3.md N2d (owner, 2026-09-27: egg dishes for snacks). SOUTH_SNACK's
+# main slot accepts the egg category since N2c (docs/audit_log.md 2026-09-27,
+# egg category); before that no egg dish could stand there.
+#
+# Proportions, fixed before any probe run: per egg, one large egg (50 g,
+# raw) with carrot_poriyal's tempering lines unchanged (2.5 g oil, 0.5 g
+# mustard, 0.5 g curry leaves, 0.5 g chilli) and 10 g onion. Salt at 0.62%
+# of the portion. Usually finished with black pepper; there is no pepper row
+# in the ingredient table, so it is left out.
+#
+# RAW-EGG BASIS: egg_whole_raw is IFCT M001 (raw); its DIAAS is the fried
+# (pan-cooked) figure, which is how it is cooked here
+# (data/raw/ifct/README.md). 64.4 g per egg is what goes into the pan.
+id: muttai_podimas
+name: Muttai podimas
+name_ta: முட்டை பொடிமாஸ்
+name_hi: अंडा पोडिमास
+
+region: south_indian
+# Eggetarian, not vegetarian: egg_whole_raw is egg-classed. Not jain:
+# onion_raw is classed root_vegetable. Both derived from ingredient classes.
+
+category: egg
+prep_minutes: 10
+tags: [snack, scrambled, eggetarian, high_protein]
+
+serving_unit:
+  measure: katori
+  name: 1-egg portion
+  grams_per_unit: 64.4
+  min_count: 1
+  default_count: 2
+  max_count: 3
+  note: >-
+    One egg's worth (64.4 g, the summed mass below), on the katori measure
+    with its weight overridden. Two eggs is the ordinary snack; three is the
+    ceiling, beyond which it is a meal.
+
+# Scrambled in a tempering. The only registered process is the oil; the egg
+# is cooked from raw and no constant covers it, so minerals and B12 are
+# declared unassessed, as egg_bhurji.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: egg_whole_raw
+    quantity_g: 50.0
+    state: raw
+    note: One large egg, beaten and scrambled in.
+  - id: onion_raw
+    quantity_g: 10.0
+    state: raw
+    note: Finely chopped.
+  - id: gingelly_oil
+    quantity_g: 2.5
+    state: as_used
+    process: oil_uptake.vegetable_tempering
+    note: >-
+      Retained oil, carrot_poriyal's line; nearly all of it is served
+      (oil_uptake.vegetable_tempering).
+  - id: mustard_seed
+    quantity_g: 0.5
+    state: as_used
+  - id: curry_leaves
+    quantity_g: 0.5
+    state: raw
+  - id: green_chilli
+    quantity_g: 0.5
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.4
+    state: as_used
+    note: An authored quantity, not a measurement.

@@ -115,7 +115,10 @@ class TestTemplatesAreNotUniform:
         assert bread_slot.required is False
         assert bread_slot.min_selections == 0
         assert protein_slot.required is True
-        assert "dal_chilla" in protein_slot.accepted_categories
+        # Exactly these two since 2026-09-27 (TASKS_3.md N2c): an egg dish can
+        # be the protein course. Pinned exactly so a widening is a decision,
+        # not a drift.
+        assert protein_slot.accepted_categories == frozenset({"dal_chilla", "egg"})
 
     def test_lookup_finds_south_snack(self):
         # Added 2026-09-25 (TASKS_3.md R4d) alongside SOUTH_SNACK itself.
@@ -130,7 +133,9 @@ class TestTemplatesAreNotUniform:
         by_name = {s.name: s for s in templates.SOUTH_SNACK.slots}
         assert set(by_name) == {"sundal", "drink"}
         assert by_name["sundal"].required is True
-        assert by_name["sundal"].accepted_categories == frozenset({"sundal"})
+        # "egg" since 2026-09-27 (TASKS_3.md N2c): an egg snack takes the
+        # sundal's place. Still one required dish.
+        assert by_name["sundal"].accepted_categories == frozenset({"sundal", "egg"})
         assert by_name["drink"].required is False
         assert by_name["drink"].min_selections == 0
         assert by_name["drink"].max_selections == 1

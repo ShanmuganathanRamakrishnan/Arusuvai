@@ -1,0 +1,79 @@
+# Egg bhurji (anda bhurji) -- eggs scrambled into onion, tomato, ginger-garlic
+# and chilli sauteed in oil. The ordinary North Indian egg breakfast, eaten
+# with a paratha or roti.
+#
+# TASKS_3.md N2d (owner, 2026-09-27: egg dishes for breakfasts).
+# NORTH_BREAKFAST's protein course accepts the egg category since N2c
+# (docs/audit_log.md 2026-09-27, egg category); this is the dish that
+# category was opened for.
+#
+# Proportions, fixed before any probe run: tofu_bhurji's method, portioned
+# per egg because bhurji is made and served by the egg. One large egg (50 g,
+# raw) with half of tofu_bhurji's onion, tomato, oil, paste, garam masala and
+# chilli. tofu_bhurji's water splash is dropped: the egg brings its own
+# liquid. Salt at 0.50% of the portion, near tofu_bhurji's 0.53%.
+#
+# RAW-EGG BASIS: egg_whole_raw is IFCT M001 (raw); its DIAAS is the fried
+# (pan-cooked) figure, which is how it is cooked here
+# (data/raw/ifct/README.md). 80.4 g per egg is what goes into the pan.
+id: egg_bhurji
+name: Egg bhurji
+name_ta: முட்டை புர்ஜி
+name_hi: अंडा भुर्जी
+
+region: north_indian
+# Eggetarian, not vegetarian: egg_whole_raw is egg-classed. Not jain: onion
+# is classed root_vegetable. Both derived from ingredient classes.
+
+category: egg
+prep_minutes: 15
+tags: [breakfast, scrambled, eggetarian, high_protein]
+
+serving_unit:
+  measure: katori
+  name: 1-egg portion
+  grams_per_unit: 80.4
+  min_count: 1
+  default_count: 2
+  max_count: 4
+  note: >-
+    One egg's worth with its vegetables (80.4 g, the summed mass below), on
+    the katori measure with its weight overridden. Two eggs is the ordinary
+    breakfast; four is the ceiling, a large one.
+
+# Scrambled in the pan, as tofu_bhurji. The only registered process is the
+# oil; the egg is cooked from raw and no constant covers its water loss, so
+# minerals and B12 are declared unassessed, tofu_bhurji's declaration.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: egg_whole_raw
+    quantity_g: 50.0
+    state: raw
+    note: One large egg, beaten and scrambled in.
+  - id: onion_raw
+    quantity_g: 12.5
+    state: raw
+  - id: tomato_raw
+    quantity_g: 12.5
+    state: raw
+  - id: sunflower_oil
+    quantity_g: 2.5
+    state: as_used
+    process: oil_uptake.vegetable_tempering
+    note: >-
+      Retained oil, half of tofu_bhurji's line; nearly all of it is served
+      (oil_uptake.vegetable_tempering).
+  - id: ginger_garlic_paste
+    quantity_g: 1.5
+    state: as_used
+  - id: garam_masala
+    quantity_g: 0.5
+    state: as_used
+  - id: green_chilli
+    quantity_g: 0.5
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.4
+    state: as_used
+    note: An authored quantity, not a measurement.

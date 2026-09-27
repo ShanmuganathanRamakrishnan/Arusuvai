@@ -6,6 +6,126 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-27 — egg breakfasts and snack (N2d): egg bhurji places; egg dosa and muttai podimas written, measured, and place nowhere
+
+**What was written.** Three egg dishes, proportions fixed before any probe
+run, each on the new raw-egg row (N2b) and each for a slot opened in N2c or
+already open:
+
+- *Egg bhurji* (North breakfast protein course, category `egg`): one large
+  raw egg with half of tofu_bhurji's onion, tomato, oil, paste, masala and
+  chilli; 80.4 g per egg, counts 1–4. 100.3 kcal, 7.0 g protein, 7.2 g fat.
+- *Egg dosa* (South breakfast, a `tiffin`): masala_dosa's dosa lines
+  unchanged plus one raw egg, 5 g onion, 0.5 g chilli, 0.3 g salt; 145.8 g,
+  counts 1–3. 223.9 kcal, 10.9 g protein, 8.3 g fat, 377.8 mg sodium.
+- *Muttai podimas* (South snack, category `egg`): one raw egg with
+  carrot_poriyal's tempering lines and 10 g onion; 64.4 g per egg, counts
+  1–3. 96.8 kcal, 6.9 g protein, 7.3 g fat, 0.3 g fibre.
+
+**Measured.** Both probes, on a copy of the tree without the three files
+and on the tree with them, run side by side. Plate counts
+(`probe_nonveg.py`) identical in every cell, every diet, before and after:
+2+ totals 436 / 438 / 451 of 576. Variety (`probe_nonveg_variety.py`),
+bodies of 72 with a valid plate containing an egg, fish or poultry dish:
+
+| template | eggetarian before → after | non_vegetarian before → after |
+|---|---|---|
+| north_indian/breakfast | 0 → **32** | 0 → **32** |
+| south_indian/breakfast | 0 → **0** | 47 → 47 |
+| south_indian/snack | 0 → **0** | 0 → 0 |
+
+Every other row identical. Vegetarian column identical, so nothing leaks.
+
+**Why egg dosa and podimas place nowhere, diagnosed** (every count
+assignment of every combination containing the dish, three eggetarian
+bodies, against the target the ladder stopped on):
+
+- *Egg dosa.* The rest of a South breakfast (chutney, kuzhambu) already
+  carries fat. Closest plates: 55 kg lose_fat, fat 42 g vs 16 g ceiling;
+  70 kg maintain, fat 26 g vs 23 g and carbs 61 g under a 75 g floor at one
+  dosa; 95 kg gain_muscle, sodium 1497 mg vs 1400 mg, the only miss.
+- *Muttai podimas.* A South snack is one dish plus an optional buttermilk,
+  and egg brings no fibre, so the snack's fibre floor (3–5 g) fails at
+  every count for all three bodies. Fat is also over: 7.3 g per egg against
+  snack ceilings of 7–11 g, so two eggs miss at every body tested.
+
+**Not tuned.** Shrinking the egg, cutting the oil or adding a vegetable to
+make a number pass is fitting the recipe to the target.
+
+**Owner decision (2026-09-27): keep both in the library, unplaced.** They
+load, are correct as authored, and appear in no plan today; they are ready
+if the South breakfast fat ceiling or the South snack's shape is revisited.
+Committed separately after egg bhurji, as their own reviewable ideas.
+
+**Verification.** Egg bhurji only in the tree:
+`FOODAI_WEB_TESTS=required python -m pytest tests/ -q -p no:cacheprovider`
+→ `548 passed, 1 warning in 175.22s (0:02:55)`. A recipe adds no gate, so
+there is no deletion test; the probe table is its evidence.
+All three in the tree, same command: `548 passed, 1 warning in 169.58s
+(0:02:49)`.
+
+## 2026-09-27 — egg category (N2c): North breakfast protein course and South snack accept an egg dish — owner decision
+
+**Owner decision (2026-09-27):** egg dishes for breakfasts and snacks. Two
+slots could not hold one: `NORTH_BREAKFAST.protein_course` accepted only
+`dal_chilla`, and `SOUTH_SNACK.sundal` only `sundal`. Both now also accept a
+new category, `egg`: bhurji or an omelette as the North breakfast's protein
+course, and a boiled egg with pepper or muttai podimas in the South snack's
+place. `SOUTH_SNACK`'s slot keeps the name `sundal` because `blocking_slots`
+carries slot names on the wire.
+
+Egg dosa needs no template change: it is a `tiffin`, which
+`SOUTH_BREAKFAST.tiffin_item` already accepts.
+
+**No plan changes by construction.** No recipe has `category: egg` yet
+(checked with grep), so no candidate pool can differ. Vegetarian and vegan
+plates cannot gain an egg dish later either, because diet is decided by
+ingredient classes, not by category.
+
+**Tests.** `tests/test_templates_and_portions.py` pins both sets exactly.
+Deletion check, `"egg"` removed from each set in turn, full suite:
+`1 failed, 477 passed, 70 skipped` both times, failing
+`test_north_breakfast_bread_is_optional_unlike_every_other_template` and
+`test_south_snack_is_one_dish_and_an_optional_drink` respectively. Restored:
+green.
+
+## 2026-09-27 — raw whole egg row (N2b): IFCT M001, DIAAS matched to fried and scrambled egg
+
+**Why.** Egg dosa and egg bhurji cook raw egg on a pan. The only egg row was
+`egg_boiled` (M004), a boiled egg. Using it for those dishes would be a real
+figure describing the wrong food, the invariant 3 failure. Before any egg
+breakfast is written, the right row has to exist.
+
+**Added** `egg_whole_raw`, IFCT 2017 **M001**, from the same
+`nodef/ifct2017` file and by the same curl-and-grep method as M004. 564 kJ =
+134.8 kcal (Atwater 135.5). Protein 13.28 g, fat 9.15 g, sodium 123.0 mg,
+iron 1.82 mg, calcium 49.44 mg per 100 g. Rejected: M007 "omlet", whose fat
+(11.6 g) very likely already includes frying fat that recipes add as their
+own oil line.
+
+**DIAAS: sourced, and the preparation checked, not assumed.** Fanelli et al.
+2024, Table 8, >3-years pattern, read from the open-access full text
+(PMC11658930): fried 135%, boiled 135%, scrambled 137%. Recorded 1.35, the
+lower of the two pan-cooked forms. PubMed returned a bot check and was not
+used. B12 0.89 µg, USDA FDC 171287. `verified=false`.
+
+**Tests.** Four listing tests updated deliberately (row count 36 → 37;
+real-code set gains M001; unverified-row warnings 35 → 36; qualifying set
+gains `egg_whole_raw`). Deletion check, row removed: `3 failed, 57 passed`
+(`test_every_fixture_row_loads`,
+`test_unverified_rows_are_reported_not_silently_accepted`,
+`test_the_threshold_partitions_the_library_where_expected`). The code-set test
+does not react to a missing row by design, because it guards against
+invented codes. Restored: `python -m pytest tests/ -q -p no:cacheprovider`,
+`478 passed, 70 skipped, 1 warning`. No recipe uses the row yet, so no plan
+changes.
+
+**Noticed, not fixed — nothing stops a raw-egg row in a no-cook dish.** This
+row's DIAAS describes cooked egg. A recipe declaring `preparation: uncooked`
+with an `egg_whole_raw` line would load and be credited 1.35 for raw egg,
+whose protein is less digestible and was not measured. The limit is stated
+in the row's `source_note`; no loader rule enforces it. Left open.
+
 ## 2026-09-27 — North Indian snack: chicken tikka and anda chaat (N2, first pair)
 
 **Owner decision (2026-09-27):** N2 is "variety first" — egg and chicken dishes

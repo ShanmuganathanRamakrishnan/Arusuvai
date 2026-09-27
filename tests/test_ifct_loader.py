@@ -37,7 +37,9 @@ class TestFixtureSet:
         # moong_dal_raw (sourced from USDA FDC 174256) for moong_dal_chilla.
         # 36 rows from 2026-09-25's TASKS_3.md R4d South-snack work, which
         # added chickpea_boiled (USDA FDC 173757) for soya_chana_sundal.
-        assert len(load_report.loaded) == 36
+        # 37 rows from 2026-09-27's TASKS_3.md N2b, which added egg_whole_raw
+        # (IFCT M001) for pan-cooked egg dishes.
+        assert len(load_report.loaded) == 37
 
     def test_no_ifct_code_is_invented(self, ingredients):
         # Seven rows now carry real IFCT 2017 codes, extracted from a
@@ -56,7 +58,7 @@ class TestFixtureSet:
         coded = {
             "rice_milled_raw": "A015", "rajma_raw": "B020",
             "toor_dal_raw": "B021", "potato_raw": "F006",
-            "egg_boiled": "M004",
+            "egg_boiled": "M004", "egg_whole_raw": "M001",
             "chicken_breast_raw": "N003", "pomfret_white_raw": "P057",
         }
         for ingredient_id, ingredient in ingredients.items():
@@ -90,7 +92,10 @@ class TestFixtureSet:
         # unverified for the identical reason. chickpea_boiled (2026-09-25,
         # TASKS_3.md R4d South snack) carries no DIAAS claim and stays
         # unverified for the same reason: FDC queried by the assistant.
-        assert len(load_report.warnings) == 35
+        # egg_whole_raw (2026-09-27, TASKS_3.md N2b) carries a published,
+        # preparation-matched DIAAS and stays unverified for the same reason:
+        # the assistant read the paper and the mirror, not a human.
+        assert len(load_report.warnings) == 36
 
     def test_states_parse(self, ingredients):
         assert ingredients["rice_cooked"].state is RawOrCooked.COOKED
