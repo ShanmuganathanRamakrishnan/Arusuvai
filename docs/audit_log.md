@@ -6,6 +6,47 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-27 — North Indian snack: chicken tikka and anda chaat (N2, first pair)
+
+**Owner decision (2026-09-27):** N2 is "variety first" — egg and chicken dishes
+for breakfasts and snacks, where the N1 baseline found no animal dish at all.
+Order: the two North snack dishes first, because they fit the template and
+the ingredient table as they stand. Egg breakfasts need a raw-egg row, and the
+North breakfast protein course and South snack need their templates widened;
+those come after, each its own step.
+
+**A second probe, because a plate count cannot see variety.**
+`probe_nonveg.py` counts plates; north_indian/snack already had 2+ plates for
+58/72 bodies under every diet, so an added dish is invisible there.
+`docs/design/probes/probe_nonveg_variety.py` (new) asks: for how many of the
+72 bodies is at least one valid plate, at the accepted rung, built with an
+egg, fish or poultry ingredient? Same solved set as the base probe.
+
+**Chicken tikka** (`data/recipes/chicken_tikka.yaml`): four bite-sized pieces
+from 80 g raw chicken breast, soya_tikka's method and lines, marinade scaled
+at ordinary home ratios; 110.8 g per plate, counts 1–2. Proportions fixed
+before any probe run.
+
+- *New constant, not a reuse.* `oil_uptake.tikka_pan_roasted` is applied to
+  porous rehydrated soya chunks; chicken pieces are not porous, so reusing it
+  would be a real citation describing the wrong food (invariant 3).
+  `oil_uptake.chicken_tikka_pan_roasted` = 0.80, `project_oil_uptake_estimate`,
+  high side by the same convention, recorded as "NO matching primary source".
+- *Raw-weight basis, stated in the file.* No cooked chicken row or sourced
+  yield exists, so the plate's 110.8 g is what goes into the pan. Since G1 the
+  dashboard shows that figure. Nutrition per gram of finished dish is
+  understated, never overstated.
+- *Measured.* Plate counts unchanged (north_indian/snack non-veg 4 / 10 / 58).
+  Variety, non-vegetarian north snack: **0 → 4/72** bodies.
+- *Why so few, diagnosed* (70 kg maintain, snack band 231–283 kcal, fat
+  ceiling 9.0 g unrelaxed): one plate is 168.9 kcal / **9.9 g fat**, two are
+  337.9 kcal / 19.9 g. Below the energy band at one plate, far above it at
+  two, and over the fat ceiling either way. 7.2 of the 9.9 g comes from
+  `chicken_breast_raw`'s IFCT N003 figure of 9.0 g fat / 100 g, high for
+  skinless breast. **Not tuned, not replaced.** Recorded as a question for
+  the human review of that row (`verified=False`): whether N003's fat figure
+  is what the primary IFCT table says.
+
 ## 2026-09-27 — non-vegetarian baseline (N1): egg and non-veg profiles already match vegetarian; the animal dishes add little
 
 **Why.** Owner asked for chicken, egg and fish dishes so that macros are
