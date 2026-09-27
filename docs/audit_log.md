@@ -6,6 +6,31 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-27 — egg category (N2c): North breakfast protein course and South snack accept an egg dish — owner decision
+
+**Owner decision (2026-09-27):** egg dishes for breakfasts and snacks. Two
+slots could not hold one: `NORTH_BREAKFAST.protein_course` accepted only
+`dal_chilla`, and `SOUTH_SNACK.sundal` only `sundal`. Both now also accept a
+new category, `egg`: bhurji or an omelette as the North breakfast's protein
+course, and a boiled egg with pepper or muttai podimas in the South snack's
+place. `SOUTH_SNACK`'s slot keeps the name `sundal` because `blocking_slots`
+carries slot names on the wire.
+
+Egg dosa needs no template change: it is a `tiffin`, which
+`SOUTH_BREAKFAST.tiffin_item` already accepts.
+
+**No plan changes by construction.** No recipe has `category: egg` yet
+(checked with grep), so no candidate pool can differ. Vegetarian and vegan
+plates cannot gain an egg dish later either, because diet is decided by
+ingredient classes, not by category.
+
+**Tests.** `tests/test_templates_and_portions.py` pins both sets exactly.
+Deletion check, `"egg"` removed from each set in turn, full suite:
+`1 failed, 477 passed, 70 skipped` both times, failing
+`test_north_breakfast_bread_is_optional_unlike_every_other_template` and
+`test_south_snack_is_one_dish_and_an_optional_drink` respectively. Restored:
+green.
+
 ## 2026-09-27 — raw whole egg row (N2b): IFCT M001, DIAAS matched to fried and scrambled egg
 
 **Why.** Egg dosa and egg bhurji cook raw egg on a pan. The only egg row was

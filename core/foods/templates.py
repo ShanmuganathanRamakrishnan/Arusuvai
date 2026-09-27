@@ -285,9 +285,15 @@ NORTH_BREAKFAST = MealTemplate(
             min_selections=0,
             max_selections=1,
         ),
+        # "egg" added 2026-09-27 (TASKS_3.md N2c, owner decision: egg dishes
+        # for breakfasts). Egg bhurji or an omelette is the protein course of
+        # an ordinary North Indian egg breakfast, eaten with the same paratha
+        # and curd a chilla is. A category, not a diet rule: an egg dish is
+        # withheld from vegetarian and vegan plates by its ingredient classes,
+        # as every dish is. docs/audit_log.md 2026-09-27 (egg category).
         TemplateSlot(
             name="protein_course",
-            accepted_categories=frozenset({"dal_chilla"}),
+            accepted_categories=frozenset({"dal_chilla", "egg"}),
         ),
         TemplateSlot(
             name="curd_or_raita",
@@ -335,9 +341,15 @@ SOUTH_SNACK = MealTemplate(
     region=Region.SOUTH_INDIAN,
     meal_slot=MealSlot.SNACK,
     slots=(
+        # "egg" added 2026-09-27 (TASKS_3.md N2c): a boiled egg with pepper
+        # and salt, or muttai podimas, is the ordinary Tamil egg eaten as an
+        # evening snack, in the place a sundal takes. The slot keeps its name
+        # because `blocking_slots` carries it on the wire; the categories are
+        # what decide which dishes may fill it. docs/audit_log.md 2026-09-27
+        # (egg category).
         TemplateSlot(
             name="sundal",
-            accepted_categories=frozenset({"sundal"}),
+            accepted_categories=frozenset({"sundal", "egg"}),
         ),
         # Optional for the reason this module's header gives: a ~31 kcal extra
         # the solver can use to close a small energy gap. A sundal alone is a
