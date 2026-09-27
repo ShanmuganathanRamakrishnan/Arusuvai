@@ -161,7 +161,7 @@ def rendered_text() -> dict[str, list[str]]:
                 credentials: 'include', headers: j, body: JSON.stringify({email, password})});
               await fetch('http://localhost:8000/api/profile', {method: 'PUT',
                 credentials: 'include', headers: j, body: JSON.stringify({
-                  age_years: 31, sex: 'male', weight_kg: 88, height_cm: 176,
+                  age_years: 31, sex: 'male', weight_kg: 121, height_cm: 176,
                   activity: 'moderate', goal: 'maintain', diet: 'vegetarian',
                   clinical_flags: ['chronic_kidney_disease']})});
             }""",
@@ -183,7 +183,15 @@ def rendered_text() -> dict[str, list[str]]:
         # (`docs/audit_log.md` finding 36).
         #
         # south_indian:lunch is the plate that declines for the CKD profile
-        # above. Repointed 2026-09-25 (docs/audit_log.md, 2026-08-24 SOUTH_DINNER
+        # above. Repointed again 2026-09-27 (docs/audit_log.md, South Indian
+        # lunch): 88 kg stopped declining once soya_chunk_poriyal gave
+        # south_lunch's vegetable slot a protein-dense option. weight_kg=121
+        # declines on sodium alone, locked by chronic_kidney_disease (2281.1
+        # mg vs 1400.0 mg); 118..125 is the contiguous run of vegetarian
+        # maintain CKD profiles that decline on sodium alone, and 121 is its
+        # middle. The 2026-09-25 note below is kept as history.
+        #
+        # Repointed 2026-09-25 (docs/audit_log.md, 2026-08-24 SOUTH_DINNER
         # entry's finding): the old weight_kg=74 stopped declining once
         # soya_curd gave south_lunch a lower-sodium curd_course -- the same
         # side effect tests/test_api_targets.py was repointed for in b28447f.
