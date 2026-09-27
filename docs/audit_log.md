@@ -6,6 +6,37 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-27 — moong soya chilla: NORTH_BREAKFAST 35 → 85/144, above the 30% floor
+
+**What was added.** `data/recipes/moong_soya_chilla.yaml`: `moong_dal_chilla`
+with its 30 g dry dal split 21 g moong + 9 g `soya_flour_defatted` — 30% of
+the dry mass, `soya_idli`'s own share (4 of 14 g). Every other line and the
+serving unit (81 g, counts 1–5) unchanged. `north_indian`, `dal_chilla`,
+vegan. Proportions fixed before any probe run.
+
+**Why.** Entry 2026-09-26 (North Indian breakfast dishes): vegans reached at
+most one North breakfast plate, because `soya_keema_paratha` was the only
+vegan dish in the template carrying qualifying protein. Soya flour (DIAAS
+1.05, a literature value) in the protein course is the second.
+
+**Measured on the tree** (`probe_rank_input2.py`), NORTH_BREAKFAST profiles
+with 0 / 1 / 2+ plates:
+
+| | vegetarian | vegan | 2+ total |
+|---|---|---|---|
+| before | 17 / 20 / 35 | 54 / 18 / 0 | 35/144 (24.3%) |
+| after | 1 / 18 / 53 | 24 / 16 / 32 | **85/144 (59.0%)** |
+
+Vegetarians gain too: the dish is vegan, so it is open to them. Other seven
+templates unchanged. Grid 598 → **648/1152 = 56.3%**; declined 311 → 265.
+The exit condition is now blocked only by `south_indian/lunch` (33/144).
+
+**Verification.** `FOODAI_WEB_TESTS=required python -m pytest tests/ -q
+-p no:cacheprovider`: 545 passed, 1 warning. No new gate, so no deletion
+check.
+
+**Disposition:** NORTH_BREAKFAST above floor.
+
 ## 2026-09-26 — North Indian breakfast dishes: soya onion raita, paneer moong chilla, soya keema paratha
 
 **Diagnosis first** (in-memory what-ifs patching the probe's own

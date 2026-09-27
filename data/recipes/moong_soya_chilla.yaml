@@ -1,0 +1,71 @@
+# Moong soya chilla — moong dal chilla with part of the dal replaced by
+# defatted soya flour, an ordinary protein-forward home variant of the
+# everyday North Indian breakfast pancake.
+#
+# TASKS_3.md R4d (North Indian breakfast, second vegan source). Measured
+# 2026-09-26 (docs/audit_log.md, North Indian breakfast dishes): vegan
+# NORTH_BREAKFAST profiles reach at most one plate, because
+# soya_keema_paratha is the only vegan dish in the template carrying
+# qualifying protein. soya_flour_defatted (DIAAS 1.05, a literature value)
+# puts it in the protein course, so a second vegan plate becomes possible.
+#
+# Proportions, fixed before any probe run: moong_dal_chilla's lines
+# unchanged except the 30 g dry dal, split 21 g moong + 9 g soya flour --
+# 30% of the dry mass, soya_idli's own share of soya flour (4 of 14 g dry).
+id: moong_soya_chilla
+name: Moong soya chilla
+name_ta: பாசி பருப்பு சோயா சில்லா
+name_hi: मूंग सोया चीला
+
+region: north_indian
+# Vegan: every line is plant (derived from ingredient classes; see
+# data/recipes/schema.yaml). Not jain: onion_raw is classed root_vegetable.
+
+category: dal_chilla
+prep_minutes: 20
+tags: [pancake, breakfast, high_protein, everyday, vegan]
+
+serving_unit:
+  measure: dosa
+  grams_per_unit: 81.0
+  min_count: 1
+  default_count: 2
+  max_count: 5
+  note: >-
+    moong_dal_chilla's unit and range unchanged -- the same unstuffed
+    pancake, the same 81 g summed mass.
+
+# has_process is True (the oil line carries a process key), as in
+# moong_dal_chilla.
+
+ingredients:
+  - id: moong_dal_raw
+    quantity_g: 21.0
+    state: raw
+    note: Soaked and ground into batter; 70% of moong_dal_chilla's 30 g.
+  - id: soya_flour_defatted
+    quantity_g: 9.0
+    state: raw
+    note: >-
+      Whisked into the ground batter; 30% of the dry mass, soya_idli's share.
+  - id: water
+    quantity_g: 40.0
+    state: as_used
+    note: Batter water retained in the finished pancake, moong_dal_chilla's line.
+  - id: onion_raw
+    quantity_g: 8.0
+    state: raw
+    note: Finely chopped into the batter.
+  - id: green_chilli
+    quantity_g: 0.5
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.4
+    state: as_used
+  - id: sunflower_oil
+    quantity_g: 2.1
+    state: as_used
+    process: oil_uptake.dosa_griddled
+    note: >-
+      Retained oil, moong_dal_chilla's line: about 3.0 g spooned around the
+      spreading batter, 2.1 g stays (oil_uptake.dosa_griddled = 0.70).
