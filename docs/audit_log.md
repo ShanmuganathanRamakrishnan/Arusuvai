@@ -47,6 +47,34 @@ before any probe run.
   the human review of that row (`verified=False`): whether N003's fat figure
   is what the primary IFCT table says.
 
+**Anda chaat** (`data/recipes/anda_chaat.yaml`): one large boiled egg (50 g)
+per unit with soya_chana_chaat's toppings scaled; 68.4 g, counts 1–3,
+`preparation: uncooked` (the egg row is IFCT's boiled, served-basis
+composition — the one egg dish that needs no raw-egg data). 83.0 kcal,
+7.0 g protein per egg. Proportions fixed before any probe run.
+
+- *Measured.* Plate counts unchanged for 2+ (58/72, every diet); 24 bodies
+  per egg-permitting diet gain extra valid plates. Vegetarian column
+  identical, so nothing leaks to vegetarian plans. Variety, north snack:
+  eggetarian **0 → 24/72**, non-vegetarian **4 → 24/72**.
+
+**Verification.** `FOODAI_WEB_TESTS=required python -m pytest tests/ -q
+-p no:cacheprovider`: `548 passed, 1 warning in 176.38s`, both dishes
+present. Variety probe, three runs on one tree (both files moved aside, then
+tikka restored, then chaat):
+
+| north_indian/snack | eggetarian | non_vegetarian |
+|---|---|---|
+| neither dish | 0 | 0 |
+| + chicken tikka | 0 | 4 |
+| + anda chaat | 24 | 24 |
+
+Every other template's row is identical across the three runs.
+
+**Disposition:** North snack now offers egg eaters an egg plate for a third
+of bodies. Chicken tikka is correct as authored and mostly unplannable at a
+snack's size; the chicken fat figure is the open question, not the recipe.
+
 ## 2026-09-27 — non-vegetarian baseline (N1): egg and non-veg profiles already match vegetarian; the animal dishes add little
 
 **Why.** Owner asked for chicken, egg and fish dishes so that macros are
