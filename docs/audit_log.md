@@ -6,6 +6,57 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-27 — non-vegetarian baseline (N1): egg and non-veg profiles already match vegetarian; the animal dishes add little
+
+**Why.** Owner asked for chicken, egg and fish dishes so that macros are
+"filled much more easily". `probe_rank_input2.py` has only ever measured
+vegetarian and vegan profiles, so that premise was unmeasured. Measured first,
+no recipe changed.
+
+**Method.** `docs/design/probes/probe_nonveg.py` (new) runs the base probe's
+own `accepted_rung_valid_plate_count`, loaded unmodified, over its 72-body grid
+(6 weights x 3 goals x 4 flag-sets) once per diet. Library today: three
+animal-protein dishes, all gravies — `anda_curry` (north, egg),
+`mutta_kuzhambu` (south, egg), `meen_kuzhambu` (south, fish). No chicken dish.
+
+**Result** (`PYTHONPATH=. python docs/design/probes/probe_nonveg.py`),
+profiles with 0 / 1 / 2+ valid plates, 72 per cell:
+
+| template | vegetarian | eggetarian | non_vegetarian |
+|---|---|---|---|
+| south_indian/breakfast | 4 / 12 / 56 | 4 / 12 / 56 | 4 / 8 / 60 |
+| south_indian/lunch | 6 / 28 / 38 | 6 / 27 / 39 | 2 / 13 / 57 |
+| south_indian/dinner | 11 / 7 / 54 | 10 / 7 / 55 | 2 / 24 / 46 |
+| north_indian/breakfast | 1 / 18 / 53 | 1 / 18 / 53 | 1 / 18 / 53 |
+| south_indian/snack | 2 / 19 / 51 | 2 / 19 / 51 | 2 / 19 / 51 |
+| north_indian/snack | 4 / 10 / 58 | 4 / 10 / 58 | 4 / 10 / 58 |
+| north_indian/lunch | 3 / 6 / 63 | 3 / 6 / 63 | 3 / 6 / 63 |
+| north_indian/dinner | 1 / 8 / 63 | 1 / 8 / 63 | 1 / 8 / 63 |
+| **2+ total** | **436/576** | **438/576** | **451/576** |
+
+Bodies crossing to 2+ versus vegetarian: eggetarian 2 (one each south lunch
+and dinner); non_vegetarian 29 (south lunch 22, south breakfast 7). North
+lunch and dinner gain extra plates for ~50 bodies under both diets, but every
+one of those bodies already had 2+.
+
+**The premise, stated plainly: mostly wrong as a coverage claim.** Egg and
+non-veg profiles already get two plates as often as vegetarians (75.7% /
+76.0% / 78.3%). Egg dishes change almost nothing (+2); fish helps South
+Indian lunch (38 → 57). Breakfasts and snacks cannot change at all: no
+animal dish exists for them. What the gap is, is variety — an eggetarian is
+never offered an egg breakfast — not whether a plate can be built.
+
+**Counter-intuitive, checked, not a defect.** South Indian dinner is *lower*
+for non-veg (46 vs 54). Confirmed for 8 bodies, e.g. 70 kg lose_fat:
+vegetarian 6 plates at `protein_tolerance`, non_vegetarian 1 plate at
+`fat_carb_tolerance`. The fish plate lets the ladder stop at an earlier,
+stricter rung where fewer plates fit — a closer plate, fewer alternatives. The
+probe's docstring first claimed the non-veg count could only equal or exceed
+vegetarian; corrected before commit.
+
+**Disposition:** baseline recorded; N2's scope is the owner's call (variety
+dishes for breakfast/snack vs. lunch/dinner protein). No code change.
+
 ## 2026-09-27 — portions shown in grams beside the household unit (G1) — owner decision
 
 **Owner decision (2026-09-27):** show every portion in grams as well as its
