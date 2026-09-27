@@ -90,6 +90,12 @@ class ComponentOut(BaseModel):
     category: str
     unit_count: int
     unit_name: str
+    #: The weight the plate's nutrition was computed from: ``unit_count`` x the
+    #: recipe's own ``grams_per_unit``, via ``ServingUnit.grams_for``. Shown
+    #: beside the household unit so a portion can be weighed (TASKS_3.md G1).
+    #: Required, not defaulted -- a missing weight must not read as 0 g
+    #: (docs/audit_log.md finding 40).
+    grams: float
 
 
 class PlanEstimateOut(BaseModel):
