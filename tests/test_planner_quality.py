@@ -549,17 +549,26 @@ class TestThePerturbationTest:
         # and it is now
         #   phulka x5 + soya_chunk_curry x1 + paneer_masala x1
         # solely because tofu_firm's authored 0.65 is below the threshold.
-        # Raise that ONE number to 0.80 and the old plate comes back exactly.
-        # Not an argument that 0.80 is right -- it is not, and the value is not
-        # being changed -- but proof of what the rule is doing.
+        # Raise that ONE number to 0.80 and the old plate's dal_tadka x2 +
+        # tofu_bhurji x1 comes back. Not an argument that 0.80 is right -- it
+        # is not, and the value is not being changed -- but proof of what the
+        # rule is doing.
+        #
+        # Corrected 2026-09-26 (docs/audit_log.md, North Indian breakfast
+        # dishes): this said "comes back exactly" and pinned phulka x4 with no
+        # raita. soya_onion_raita, added that day, fills NORTH_LUNCH's
+        # optional raita slot, so the returning plate now carries one katori
+        # of it and one phulka fewer. The tofu-and-dal core is what the rule
+        # decides, and it is unchanged.
         after = _plan(
             _with_diaas(real, "tofu_firm", 0.80), Region.NORTH_INDIAN, MealSlot.LUNCH
         )
         assert after.plan is not None
         assert after.plan.unit_counts == {
-            "phulka@roti": 4,
+            "phulka@roti": 3,
             "dal_tadka@dal": 2,
             "tofu_bhurji@sabzi": 1,
+            "soya_onion_raita@raita": 1,
         }
 
     def test_the_rule_is_not_hard_coded_to_dairy(self, real):
@@ -605,11 +614,16 @@ class TestDietChangesAnOutcomeNotANumber:
         )
 
     def test_but_diet_now_decides_which_plate_satisfies_that_identical_floor(self, real):
-        # Same body, same goal, same 11.2 g floor. A vegetarian's north dinner
-        # can reach it through paneer or curd; a vegan's cannot, and rests
-        # entirely on soya_chunk_curry. Different plates from identical numbers.
-        veg = _plan(real, Region.NORTH_INDIAN, MealSlot.DINNER, DietPattern.VEGETARIAN)
-        vegan = _plan(real, Region.NORTH_INDIAN, MealSlot.DINNER, DietPattern.VEGAN)
+        # Same body, same goal, same 11.2 g floor. A vegetarian's north lunch
+        # can reach it through paneer (paneer_masala); a vegan's cannot, and
+        # rests on soya. Different plates from identical numbers.
+        #
+        # Repointed 2026-09-26 from north dinner (docs/audit_log.md, North
+        # Indian breakfast dishes): with soya_onion_raita in the library both
+        # diets' best north dinner is the same all-plant plate, so dinner no
+        # longer shows the difference. Lunch still does; the claim is unchanged.
+        veg = _plan(real, Region.NORTH_INDIAN, MealSlot.LUNCH, DietPattern.VEGETARIAN)
+        vegan = _plan(real, Region.NORTH_INDIAN, MealSlot.LUNCH, DietPattern.VEGAN)
         assert veg.plan is not None and vegan.plan is not None
         assert veg.plan.unit_counts != vegan.plan.unit_counts
 

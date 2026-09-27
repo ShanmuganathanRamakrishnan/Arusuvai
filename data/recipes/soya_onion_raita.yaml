@@ -1,0 +1,65 @@
+# Soya onion raita — onion raita made with soya curd instead of dairy curd.
+#
+# TASKS_3.md R4d (North Indian breakfast). NORTH_BREAKFAST.curd_or_raita is
+# required, and its only north_indian filler, onion_raita, is dairy, so no
+# vegan North Indian breakfast could be built at all (docs/audit_log.md
+# 2026-08-24, NORTH_BREAKFAST, "vegan structural zero"). This is the same
+# dish as onion_raita with soya_curd_plain -- the base of the existing
+# soya_curd recipe -- in place of curd_dahi, gram for gram.
+#
+# Stated before measuring, so it is not read as more than it is:
+# soya_curd_plain carries no DIAAS in the ingredient table, so none of this
+# raita's protein counts toward the quality-protein floor. It makes a vegan
+# plate possible to build; it does not make one pass. The vegan quality
+# protein has to come from elsewhere (soya_keema_paratha).
+id: soya_onion_raita
+name: Soya onion raita
+name_ta: சோயா தயிர் பச்சடி
+name_hi: सोया प्याज़ रायता
+
+region: north_indian
+# No dairy class on soya_curd_plain, so vegan-eligible (derived from
+# ingredient classes; see data/recipes/schema.yaml). Not jain: onion is
+# classed root_vegetable.
+
+category: raita
+
+# Nothing is heated, drained, griddled or fried -- onion_raita's reasoning,
+# unchanged.
+preparation: uncooked
+prep_minutes: 10
+tags: [cooling, no_cook, breakfast, lunch, dinner, vegan]
+
+serving_unit:
+  measure: katori
+  grams_per_unit: 150.0
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    onion_raita's unit and range, for onion_raita's reason: a raita is an
+    accompaniment, and three katoris of it is a plate the solver invented.
+
+ingredients:
+  - id: soya_curd_plain
+    quantity_g: 128.0
+    state: as_used
+    note: Whisked smooth. onion_raita's curd line, soya curd in place of dahi.
+  - id: onion_raw
+    quantity_g: 15.0
+    state: raw
+    note: Finely chopped, raw.
+  - id: tomato_raw
+    quantity_g: 5.0
+    state: raw
+  - id: green_chilli
+    quantity_g: 1.0
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.5
+    state: as_used
+    note: onion_raita's line -- about 0.33% of the finished weight.
+  - id: water
+    quantity_g: 0.5
+    state: as_used
+    note: The splash used to loosen the whisked curd; listed so the masses sum.
