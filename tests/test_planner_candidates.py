@@ -81,7 +81,7 @@ class TestHardFilters:
         # poriyal, SOUTH_LUNCH's vegetable course.
         animal_extras = {
             "kuzhambu": {"mutta_kuzhambu", "meen_kuzhambu", "chicken_kuzhambu"},
-            "poriyal": {"chicken_chukka"},
+            "poriyal": {"chicken_chukka", "meen_varuval"},
         }
         assert non_veg_pool.by_category.keys() == vegetarian_pool.by_category.keys()
         for category in vegetarian_pool.by_category:
