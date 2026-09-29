@@ -1,0 +1,89 @@
+# Chicken chukka -- boneless chicken dry-roasted with onion, ginger-garlic
+# and garam masala in a mustard and curry-leaf tempering until the masala
+# clings. A Tamil dry side, served in the vegetable course of a rice meal.
+#
+# TASKS_3.md N4 (owner, 2026-09-29: chicken and fish mains for lunch and
+# dinner). Measured first (docs/audit_log.md 2026-09-27, shown plate for egg
+# and non-veg): nothing animal can fill SOUTH_LUNCH/DINNER's vegetable course
+# (poriyal/kootu). soya_chunk_poriyal fills it for every profile, the owner's
+# reported case.
+#
+# Proportions, fixed before any probe run: soya_chunk_poriyal's poriyal lines
+# (onion 6, oil 2.5, mustard 0.5, curry leaves 0.5, chilli 0.5, 1.5 g
+# steaming water), its 60 g soaked soya replaced by 60 g raw chicken breast.
+# Coconut left out: chukka is a masala roast, not a coconut poriyal. Added
+# at chicken_tikka's ratios to the chicken: ginger-garlic paste 3% (1.8 g),
+# garam masala (0.5 g), salt about 1.1% (0.7 g). No black pepper row exists;
+# the pepper usual in chukka is left out, stated.
+#
+# RAW-WEIGHT BASIS: as chicken_tikka. The 74.5 g katori is what goes into the
+# pan; understates, never overstates.
+id: chicken_chukka
+name: Chicken chukka
+name_ta: சிக்கன் சுக்கா
+name_hi: चिकन चुक्का
+
+region: south_indian
+# Not vegetarian: chicken_breast_raw is poultry-classed. Not jain: onion and
+# ginger-garlic are classed root_vegetable. Derived from ingredient classes.
+
+category: poriyal
+prep_minutes: 35
+tags: [lunch, dinner, high_protein, non_vegetarian]
+
+serving_unit:
+  measure: katori
+  name: katori
+  grams_per_unit: 74.5
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    The summed mass below (74.5 g), on the katori measure with its weight
+    overridden. soya_chunk_poriyal's ceiling of two, for its reason: a
+    poriyal is a dry side, and a third katori is a different dish.
+
+# Dry-roasted in the pan. The only registered process is the oil; the chicken
+# is cooked from raw and no constant covers its water loss.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: chicken_breast_raw
+    quantity_g: 60.0
+    state: raw
+    note: Boneless, skinless, small pieces. Raw-basis; see the header.
+  - id: onion_raw
+    quantity_g: 6.0
+    state: raw
+  - id: gingelly_oil
+    quantity_g: 2.5
+    state: as_used
+    process: oil_uptake.chicken_tikka_pan_roasted
+    note: >-
+      Retained oil. Lean chicken pieces and onion tossed on a hot pan until
+      the masala chars and clings -- chicken_tikka's mechanism, not a
+      tempering poured into a gravy, so not oil_uptake.vegetable_tempering.
+      About 3.1 g goes in; 2.5 g stays (0.80).
+  - id: ginger_garlic_paste
+    quantity_g: 1.8
+    state: as_used
+  - id: garam_masala
+    quantity_g: 0.5
+    state: as_used
+  - id: mustard_seed
+    quantity_g: 0.5
+    state: as_used
+  - id: curry_leaves
+    quantity_g: 0.5
+    state: raw
+  - id: green_chilli
+    quantity_g: 0.5
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.7
+    state: as_used
+    note: About 1.1% of the chicken, chicken_tikka's ratio. An authored quantity.
+  - id: water
+    quantity_g: 1.5
+    state: as_used
+    note: soya_chunk_poriyal's steaming splash.
