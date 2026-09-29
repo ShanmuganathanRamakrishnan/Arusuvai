@@ -1,0 +1,84 @@
+# Chicken curry -- boneless chicken simmered in an onion-tomato gravy with
+# ginger-garlic and garam masala. The everyday North Indian home chicken curry,
+# eaten with roti or rice at lunch and dinner.
+#
+# TASKS_3.md N4 (owner, 2026-09-29: chicken and fish mains for lunch and
+# dinner). Measured first (docs/audit_log.md 2026-09-27, shown plate for egg
+# and non-veg): no chicken main exists anywhere; North lunch and dinner offer
+# egg (anda_curry) as their only animal dish.
+#
+# Proportions, fixed before any probe run: anda_curry's gravy lines unchanged
+# (onion 14, tomato 24, oil 5, paste 2, garam masala 1, chilli 1, salt 0.8),
+# its 100 g boiled egg replaced by 90 g raw chicken breast -- meen_kuzhambu's
+# fish quantity, the library's other meat-in-gravy katori. Water brings the
+# katori to 150 g; salt stays 0.53%.
+#
+# RAW-WEIGHT BASIS: chicken_breast_raw is IFCT's raw composition and no cooked
+# chicken row or sourced yield exists (see chicken_tikka). The 150 g is what
+# goes into the pot; per gram of finished curry the nutrition is understated,
+# never overstated.
+id: chicken_curry
+name: Chicken curry
+name_ta: சிக்கன் கறி
+name_hi: चिकन करी
+
+region: north_indian
+# Not vegetarian: chicken_breast_raw is poultry-classed. Not jain: onion and
+# ginger-garlic are classed root_vegetable. Derived from ingredient classes.
+
+category: sabzi
+prep_minutes: 40
+tags: [everyday, lunch, dinner, high_protein, non_vegetarian]
+
+serving_unit:
+  measure: katori
+  grams_per_unit: 150.0
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    One katori, the generic katori weight. Two, anda_curry's ceiling and for
+    its reason: one katori already clears the per-meal quality floor, and a
+    wider ceiling would let the solver answer a protein floor by volume of
+    one dish.
+
+# Simmered in the gravy, which is served. The only registered process is the
+# tempering oil; the chicken is cooked from raw and no constant covers its
+# water loss, so minerals and B12 are declared unassessed, as anda_curry.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: chicken_breast_raw
+    quantity_g: 90.0
+    state: raw
+    note: Boneless, skinless, in bite-sized pieces. Raw-basis; see the header.
+  - id: onion_raw
+    quantity_g: 14.0
+    state: raw
+  - id: tomato_raw
+    quantity_g: 24.0
+    state: raw
+  - id: sunflower_oil
+    quantity_g: 5.0
+    state: as_used
+    process: oil_uptake.vegetable_tempering
+    note: >-
+      Retained oil, anda_curry's line: the masala base is fried in it and it
+      stays in the gravy (oil_uptake.vegetable_tempering).
+  - id: ginger_garlic_paste
+    quantity_g: 2.0
+    state: as_used
+  - id: garam_masala
+    quantity_g: 1.0
+    state: as_used
+  - id: green_chilli
+    quantity_g: 1.0
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.8
+    state: as_used
+    note: 0.53%, anda_curry's proportion. An authored quantity, not a measurement.
+  - id: water
+    quantity_g: 12.2
+    state: as_used
+    note: What the gravy is loosened with; brings the katori to 150 g.
