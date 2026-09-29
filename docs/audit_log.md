@@ -6,6 +6,25 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-29 — "Regenerate this plate" returns the same plate (found in N8 design)
+
+Found while sizing the owner's dish-swap request (TASKS_3.md N8). The
+dashboard's "Regenerate this plate" button (web/dashboard.html, `dashRegenerate`)
+re-sends the same POST /api/plan, and the planner is deterministic by design
+(finding 18), so it can only return the identical plate. Three calls, same
+profile (70 kg, 175 cm, 28 y, male, moderate, maintain, eggetarian,
+south_indian breakfast), via FastAPI's TestClient:
+
+```
+200 [('idli', 6), ('sambar', 1), ('coconut_chutney', 3), ('avicha_muttai', 2)]
+200 [('idli', 6), ('sambar', 1), ('coconut_chutney', 3), ('avicha_muttai', 2)]
+200 [('idli', 6), ('sambar', 1), ('coconut_chutney', 3), ('avicha_muttai', 2)]
+```
+
+A button labelled as producing something new that cannot is a claim the page
+does not keep. Logged, not fixed; N8 is where it gets an honest meaning or is
+removed.
+
 ## 2026-09-29 — South breakfast measured together, and a carb rotation (N7 step 4)
 
 Steps 1-3 together (egg_side slot; avicha_muttai, muttai_omelette; plain_dosa,
