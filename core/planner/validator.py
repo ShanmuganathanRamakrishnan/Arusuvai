@@ -265,10 +265,17 @@ def _widen_band(
             # untouched rather than guessed at from the existing bound.
             continue
         lo, hi = band(point, tolerance)
+        # A rung only ever widens. Re-deriving at the rung's tolerance would
+        # TIGHTEN a bound whose default band is already wider than it -- fat
+        # since N6 (docs/audit_log.md 2026-09-29, fat band), whose default is
+        # derived from the AMDR and exceeds tolerance.fat_carb_relaxed -- so
+        # the rung meant to loosen fat would have narrowed it.
         if macro in floors:
-            floors[macro] = lo
+            floors[macro] = min(floors[macro], lo)
         if macro in ceilings:
-            ceilings[macro] = _capped(hi, target.hard_ceiling(macro))
+            ceilings[macro] = max(
+                ceilings[macro], _capped(hi, target.hard_ceiling(macro))
+            )
     # `replace`, not a fresh NutritionTarget: every field this rung does not
     # touch must survive it, and a hand-written constructor call silently drops
     # any field added later. That is not hypothetical — slice 4's quality floor

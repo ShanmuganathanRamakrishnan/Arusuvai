@@ -6,6 +6,261 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-29 — fat band from the AMDR (N6) — owner decision, evidence first
+
+**Owner request (2026-09-29):** "it's okay to go above the fat threshold
+sometimes... try to have a plus or minus threshold", the same for every
+diet (the owner rejected a non-vegetarian-only widening: a different rule
+per diet makes the same problem either way). A first edit set fat to ±25%
+straight from the request; the owner stopped it and asked for "factual
+studies and proof before changing the tolerance". Then, standing: "from now
+onwards try to have some factual proof before proceeding".
+
+**What the sources say** (read online 2026-09-29; summary pages, not the
+2005 report itself, so nothing here is `verified=True` -- invariant 4):
+
+- Fat AMDR for adults, 20-35% of energy: National Academies, *Rethinking
+  the AMDR for the 21st Century* (2024 letter report,
+  nationalacademies.org/read/27957/chapter/5); Health Canada DRI tables
+  (canada.ca, reference values for macronutrients). Already registered here
+  as `macro.fat_energy_fraction_min/max` (iom_dri_2005).
+- ICMR-NIN (nin.res.in/rdabook/brief_note.pdf): visible fat 20-50 g per
+  person per day by energy need. A search snippet gave 15-35% of energy;
+  not confirmed in any readable ICMR text, so not used.
+- **No source found states a per-meal fat band.** The AMDR describes a
+  whole diet. The statement that meals may vary as long as the day is in
+  range came only from secondary study-guide sites. A per-meal tolerance is
+  therefore this project's decision (invariant 3: a daily range applied per
+  meal is not the mechanism the source measured).
+
+**Derivation.** The fat target is the AMDR midpoint, 27.5% of energy
+(`_compute_macros`). The AMDR's edges relative to it: (0.35 - 0.20) /
+(0.35 + 0.20) = 0.15 / 0.55 = **0.2727**. New `tolerance.fat_default` is
+computed from the two AMDR constants, not typed, evidence
+`project_decision`: at a meal's energy point its fat band runs from exactly
+20% to 35% of that energy. Owner chose this over a round ±25%. Carb stays
+±15% (`tolerance.fat_carb_default`, now carb only): the owner asked about
+fat, and diabetes locks carb. Since 0.2727 > the fat_carb rung's 0.25, the
+rung would have narrowed fat; guarded first (entry below, 32efbf9).
+
+**Measured, before = 32efbf9 (the guard, no fat change).**
+
+`probe_rank_input2.py` (vegetarian + vegan, 1152 cases):
+
+| | before | after |
+|---|---|---|
+| >= 2 valid plates at accepted rung | 734 (63.7%) | **779 (67.6%)** |
+| rung-0-only >= 2 plates | 640 (55.6%) | **708 (61.5%)** |
+| stopped at rung 0 | 764 | **824** |
+| stopped at fat_carb_tolerance | 85 | 33 |
+| declined | 171 | 168 |
+
+Per template (accepted rung, of 144): S breakfast 114 -> 118, S lunch 78 ->
+82, N breakfast 85 -> 99, N snack 58 -> 61, N lunch 118 -> 126, N dinner
+122 -> 134; S dinner, S snack unchanged.
+
+`probe_nonveg.py`, 2+ valid plates of 576: vegetarian 436 -> **455**,
+eggetarian 438 -> **461**, non-vegetarian 487 -> **498**.
+
+`probe_nonveg_shown.py`, bodies of 72 shown an egg/fish/poultry plate
+(eggetarian / non-veg): N breakfast 32 -> 40 / 32 -> 40, N snack 24 -> 36 /
+24 -> 36, N dinner 47 -> 51 / 52 -> 60. South eggetarian unchanged (0, 14,
+42, 0).
+
+**Two drops, both traced per body** (script run on a worktree of 32efbf9
+and on this tree, non-vegetarian):
+
+- S lunch shown-with-animal, non-veg 50 -> **46**: the four 95 kg
+  gain_muscle bodies. Before, nothing fit at rung 0 and the ladder relaxed
+  sodium/fibre, where an animal plate was valid. Now a vegetarian plate fits
+  at rung 0 -- full sodium ceiling and fibre floor -- and no animal plate
+  does, so the ladder stops there. N3's preference chooses only among plates
+  valid at the accepted rung, by design.
+- S breakfast non-veg 2+ plates 64 -> 60: the four 110 kg lose_fat bodies
+  went from three or four relaxed rungs (sodium/fibre, fat/carb, energy,
+  and protein for diabetes) to **none**, with fewer plates at the stricter
+  rung. Their shown plate still has an animal dish.
+
+Both are the ladder stopping at a stricter rung, which it is built to
+prefer. Stated because the headline numbers are not uniformly up.
+
+`probe_south_egg_blockers.py`: South breakfast egg still 0/68 for both
+dishes; fat above ceiling fell 56 -> 32 (egg_dosa) and 60 -> 32
+(mutta_kuzhambu), now level with carb below floor (32 each). Fat is no
+longer the single breakfast blocker.
+
+**Reference plate moved.** 70 kg maintain vegetarian South breakfast:
+`idli x3, soya_kuzhambu, coconut_chutney x4, soya_curd x2` (was `soya_idli
+x6, sambar, coconut_chutney x4, soya_curd`). `test_planner_quality.py`'s
+two pinned tests re-derived by hand (13.0 g = 25.0 g soya_chunks_dry x
+52.0/100), the perturbation test now disqualifies soya_chunks_dry, which
+moves the plate back to soya_idli (12.3504 g).
+
+**Tests.** Hand-computed fat bounds in `test_nutrition_meal_target.py`
+re-derived at 3/11 (60 x 8/11, 60 x 14/11); the diabetes locking test now
+builds its own 15% fat band so it still sees fat widen. Deletion check:
+`band(fat_g, fat_tolerance)` reverted to `fat_carb_tolerance` ->
+`8 failed, 483 passed, 70 skipped`; restored.
+
+**Verification.** `FOODAI_WEB_TESTS=required python -m pytest tests/ -q -p
+no:cacheprovider` → `561 passed, 1 warning in 186.22s (0:03:06)`.
+
+## 2026-09-29 — a relaxation rung never narrows a band (N6, guard) — found while planning the fat band
+
+**Found.** `_widen_band` re-derived each bound from the point at the rung's
+tolerance and assigned it outright. Correct while every default band was
+narrower than its rung's relaxed band. N6 (entry above) makes fat's default
+band the AMDR-derived ±27.3%, wider than `tolerance.fat_carb_relaxed`
+(±25%): the fat_carb rung, meant to loosen fat, would have tightened it
+from ±27.3% to ±25%. Seen by reading the code while planning N6, before the
+fat change was written; never reached a plan.
+
+**Change.** A rung takes the looser of the existing bound and its own:
+floor `min(existing, lo)`, ceiling `max(existing, capped hi)`. No output
+change today -- every default band is currently at or inside its rung's
+band -- which is why the test builds its own target (carb at ±40% through
+`fat_carb_tolerance`) instead of reading the real library.
+
+**Deletion-tested.** `tests/test_planner_validator.py::TestARungNeverNarrowsABand`,
+harness rows V28 (floor) and V29 (ceiling):
+
+```
+V2   covered      tests/test_planner_decline.py::TestRelaxabilityIsDerivedFromTheLadderItself::test_a_ceiling_sitting_on_its_hard_ceiling_says_hard_capped
+V3   covered      tests/test_planner_validator.py::TestClinicalLocking::test_diabetes_locks_carb_out_of_the_fat_carb_rung
+V5   covered      tests/test_planner_decline.py::TestRelaxabilityIsDerivedFromTheLadderItself::test_a_locked_bound_says_locked
+V28  covered      tests/test_planner_validator.py::TestARungNeverNarrowsABand::test_a_default_band_wider_than_the_rung_survives_it
+V29  covered      tests/test_planner_validator.py::TestARungNeverNarrowsABand::test_a_default_band_wider_than_the_rung_survives_it
+5 mechanisms: 5 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+V2, V3 and V5 rerun because their target lines sit next to the edit and
+still match. `python -m pytest tests/ -q -p no:cacheprovider` → `491
+passed, 70 skipped, 1 warning in 55.56s`.
+
+## 2026-09-29 — muttai carrot poriyal (N5): an egg dish in the South Indian vegetable course — owner decision
+
+**Owner decision (2026-09-29):** option 1 of two after the South Indian egg
+blockers measurement (next entry): a new egg dish for SOUTH_LUNCH/DINNER's
+vegetable course (poriyal/kootu), so egg can sit beside the sambar instead
+of replacing it. Option 2, letting muttai_podimas (0.3 g fibre) into that
+slot by template change, not taken: fibre was lunch's first blocker.
+
+**Proportions, fixed before any probe run:** carrot_poriyal's lines
+unchanged, plus one large egg (50 g raw, muttai_podimas's per-egg quantity);
+coconut out, the egg takes its place; salt at carrot_poriyal's 0.63% of the
+new weight. Oil `oil_uptake.vegetable_tempering`, both parent dishes' line
+(tempering that stays with the vegetables and egg; no new constant).
+Raw-egg basis. Per katori (122.3 g): 120 kcal, protein 7.4, fat 7.4, carb
+6.6, fibre 1.9, sodium 418 mg; counts 1-2.
+
+**Measured.** `probe_nonveg_shown.py`, bodies of 72 whose shown plate has an
+egg, fish or poultry dish / whose valid plates include one. Before = N4's
+tree (d594a59), from the entry of that date.
+
+| template | eggetarian before | after | non_vegetarian before | after |
+|---|---|---|---|---|
+| south_indian/breakfast | 0 / 0 | 0 / 0 | 58 / 58 | 58 / 58 |
+| south_indian/lunch | 1 / 1 | **14 / 14** | 50 / 50 | 50 / 50 |
+| south_indian/dinner | 1 / 1 | **42 / 42** | 59 / 59 | **67 / 67** |
+| south_indian/snack | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 |
+
+North rows identical (32, 24, 51, 47 eggetarian; 32, 24, 68, 52 non-veg).
+`probe_nonveg.py`: 2+ plates vegetarian 436/576, eggetarian 438/576,
+non-vegetarian 487/576, all unchanged -- the dish adds egg plates where
+plates already existed, it does not add plates to bodies that had fewer
+than two.
+
+70 kg maintain, eggetarian: South lunch `steamed_rice, soya_kuzhambu,
+muttai_carrot_poriyal, soya_chunk_poriyal, soya_curd`; dinner
+`steamed_rice, soya_kuzhambu, carrot_kootu, muttai_carrot_poriyal,
+soya_curd`. Non-vegetarian, same body, shows the same two plates: at dinner
+the nearest valid animal plate is now this one, not N4's meen_varuval
+plate. Correct per N3's rule (nearest valid animal plate), stated because it
+changes what the owner saw after N4.
+
+**Tests.** A recipe is not a gate. `test_planner_candidates.py`'s non-veg
+parity test lists each category's animal dishes by hand; it went red on the
+new dish (`1 failed, 488 passed`) and now lists it.
+
+**Verification.** `FOODAI_WEB_TESTS=required python -m pytest tests/ -q -p
+no:cacheprovider` → `559 passed, 1 warning in 180.45s (0:03:00)`.
+
+**Open.** Breakfast and snack unchanged at 0 (next entry for why).
+
+## 2026-09-29 — South Indian egg blockers (N5, measurement) — owner request
+
+**Owner request (2026-09-29):** egg dishes for South Indian lunch, dinner and
+snack, "also breakfast?". N4's measurement had the eggetarian column at
+breakfast 0/72, lunch 1/72, dinner 1/72, snack 0/72 bodies with a valid egg
+plate, although an egg dish exists for each: egg_dosa (tiffin), mutta_kuzhambu
+(the breakfast/lunch/dinner gravy slot), muttai_podimas (snack). Before adding
+dishes: what blocks the ones already there?
+
+`docs/design/probes/probe_south_egg_blockers.py` (new, read-only). Per body
+(eggetarian, the 72-body grid), per South template: the target the ladder
+stops on for the full pool; the egg dish's combinations only; is any valid
+there, and if not, which bounds the nearest one breaks (the validator's own
+`_nearest_plate_violations`). The first draft counted "nearest plate breaks
+nothing", which `_nearest_plate_violations` can never report -- it skips a
+plate that breaks nothing -- so it read 0 at lunch where N3 had measured 1.
+Corrected to solve the egg combinations first, before the run below.
+
+```
+== south_indian/breakfast
+  egg_dosa: bodies 68, a valid egg plate in 0; nearest egg plate's misses in the rest:
+      fat_g above_ceiling              56
+      carb_g below_floor               32
+      fibre_g below_floor              20
+      sodium_mg above_ceiling          12
+      protein_g below_floor            11
+      quality_protein_g below_floor    8
+      energy_kcal above_ceiling        8
+      energy_kcal below_floor          4
+  mutta_kuzhambu: bodies 68, a valid egg plate in 0; nearest egg plate's misses in the rest:
+      fat_g above_ceiling              60
+      fibre_g below_floor              36
+      carb_g below_floor               32
+      protein_g below_floor            16
+      sodium_mg above_ceiling          16
+      energy_kcal below_floor          8
+      energy_kcal above_ceiling        4
+== south_indian/lunch
+  mutta_kuzhambu: bodies 66, a valid egg plate in 1; nearest egg plate's misses in the rest:
+      fibre_g below_floor              36
+      fat_g above_ceiling              27
+      protein_g below_floor            23
+      energy_kcal above_ceiling        8
+      sodium_mg above_ceiling          6
+== south_indian/dinner
+  mutta_kuzhambu: bodies 62, a valid egg plate in 1; nearest egg plate's misses in the rest:
+      fat_g above_ceiling              49
+      fibre_g below_floor              40
+      energy_kcal above_ceiling        17
+      sodium_mg above_ceiling          9
+      protein_g below_floor            4
+      carb_g below_floor               4
+== south_indian/snack
+  muttai_podimas: bodies 70, a valid egg plate in 0; nearest egg plate's misses in the rest:
+      fibre_g below_floor              70
+      protein_g below_floor            64
+      fat_g above_ceiling              62
+      energy_kcal below_floor          44
+      quality_protein_g below_floor    23
+      energy_kcal above_ceiling        3
+```
+
+**Reading.** At lunch and dinner the only egg dish takes the gravy slot, so
+it replaces the sambar: the plate loses the lentil's fibre and gains
+mutta_kuzhambu's fat (16.3 g per katori against meen_kuzhambu's 10.4 g).
+Chicken and fish reached these meals through the vegetable course (N4); egg
+had nothing there. Breakfast: fat first, for both dishes. Snack: fibre below
+floor in 70 of 70 -- an egg-only snack cannot meet it, so more egg-only
+dishes would not help there.
+
+**Disposition.** Owner chose an egg dish for the lunch/dinner vegetable
+course (N5, next entry). Breakfast and snack open. Owner also asked for fat
+to be allowed above its bound "sometimes", queued as N6, not acted on here.
+
 ## 2026-09-29 — chicken and fish mains (N4): chicken curry, chicken kuzhambu, chicken chukka, meen varuval — owner decision
 
 **Owner decision (2026-09-29):** all four dishes proposed after N3's

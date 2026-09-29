@@ -445,6 +445,17 @@ MUTATIONS: tuple[Mutation, ...] = (
         "    if locked_hits:",
         "    if False:",
     ),
+    # N6 (2026-09-29): a rung never tightens a band wider than its own.
+    Mutation(
+        "V28", VALIDATOR, "a rung never raises a floor",
+        "            floors[macro] = min(floors[macro], lo)",
+        "            floors[macro] = lo",
+    ),
+    Mutation(
+        "V29", VALIDATOR, "a rung never lowers a ceiling",
+        "            ceilings[macro] = max(\n                ceilings[macro], _capped(hi, target.hard_ceiling(macro))\n            )",
+        "            ceilings[macro] = _capped(hi, target.hard_ceiling(macro))",
+    ),
     # ------------------------------------------------- nutrition_of (D6)
     # Finding 20's fix. Note the real library cannot grade any of these: every
     # ingredient row but `water` is unverified and `water` has no energy, so

@@ -408,6 +408,43 @@ class TestAHardCeilingIsNeverWidened:
             )
 
 
+class TestARungNeverNarrowsABand:
+    """A relaxation rung may widen a bound, never tighten it.
+
+    N6 (docs/audit_log.md 2026-09-29, fat band): fat's default band became
+    wider than the fat_carb rung's relaxed band. Re-deriving a band at the
+    rung's tolerance would then narrow it on the rung meant to loosen it.
+    Exercised on carb through `fat_carb_tolerance`, so the test does not
+    depend on what fat's default happens to be.
+    """
+
+    def _rung(self):
+        return next(s for s in RELAXATION_ORDER if s.name == "fat_carb_tolerance")
+
+    def test_a_default_band_wider_than_the_rung_survives_it(self):
+        target = simple_target(
+            energy_kcal=700.0, protein_g_min=15.0, carb_g=100.0,
+            fat_carb_tolerance=0.40,
+        )
+        # 100 g +/-40%: 60.0 - 140.0. The rung's own band would be
+        # 100 +/-25% = 75.0 - 125.0, tighter on both sides.
+        assert target.floor("carb_g") == pytest.approx(60.0)
+        assert target.ceiling("carb_g") == pytest.approx(140.0)
+        relaxed = self._rung().apply(target, frozenset())
+        assert relaxed.floor("carb_g") == pytest.approx(60.0)
+        assert relaxed.ceiling("carb_g") == pytest.approx(140.0)
+
+    def test_a_narrower_band_still_widens(self):
+        # Control: 100 g +/-15% = 85.0 - 115.0 widens to 75.0 - 125.0.
+        target = simple_target(
+            energy_kcal=700.0, protein_g_min=15.0, carb_g=100.0,
+            fat_carb_tolerance=0.15,
+        )
+        relaxed = self._rung().apply(target, frozenset())
+        assert relaxed.floor("carb_g") == pytest.approx(75.0)
+        assert relaxed.ceiling("carb_g") == pytest.approx(125.0)
+
+
 class TestClinicalLocking:
     """The rung a disclosed condition removes is never walked back onto."""
 
@@ -480,10 +517,16 @@ class TestClinicalLocking:
         # rung fires at all depends on the pool being infeasible at rung 1 —
         # a ladder-level version of this test passes vacuously the moment the
         # fixture's numbers shift.
+        #
+        # Built at a 15% fat band on purpose. Since N6 (2026-09-29) fat's
+        # default band is tolerance.fat_default (27.3%), wider than the
+        # relaxed 25%, so at the default the rung leaves fat alone and this
+        # test could not tell "fat widened" from "fat left alone".
         target = simple_target(
-            energy_kcal=700.0, protein_g_min=15.0, fat_g=20.0, carb_g=90.0
+            energy_kcal=700.0, protein_g_min=15.0, fat_g=20.0, carb_g=90.0,
+            fat_tolerance=0.15,
         )
-        # Default 15%: fat 17.0 - 23.0, carb 76.5 - 103.5.
+        # 15%: fat 17.0 - 23.0, carb 76.5 - 103.5 (carb's default).
         assert target.ceiling("fat_g") == pytest.approx(23.0)
         assert target.ceiling("carb_g") == pytest.approx(103.5)
 

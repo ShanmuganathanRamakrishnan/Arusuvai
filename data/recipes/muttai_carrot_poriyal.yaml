@@ -1,0 +1,86 @@
+# Muttai carrot poriyal -- grated carrot sauteed in a mustard and curry-leaf
+# tempering with an egg scrambled through it. An ordinary Tamil home side for
+# the rice meal, served in the vegetable course beside sambar.
+#
+# TASKS_3.md N5 (owner, 2026-09-29: egg dishes for South Indian meals).
+# Measured first (docs/audit_log.md 2026-09-29, South egg blockers): at
+# SOUTH_LUNCH/DINNER the only egg dish, mutta_kuzhambu, must take the gravy
+# slot and so replaces the sambar -- losing its fibre, adding fat. Egg valid
+# for 1/66 lunch and 1/62 dinner bodies; fibre below floor was the first
+# lunch blocker (36). Chicken and fish reached these meals through the
+# vegetable course (N4); egg had nothing there.
+#
+# Proportions, fixed before any probe run: carrot_poriyal's lines unchanged
+# (carrot 60, onion 6, oil 2.5, water 1.5, mustard 0.5, curry leaves 0.5,
+# chilli 0.5), plus one large egg (50 g raw), muttai_podimas's per-egg
+# quantity. Coconut left out: in the egg version the egg takes its place,
+# and it is not usually added. Salt at carrot_poriyal's 0.63% of the new
+# weight (0.8 g).
+#
+# RAW-EGG BASIS: as muttai_podimas. 122.3 g is what goes into the pan.
+id: muttai_carrot_poriyal
+name: Muttai carrot poriyal
+name_ta: முட்டை கேரட் பொரியல்
+name_hi: अंडा गाजर पोरियल
+
+region: south_indian
+# Eggetarian, not vegetarian: egg_whole_raw is egg-classed. Not jain: onion
+# and carrot are classed root_vegetable. Derived from ingredient classes.
+
+category: poriyal
+prep_minutes: 20
+tags: [lunch, dinner, vegetable, eggetarian, high_protein]
+
+serving_unit:
+  measure: katori
+  name: katori
+  grams_per_unit: 122.3
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    One egg's worth with its carrot (122.3 g, the summed mass below), on the
+    katori measure with its weight overridden. carrot_poriyal's ceiling of
+    two, for its reason: a third poriyal is a different dish on the plate.
+
+# Sauteed with a lid, then scrambled. The only registered process is the oil;
+# the egg is cooked from raw and no constant covers it, so minerals and B12
+# are declared unassessed, as muttai_podimas.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: carrot_raw
+    quantity_g: 60.0
+    state: raw
+    note: Recorded raw, carrot_poriyal's precedent.
+  - id: egg_whole_raw
+    quantity_g: 50.0
+    state: raw
+    note: One large egg, beaten and scrambled through the carrot.
+  - id: onion_raw
+    quantity_g: 6.0
+    state: raw
+  - id: gingelly_oil
+    quantity_g: 2.5
+    state: as_used
+    process: oil_uptake.vegetable_tempering
+    note: >-
+      Retained oil, carrot_poriyal's line; it stays with the vegetables and
+      egg (oil_uptake.vegetable_tempering).
+  - id: water
+    quantity_g: 1.5
+    state: as_used
+    note: A splash to steam the carrot under the lid.
+  - id: mustard_seed
+    quantity_g: 0.5
+    state: as_used
+  - id: curry_leaves
+    quantity_g: 0.5
+    state: raw
+  - id: green_chilli
+    quantity_g: 0.5
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.8
+    state: as_used
+    note: 0.63% of the portion, carrot_poriyal's proportion. An authored quantity.
