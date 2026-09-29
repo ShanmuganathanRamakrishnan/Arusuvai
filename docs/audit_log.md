@@ -6,6 +6,64 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-29 — South breakfast measured together, and a carb rotation (N7 step 4)
+
+Steps 1-3 together (egg_side slot; avicha_muttai, muttai_omelette; plain_dosa,
+onion_tomato_uttapam), against main before N7.
+
+South breakfast, bodies with 0/1/2+ valid plates (`probe_nonveg.py`):
+vegetarian 4/8/60 -> 4/8/60; eggetarian 4/8/60 -> 2/0/70; non-veg 2/10/60
+-> 2/4/66. Shown an egg or other animal dish: eggetarian 0 -> 70/72, non-veg
+58 -> 70/72.
+
+Whole library, 2+ plates at the accepted rung:
+
+```
+===NONVEG
+template                            vegetarian            eggetarian        non_vegetarian
+south_indian/breakfast              4 / 8 / 60            2 / 0 / 70            2 / 4 / 66
+south_indian/lunch                 6 / 24 / 42           6 / 23 / 43            2 / 8 / 62
+south_indian/dinner                10 / 8 / 54           10 / 7 / 55            1 / 8 / 63
+north_indian/breakfast             1 / 14 / 57           1 / 14 / 57           1 / 14 / 57
+south_indian/snack                 2 / 19 / 51           2 / 19 / 51           2 / 19 / 51
+north_indian/snack                  3 / 8 / 61            3 / 4 / 65            3 / 4 / 65
+north_indian/lunch                  3 / 6 / 63            3 / 6 / 63            0 / 4 / 68
+north_indian/dinner                 1 / 4 / 67            1 / 4 / 67            0 / 0 / 72
+2+ total                               455/576               471/576               504/576
+===RANK (vegetarian + vegan)
+overall: 779/1152 = 67.6% offer >= 2 valid plates (exit condition: >= 50%)
+  south_indian/breakfast : 118/144 = 81.9%
+```
+
+Against N6's figures (2026-09-29): vegetarian 455 unchanged, eggetarian 461
+-> 471, non-veg 498 -> 504, vegetarian + vegan 779 unchanged. No other
+template moved.
+
+**Rotation.** Nothing in the app varies dishes: `combinations_excluding_recent`
+(core/planner/combinations.py) is tested but no app path calls it, and
+/api/plan returns one best plate per meal, so the same plate repeats every
+day. `docs/design/probes/probe_south_breakfast_rotation.py` asks what a
+rotation would give: 7 days, each day barring the tiffin eaten on the
+previous 2 days, everything else free.
+
+```
+vegetarian   bodies 68  distinct carbs in 7 days {1: 7, 2: 1, 3: 60}  declined days 30/476  carb-days {'soya_idli': 156, 'idli': 126, 'plain_dosa': 94, 'onion_tomato_uttapam': 70}
+eggetarian   bodies 70  distinct carbs in 7 days {1: 2, 2: 6, 3: 62}  declined days 20/490  carb-days {'idli': 155, 'soya_idli': 144, 'plain_dosa': 108, 'onion_tomato_uttapam': 63}
+```
+
+Run from a scratch copy; the tracked file differs only in its header. With
+a rotation, 60/68 vegetarian and 62/70 eggetarian bodies get three different
+carbs in a week, and plain dosa and uttapam get a third of carb-days. The
+cost: 30/476 and 20/490 days have no valid plate once the fitting carbs are
+barred. A rotation that declines rather than falling back is not shippable
+as is.
+
+**Owner request, 2026-09-29, queued as TASKS_3.md N8:** "the user can
+alternate between dishes based on their liking, like individual items" --
+swap one dish (idli -> dosa -> uttapam, boiled egg -> omelette) and get back
+a plate that still validates. Any swap goes through the solver (invariant
+1). The declined days above are the case its design must answer.
+
 ## 2026-09-29 — plain dosa and onion tomato uttapam (N7 step 3)
 
 Owner's basis (2026-09-29): "we can alternate the carbs with idli, dosa,
