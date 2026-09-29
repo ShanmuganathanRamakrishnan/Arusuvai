@@ -432,7 +432,7 @@ MUTATIONS: tuple[Mutation, ...] = (
     ),
     Mutation(
         "V25", VALIDATOR, "a disclosure-requiring rung produces a disclosure",
-        "        if any(\n            s.requires_disclosure for s in RELAXATION_ORDER if s.name in applied\n        ):",
+        "        if any(s.requires_disclosure for s in RELAXATION_ORDER if s.name in applied):",
         "        if False:",
     ),
     Mutation(
@@ -455,6 +455,27 @@ MUTATIONS: tuple[Mutation, ...] = (
         "V29", VALIDATOR, "a rung never lowers a ceiling",
         "            ceilings[macro] = max(\n                ceilings[macro], _capped(hi, target.hard_ceiling(macro))\n            )",
         "            ceilings[macro] = _capped(hi, target.hard_ceiling(macro))",
+    ),
+    # N8 (2026-09-29): the user picks dishes; a pick never loosens a limit.
+    Mutation(
+        "V30", VALIDATOR, "a plate is chosen only among those holding the picks",
+        "        chosen = tuple(p for p in solved if picks <= p.combination.recipe_ids())",
+        "        chosen = solved",
+    ),
+    Mutation(
+        "V31", VALIDATOR, "picks narrow after the rung is chosen, never before",
+        "    locked = locked_macros(profile)\n",
+        "    combinations = [c for c in combinations if picks <= c.recipe_ids()]\n    locked = locked_macros(profile)\n",
+    ),
+    Mutation(
+        "V32", VALIDATOR, "a pick does not narrow its own slot's options",
+        "            r for r in picks if category_of.get(r) not in slot.accepted_categories",
+        "            r for r in picks",
+    ),
+    Mutation(
+        "V33", VALIDATOR, "other slots' options keep the picks",
+        "            if kept <= p.combination.recipe_ids()",
+        "            if True",
     ),
     # ------------------------------------------------- nutrition_of (D6)
     # Finding 20's fix. Note the real library cannot grade any of these: every
@@ -653,6 +674,7 @@ OWN_TESTS: dict[str, tuple[str, ...]] = {
     VALIDATOR: (
         "test_planner_validator.py", "test_planner_decline.py",
         "test_planner_quality.py", "test_shown_plate_preference.py",
+        "test_dish_picks.py",
     ),
     # `test_recipes.py` is scoped here too: it is where the derived-uncertainty
     # rules live, and a reader editing it knows they are editing evidence

@@ -154,6 +154,7 @@ def plan_meal(
     dev_mode: bool = True,
     allergens: frozenset[str] = frozenset(),
     ledger: DayLedger | None = None,
+    picks: frozenset[str] = frozenset(),
 ) -> LadderOutcome:
     """Solve one meal against its share of ``day_target``.
 
@@ -173,6 +174,9 @@ def plan_meal(
     earlier decline than the one this function exists to demonstrate
     honestly. Passing ``dev_mode=False`` explicitly still works and is the
     right choice once the library has verified rows to keep.
+
+    ``picks`` are dishes the user chose to swap in; see
+    ``plan_within_ladder``.
     """
 
     template = template_for(region, meal_slot)
@@ -197,4 +201,5 @@ def plan_meal(
         # means. `unfillable_slots` calls the enumerator's own helper.
         empty_required_slots=unfillable_slots(pool),
         prefer=_animal_protein_preference(diet_pattern, library.ingredients),
+        picks=picks,
     )

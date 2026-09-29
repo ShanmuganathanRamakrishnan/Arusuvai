@@ -752,6 +752,11 @@ class LadderOutcome:
     #: plan may no longer meet.
     target_used: NutritionTarget
     skipped_locked_steps: tuple[str, ...] = ()
+    #: Per template slot, in slot order: ``(slot name, recipe ids)`` the user
+    #: may pick for that slot -- every recipe that fills it on some plate
+    #: valid at the rung the ladder stopped on, keeping the user's picks for
+    #: the *other* slots. Empty on a decline. TASKS_3.md N8.
+    swap_options: tuple[tuple[str, tuple[str, ...]], ...] = ()
 
 
 def _protein_disclosure(point: NutritionVector, original: NutritionTarget) -> str:
@@ -999,6 +1004,34 @@ def _blocking_violations(
     )
 
 
+def _swap_options(
+    solved: tuple[SolvedPlan, ...], picks: frozenset[str]
+) -> tuple[tuple[str, tuple[str, ...]], ...]:
+    """Per slot, every recipe filling it on a plate in ``solved`` that keeps
+    the picks belonging to *other* slots. A pick belongs to the slot whose
+    accepted categories hold its category; a pick on no plate belongs to no
+    slot, so it is kept everywhere and every slot's options come out empty.
+    """
+
+    template = solved[0].combination.template
+    category_of = {
+        c.recipe.id: c.category for p in solved for c in p.combination.components
+    }
+    options = []
+    for i, slot in enumerate(template.slots):
+        kept = frozenset(
+            r for r in picks if category_of.get(r) not in slot.accepted_categories
+        )
+        ids = {
+            c.recipe.id
+            for p in solved
+            if kept <= p.combination.recipe_ids()
+            for c in p.combination.slot_selections[i]
+        }
+        options.append((slot.name, tuple(sorted(ids))))
+    return tuple(options)
+
+
 def plan_within_ladder(
     combinations: Sequence[MealCombination],
     target: NutritionTarget,
@@ -1007,6 +1040,7 @@ def plan_within_ladder(
     profile: Profile | None = None,
     empty_required_slots: tuple[str, ...] = (),
     prefer: Callable[[SolvedPlan], bool] | None = None,
+    picks: frozenset[str] = frozenset(),
 ) -> LadderOutcome:
     """Solve, and if nothing is feasible, walk the ladder in order.
 
@@ -1040,6 +1074,15 @@ def plan_within_ladder(
     course being the reason. Optional so a caller holding only combinations
     still works; ``core.planner.plan.plan_meal`` supplies it from
     ``core.planner.combinations.unfillable_slots``.
+
+    ``picks`` are recipe ids the user chose (TASKS_3.md N8, owner
+    2026-09-29: swap individual dishes by liking). The ladder runs exactly
+    as without them -- the rung is chosen on the whole set -- and only then
+    is the choice narrowed to plates holding every pick; other dishes and
+    all unit counts may change around them, still set by the solver. If no
+    plate at that rung holds them, the result is a decline naming them: the
+    owner decided a liking never loosens a limit, so a pick never moves the
+    ladder to a later rung.
     """
 
     locked = locked_macros(profile)
@@ -1056,14 +1099,63 @@ def plan_within_ladder(
                     return plan
         return solved[0]
 
-    solved = _attempt(target)
-    if solved:
-        plan = _pick(solved)
+    def _accepted(
+        solved: tuple[SolvedPlan, ...],
+        used: NutritionTarget,
+        applied: tuple[str, ...],
+        skipped: tuple[str, ...],
+    ) -> LadderOutcome:
+        options = _swap_options(solved, picks)
+        chosen = tuple(p for p in solved if picks <= p.combination.recipe_ids())
+        if not chosen:
+            # Why, in the ladder's own terms: what the nearest plate holding
+            # the picks breaks at this rung, or no such plate at all.
+            with_picks = [c for c in combinations if picks <= c.recipe_ids()]
+            name_of = {
+                c.recipe.id: c.recipe.name for combo in combinations for c in combo.components
+            }
+            return LadderOutcome(
+                plan=None,
+                result=ValidationResult(
+                    passed=False,
+                    actual_point_estimate=NutritionVector.zero(),
+                    actual_interval=(NutritionVector.zero(), NutritionVector.zero()),
+                    violations=_blocking_violations(
+                        with_picks, used, ingredients, profile, applied=applied
+                    ),
+                    relaxation_applied=applied,
+                    disclosure=(
+                        "No valid plate for this profile, at the limits this "
+                        "meal was planned to, includes "
+                        + ", ".join(sorted(name_of.get(r, r) for r in picks))
+                        + ". Limits are not loosened to fit a chosen dish."
+                    ),
+                ),
+                target_used=used,
+                skipped_locked_steps=skipped,
+                swap_options=options,
+            )
+        plan = _pick(chosen)
+        disclosure = None
+        if any(s.requires_disclosure for s in RELAXATION_ORDER if s.name in applied):
+            disclosure = _protein_disclosure(plan.estimate.point, target)
         return LadderOutcome(
             plan=plan,
-            result=validate(plan, target, profile=profile),
-            target_used=target,
+            result=validate(
+                plan,
+                used,
+                profile=profile,
+                relaxation_applied=applied,
+                disclosure=disclosure,
+            ),
+            target_used=used,
+            skipped_locked_steps=skipped,
+            swap_options=options,
         )
+
+    solved = _attempt(target)
+    if solved:
+        return _accepted(solved, target, (), ())
 
     current = target
     applied: list[str] = []
@@ -1081,25 +1173,7 @@ def plan_within_ladder(
         solved = _attempt(current)
         if not solved:
             continue
-
-        plan = _pick(solved)
-        disclosure = None
-        if any(
-            s.requires_disclosure for s in RELAXATION_ORDER if s.name in applied
-        ):
-            disclosure = _protein_disclosure(plan.estimate.point, target)
-        return LadderOutcome(
-            plan=plan,
-            result=validate(
-                plan,
-                current,
-                profile=profile,
-                relaxation_applied=tuple(applied),
-                disclosure=disclosure,
-            ),
-            target_used=current,
-            skipped_locked_steps=tuple(skipped),
-        )
+        return _accepted(solved, current, tuple(applied), tuple(skipped))
 
     violations = _blocking_violations(
         combinations,
