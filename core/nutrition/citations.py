@@ -281,6 +281,7 @@ REVIEWED_MECHANISM_MATCHES: dict[str, str] = {
     "oil_uptake.paratha_griddled": "reviewed: NO matching primary source; project estimate, distinct constant from oil_uptake.dosa_griddled because dough brushed with oil differs from batter spooned around a griddle -- same underlying Evidence, different applied_to",
     "oil_uptake.tikka_pan_roasted": "reviewed: NO matching primary source; project estimate, distinct constant because porous rehydrated soya pieces tossed in oil on a pan differ from both a spread batter and a brushed dough -- same underlying Evidence, different applied_to",
     "oil_uptake.chicken_tikka_pan_roasted": "reviewed: NO matching primary source; project estimate, distinct from oil_uptake.tikka_pan_roasted because lean chicken breast pieces are not porous the way rehydrated soya chunks are -- same underlying Evidence, different applied_to",
+    "oil_uptake.fish_tawa_fried": "reviewed: NO matching primary source; project estimate, distinct from the chicken and soya pan constants because a spice-paste crust on fish takes up oil the bare pieces would not -- same underlying Evidence (surface application on a tawa), different applied_to; deep-fry absorption literature deliberately not used",
     "process.unassessed_uncertainty": "reviewed: NO matching primary source; project estimate standing in for an unmeasured process",
     "composition.unverified_secondary": "reviewed: NO matching primary source; project estimate of transcription-plus-analytical error",
     "composition.verified_primary": "reviewed: NO matching primary source; project estimate of analytical spread",
@@ -823,6 +824,35 @@ OIL_UPTAKE_CHICKEN_TIKKA = register_constant(
             "oil tossed with curd-marinated chicken breast pieces and onion on "
             "a hot pan or tawa until charred at the edges - surface "
             "application, not immersion frying; lean, non-porous pieces"
+        ),
+        uncertainty=0.20,
+        note=(
+            "Estimated on the high side, same convention as "
+            "oil_uptake.dosa_griddled: uncertain data must make a recipe "
+            "harder to use, never easier to pass."
+        ),
+    )
+)
+
+# TASKS_3.md N4 (South Indian fish fry, meen_varuval). Tawa fish fry: pieces
+# coated in a wet spice paste, laid on a tawa in a thin film of oil and
+# turned once. Not oil_uptake.chicken_tikka_pan_roasted: the paste crust soaks
+# up oil that bare chicken pieces leave in the pan. Not shallow or deep
+# frying either -- the oil is a film on a flat tawa, not a depth the fish sits
+# in, which is the surface-application mechanism `project_oil_uptake_estimate`
+# states. A fish fry cooked in a pan of oil would need a different constant.
+# 0.80 is the high end of what a crusted piece keeps from a film, same
+# convention as every oil constant here.
+OIL_UPTAKE_FISH_TAWA = register_constant(
+    Constant(
+        key="oil_uptake.fish_tawa_fried",
+        value=0.80,
+        unit="fraction of applied oil retained",
+        evidence_id="project_oil_uptake_estimate",
+        applied_to=(
+            "a thin film of oil on a hot tawa under fish pieces coated in a "
+            "wet spice paste, turned once - surface application, not shallow "
+            "or deep frying; the paste crust takes up most of the film"
         ),
         uncertainty=0.20,
         note=(

@@ -57,12 +57,53 @@ from core.foods.recipe_loader import RecipeLibrary, load_recipes
 from core.foods.templates import template_for
 from core.nutrition.meal_target import meal_target
 from core.nutrition.target import NutritionTarget
-from core.planner.candidates import build_candidate_pool
+from core.planner.candidates import build_candidate_pool, recipe_classes
 from core.planner.combinations import enumerate_combinations, unfillable_slots
+from core.planner.solver import SolvedPlan
 from core.planner.validator import LadderOutcome, plan_within_ladder
-from core.schemas import DayLedger, DietPattern, MealSlot, Profile, Region
+from core.schemas import (
+    DIET_PATTERN_PERMITTED_CLASSES,
+    DayLedger,
+    DietPattern,
+    IngredientClass,
+    MealSlot,
+    Profile,
+    Region,
+)
 
 __all__ = ["Library", "load_library", "default_library", "plan_meal"]
+
+
+#: Classes whose presence makes a plate an animal-protein plate. A diet
+#: pattern that permits any of them prefers a plate carrying one (see
+#: `_animal_protein_preference`); a pattern permitting none -- vegetarian,
+#: vegan, jain -- has no preference and is planned exactly as before.
+ANIMAL_PROTEIN_CLASSES = frozenset(
+    {IngredientClass.EGG, IngredientClass.FISH, IngredientClass.POULTRY}
+)
+
+
+def _animal_protein_preference(diet_pattern, ingredients):
+    """``prefer`` for `plan_within_ladder`: a plate with an animal-protein dish.
+
+    Someone who told us they eat egg, fish or chicken and is shown soya at
+    every meal has been told, in effect, that the diet setting did nothing
+    (owner report 2026-09-27). This only chooses among plates already valid
+    at the accepted rung; it cannot make an invalid plate valid, and when no
+    valid plate has one the nearest plate is shown as before.
+    """
+
+    wanted = ANIMAL_PROTEIN_CLASSES & DIET_PATTERN_PERMITTED_CLASSES[diet_pattern]
+    if not wanted:
+        return None
+
+    def prefer(plan: SolvedPlan) -> bool:
+        return any(
+            recipe_classes(c.recipe, ingredients) & wanted
+            for c in plan.combination.components
+        )
+
+    return prefer
 
 
 @dataclass(frozen=True)
@@ -155,4 +196,5 @@ def plan_meal(
         # that has to agree with `enumerate_combinations` about what "empty"
         # means. `unfillable_slots` calls the enumerator's own helper.
         empty_required_slots=unfillable_slots(pool),
+        prefer=_animal_protein_preference(diet_pattern, library.ingredients),
     )

@@ -6,6 +6,161 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-29 — chicken and fish mains (N4): chicken curry, chicken kuzhambu, chicken chukka, meen varuval — owner decision
+
+**Owner decision (2026-09-29):** all four dishes proposed after N3's
+measurement: chicken curry (North lunch and dinner, `sabzi`), chicken
+kuzhambu (South, `kuzhambu`), chicken chukka and meen varuval (South
+vegetable course, `poriyal`). N3 found no chicken main anywhere, no fish in
+the North, and nothing animal for SOUTH_LUNCH/DINNER's vegetable course --
+the owner's own South dinner case (70 kg maintain, non-veg), where
+soya_chunk_poriyal was shown because no valid plate had an animal dish.
+
+**Proportions, fixed before any probe run**, each from an existing recipe's
+lines (stated in each file): chicken_curry = anda_curry's gravy, egg → 90 g
+raw chicken; chicken_kuzhambu = meen_kuzhambu's lines, fish → 90 g raw
+chicken, tamarind back to mutta_kuzhambu's 3 g; chicken_chukka =
+soya_chunk_poriyal's poriyal lines, soya → 60 g raw chicken, coconut out,
+paste/masala/salt at chicken_tikka's ratios; meen_varuval = 80 g raw pomfret
+with a sambar-powder and ginger-garlic paste. All raw-weight basis:
+understates, never overstates. Per unit:
+
+| dish | g | kcal | protein | fat | sodium mg |
+|---|---|---|---|---|---|
+| chicken_curry | 150.0 | 212 | 20.2 | 13.3 | 350 |
+| chicken_kuzhambu | 150.0 | 229 | 20.7 | 13.9 | 354 |
+| chicken_chukka | 74.5 | 132 | 13.4 | 8.2 | 298 |
+| meen_varuval | 90.6 | 147 | 15.8 | 8.5 | 277 |
+
+**Oil, per invariant 3.** Curry and kuzhambu: the tempering goes into a
+served gravy -- `oil_uptake.vegetable_tempering`, anda_curry's and
+meen_kuzhambu's line. Chukka: chicken pieces and onion tossed on a hot pan
+until the masala clings -- `oil_uptake.chicken_tikka_pan_roasted`'s
+mechanism (lean chicken pieces, surface application); the tikka's curd
+marinade is not part of what that constant describes. Meen varuval: new
+`oil_uptake.fish_tawa_fried` = 0.80, a thin film on a tawa under a
+paste-coated piece; not shallow or deep frying, which
+`project_oil_uptake_estimate` explicitly excludes. Recorded "reviewed: NO
+matching primary source".
+
+**Measured.** `probe_nonveg_shown.py`, bodies of 72 whose shown plate has
+an egg, fish or poultry dish (shown = valid in every cell, since N3). Before
+= HEAD ef5a918. Each South dish also run alone in a scratch copy, so each
+row is attributable; chicken_curry is in every copy and only reaches North
+templates.
+
+| template (non_vegetarian) | before | + all four | kuzhambu alone | chukka alone | varuval alone |
+|---|---|---|---|---|---|
+| south_indian/breakfast | 47 | **58** | 58 | 47 | 47 |
+| south_indian/lunch | 38 | **50** | 38 | 50 | 50 |
+| south_indian/dinner | 34 | **59** | 38 | 54 | 59 |
+| north_indian/lunch | 51 | **68** | 68 | 68 | 68 |
+| north_indian/dinner | 47 | **52** | 52 | 52 | 52 |
+
+Every other row, and the whole eggetarian column, identical. Chicken
+kuzhambu's gain is mostly at breakfast: SOUTH_BREAKFAST's gravy slot takes
+`kuzhambu` (as it does meen and mutta kuzhambu).
+
+`probe_nonveg.py` with all four: vegetarian 436/576 and eggetarian 438/576,
+unchanged, so nothing leaks. Non-vegetarian 2+ plates 451 → **487**/576;
+no template's zero-plate count rose.
+
+Owner's case, 70 kg maintain non-veg South dinner, shown plate:
+`steamed_rice, soya_kuzhambu, carrot_kootu, meen_varuval, soya_curd`
+(was `… soya_chunk_poriyal …`).
+
+**Tests.** `test_planner_candidates.py`'s non-veg parity test lists each
+category's animal dishes by hand; it went red on chukka and varuval as it
+should, and now lists them, one dish per commit. A recipe is not a gate;
+the new oil constant is held by the registry's review check. Deleted its
+REVIEWED entry and ran the suite: `1 failed, 488 passed`, failing
+`test_citations.py::TestMechanismReview::test_no_constant_escapes_mechanism_review`.
+Restored.
+
+**Verification.** All four in the tree: `FOODAI_WEB_TESTS=required python -m
+pytest tests/ -q -p no:cacheprovider` → `559 passed, 1 warning in 179.49s
+(0:02:59)`. Browser, 70 kg non_vegetarian account: South dinner shows
+`['Steamed rice', 'Soya kuzhambu', 'Carrot kootu', 'Meen varuval (fish fry)',
+'Soya curd']`; North dinner `['Phulka', 'Dal tadka', 'Anda curry']` (the
+nearest animal plate for this body is still the egg one).
+
+## 2026-09-27 — shown plate for egg and non-veg (N3): the diet setting now shows on the plate — owner report
+
+**Owner report (2026-09-27):** "I still am unable to see non vegetarian
+dishes; it still gives me veg dishes such as soya chunk poriyal for South
+dinner." Asked to check every meal.
+
+**Diagnosis.** The diet setting did reach the planner (`api/main.py` passes
+`body.diet` to `plan_meal`; the candidate pool included the animal dishes).
+The dashboard shows one plate, the one `plan_within_ladder` returns, and it
+returned `solved[0]`, the plate nearest to target. Soya plates were nearest
+nearly everywhere. So a non-vegetarian was *permitted* egg, fish and chicken
+and almost never *shown* any. Two separate causes, measured:
+
+1. **Selection** — valid animal plates existed and lost on nearness.
+2. **Library** — for some templates no valid animal plate exists at all. The
+   owner's own South dinner case (70 kg, maintain) is this one: 14 valid
+   plates, none with egg, fish or chicken.
+
+**Measured** (`docs/design/probes/probe_nonveg_shown.py`, new): bodies of 72
+whose *shown* plate has an egg, fish or poultry dish / whose *valid* plates
+include one, calling `plan_meal` exactly as the API does.
+
+| template | eggetarian before | after | non_vegetarian before | after |
+|---|---|---|---|---|
+| south_indian/breakfast | 0 / 0 | 0 / 0 | 14 / 47 | **47** / 47 |
+| south_indian/lunch | 0 / 1 | **1** / 1 | 28 / 38 | **38** / 38 |
+| south_indian/dinner | 1 / 1 | 1 / 1 | 26 / 34 | **34** / 34 |
+| north_indian/breakfast | 28 / 32 | **32** / 32 | 28 / 32 | **32** / 32 |
+| south_indian/snack | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 |
+| north_indian/snack | 8 / 24 | **24** / 24 | 8 / 24 | **24** / 24 |
+| north_indian/lunch | 13 / 51 | **51** / 51 | 13 / 51 | **51** / 51 |
+| north_indian/dinner | 0 / 47 | **47** / 47 | 0 / 47 | **47** / 47 |
+
+The "before" run imported the planner before the change was written; the
+"after" run is the same script on the changed tree.
+
+**Change.** `plan_within_ladder` takes an optional `prefer`: among the
+plates valid at the rung the ladder stopped on, return the nearest one it
+accepts, else the nearest plate. `plan_meal` supplies one for any diet
+permitting egg, fish or poultry. It never widens a target, never moves the
+ladder to a later rung, never touches a unit count (invariant 1 unaffected:
+no quantity is chosen by anything new). Vegetarian, vegan and jain get no
+preference and the same plate as before.
+
+**What this does not fix.** The second column. Where no valid animal plate
+exists (eggetarian South meals, South snack, 25 of 72 non-veg bodies at
+South breakfast, 34 at lunch, 38 at dinner) the plate is still vegetarian.
+That is a recipe gap: the library's animal dishes are anda_chaat,
+anda_curry, chicken_tikka, egg_bhurji, egg_dosa, meen_kuzhambu,
+mutta_kuzhambu, muttai_podimas -- no chicken main anywhere, no fish in the
+North, nothing animal for the South vegetable course.
+
+**Tests.** `tests/test_shown_plate_preference.py`, 11 tests: preferred plate
+over a nearer one, fallback to nearest, preference never moves the rung,
+preference applies on a relaxed rung, which diets prefer, and a wiring test
+on the owner's North dinner case. Mutation rows N3a–N3d added to
+`docs/design/probes/d4b_mutations.py`:
+
+```
+N3a  covered      tests/test_shown_plate_preference.py::TestPreferChoosesAmongValidPlates::test_the_nearest_preferred_plate_is_shown_over_a_nearer_one
+N3b  covered      tests/test_shown_plate_preference.py::TestPreferChoosesAmongValidPlates::test_the_nearest_preferred_plate_is_shown_over_a_nearer_one
+N3c  covered      tests/test_shown_plate_preference.py::TestPreferChoosesAmongValidPlates::test_the_preference_also_applies_on_a_relaxed_rung
+N3d  covered      tests/test_shown_plate_preference.py::TestTheRealDinner::test_a_non_vegetarian_north_dinner_shows_an_animal_protein_dish
+4 mechanisms: 4 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+N3d (the `plan_meal` hookup) is caught only by the real-library wiring
+test; no synthetic test reaches `plan_meal`'s preference. Stated, not
+hidden.
+
+Full suite: `FOODAI_WEB_TESTS=required python -m pytest tests/ -q
+-p no:cacheprovider` → `559 passed, 1 warning in 286.69s (0:04:46)`.
+Browser, by hand, fresh account, 70 kg non_vegetarian: North dinner shows
+`['Phulka', 'Dal tadka', 'Anda curry']`; South dinner still shows
+`['Steamed rice', 'Sambar', 'Carrot poriyal', 'Soya chunk poriyal',
+'Neer mor']` -- cause 2, as measured.
+
 ## 2026-09-27 — egg breakfasts and snack (N2d): egg bhurji places; egg dosa and muttai podimas written, measured, and place nowhere
 
 **What was written.** Three egg dishes, proportions fixed before any probe

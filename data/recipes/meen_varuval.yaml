@@ -1,0 +1,71 @@
+# Meen varuval (tawa fish fry) -- pomfret pieces coated in a spice paste and
+# cooked on a tawa in a thin film of oil, turned once. A Tamil side for the
+# rice meal, served in the vegetable course.
+#
+# TASKS_3.md N4 (owner, 2026-09-29: chicken and fish mains for lunch and
+# dinner). Measured first (docs/audit_log.md 2026-09-27, shown plate for egg
+# and non-veg): nothing animal can fill SOUTH_LUNCH/DINNER's vegetable course.
+#
+# Proportions, fixed before any probe run: 80 g raw pomfret, two small
+# pieces, a little under meen_kuzhambu's 90 g because a fry is a side, not
+# the gravy. Paste: sambar powder 3 g (standing in for chilli powder and
+# turmeric, which have no rows), ginger-garlic 3 g, salt 0.6 g (0.75% of the
+# fish, rubbed on). About 5 g of oil on the tawa; 4.0 g stays
+# (oil_uptake.fish_tawa_fried, new). Left out, stated: rice flour, lemon and
+# turmeric -- no rows.
+#
+# RAW-WEIGHT BASIS: pomfret_white_raw has no cooked row (see meen_kuzhambu).
+# The 90.6 g is what goes onto the tawa; understates, never overstates.
+id: meen_varuval
+name: Meen varuval (fish fry)
+name_ta: மீன் வறுவல்
+name_hi: मछली फ्राई
+
+region: south_indian
+# Not vegetarian, not eggetarian: pomfret is fish-classed. Not jain:
+# ginger-garlic paste is classed root_vegetable. Derived from ingredient
+# classes.
+
+category: poriyal
+prep_minutes: 25
+tags: [lunch, dinner, high_protein, pescatarian, non_vegetarian]
+
+serving_unit:
+  measure: katori
+  name: plate (2 pieces)
+  grams_per_unit: 90.6
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    Two pieces with their paste and oil (90.6 g, the summed mass below), on
+    the katori measure with its weight overridden. Two plates (four pieces)
+    is the ceiling for a side.
+
+# Tawa-fried from raw; the oil carries the new registered constant. Moisture
+# loss from the fish is real and unmeasured.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: pomfret_white_raw
+    quantity_g: 80.0
+    state: raw
+    note: Two small pieces, cleaned and scored. Raw-basis; see the header.
+  - id: sambar_powder
+    quantity_g: 3.0
+    state: as_used
+    note: Stands in for chilli powder and turmeric, which have no rows.
+  - id: ginger_garlic_paste
+    quantity_g: 3.0
+    state: as_used
+  - id: salt_iodised
+    quantity_g: 0.6
+    state: as_used
+    note: Rubbed on with the paste. An authored quantity, not a measurement.
+  - id: gingelly_oil
+    quantity_g: 4.0
+    state: as_used
+    process: oil_uptake.fish_tawa_fried
+    note: >-
+      Retained oil: about 5 g as a film on the tawa, 0.80 of it kept by the
+      paste crust (oil_uptake.fish_tawa_fried).
