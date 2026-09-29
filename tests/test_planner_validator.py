@@ -517,10 +517,16 @@ class TestClinicalLocking:
         # rung fires at all depends on the pool being infeasible at rung 1 —
         # a ladder-level version of this test passes vacuously the moment the
         # fixture's numbers shift.
+        #
+        # Built at a 15% fat band on purpose. Since N6 (2026-09-29) fat's
+        # default band is tolerance.fat_default (27.3%), wider than the
+        # relaxed 25%, so at the default the rung leaves fat alone and this
+        # test could not tell "fat widened" from "fat left alone".
         target = simple_target(
-            energy_kcal=700.0, protein_g_min=15.0, fat_g=20.0, carb_g=90.0
+            energy_kcal=700.0, protein_g_min=15.0, fat_g=20.0, carb_g=90.0,
+            fat_tolerance=0.15,
         )
-        # Default 15%: fat 17.0 - 23.0, carb 76.5 - 103.5.
+        # 15%: fat 17.0 - 23.0, carb 76.5 - 103.5 (carb's default).
         assert target.ceiling("fat_g") == pytest.approx(23.0)
         assert target.ceiling("carb_g") == pytest.approx(103.5)
 

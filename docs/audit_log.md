@@ -6,6 +6,105 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-29 — fat band from the AMDR (N6) — owner decision, evidence first
+
+**Owner request (2026-09-29):** "it's okay to go above the fat threshold
+sometimes... try to have a plus or minus threshold", the same for every
+diet (the owner rejected a non-vegetarian-only widening: a different rule
+per diet makes the same problem either way). A first edit set fat to ±25%
+straight from the request; the owner stopped it and asked for "factual
+studies and proof before changing the tolerance". Then, standing: "from now
+onwards try to have some factual proof before proceeding".
+
+**What the sources say** (read online 2026-09-29; summary pages, not the
+2005 report itself, so nothing here is `verified=True` -- invariant 4):
+
+- Fat AMDR for adults, 20-35% of energy: National Academies, *Rethinking
+  the AMDR for the 21st Century* (2024 letter report,
+  nationalacademies.org/read/27957/chapter/5); Health Canada DRI tables
+  (canada.ca, reference values for macronutrients). Already registered here
+  as `macro.fat_energy_fraction_min/max` (iom_dri_2005).
+- ICMR-NIN (nin.res.in/rdabook/brief_note.pdf): visible fat 20-50 g per
+  person per day by energy need. A search snippet gave 15-35% of energy;
+  not confirmed in any readable ICMR text, so not used.
+- **No source found states a per-meal fat band.** The AMDR describes a
+  whole diet. The statement that meals may vary as long as the day is in
+  range came only from secondary study-guide sites. A per-meal tolerance is
+  therefore this project's decision (invariant 3: a daily range applied per
+  meal is not the mechanism the source measured).
+
+**Derivation.** The fat target is the AMDR midpoint, 27.5% of energy
+(`_compute_macros`). The AMDR's edges relative to it: (0.35 - 0.20) /
+(0.35 + 0.20) = 0.15 / 0.55 = **0.2727**. New `tolerance.fat_default` is
+computed from the two AMDR constants, not typed, evidence
+`project_decision`: at a meal's energy point its fat band runs from exactly
+20% to 35% of that energy. Owner chose this over a round ±25%. Carb stays
+±15% (`tolerance.fat_carb_default`, now carb only): the owner asked about
+fat, and diabetes locks carb. Since 0.2727 > the fat_carb rung's 0.25, the
+rung would have narrowed fat; guarded first (entry below, 32efbf9).
+
+**Measured, before = 32efbf9 (the guard, no fat change).**
+
+`probe_rank_input2.py` (vegetarian + vegan, 1152 cases):
+
+| | before | after |
+|---|---|---|
+| >= 2 valid plates at accepted rung | 734 (63.7%) | **779 (67.6%)** |
+| rung-0-only >= 2 plates | 640 (55.6%) | **708 (61.5%)** |
+| stopped at rung 0 | 764 | **824** |
+| stopped at fat_carb_tolerance | 85 | 33 |
+| declined | 171 | 168 |
+
+Per template (accepted rung, of 144): S breakfast 114 -> 118, S lunch 78 ->
+82, N breakfast 85 -> 99, N snack 58 -> 61, N lunch 118 -> 126, N dinner
+122 -> 134; S dinner, S snack unchanged.
+
+`probe_nonveg.py`, 2+ valid plates of 576: vegetarian 436 -> **455**,
+eggetarian 438 -> **461**, non-vegetarian 487 -> **498**.
+
+`probe_nonveg_shown.py`, bodies of 72 shown an egg/fish/poultry plate
+(eggetarian / non-veg): N breakfast 32 -> 40 / 32 -> 40, N snack 24 -> 36 /
+24 -> 36, N dinner 47 -> 51 / 52 -> 60. South eggetarian unchanged (0, 14,
+42, 0).
+
+**Two drops, both traced per body** (script run on a worktree of 32efbf9
+and on this tree, non-vegetarian):
+
+- S lunch shown-with-animal, non-veg 50 -> **46**: the four 95 kg
+  gain_muscle bodies. Before, nothing fit at rung 0 and the ladder relaxed
+  sodium/fibre, where an animal plate was valid. Now a vegetarian plate fits
+  at rung 0 -- full sodium ceiling and fibre floor -- and no animal plate
+  does, so the ladder stops there. N3's preference chooses only among plates
+  valid at the accepted rung, by design.
+- S breakfast non-veg 2+ plates 64 -> 60: the four 110 kg lose_fat bodies
+  went from three or four relaxed rungs (sodium/fibre, fat/carb, energy,
+  and protein for diabetes) to **none**, with fewer plates at the stricter
+  rung. Their shown plate still has an animal dish.
+
+Both are the ladder stopping at a stricter rung, which it is built to
+prefer. Stated because the headline numbers are not uniformly up.
+
+`probe_south_egg_blockers.py`: South breakfast egg still 0/68 for both
+dishes; fat above ceiling fell 56 -> 32 (egg_dosa) and 60 -> 32
+(mutta_kuzhambu), now level with carb below floor (32 each). Fat is no
+longer the single breakfast blocker.
+
+**Reference plate moved.** 70 kg maintain vegetarian South breakfast:
+`idli x3, soya_kuzhambu, coconut_chutney x4, soya_curd x2` (was `soya_idli
+x6, sambar, coconut_chutney x4, soya_curd`). `test_planner_quality.py`'s
+two pinned tests re-derived by hand (13.0 g = 25.0 g soya_chunks_dry x
+52.0/100), the perturbation test now disqualifies soya_chunks_dry, which
+moves the plate back to soya_idli (12.3504 g).
+
+**Tests.** Hand-computed fat bounds in `test_nutrition_meal_target.py`
+re-derived at 3/11 (60 x 8/11, 60 x 14/11); the diabetes locking test now
+builds its own 15% fat band so it still sees fat widen. Deletion check:
+`band(fat_g, fat_tolerance)` reverted to `fat_carb_tolerance` ->
+`8 failed, 483 passed, 70 skipped`; restored.
+
+**Verification.** `FOODAI_WEB_TESTS=required python -m pytest tests/ -q -p
+no:cacheprovider` → `561 passed, 1 warning in 186.22s (0:03:06)`.
+
 ## 2026-09-29 — a relaxation rung never narrows a band (N6, guard) — found while planning the fat band
 
 **Found.** `_widen_band` re-derived each bound from the point at the rung's

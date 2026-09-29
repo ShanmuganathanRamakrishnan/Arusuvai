@@ -309,7 +309,16 @@ class TestAgainstTheRealLibrary:
             ]
             assert outcome.plan.quality_protein_g >= _MEAL_QUALITY_FLOOR_G
 
-    def test_the_reference_breakfast_plate_is_soya_idli_sambar_chutney(self, real):
+    def test_the_reference_breakfast_plate_is_idli_soya_kuzhambu_chutney(self, real):
+        # Re-measured 2026-09-29 (N6, docs/audit_log.md "fat band from the
+        # AMDR"): fat's default band widened from +/-15% to +/-27.3%, and a
+        # plain-idli plate with soya_kuzhambu in the gravy slot is now inside
+        # it and nearer the target than the soya_idli plate below. Its
+        # quality protein is soya_kuzhambu's alone: 25.0 g soya_chunks_dry x
+        # 52.0/100 = 13.0 g >= 11.2 g (soya_curd_plain has no DIAAS, so it
+        # counts nothing). Re-derived from the solver's own choice.
+        #
+        # Previously:
         # Re-measured 2026-08-24 (follow-up to finding 51): soya_curd
         # (data/recipes/soya_curd.yaml) joined thayir_plain as the second
         # curd_course candidate, and the solver now picks soya_curd -- lower
@@ -323,12 +332,12 @@ class TestAgainstTheRealLibrary:
         outcome = _plan(real, Region.SOUTH_INDIAN, MealSlot.BREAKFAST)
         assert outcome.result.relaxation_applied == ()
         assert outcome.plan.unit_counts == {
-            "soya_idli@tiffin": 6,
-            "sambar@sambar": 1,
+            "idli@tiffin": 3,
+            "soya_kuzhambu@kuzhambu": 1,
             "coconut_chutney@chutney": 4,
-            "soya_curd@curd": 1,
+            "soya_curd@curd": 2,
         }
-        assert outcome.plan.quality_protein_g == pytest.approx(12.3504, abs=1e-3)
+        assert outcome.plan.quality_protein_g == pytest.approx(13.0, abs=1e-3)
 
     def test_the_reference_lunch_now_passes_unrelaxed(self, real):
         # Until 2026-08-24, south_lunch needed three relaxation rungs to pass
@@ -486,7 +495,16 @@ class TestTheSolverGateItself:
 class TestThePerturbationTest:
     """CLAUDE.md's round-4 rule: move the input and watch the output move."""
 
-    def test_disqualifying_soya_flour_moves_the_south_breakfast_figure(self, real):
+    def test_disqualifying_soya_chunks_moves_the_south_breakfast_figure(self, real):
+        # Re-derived 2026-09-29 (N6): the reference plate is now the plain-idli
+        # soya_kuzhambu plate (plate test above), so soya_chunks_dry is the
+        # source that carries it, and disqualifying it reverts the plate to
+        # the soya_idli one the paragraph below describes -- the same two
+        # plates as before, the other way round. Disqualifying
+        # soya_flour_defatted no longer moves anything: the reference plate
+        # has no soya_idli in it.
+        #
+        # Previously:
         # Re-derived 2026-08-24 (follow-up to finding 51): the reference plate
         # uses soya_curd, not curd_dahi, for its curd course (see the plate
         # test above), so a curd_dahi perturbation is not the one that moves
@@ -504,27 +522,28 @@ class TestThePerturbationTest:
             Region.SOUTH_INDIAN,
             MealSlot.BREAKFAST,
         )
-        after_soya_flour = _plan(
-            _with_diaas(real, "soya_flour_defatted", 0.50),
+        after_soya_chunks = _plan(
+            _with_diaas(real, "soya_chunks_dry", 0.50),
             Region.SOUTH_INDIAN,
             MealSlot.BREAKFAST,
         )
-        assert before.plan.quality_protein_g == pytest.approx(12.3504, abs=1e-3)
+        assert before.plan.quality_protein_g == pytest.approx(13.0, abs=1e-3)
         # Disqualifying curd_dahi changes nothing: the accepted plate never
         # used it (it uses soya_curd for the curd course).
         assert after_curd.plan is not None
         assert after_curd.plan.unit_counts == before.plan.unit_counts
-        assert after_curd.plan.quality_protein_g == pytest.approx(12.3504, abs=1e-3)
-        # Disqualifying soya flour instead reverts the plate to a plain-idli
-        # one, and its quality figure with it.
-        assert after_soya_flour.plan is not None
-        assert after_soya_flour.plan.unit_counts == {
-            "idli@tiffin": 4,
-            "soya_kuzhambu@kuzhambu": 1,
-            "coconut_chutney@chutney": 2,
-            "soya_curd@curd": 2,
+        assert after_curd.plan.quality_protein_g == pytest.approx(13.0, abs=1e-3)
+        # Disqualifying soya chunks instead moves the plate to soya_idli, and
+        # its quality figure with it: 6 x 4.0 g soya_flour_defatted x
+        # 51.46/100 = 12.3504 g.
+        assert after_soya_chunks.plan is not None
+        assert after_soya_chunks.plan.unit_counts == {
+            "soya_idli@tiffin": 6,
+            "sambar@sambar": 1,
+            "coconut_chutney@chutney": 4,
+            "soya_curd@curd": 1,
         }
-        assert after_soya_flour.plan.quality_protein_g == pytest.approx(13.0, abs=1e-3)
+        assert after_soya_chunks.plan.quality_protein_g == pytest.approx(12.3504, abs=1e-3)
 
     def test_disqualifying_all_three_sources_puts_south_breakfast_back_in_decline(self, real):
         # The stronger half of the same perturbation, and the one that keeps a

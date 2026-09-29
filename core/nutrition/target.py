@@ -204,9 +204,10 @@ def simple_target(
     quality_protein_g_min: float | None = None,
     energy_tolerance: float | None = None,
     fat_carb_tolerance: float | None = None,
+    fat_tolerance: float | None = None,
 ) -> NutritionTarget:
     """Build a target from a point-estimate profile plus CLAUDE.md's default
-    tolerances: energy +/-5%, fat/carb +/-15%, protein a hard floor (no
+    tolerances: energy +/-5%, fat +/-27.3% (the AMDR's half-width), carb +/-15%, protein a hard floor (no
     symmetric band — the relaxation ladder only ever loosens it downward, and
     a ceiling on protein is not one of CLAUDE.md's default constraints).
 
@@ -221,6 +222,10 @@ def simple_target(
         energy_tolerance = citations.value_of("tolerance.energy_default")
     if fat_carb_tolerance is None:
         fat_carb_tolerance = citations.value_of("tolerance.fat_carb_default")
+    # Fat's own band since N6 (owner decision 2026-09-29); `fat_carb_tolerance`
+    # now bands carb only. See tolerance.fat_default.
+    if fat_tolerance is None:
+        fat_tolerance = citations.value_of("tolerance.fat_default")
 
     floors: dict[str, float] = {"protein_g": protein_g_min}
     ceilings: dict[str, float] = {}
@@ -232,7 +237,7 @@ def simple_target(
     floors["energy_kcal"], ceilings["energy_kcal"] = band(energy_kcal, energy_tolerance)
     points["energy_kcal"] = energy_kcal
     if fat_g is not None:
-        floors["fat_g"], ceilings["fat_g"] = band(fat_g, fat_carb_tolerance)
+        floors["fat_g"], ceilings["fat_g"] = band(fat_g, fat_tolerance)
         points["fat_g"] = fat_g
     if carb_g is not None:
         floors["carb_g"], ceilings["carb_g"] = band(carb_g, fat_carb_tolerance)

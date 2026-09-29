@@ -292,6 +292,7 @@ REVIEWED_MECHANISM_MATCHES: dict[str, str] = {
     "tolerance.energy_snack": "reviewed: project decision, no physical process claimed",
     "tolerance.fat_carb_default": "reviewed: project decision, no physical process claimed",
     "tolerance.fat_carb_relaxed": "reviewed: project decision, no physical process claimed",
+    "tolerance.fat_default": "reviewed: project decision, no physical process claimed",
     "tolerance.protein_relaxed_fraction": "reviewed: project decision, no physical process claimed",
     "tolerance.sodium_relaxed_fraction": "reviewed: project decision, no physical process claimed",
     "day_budget.absurdity_fraction": "reviewed: project decision, no physical process claimed -- a plausibility guard on one plate's share of a day, explicitly not a nutritional bound",
@@ -1020,7 +1021,10 @@ TOLERANCE_FAT_CARB_DEFAULT = register_constant(
         value=0.15,
         unit="fraction",
         evidence_id="project_decision",
-        applied_to="the +/- band around fat and carb targets before any relaxation",
+        applied_to=(
+            "the +/- band around the carb target before any relaxation; fat "
+            "has its own, tolerance.fat_default, since N6"
+        ),
         uncertainty=0.0,
     )
 )
@@ -1481,6 +1485,43 @@ register_constant(Constant(
     applied_to="the upper bound of the fat acceptable macronutrient distribution range",
     uncertainty=0.0,
 ))
+
+# Fat's band before any relaxation (owner decision 2026-09-29, TASKS_3.md N6,
+# docs/audit_log.md "fat band from the AMDR"). The owner asked that fat may
+# sometimes go above its target, the same for every diet, and that the band
+# rest on published evidence rather than a chosen number. The fat target is
+# the AMDR midpoint ((0.20 + 0.35) / 2 = 0.275 of energy, _compute_macros);
+# this is the half-width of the AMDR relative to that midpoint,
+# (0.35 - 0.20) / (0.35 + 0.20) = 0.15 / 0.55 = 0.2727..., so a meal's fat at
+# its energy point lies between exactly 20% and 35% of that energy. Derived,
+# not typed, so it cannot drift from the two AMDR constants above.
+#
+# Evidence is project_decision, not iom_dri_2005: the AMDR is a range for a
+# whole diet, and no source found states a per-meal band. Applying a daily
+# range to each meal is this project's choice (invariant 3). It is the
+# conservative reading: meals each inside the range keep the day inside it
+# (at the energy point; energy itself may sit +/-5% off it).
+# Carb stays at tolerance.fat_carb_default: the owner asked about fat, and
+# diabetes locks carb.
+TOLERANCE_FAT_DEFAULT = register_constant(
+    Constant(
+        key="tolerance.fat_default",
+        value=(
+            (value_of("macro.fat_energy_fraction_max")
+             - value_of("macro.fat_energy_fraction_min"))
+            / (value_of("macro.fat_energy_fraction_max")
+               + value_of("macro.fat_energy_fraction_min"))
+        ),
+        unit="fraction",
+        evidence_id="project_decision",
+        applied_to=(
+            "the +/- band around one meal's fat target before any relaxation: "
+            "the fat AMDR's half-width relative to its midpoint, applied per "
+            "meal by project decision (the AMDR itself describes a whole diet)"
+        ),
+        uncertainty=0.0,
+    )
+)
 register_constant(Constant(
     key="nutrient.fibre_g_per_1000kcal", value=14.0, unit="g per 1000 kcal",
     evidence_id="iom_dri_2005",

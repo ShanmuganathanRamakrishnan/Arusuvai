@@ -26,8 +26,10 @@ def test_fractions_match_the_registered_constants_and_sum_to_a_day():
 
 def _day() -> "object":
     # day energy 2000 kcal +/-5% -> floor 1900, ceiling 2100 (simple_target's
-    # own default tolerance). protein floor 100 g. fat 60 g +/-15% -> floor 51,
-    # ceiling 69. carb 250 g +/-15% -> floor 212.5, ceiling 287.5.
+    # own default tolerance). protein floor 100 g. fat 60 g +/-3/11 (0.2727,
+    # tolerance.fat_default since N6: (0.35 - 0.20) / (0.35 + 0.20)) -> floor
+    # 60 x 8/11 = 43.636, ceiling 60 x 14/11 = 76.364. carb 250 g +/-15% ->
+    # floor 212.5, ceiling 287.5.
     # sodium ceiling 2000 mg. fibre floor 28 g.
     return simple_target(
         energy_kcal=2000.0,
@@ -59,8 +61,8 @@ def test_every_per_meal_bound_scales_by_the_energy_fraction():
     # TestProteinHasPerMealBounds, and do not read this line as proof that
     # protein still scales purely.
     assert lunch.floor("protein_g") == pytest.approx(100.0 * 0.35)
-    assert lunch.floor("fat_g") == pytest.approx(51.0 * 0.35)
-    assert lunch.ceiling("fat_g") == pytest.approx(69.0 * 0.35)
+    assert lunch.floor("fat_g") == pytest.approx(60.0 * 8 / 11 * 0.35)
+    assert lunch.ceiling("fat_g") == pytest.approx(60.0 * 14 / 11 * 0.35)
     assert lunch.floor("carb_g") == pytest.approx(212.5 * 0.35)
     assert lunch.ceiling("carb_g") == pytest.approx(287.5 * 0.35)
     # Fibre stays proportional deliberately: its target already derives from
@@ -190,8 +192,8 @@ class TestASnackHasNoFatOrCarbFloor:
         snack = meal_target(_day(), MealSlot.SNACK)  # x0.10
         assert snack.floor("fat_g") is None
         assert snack.floor("carb_g") is None
-        # 69.0 x 0.10 = 6.9 ; 287.5 x 0.10 = 28.75
-        assert snack.ceiling("fat_g") == pytest.approx(6.9)
+        # 60 x 14/11 x 0.10 = 7.636 ; 287.5 x 0.10 = 28.75
+        assert snack.ceiling("fat_g") == pytest.approx(60.0 * 14 / 11 * 0.10)
         assert snack.ceiling("carb_g") == pytest.approx(28.75)
         # Points stay: they are what the ladder widens ceilings around.
         # 60.0 x 0.10 = 6.0 ; 250.0 x 0.10 = 25.0
@@ -211,10 +213,10 @@ class TestASnackHasNoFatOrCarbFloor:
         "slot", [MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER]
     )
     def test_every_other_slot_keeps_both_floors(self, slot):
-        # 51.0 and 212.5 are the day floors in _day(); the slot's own share.
+        # 60 x 8/11 and 212.5 are the day floors in _day(); the slot's share.
         target = meal_target(_day(), slot)
         fraction = meal_energy_fraction(slot)
-        assert target.floor("fat_g") == pytest.approx(51.0 * fraction)
+        assert target.floor("fat_g") == pytest.approx(60.0 * 8 / 11 * fraction)
         assert target.floor("carb_g") == pytest.approx(212.5 * fraction)
 
     def test_the_fat_carb_rung_does_not_restore_a_dropped_floor(self):
@@ -228,8 +230,10 @@ class TestASnackHasNoFatOrCarbFloor:
         assert relaxed.floor("carb_g") is None
         tol = citations.value_of("tolerance.fat_carb_relaxed")
         assert tol == 0.25
-        # 6.0 x 1.25 = 7.5 ; 25.0 x 1.25 = 31.25
-        assert relaxed.ceiling("fat_g") == pytest.approx(7.5)
+        # Carb: 25.0 x 1.25 = 31.25. Fat: the rung's own 6.0 x 1.25 = 7.5 is
+        # tighter than fat's default ceiling since N6 (60 x 14/11 x 0.10 =
+        # 7.636), and a rung never narrows a band, so fat stays at 7.636.
+        assert relaxed.ceiling("fat_g") == pytest.approx(60.0 * 14 / 11 * 0.10)
         assert relaxed.ceiling("carb_g") == pytest.approx(31.25)
 
 
