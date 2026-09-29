@@ -6,6 +6,56 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-29 — muttai carrot poriyal (N5): an egg dish in the South Indian vegetable course — owner decision
+
+**Owner decision (2026-09-29):** option 1 of two after the South Indian egg
+blockers measurement (next entry): a new egg dish for SOUTH_LUNCH/DINNER's
+vegetable course (poriyal/kootu), so egg can sit beside the sambar instead
+of replacing it. Option 2, letting muttai_podimas (0.3 g fibre) into that
+slot by template change, not taken: fibre was lunch's first blocker.
+
+**Proportions, fixed before any probe run:** carrot_poriyal's lines
+unchanged, plus one large egg (50 g raw, muttai_podimas's per-egg quantity);
+coconut out, the egg takes its place; salt at carrot_poriyal's 0.63% of the
+new weight. Oil `oil_uptake.vegetable_tempering`, both parent dishes' line
+(tempering that stays with the vegetables and egg; no new constant).
+Raw-egg basis. Per katori (122.3 g): 120 kcal, protein 7.4, fat 7.4, carb
+6.6, fibre 1.9, sodium 418 mg; counts 1-2.
+
+**Measured.** `probe_nonveg_shown.py`, bodies of 72 whose shown plate has an
+egg, fish or poultry dish / whose valid plates include one. Before = N4's
+tree (d594a59), from the entry of that date.
+
+| template | eggetarian before | after | non_vegetarian before | after |
+|---|---|---|---|---|
+| south_indian/breakfast | 0 / 0 | 0 / 0 | 58 / 58 | 58 / 58 |
+| south_indian/lunch | 1 / 1 | **14 / 14** | 50 / 50 | 50 / 50 |
+| south_indian/dinner | 1 / 1 | **42 / 42** | 59 / 59 | **67 / 67** |
+| south_indian/snack | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 |
+
+North rows identical (32, 24, 51, 47 eggetarian; 32, 24, 68, 52 non-veg).
+`probe_nonveg.py`: 2+ plates vegetarian 436/576, eggetarian 438/576,
+non-vegetarian 487/576, all unchanged -- the dish adds egg plates where
+plates already existed, it does not add plates to bodies that had fewer
+than two.
+
+70 kg maintain, eggetarian: South lunch `steamed_rice, soya_kuzhambu,
+muttai_carrot_poriyal, soya_chunk_poriyal, soya_curd`; dinner
+`steamed_rice, soya_kuzhambu, carrot_kootu, muttai_carrot_poriyal,
+soya_curd`. Non-vegetarian, same body, shows the same two plates: at dinner
+the nearest valid animal plate is now this one, not N4's meen_varuval
+plate. Correct per N3's rule (nearest valid animal plate), stated because it
+changes what the owner saw after N4.
+
+**Tests.** A recipe is not a gate. `test_planner_candidates.py`'s non-veg
+parity test lists each category's animal dishes by hand; it went red on the
+new dish (`1 failed, 488 passed`) and now lists it.
+
+**Verification.** `FOODAI_WEB_TESTS=required python -m pytest tests/ -q -p
+no:cacheprovider` → `559 passed, 1 warning in 180.45s (0:03:00)`.
+
+**Open.** Breakfast and snack unchanged at 0 (next entry for why).
+
 ## 2026-09-29 — South Indian egg blockers (N5, measurement) — owner request
 
 **Owner request (2026-09-29):** egg dishes for South Indian lunch, dinner and

@@ -78,10 +78,11 @@ class TestHardFilters:
 
         # The animal dishes each category adds, listed by hand. N4
         # (2026-09-29) added chicken_kuzhambu, and the first animal dishes in
-        # poriyal, SOUTH_LUNCH's vegetable course.
+        # poriyal, SOUTH_LUNCH's vegetable course; N5 (2026-09-29) the first
+        # egg dish there, muttai_carrot_poriyal.
         animal_extras = {
             "kuzhambu": {"mutta_kuzhambu", "meen_kuzhambu", "chicken_kuzhambu"},
-            "poriyal": {"chicken_chukka", "meen_varuval"},
+            "poriyal": {"chicken_chukka", "meen_varuval", "muttai_carrot_poriyal"},
         }
         assert non_veg_pool.by_category.keys() == vegetarian_pool.by_category.keys()
         for category in vegetarian_pool.by_category:
