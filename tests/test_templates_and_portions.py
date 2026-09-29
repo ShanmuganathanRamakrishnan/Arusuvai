@@ -27,8 +27,9 @@ class TestTemplatesAreNotUniform:
         # this test is making, and the assertion below is what does: the
         # uniform grammar this module exists to reject is a specific slot LIST,
         # not a length. Counting was always the weaker check; two templates
-        # arriving at five slots is what exposed that.
-        assert len(shapes["south_breakfast"]) == 5
+        # arriving at five slots is what exposed that. 6 since 2026-09-29
+        # (TASKS_3.md N7): an optional egg_side.
+        assert len(shapes["south_breakfast"]) == 6
         assert len(shapes["south_lunch"]) == 5
         assert len(shapes["north_dinner"]) == 4
         assert shapes["south_breakfast"] != shapes["south_lunch"]
@@ -43,6 +44,15 @@ class TestTemplatesAreNotUniform:
         names = {s.name for s in templates.SOUTH_BREAKFAST.slots}
         assert "vegetable" not in names
         assert "rice_base" not in names
+
+    def test_south_breakfast_egg_side_is_optional_and_egg_only(self):
+        # TASKS_3.md N7 (2026-09-29): idli/dosa/uttapam with a boiled egg or
+        # an omelette beside it. Optional so a vegetarian breakfast is
+        # unchanged; pinned exactly so a widening is a decision, not a drift.
+        slot = templates.SOUTH_BREAKFAST.slot("egg_side")
+        assert slot.accepted_categories == frozenset({"egg"})
+        assert slot.required is False
+        assert (slot.min_selections, slot.max_selections) == (0, 1)
 
     def test_north_dinner_has_no_rice_slot(self):
         categories = templates.NORTH_DINNER.categories()

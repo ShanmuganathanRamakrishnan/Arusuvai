@@ -6,6 +6,48 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-29 — egg side at South breakfast (N7 step 1) — owner decision
+
+**Owner decision (2026-09-29).** After N6, South breakfast still had no egg
+plate for any eggetarian body. Offered egg paniyaram (recipe sites); the
+owner declined it: "egg paniyaram is not a staple in many houses; most
+people just have dosa or muttai dosa... a better idea would be dosa and
+some boiled eggs or omelette and some sort of chutney, since that is what
+happens in most households. We can alternate the carbs with idli, dosa,
+uttapam." Stated as the owner's life experience as a South Indian and
+recorded as that -- no published source was found or claimed for which
+dishes households eat. Four steps approved in order: (1) an egg side slot,
+(2) boiled egg and omelette, (3) plain dosa and uttapam, (4) measure.
+
+**Why a slot.** SOUTH_BREAKFAST had no place for an egg beside the tiffin:
+egg could only be inside it (egg_dosa) or in the gravy slot
+(mutta_kuzhambu, replacing the sambar). New optional `egg_side`
+(category `egg`, 0-1), after the chutney. Optional as curd_course is: a
+vegetarian breakfast is unchanged.
+
+**Measured** (South breakfast only; scratch script calling
+`probe_rank_input2.py`'s `accepted_rung_valid_plate_count` and
+`plan_meal` exactly as `probe_nonveg_shown.py` does; before = N6 after,
+2026-09-29 fat band entry):
+
+```
+vegetarian       0/1/2+ = 4/8/60   shown animal 0/72  {}
+eggetarian       0/1/2+ = 4/8/60   shown animal 60/72  {'muttai_podimas': 60}
+non_vegetarian   0/1/2+ = 2/10/60   shown animal 70/72  {'muttai_podimas': 48, 'meen_kuzhambu': 12, 'chicken_kuzhambu': 10}
+```
+
+Eggetarian shown an egg plate **0 -> 60/72**; non-veg 58 -> **70/72**.
+Plate counts identical to the N6 run for all three diets. The only egg-
+category South dish today is muttai_podimas, which now reaches breakfast;
+boiled egg and omelette are step 2.
+
+**Tests.** `test_templates_and_portions.py`: slot count 5 -> 6; new test
+pins `egg_side` exactly (`{"egg"}`, optional, 0-1). Deletion check:
+category changed to `egg_x` -> `1 failed, 23 passed`
+(`test_south_breakfast_egg_side_is_optional_and_egg_only`); restored.
+`python -m pytest tests/ -q -p no:cacheprovider` → `492 passed, 70 skipped,
+1 warning in 55.14s`.
+
 ## 2026-09-29 — fat band from the AMDR (N6) — owner decision, evidence first
 
 **Owner request (2026-09-29):** "it's okay to go above the fat threshold
