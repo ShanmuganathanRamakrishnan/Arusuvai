@@ -6,6 +6,38 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-29 — a relaxation rung never narrows a band (N6, guard) — found while planning the fat band
+
+**Found.** `_widen_band` re-derived each bound from the point at the rung's
+tolerance and assigned it outright. Correct while every default band was
+narrower than its rung's relaxed band. N6 (entry above) makes fat's default
+band the AMDR-derived ±27.3%, wider than `tolerance.fat_carb_relaxed`
+(±25%): the fat_carb rung, meant to loosen fat, would have tightened it
+from ±27.3% to ±25%. Seen by reading the code while planning N6, before the
+fat change was written; never reached a plan.
+
+**Change.** A rung takes the looser of the existing bound and its own:
+floor `min(existing, lo)`, ceiling `max(existing, capped hi)`. No output
+change today -- every default band is currently at or inside its rung's
+band -- which is why the test builds its own target (carb at ±40% through
+`fat_carb_tolerance`) instead of reading the real library.
+
+**Deletion-tested.** `tests/test_planner_validator.py::TestARungNeverNarrowsABand`,
+harness rows V28 (floor) and V29 (ceiling):
+
+```
+V2   covered      tests/test_planner_decline.py::TestRelaxabilityIsDerivedFromTheLadderItself::test_a_ceiling_sitting_on_its_hard_ceiling_says_hard_capped
+V3   covered      tests/test_planner_validator.py::TestClinicalLocking::test_diabetes_locks_carb_out_of_the_fat_carb_rung
+V5   covered      tests/test_planner_decline.py::TestRelaxabilityIsDerivedFromTheLadderItself::test_a_locked_bound_says_locked
+V28  covered      tests/test_planner_validator.py::TestARungNeverNarrowsABand::test_a_default_band_wider_than_the_rung_survives_it
+V29  covered      tests/test_planner_validator.py::TestARungNeverNarrowsABand::test_a_default_band_wider_than_the_rung_survives_it
+5 mechanisms: 5 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+V2, V3 and V5 rerun because their target lines sit next to the edit and
+still match. `python -m pytest tests/ -q -p no:cacheprovider` → `491
+passed, 70 skipped, 1 warning in 55.56s`.
+
 ## 2026-09-29 — muttai carrot poriyal (N5): an egg dish in the South Indian vegetable course — owner decision
 
 **Owner decision (2026-09-29):** option 1 of two after the South Indian egg
