@@ -1,0 +1,52 @@
+# Avicha muttai -- hard-boiled egg, shelled, halved, with a pinch of salt.
+# Served beside dosa or idli and chutney at an ordinary South Indian home
+# breakfast.
+#
+# TASKS_3.md N7 step 2 (owner, 2026-09-29, from their own experience as a
+# South Indian: "dosa and some boiled eggs or omelette and some sort of
+# chutney ... is what happens in most households"). Fills SOUTH_BREAKFAST's
+# optional egg_side slot (docs/audit_log.md 2026-09-29, egg side at South
+# breakfast).
+#
+# Proportions, fixed before any probe run: one large egg, 50 g edible
+# (USDA FoodData Central FDC 173424, 'Egg, whole, cooked, hard-boiled',
+# large = 50 g; the library's per-egg quantity everywhere), and 0.3 g salt
+# (0.6%, near anda_chaat's 0.58%). Often finished with black pepper; there
+# is no pepper row in the ingredient table, so it is left out.
+id: avicha_muttai
+name: Avicha muttai (boiled egg)
+name_ta: அவித்த முட்டை
+name_hi: उबला अंडा
+
+region: south_indian
+# Eggetarian, not vegetarian: egg_boiled is egg-classed. Derived from
+# ingredient classes.
+
+category: egg
+# Nothing is heated by this recipe: the egg row is IFCT's boiled
+# (served-basis) composition, anda_chaat's precedent.
+preparation: uncooked
+prep_minutes: 12
+tags: [breakfast, snack, boiled, eggetarian, high_protein]
+
+serving_unit:
+  measure: katori
+  name: egg
+  grams_per_unit: 50.3
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    One egg (50.3 g, the summed mass below), on the katori measure with its
+    weight overridden. One or two eggs beside the breakfast is what the
+    owner described; two is the ceiling for a side.
+
+ingredients:
+  - id: egg_boiled
+    quantity_g: 50.0
+    state: cooked
+    note: One large hard-boiled egg, shelled.
+  - id: salt_iodised
+    quantity_g: 0.3
+    state: as_used
+    note: A pinch, 0.6% of the portion. An authored quantity, not a measurement.

@@ -1,0 +1,63 @@
+# Plain dosa (sada dosai) -- the fermented rice-and-urad crepe on its own,
+# with chutney and sambar or an egg beside it. The everyday South Indian home
+# breakfast.
+#
+# TASKS_3.md N7 step 3 (owner, 2026-09-29: "we can alternate the carbs with
+# idli, dosa, utthappam which are common household breakfast"). The library
+# had idli, but dosa only inside masala_dosa (with its potato filling) and
+# egg_dosa.
+#
+# Proportions, fixed before any probe run: masala_dosa's "the dosa itself"
+# lines unchanged (26 g rice, 9 g urad, 51 g water, 3.5 g retained oil, 0.5 g
+# salt), which sum to measure.dosa_g's 90 g. Cross-check: the Indian Nutrient
+# Databank (INDB; Vijayakumar et al., Curr Dev Nutr 2024;8:103790, DOI
+# 10.1016/j.cdnut.2024.103790; open data at
+# github.com/lindsayjaacks/Indian-Nutrient-Databank-INDB-) recipe ASC146,
+# masala dosa, uses about 40 g dry rice and dal per dosa -- 35 g here.
+id: plain_dosa
+name: Plain dosa
+name_ta: தோசை
+name_hi: सादा डोसा
+
+region: south_indian
+# Vegan and jain: rice, urad, oil, salt. Derived from ingredient classes.
+
+category: tiffin
+prep_minutes: 10
+tags: [breakfast, fermented, griddled]
+
+serving_unit:
+  measure: dosa
+  grams_per_unit: 90.0
+  min_count: 1
+  default_count: 2
+  max_count: 3
+  note: >-
+    One plain dosa, the generic 90 g dosa weight. masala_dosa's count range.
+
+# As masala_dosa: micronutrient retention through fermentation and griddling
+# is not measured.
+process_uncertainty_unassessed: [fibre_g, iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: rice_milled_raw
+    quantity_g: 26.0
+    state: raw
+    note: Soaked and ground into batter, masala_dosa's line.
+  - id: urad_dal_raw
+    quantity_g: 9.0
+    state: raw
+    note: masala_dosa's line.
+  - id: water
+    quantity_g: 51.0
+    state: as_used
+    note: Water held in the fermented batter, masala_dosa's line.
+  - id: gingelly_oil
+    quantity_g: 3.5
+    state: as_used
+    process: oil_uptake.dosa_griddled
+    note: Retained oil, masala_dosa's line (oil_uptake.dosa_griddled).
+  - id: salt_iodised
+    quantity_g: 0.5
+    state: as_used
+    note: masala_dosa's line. An authored quantity, not a measurement.

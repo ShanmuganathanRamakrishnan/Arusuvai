@@ -6,6 +6,204 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-29 — South breakfast measured together, and a carb rotation (N7 step 4)
+
+Steps 1-3 together (egg_side slot; avicha_muttai, muttai_omelette; plain_dosa,
+onion_tomato_uttapam), against main before N7.
+
+South breakfast, bodies with 0/1/2+ valid plates (`probe_nonveg.py`):
+vegetarian 4/8/60 -> 4/8/60; eggetarian 4/8/60 -> 2/0/70; non-veg 2/10/60
+-> 2/4/66. Shown an egg or other animal dish: eggetarian 0 -> 70/72, non-veg
+58 -> 70/72.
+
+Whole library, 2+ plates at the accepted rung:
+
+```
+===NONVEG
+template                            vegetarian            eggetarian        non_vegetarian
+south_indian/breakfast              4 / 8 / 60            2 / 0 / 70            2 / 4 / 66
+south_indian/lunch                 6 / 24 / 42           6 / 23 / 43            2 / 8 / 62
+south_indian/dinner                10 / 8 / 54           10 / 7 / 55            1 / 8 / 63
+north_indian/breakfast             1 / 14 / 57           1 / 14 / 57           1 / 14 / 57
+south_indian/snack                 2 / 19 / 51           2 / 19 / 51           2 / 19 / 51
+north_indian/snack                  3 / 8 / 61            3 / 4 / 65            3 / 4 / 65
+north_indian/lunch                  3 / 6 / 63            3 / 6 / 63            0 / 4 / 68
+north_indian/dinner                 1 / 4 / 67            1 / 4 / 67            0 / 0 / 72
+2+ total                               455/576               471/576               504/576
+===RANK (vegetarian + vegan)
+overall: 779/1152 = 67.6% offer >= 2 valid plates (exit condition: >= 50%)
+  south_indian/breakfast : 118/144 = 81.9%
+```
+
+Against N6's figures (2026-09-29): vegetarian 455 unchanged, eggetarian 461
+-> 471, non-veg 498 -> 504, vegetarian + vegan 779 unchanged. No other
+template moved.
+
+**Rotation.** Nothing in the app varies dishes: `combinations_excluding_recent`
+(core/planner/combinations.py) is tested but no app path calls it, and
+/api/plan returns one best plate per meal, so the same plate repeats every
+day. `docs/design/probes/probe_south_breakfast_rotation.py` asks what a
+rotation would give: 7 days, each day barring the tiffin eaten on the
+previous 2 days, everything else free.
+
+```
+vegetarian   bodies 68  distinct carbs in 7 days {1: 7, 2: 1, 3: 60}  declined days 30/476  carb-days {'soya_idli': 156, 'idli': 126, 'plain_dosa': 94, 'onion_tomato_uttapam': 70}
+eggetarian   bodies 70  distinct carbs in 7 days {1: 2, 2: 6, 3: 62}  declined days 20/490  carb-days {'idli': 155, 'soya_idli': 144, 'plain_dosa': 108, 'onion_tomato_uttapam': 63}
+```
+
+Run from a scratch copy; the tracked file differs only in its header. With
+a rotation, 60/68 vegetarian and 62/70 eggetarian bodies get three different
+carbs in a week, and plain dosa and uttapam get a third of carb-days. The
+cost: 30/476 and 20/490 days have no valid plate once the fitting carbs are
+barred. A rotation that declines rather than falling back is not shippable
+as is.
+
+**Owner request, 2026-09-29, queued as TASKS_3.md N8:** "the user can
+alternate between dishes based on their liking, like individual items" --
+swap one dish (idli -> dosa -> uttapam, boiled egg -> omelette) and get back
+a plate that still validates. Any swap goes through the solver (invariant
+1). The declined days above are the case its design must answer.
+
+## 2026-09-29 — plain dosa and onion tomato uttapam (N7 step 3)
+
+Owner's basis (2026-09-29): "we can alternate the carbs with idli, dosa,
+utthappam which are common household breakfast". The library had idli and
+soya_idli, and dosa only as masala_dosa and egg_dosa.
+
+Added, proportions fixed before measuring:
+
+- `plain_dosa`: masala_dosa's dosa lines unchanged, 90 g = `measure.dosa_g`.
+- `onion_tomato_uttapam`: per uttapam from the Indian Nutrient Databank
+  (Vijayakumar et al., Curr Dev Nutr 2024;8:103790, DOI
+  10.1016/j.cdnut.2024.103790; open data, github.com/lindsayjaacks/
+  Indian-Nutrient-Databank-INDB-, `recipes.xlsx` and
+  `recipes_servingsize.xlsx` read 2026-09-29), recipe ASC148 (source
+  `asc_manual`, serving not marked guessed): 60 g rice + 20 g urad + 50 g
+  onion + 50 g tomato for 2 servings x 2 uttapams, so 15 / 5 / 12.5 / 12.5 g
+  each. Water, oil and salt at masala_dosa's ratios; 78.8 g. INDB's other
+  uttapam (BFP152) is marked "serving unit - guessed" and was not used; web
+  calorie sites (45-150 g, no method) were not used.
+
+Cross-check of that INDB manual against the library: ASC146 masala dosa ~40 g
+dry grain per dosa (library 35); ASC144 idli 10 g per idli (library 14.3).
+
+Measured, South breakfast, 72 bodies per diet (scratch drivers on
+`accepted_rung_valid_plate_count` and `plan_meal`):
+
+```
+BEFORE
+vegan            tiffin shown {'idli': 32, 'soya_idli': 35, '(declined)': 5}
+vegetarian       tiffin shown {'idli': 32, 'soya_idli': 36, '(declined)': 4}
+eggetarian       tiffin shown {'soya_idli': 35, 'idli': 33, '(declined)': 4}
+non_vegetarian   tiffin shown {'soya_idli': 38, 'idli': 32, '(declined)': 2}
+AFTER
+vegan            tiffin shown {'idli': 24, 'soya_idli': 35, 'plain_dosa': 4, 'onion_tomato_uttapam': 4, '(declined)': 5}
+vegetarian       tiffin shown {'idli': 24, 'soya_idli': 36, 'plain_dosa': 4, 'onion_tomato_uttapam': 4, '(declined)': 4}
+eggetarian       tiffin shown {'soya_idli': 32, 'idli': 29, 'onion_tomato_uttapam': 3, 'plain_dosa': 6, '(declined)': 2}
+non_vegetarian   tiffin shown {'soya_idli': 38, 'idli': 28, 'plain_dosa': 4, '(declined)': 2}
+```
+
+Plate counts (0/1/2+): vegan 5/9/58 and vegetarian 4/8/60 unchanged;
+eggetarian 4/0/68 -> 2/0/70; non-veg 2/4/66 unchanged. Eggetarian shown an
+egg 68 -> 70.
+
+**Finding, logged not fixed.** The shown plate is the single best one per
+body, so dosa or uttapam is picked for only 4-9 of 72 bodies; idli and
+soya_idli take the rest, and masala_dosa and egg_dosa are never shown. The
+owner's "alternate the carbs" is a day-to-day rotation, which one best plate
+per meal does not do. This is for step 4 to look at, not a recipe defect.
+Suite with browser tests: 562 passed.
+
+## 2026-09-29 — boiled egg and omelette for the South breakfast egg side (N7 step 2)
+
+Owner's basis (2026-09-29, their experience as a South Indian): an ordinary
+home breakfast is dosa or idli with "some boiled eggs or omelette" and a
+chutney. Step 1 added the optional `egg_side` slot; the only dish that could
+fill it was `muttai_podimas`.
+
+Added, proportions fixed before measuring:
+
+- `avicha_muttai` (boiled egg): `egg_boiled` 50 g (a large egg, USDA FDC
+  173424) + 0.3 g salt; 1-2 eggs.
+- `muttai_omelette`: `muttai_podimas`'s per-egg lines without the tempering
+  (egg 50 g raw, onion 10, oil 2.5, chilli 0.5, salt 0.4); 1-2 eggs.
+
+**Logged, not acted on — omelette oil.** The omelette reuses podimas's
+`oil_uptake.vegetable_tempering` (0.95), not an exact mechanism match (oil
+under a poured egg, not tossed with vegetables). Samia et al., Int J
+Gastronomy Food Sci 2022;29:100552, DOI 10.1016/j.ijgfs.2022.100552, measures
+oil uptake by fried and scrambled eggs. Its abstract could not be read
+(paywalled; none in Crossref, OpenAlex, Semantic Scholar); a search-index
+summary gives 64-73% for fried whole eggs and 78-88% for scrambled. Not
+verified, so no constant is registered on it. If it holds, 0.95 overstates
+the omelette and podimas oil lines by at most ~0.6 g and ~0.4 g fat per egg.
+
+Measured (scratch driver on the tracked probes' own functions:
+`accepted_rung_valid_plate_count` and `plan_meal`, 72 bodies per diet):
+
+```
+BEFORE snack
+vegetarian       0/1/2+ = 2/19/51   shown animal 0/72  {}
+eggetarian       0/1/2+ = 2/19/51   shown animal 0/72  {}
+non_vegetarian   0/1/2+ = 2/19/51   shown animal 0/72  {}
+AFTER breakfast
+vegetarian       0/1/2+ = 4/8/60   shown animal 0/72  {}
+eggetarian       0/1/2+ = 4/0/68   shown animal 68/72  {'avicha_muttai': 41, 'muttai_omelette': 20, 'muttai_podimas': 7}
+non_vegetarian   0/1/2+ = 2/4/66   shown animal 70/72  {'avicha_muttai': 36, 'muttai_omelette': 20, 'muttai_podimas': 4, 'meen_kuzhambu': 8, 'chicken_kuzhambu': 6}
+AFTER snack
+vegetarian       0/1/2+ = 2/19/51   shown animal 0/72  {}
+eggetarian       0/1/2+ = 2/19/51   shown animal 0/72  {}
+non_vegetarian   0/1/2+ = 2/19/51   shown animal 0/72  {}
+```
+
+Breakfast before (step 1 entry): eggetarian 4/8/60, shown egg 60/72 (all
+podimas); non-veg 2/10/60, shown animal 70/72. Eggetarian bodies with 2+
+valid plates 60 -> 68, shown an egg 60 -> 68; podimas now 7 of them.
+Vegetarian unchanged. South snack unchanged: the egg-only snack is still
+blocked (fibre floor, open since N5). Suite with browser tests: 562 passed.
+
+## 2026-09-29 — egg side at South breakfast (N7 step 1) — owner decision
+
+**Owner decision (2026-09-29).** After N6, South breakfast still had no egg
+plate for any eggetarian body. Offered egg paniyaram (recipe sites); the
+owner declined it: "egg paniyaram is not a staple in many houses; most
+people just have dosa or muttai dosa... a better idea would be dosa and
+some boiled eggs or omelette and some sort of chutney, since that is what
+happens in most households. We can alternate the carbs with idli, dosa,
+uttapam." Stated as the owner's life experience as a South Indian and
+recorded as that -- no published source was found or claimed for which
+dishes households eat. Four steps approved in order: (1) an egg side slot,
+(2) boiled egg and omelette, (3) plain dosa and uttapam, (4) measure.
+
+**Why a slot.** SOUTH_BREAKFAST had no place for an egg beside the tiffin:
+egg could only be inside it (egg_dosa) or in the gravy slot
+(mutta_kuzhambu, replacing the sambar). New optional `egg_side`
+(category `egg`, 0-1), after the chutney. Optional as curd_course is: a
+vegetarian breakfast is unchanged.
+
+**Measured** (South breakfast only; scratch script calling
+`probe_rank_input2.py`'s `accepted_rung_valid_plate_count` and
+`plan_meal` exactly as `probe_nonveg_shown.py` does; before = N6 after,
+2026-09-29 fat band entry):
+
+```
+vegetarian       0/1/2+ = 4/8/60   shown animal 0/72  {}
+eggetarian       0/1/2+ = 4/8/60   shown animal 60/72  {'muttai_podimas': 60}
+non_vegetarian   0/1/2+ = 2/10/60   shown animal 70/72  {'muttai_podimas': 48, 'meen_kuzhambu': 12, 'chicken_kuzhambu': 10}
+```
+
+Eggetarian shown an egg plate **0 -> 60/72**; non-veg 58 -> **70/72**.
+Plate counts identical to the N6 run for all three diets. The only egg-
+category South dish today is muttai_podimas, which now reaches breakfast;
+boiled egg and omelette are step 2.
+
+**Tests.** `test_templates_and_portions.py`: slot count 5 -> 6; new test
+pins `egg_side` exactly (`{"egg"}`, optional, 0-1). Deletion check:
+category changed to `egg_x` -> `1 failed, 23 passed`
+(`test_south_breakfast_egg_side_is_optional_and_egg_only`); restored.
+`python -m pytest tests/ -q -p no:cacheprovider` → `492 passed, 70 skipped,
+1 warning in 55.14s`.
+
 ## 2026-09-29 — fat band from the AMDR (N6) — owner decision, evidence first
 
 **Owner request (2026-09-29):** "it's okay to go above the fat threshold

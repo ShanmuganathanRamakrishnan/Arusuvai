@@ -65,6 +65,21 @@ SOUTH_BREAKFAST = MealTemplate(
             min_selections=1,
             max_selections=2,
         ),
+        # Added 2026-09-29 (TASKS_3.md N7, owner decision, docs/audit_log.md
+        # 2026-09-29 "egg side at South breakfast"): in most South Indian
+        # households an egg breakfast is idli, dosa or uttapam with a boiled
+        # egg or an omelette beside it and a chutney -- the owner's own
+        # account, recorded as such. Until this slot, egg could only be inside
+        # the tiffin (egg_dosa) or the gravy (mutta_kuzhambu), replacing the
+        # sambar. Optional, like curd_course: a vegetarian breakfast is
+        # unchanged, and most breakfasts carry no egg.
+        TemplateSlot(
+            name="egg_side",
+            accepted_categories=frozenset({"egg"}),
+            required=False,
+            min_selections=0,
+            max_selections=1,
+        ),
         # Added 2026-08-02 to close docs/audit_log.md finding 25: none of the
         # four slots above can accept a high-quality protein source, so a
         # per-meal quality floor would have made this template unsatisfiable
