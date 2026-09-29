@@ -1005,18 +1005,20 @@ def _blocking_violations(
 
 
 def _swap_options(
-    solved: tuple[SolvedPlan, ...], picks: frozenset[str]
+    solved: tuple[SolvedPlan, ...],
+    picks: frozenset[str],
+    category_of: Mapping[str, str],
 ) -> tuple[tuple[str, tuple[str, ...]], ...]:
     """Per slot, every recipe filling it on a plate in ``solved`` that keeps
     the picks belonging to *other* slots. A pick belongs to the slot whose
-    accepted categories hold its category; a pick on no plate belongs to no
-    slot, so it is kept everywhere and every slot's options come out empty.
+    accepted categories hold its category. ``category_of`` must cover every
+    enumerated combination, not just ``solved``: a pick with no valid plate
+    still belongs to its slot, so that slot keeps offering the dishes that do
+    fit. A pick outside the pool belongs to no slot, so it is kept everywhere
+    and every slot's options come out empty.
     """
 
     template = solved[0].combination.template
-    category_of = {
-        c.recipe.id: c.category for p in solved for c in p.combination.components
-    }
     options = []
     for i, slot in enumerate(template.slots):
         kept = frozenset(
@@ -1086,6 +1088,9 @@ def plan_within_ladder(
     """
 
     locked = locked_macros(profile)
+    category_of = {
+        c.recipe.id: c.category for combo in combinations for c in combo.components
+    }
 
     def _attempt(t: NutritionTarget) -> tuple[SolvedPlan, ...]:
         return solve(feasible_combinations(combinations, t, ingredients), t, ingredients)
@@ -1105,7 +1110,7 @@ def plan_within_ladder(
         applied: tuple[str, ...],
         skipped: tuple[str, ...],
     ) -> LadderOutcome:
-        options = _swap_options(solved, picks)
+        options = _swap_options(solved, picks, category_of)
         chosen = tuple(p for p in solved if picks <= p.combination.recipe_ids())
         if not chosen:
             # Why, in the ladder's own terms: what the nearest plate holding

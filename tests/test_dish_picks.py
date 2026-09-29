@@ -140,6 +140,16 @@ class TestSwapOptions:
         assert _options(picked)["rice_base"] == _options(plain)["rice_base"]
         assert len(_options(plain)["rice_base"]) >= 2
 
+    def test_a_declined_picks_slot_still_offers_the_dishes_that_fit(self):
+        # crisp_b is on no valid plate at this rung; the crisp slot must still
+        # list what does fit, or the user is left with nothing to choose.
+        plain = plan_within_ladder(_combos(), SALTY_NEEDS_RUNG_1, ING)
+        picked = plan_within_ladder(
+            _combos(), SALTY_NEEDS_RUNG_1, ING, picks=frozenset({"crisp_b"})
+        )
+        assert picked.plan is None
+        assert _options(picked)["crisp"] == _options(plain)["crisp"] != ()
+
     def test_a_decline_of_the_whole_ladder_offers_nothing(self):
         impossible = simple_target(energy_kcal=5000.0, protein_g_min=300.0)
         outcome = plan_within_ladder(_combos(), impossible, ING)

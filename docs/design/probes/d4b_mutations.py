@@ -477,6 +477,11 @@ MUTATIONS: tuple[Mutation, ...] = (
         "            if kept <= p.combination.recipe_ids()",
         "            if True",
     ),
+    Mutation(
+        "V34", VALIDATOR, "a pick with no valid plate still belongs to its slot",
+        "        c.recipe.id: c.category for combo in combinations for c in combo.components\n    }",
+        "        c.recipe.id: c.category for combo in () for c in combo.components\n    }",
+    ),
     # ------------------------------------------------- nutrition_of (D6)
     # Finding 20's fix. Note the real library cannot grade any of these: every
     # ingredient row but `water` is unverified and `water` has no energy, so
