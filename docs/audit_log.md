@@ -6,6 +6,54 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-29 — boiled egg and omelette for the South breakfast egg side (N7 step 2)
+
+Owner's basis (2026-09-29, their experience as a South Indian): an ordinary
+home breakfast is dosa or idli with "some boiled eggs or omelette" and a
+chutney. Step 1 added the optional `egg_side` slot; the only dish that could
+fill it was `muttai_podimas`.
+
+Added, proportions fixed before measuring:
+
+- `avicha_muttai` (boiled egg): `egg_boiled` 50 g (a large egg, USDA FDC
+  173424) + 0.3 g salt; 1-2 eggs.
+- `muttai_omelette`: `muttai_podimas`'s per-egg lines without the tempering
+  (egg 50 g raw, onion 10, oil 2.5, chilli 0.5, salt 0.4); 1-2 eggs.
+
+**Logged, not acted on — omelette oil.** The omelette reuses podimas's
+`oil_uptake.vegetable_tempering` (0.95), not an exact mechanism match (oil
+under a poured egg, not tossed with vegetables). Samia et al., Int J
+Gastronomy Food Sci 2022;29:100552, DOI 10.1016/j.ijgfs.2022.100552, measures
+oil uptake by fried and scrambled eggs. Its abstract could not be read
+(paywalled; none in Crossref, OpenAlex, Semantic Scholar); a search-index
+summary gives 64-73% for fried whole eggs and 78-88% for scrambled. Not
+verified, so no constant is registered on it. If it holds, 0.95 overstates
+the omelette and podimas oil lines by at most ~0.6 g and ~0.4 g fat per egg.
+
+Measured (scratch driver on the tracked probes' own functions:
+`accepted_rung_valid_plate_count` and `plan_meal`, 72 bodies per diet):
+
+```
+BEFORE snack
+vegetarian       0/1/2+ = 2/19/51   shown animal 0/72  {}
+eggetarian       0/1/2+ = 2/19/51   shown animal 0/72  {}
+non_vegetarian   0/1/2+ = 2/19/51   shown animal 0/72  {}
+AFTER breakfast
+vegetarian       0/1/2+ = 4/8/60   shown animal 0/72  {}
+eggetarian       0/1/2+ = 4/0/68   shown animal 68/72  {'avicha_muttai': 41, 'muttai_omelette': 20, 'muttai_podimas': 7}
+non_vegetarian   0/1/2+ = 2/4/66   shown animal 70/72  {'avicha_muttai': 36, 'muttai_omelette': 20, 'muttai_podimas': 4, 'meen_kuzhambu': 8, 'chicken_kuzhambu': 6}
+AFTER snack
+vegetarian       0/1/2+ = 2/19/51   shown animal 0/72  {}
+eggetarian       0/1/2+ = 2/19/51   shown animal 0/72  {}
+non_vegetarian   0/1/2+ = 2/19/51   shown animal 0/72  {}
+```
+
+Breakfast before (step 1 entry): eggetarian 4/8/60, shown egg 60/72 (all
+podimas); non-veg 2/10/60, shown animal 70/72. Eggetarian bodies with 2+
+valid plates 60 -> 68, shown an egg 60 -> 68; podimas now 7 of them.
+Vegetarian unchanged. South snack unchanged: the egg-only snack is still
+blocked (fibre floor, open since N5). Suite with browser tests: 562 passed.
+
 ## 2026-09-29 — egg side at South breakfast (N7 step 1) — owner decision
 
 **Owner decision (2026-09-29).** After N6, South breakfast still had no egg

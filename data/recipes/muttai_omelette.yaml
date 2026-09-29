@@ -1,0 +1,79 @@
+# Muttai omelette -- beaten egg with onion and green chilli, poured onto an
+# oiled tawa and cooked flat. Served beside dosa or idli and chutney at an
+# ordinary South Indian home breakfast.
+#
+# TASKS_3.md N7 step 2 (owner, 2026-09-29, from their own experience as a
+# South Indian: "dosa and some boiled eggs or omelette and some sort of
+# chutney ... is what happens in most households"). Fills SOUTH_BREAKFAST's
+# optional egg_side slot (docs/audit_log.md 2026-09-29, egg side at South
+# breakfast).
+#
+# Proportions, fixed before any probe run: muttai_podimas's per-egg lines
+# (egg 50 g raw, onion 10, oil 2.5, chilli 0.5, salt 0.4) without its
+# mustard and curry-leaf tempering, which an omelette does not have.
+#
+# OIL: podimas's oil_uptake.vegetable_tempering (0.95 retained) is reused,
+# and it is not an exact mechanism match: here the oil coats the tawa under
+# a poured egg rather than being tossed with vegetables. Samia et al., 'Lipid
+# quality of fried and scrambled eggs prepared in different frying medium',
+# Int J Gastronomy Food Sci 2022;29:100552, DOI 10.1016/j.ijgfs.2022.100552,
+# measures oil taken up by pan-fried and scrambled eggs; per a search-index
+# summary (the paper itself was NOT opened -- paywalled, no abstract in
+# Crossref, OpenAlex or Semantic Scholar) it reports 64-73% for fried whole
+# eggs. If that holds, 0.95 overstates this line by at most ~0.6 g fat per
+# egg. Logged, not acted on: a new constant needs the paper read first.
+#
+# RAW-EGG BASIS: as muttai_podimas. 63.4 g per egg is what goes into the pan.
+id: muttai_omelette
+name: Muttai omelette
+name_ta: முட்டை ஆம்லெட்
+name_hi: अंडे का ऑमलेट
+
+region: south_indian
+# Eggetarian, not vegetarian: egg_whole_raw is egg-classed. Not jain:
+# onion_raw is classed root_vegetable. Derived from ingredient classes.
+
+category: egg
+prep_minutes: 10
+tags: [breakfast, snack, omelette, eggetarian, high_protein]
+
+serving_unit:
+  measure: katori
+  name: 1-egg omelette
+  grams_per_unit: 63.4
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    One egg's worth (63.4 g, the summed mass below), on the katori measure
+    with its weight overridden. A one- or two-egg omelette beside the
+    breakfast is what the owner described; two is the ceiling for a side.
+
+# Cooked from raw on the tawa. The only registered process is the oil; no
+# constant covers the egg, so minerals and B12 are declared unassessed, as
+# muttai_podimas.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: egg_whole_raw
+    quantity_g: 50.0
+    state: raw
+    note: One large egg, beaten with the onion and chilli.
+  - id: onion_raw
+    quantity_g: 10.0
+    state: raw
+    note: Finely chopped, beaten into the egg.
+  - id: gingelly_oil
+    quantity_g: 2.5
+    state: as_used
+    process: oil_uptake.vegetable_tempering
+    note: >-
+      Oil on the tawa, muttai_podimas's line and constant; see the header on
+      the mechanism mismatch.
+  - id: green_chilli
+    quantity_g: 0.5
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.4
+    state: as_used
+    note: muttai_podimas's line. An authored quantity, not a measurement.
