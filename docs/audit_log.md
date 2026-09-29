@@ -6,6 +6,80 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-29 — South Indian egg blockers (N5, measurement) — owner request
+
+**Owner request (2026-09-29):** egg dishes for South Indian lunch, dinner and
+snack, "also breakfast?". N4's measurement had the eggetarian column at
+breakfast 0/72, lunch 1/72, dinner 1/72, snack 0/72 bodies with a valid egg
+plate, although an egg dish exists for each: egg_dosa (tiffin), mutta_kuzhambu
+(the breakfast/lunch/dinner gravy slot), muttai_podimas (snack). Before adding
+dishes: what blocks the ones already there?
+
+`docs/design/probes/probe_south_egg_blockers.py` (new, read-only). Per body
+(eggetarian, the 72-body grid), per South template: the target the ladder
+stops on for the full pool; the egg dish's combinations only; is any valid
+there, and if not, which bounds the nearest one breaks (the validator's own
+`_nearest_plate_violations`). The first draft counted "nearest plate breaks
+nothing", which `_nearest_plate_violations` can never report -- it skips a
+plate that breaks nothing -- so it read 0 at lunch where N3 had measured 1.
+Corrected to solve the egg combinations first, before the run below.
+
+```
+== south_indian/breakfast
+  egg_dosa: bodies 68, a valid egg plate in 0; nearest egg plate's misses in the rest:
+      fat_g above_ceiling              56
+      carb_g below_floor               32
+      fibre_g below_floor              20
+      sodium_mg above_ceiling          12
+      protein_g below_floor            11
+      quality_protein_g below_floor    8
+      energy_kcal above_ceiling        8
+      energy_kcal below_floor          4
+  mutta_kuzhambu: bodies 68, a valid egg plate in 0; nearest egg plate's misses in the rest:
+      fat_g above_ceiling              60
+      fibre_g below_floor              36
+      carb_g below_floor               32
+      protein_g below_floor            16
+      sodium_mg above_ceiling          16
+      energy_kcal below_floor          8
+      energy_kcal above_ceiling        4
+== south_indian/lunch
+  mutta_kuzhambu: bodies 66, a valid egg plate in 1; nearest egg plate's misses in the rest:
+      fibre_g below_floor              36
+      fat_g above_ceiling              27
+      protein_g below_floor            23
+      energy_kcal above_ceiling        8
+      sodium_mg above_ceiling          6
+== south_indian/dinner
+  mutta_kuzhambu: bodies 62, a valid egg plate in 1; nearest egg plate's misses in the rest:
+      fat_g above_ceiling              49
+      fibre_g below_floor              40
+      energy_kcal above_ceiling        17
+      sodium_mg above_ceiling          9
+      protein_g below_floor            4
+      carb_g below_floor               4
+== south_indian/snack
+  muttai_podimas: bodies 70, a valid egg plate in 0; nearest egg plate's misses in the rest:
+      fibre_g below_floor              70
+      protein_g below_floor            64
+      fat_g above_ceiling              62
+      energy_kcal below_floor          44
+      quality_protein_g below_floor    23
+      energy_kcal above_ceiling        3
+```
+
+**Reading.** At lunch and dinner the only egg dish takes the gravy slot, so
+it replaces the sambar: the plate loses the lentil's fibre and gains
+mutta_kuzhambu's fat (16.3 g per katori against meen_kuzhambu's 10.4 g).
+Chicken and fish reached these meals through the vegetable course (N4); egg
+had nothing there. Breakfast: fat first, for both dishes. Snack: fibre below
+floor in 70 of 70 -- an egg-only snack cannot meet it, so more egg-only
+dishes would not help there.
+
+**Disposition.** Owner chose an egg dish for the lunch/dinner vegetable
+course (N5, next entry). Breakfast and snack open. Owner also asked for fat
+to be allowed above its bound "sometimes", queued as N6, not acted on here.
+
 ## 2026-09-29 — chicken and fish mains (N4): chicken curry, chicken kuzhambu, chicken chukka, meen varuval — owner decision
 
 **Owner decision (2026-09-29):** all four dishes proposed after N3's
