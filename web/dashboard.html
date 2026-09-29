@@ -195,6 +195,9 @@
             <!-- Class set by dashboard-success.js (dash-dish-card) -- left
                  bare here since JS overwrites className on every render. -->
             <div id="obPlanMeals"></div>
+            <!-- N8: why a swap did not happen, when it did not. Written by
+                 dashboard.js; empty otherwise. -->
+            <p class="dash-note" id="obPlanSwapNote" role="status"></p>
           </div>
 
           <aside class="dash-plan-side">
@@ -213,9 +216,12 @@
             <div class="dash-note" id="obPlanRelaxationNote"></div>
 
             <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: clamp(20px, 3vw, 28px);">
-              <button type="button" class="btn btn-primary btn-action" id="dashRegenerate">
+              <!-- Was "Regenerate this plate", which could only ever return
+                   the same plate (docs/audit_log.md 2026-09-29). Now undoes
+                   the user's swaps; hidden while there are none. -->
+              <button type="button" class="btn btn-primary btn-action" id="dashResetPicks" hidden>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"></path></svg>
-                Regenerate this plate
+                Back to the suggested plate
               </button>
             </div>
           </aside>

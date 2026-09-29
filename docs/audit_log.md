@@ -6,6 +6,118 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-29 — dish swap: the user picks a dish, the planner keeps the plate valid (N8)
+
+**Asked.** Owner, 2026-09-29: "the user can alternate between dishes based on
+their liking, like individual items". Owner decisions the same day: (1a) a pick
+is offered and honoured only at the rung the ladder stopped on for the meal as
+a whole — a liking never loosens a limit, and a pick that fits no valid plate is
+declined, never quietly replaced; (2a) picks last for one visit. Saving
+favourites is a later task.
+
+**What was built.**
+
+- `plan_within_ladder(..., picks=)` (deba558): the rung is chosen exactly as
+  before, then the plate is chosen only among valid plates holding every pick.
+  Every count still comes from the solver (invariant 1). No such plate is a
+  decline naming the dish. `LadderOutcome.swap_options` lists, per slot, every
+  dish on a valid plate at that rung that keeps the picks in the other slots.
+- A declined pick's own slot still lists what fits (6af1a9d). Before it, a
+  pick on no valid plate matched no slot, so every menu came back empty.
+- `POST /api/plan` takes `picks` and returns `swap_options` with names; each
+  component names its slot (c5f6240).
+- Dashboard: a "Swap for" menu under each dish whose slot has a choice. It
+  shows names only. Choosing a dish replaces any earlier pick in that slot and
+  keeps the others. "Regenerate this plate" (entry below: it could only
+  return the same plate) is now "Back to the suggested plate", hidden until
+  there is a pick. A swap the server refuses leaves the shown plate, undoes
+  the pick and says "Plain dosa couldn't be fitted into a plate that stays
+  within this meal's limits, so your plate is unchanged." It does not show the
+  decline page, which would read as the meal failing.
+
+**Measured, real library, 70 kg eggetarian South breakfast** (TestClient,
+2026-09-29):
+
+```
+[] [('tiffin_item', 'idli', 6), ('gravy_accompaniment', 'sambar', 1), ('chutney', 'coconut_chutney', 3), ('egg_side', 'avicha_muttai', 2)]
+   tiffin_item ['idli', 'onion_tomato_uttapam', 'soya_idli']
+   gravy_accompaniment ['sambar', 'soya_kuzhambu']
+   chutney ['coconut_chutney']
+   egg_side ['avicha_muttai', 'muttai_omelette', 'muttai_podimas']
+   curd_course ['soya_curd', 'thayir_plain']
+   beverage []
+['onion_tomato_uttapam'] [('tiffin_item', 'onion_tomato_uttapam', 1), ('gravy_accompaniment', 'soya_kuzhambu', 2), ('chutney', 'coconut_chutney', 1), ('curd_course', 'soya_curd', 2)]
+   tiffin_item ['idli', 'onion_tomato_uttapam', 'soya_idli']
+   gravy_accompaniment ['soya_kuzhambu']
+   chutney ['coconut_chutney']
+   egg_side []
+   curd_course ['soya_curd']
+   beverage []
+['muttai_omelette'] True [('idli', 6), ('soya_kuzhambu', 1), ('coconut_chutney', 2), ('muttai_omelette', 1)]
+```
+
+**Deletion checks.** Core, by the harness:
+
+```
+$ PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/d4b_mutations.py V25,V30,V31,V32,V33,V34
+V25  covered      tests/test_planner_validator.py::TestAHardCeilingIsNeverWidened::test_the_protein_rung_fires_last_and_discloses
+V30  covered      tests/test_dish_picks.py::TestAPickIsHonoured::test_a_pick_the_shown_plate_lacks_is_on_the_plate
+V31  covered      tests/test_dish_picks.py::TestAPickNeverLoosensALimit::test_a_pick_valid_only_on_a_looser_rung_is_declined
+V32  covered      tests/test_dish_picks.py::TestSwapOptions::test_the_picks_own_slot_still_offers_the_other_dishes
+V33  covered      tests/test_dish_picks.py::TestSwapOptions::test_other_slots_options_keep_the_pick
+V34  covered      tests/test_dish_picks.py::TestSwapOptions::test_the_picks_own_slot_still_offers_the_other_dishes
+====================================================================================================
+6 mechanisms: 6 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+Web, by hand (the harness cannot grade `web/`). Each mechanism was removed from
+the real file, `tests/test_web_dish_swap.py` and `tests/test_web_no_identifiers.py`
+were run with `FOODAI_WEB_TESTS=required`, and the file was restored
+(`git diff --stat web/` unchanged after). On the first pass S9 and S10 survived,
+and S1, S2 and S5 were scored "survived" by a parser that read only `FAILED`
+lines while the fixture was erroring. Two tests were added
+(`test_only_slots_with_a_choice_get_a_menu`,
+`test_a_swap_goes_to_the_meal_on_screen`), and the parser now reads `ERROR`
+too. Final pass, after the last layout edit:
+
+```
+S1 picks sent in the request             RED  12 passed, 8 errors in 34.51s
+S2 a refused swap keeps the plate        RED  12 passed, 8 errors in 35.57s
+S3 a refused swap is undone              RED  1 failed, 19 passed in 28.71s
+S4 a swap replaces its slot's pick       RED  1 failed, 19 passed in 28.22s
+S5 reset drops the picks                 RED  12 passed, 8 errors in 36.59s
+S6 reset hidden with no picks            RED  2 failed, 18 passed in 28.65s
+S7 note names the dish                   RED  1 failed, 19 passed in 28.53s
+S8 menu shows names                      RED  2 failed, 18 passed in 28.46s
+S9 no menu for a one-dish slot           RED  1 failed, 19 passed in 28.25s
+S10 swap uses the shown meal             RED  1 failed, 19 passed in 27.65s
+```
+
+S1, S2 and S5 go red by the shared fixture timing out while waiting for a page
+state that never comes. That is a real failure, but no single assertion names
+it.
+
+**Suite**, on the final tree (after the layout fix that moved the menu onto its
+own line, because names were cut to "Mutt…" in the narrow desktop card):
+
+```
+$ FOODAI_WEB_TESTS=required python -m pytest tests/ -q -p no:cacheprovider --color=no
+585 passed, 1 warning in 187.74s (0:03:07)
+```
+
+**Found, not fixed.**
+
+- **An optional slot the plate leaves empty cannot be filled.** The server
+  lists `curd_course` options (soya curd, plain curd) for the suggested plate,
+  but that plate has no curd row, so there is no menu to choose one from. An
+  "add a dish" control is a separate idea.
+- **Some picks leave nothing else to choose.** With uttapam picked, exactly one
+  valid plate remains, so every other menu has one dish and disappears. It is
+  a fact about the library's size at this rung, not a defect in the swap.
+- **The page cannot reach a refused swap by clicking**, because every menu
+  lists only dishes that fit. The refusal path is still needed for a stale
+  menu, and it is tested by adding a dish to the menu from the test.
+
 ## 2026-09-29 — "Regenerate this plate" returns the same plate (found in N8 design)
 
 Found while sizing the owner's dish-swap request (TASKS_3.md N8). The
