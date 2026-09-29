@@ -1,0 +1,85 @@
+# Chicken kuzhambu (kozhi kuzhambu) -- chicken simmered in a tamarind and
+# sambar-powder gravy with a mustard and curry-leaf tempering. Ordinary Tamil
+# home cooking, eaten with rice at lunch and dinner.
+#
+# TASKS_3.md N4 (owner, 2026-09-29: chicken and fish mains for lunch and
+# dinner). Measured first (docs/audit_log.md 2026-09-27, shown plate for egg
+# and non-veg): South lunch and dinner have fish and egg kuzhambu but no
+# chicken dish at all.
+#
+# Proportions, fixed before any probe run: meen_kuzhambu's lines with its
+# 90 g pomfret replaced by 90 g raw chicken breast, and its tamarind taken
+# back to mutta_kuzhambu's 3 g (meen_kuzhambu raised it because a fish gravy
+# is the sharper one). The 1 g difference goes to water; 150 g katori, salt
+# 0.53%.
+#
+# RAW-WEIGHT BASIS: as chicken_curry. Understates, never overstates.
+id: chicken_kuzhambu
+name: Chicken kuzhambu
+name_ta: கோழி குழம்பு
+name_hi: चिकन कुज़म्बु
+
+region: south_indian
+# Not vegetarian: chicken_breast_raw is poultry-classed. Not jain: onion is
+# classed root_vegetable. Derived from ingredient classes.
+
+category: kuzhambu
+prep_minutes: 40
+tags: [lunch, dinner, high_protein, non_vegetarian, tamarind]
+
+serving_unit:
+  measure: katori
+  grams_per_unit: 150.0
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    One katori, the generic katori weight. Two, meen_kuzhambu's ceiling and
+    for its reason.
+
+# As meen_kuzhambu: simmered in the gravy; raw-basis meat; minerals and B12
+# unassessed.
+process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: chicken_breast_raw
+    quantity_g: 90.0
+    state: raw
+    note: Boneless, in pieces, simmered in the gravy. Raw-basis; see the header.
+  - id: onion_raw
+    quantity_g: 15.0
+    state: raw
+  - id: tomato_raw
+    quantity_g: 15.0
+    state: raw
+  - id: tamarind_pulp
+    quantity_g: 3.0
+    state: as_used
+    note: mutta_kuzhambu's quantity; see the header.
+  - id: sambar_powder
+    quantity_g: 3.0
+    state: as_used
+  - id: ginger_garlic_paste
+    quantity_g: 2.0
+    state: as_used
+  - id: gingelly_oil
+    quantity_g: 5.0
+    state: as_used
+    process: oil_uptake.vegetable_tempering
+    note: >-
+      Retained oil, meen_kuzhambu's line: the tempering is poured into the
+      gravy and served (oil_uptake.vegetable_tempering).
+  - id: mustard_seed
+    quantity_g: 0.8
+    state: as_used
+  - id: curry_leaves
+    quantity_g: 1.0
+    state: raw
+  - id: salt_iodised
+    quantity_g: 0.8
+    state: as_used
+    note: 0.53%, meen_kuzhambu's proportion. An authored quantity, not a measurement.
+  - id: water
+    quantity_g: 14.4
+    state: as_used
+    note: What the gravy is loosened with; brings the katori to 150 g.

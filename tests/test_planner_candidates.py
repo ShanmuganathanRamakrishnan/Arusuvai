@@ -76,15 +76,17 @@ class TestHardFilters:
         def ids(pool, category):
             return frozenset(c.recipe.id for c in pool.by_category.get(category, ()))
 
+        # The animal dishes each category adds, listed by hand. N4
+        # (2026-09-29) added chicken_kuzhambu, and the first animal dishes in
+        # poriyal, SOUTH_LUNCH's vegetable course.
+        animal_extras = {
+            "kuzhambu": {"mutta_kuzhambu", "meen_kuzhambu", "chicken_kuzhambu"},
+        }
         assert non_veg_pool.by_category.keys() == vegetarian_pool.by_category.keys()
         for category in vegetarian_pool.by_category:
-            if category == "kuzhambu":
-                assert ids(non_veg_pool, category) == ids(vegetarian_pool, category) | {
-                    "mutta_kuzhambu",
-                    "meen_kuzhambu",
-                }
-            else:
-                assert ids(non_veg_pool, category) == ids(vegetarian_pool, category)
+            assert ids(non_veg_pool, category) == ids(vegetarian_pool, category) | (
+                animal_extras.get(category, set())
+            ), category
 
     def test_region_mismatch_excludes_a_recipe(self, library, ingredients):
         """The region filter alone, with the category filter held out of it.
