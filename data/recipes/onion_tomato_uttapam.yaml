@@ -1,0 +1,88 @@
+# Onion tomato uttapam -- dosa batter poured thick on the tawa, topped with
+# onion, tomato and green chilli, and cooked on both sides. A common South
+# Indian home breakfast.
+#
+# TASKS_3.md N7 step 3 (owner, 2026-09-29: "we can alternate the carbs with
+# idli, dosa, utthappam which are common household breakfast").
+#
+# SERVING SIZE, sourced: Indian Nutrient Databank (INDB; Vijayakumar et al.,
+# DOI 10.1016/j.cdnut.2024.103790;
+# Curr Dev Nutr 2024, open data at github.com/lindsayjaacks/Indian-Nutrient-
+# Databank-INDB-, read 2026-09-29), recipe ASC148, 'Onion tomato uttapam',
+# primary source 'asc_manual': 60 g rice, 20 g urad dal, 50 g onion, 50 g
+# tomato, one green chilli, for 2 servings of 2 uttapams -- 4 uttapams. Per
+# uttapam: 15 g rice, 5 g urad, 12.5 g onion, 12.5 g tomato. INDB's other
+# uttapam (BFP152) marks its serving unit "guessed" and is not used. Web
+# calorie sites give 45 g to 150 g per uttapam with no method; not used.
+#
+# Proportions, fixed before any probe run: ASC148's per-uttapam rice, urad,
+# onion and tomato above; chilli 0.8 g (3.33 g / 4). Water at masala_dosa's
+# batter ratio (51 g per 35 g dry, so 29.1 g per 20 g dry), because INDB's
+# water line is soaking water, not what the batter holds. Oil: masala_dosa's
+# 3.5 g retained, oil_uptake.dosa_griddled (oil spooned around batter on a
+# tawa, the same mechanism); the amount is not measured for uttapam. Salt at
+# masala_dosa's 0.56% of the portion (0.4 g). Left out: fenugreek (no row).
+id: onion_tomato_uttapam
+name: Onion tomato uttapam
+name_ta: வெங்காய தக்காளி ஊத்தப்பம்
+name_hi: प्याज़ टमाटर उत्तपम
+
+region: south_indian
+# Vegan. Not jain: onion is classed root_vegetable. Derived from ingredient
+# classes.
+
+category: tiffin
+prep_minutes: 15
+tags: [breakfast, fermented, griddled]
+
+serving_unit:
+  measure: dosa
+  name: uttapam
+  grams_per_unit: 78.8
+  min_count: 1
+  default_count: 2
+  max_count: 3
+  note: >-
+    One uttapam (78.8 g, the summed mass below), on the dosa measure with its
+    weight overridden. INDB ASC148's serving is two; masala_dosa's ceiling of
+    three.
+
+# As masala_dosa: micronutrient retention through fermentation and griddling
+# is not measured.
+process_uncertainty_unassessed: [fibre_g, iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: rice_milled_raw
+    quantity_g: 15.0
+    state: raw
+    note: Soaked and ground into batter. INDB ASC148, per uttapam.
+  - id: urad_dal_raw
+    quantity_g: 5.0
+    state: raw
+    note: INDB ASC148, per uttapam.
+  - id: water
+    quantity_g: 29.1
+    state: as_used
+    note: Water held in the batter, at masala_dosa's ratio.
+  - id: onion_raw
+    quantity_g: 12.5
+    state: raw
+    note: Chopped, pressed into the top. INDB ASC148, per uttapam.
+  - id: tomato_raw
+    quantity_g: 12.5
+    state: raw
+    note: Chopped, pressed into the top. INDB ASC148, per uttapam.
+  - id: green_chilli
+    quantity_g: 0.8
+    state: raw
+  - id: gingelly_oil
+    quantity_g: 3.5
+    state: as_used
+    process: oil_uptake.dosa_griddled
+    note: >-
+      Retained oil, masala_dosa's line (oil_uptake.dosa_griddled). Not
+      measured for uttapam.
+  - id: salt_iodised
+    quantity_g: 0.4
+    state: as_used
+    note: 0.56% of the portion, masala_dosa's. An authored quantity.

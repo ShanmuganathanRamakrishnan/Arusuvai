@@ -6,6 +6,56 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-29 — plain dosa and onion tomato uttapam (N7 step 3)
+
+Owner's basis (2026-09-29): "we can alternate the carbs with idli, dosa,
+utthappam which are common household breakfast". The library had idli and
+soya_idli, and dosa only as masala_dosa and egg_dosa.
+
+Added, proportions fixed before measuring:
+
+- `plain_dosa`: masala_dosa's dosa lines unchanged, 90 g = `measure.dosa_g`.
+- `onion_tomato_uttapam`: per uttapam from the Indian Nutrient Databank
+  (Vijayakumar et al., Curr Dev Nutr 2024;8:103790, DOI
+  10.1016/j.cdnut.2024.103790; open data, github.com/lindsayjaacks/
+  Indian-Nutrient-Databank-INDB-, `recipes.xlsx` and
+  `recipes_servingsize.xlsx` read 2026-09-29), recipe ASC148 (source
+  `asc_manual`, serving not marked guessed): 60 g rice + 20 g urad + 50 g
+  onion + 50 g tomato for 2 servings x 2 uttapams, so 15 / 5 / 12.5 / 12.5 g
+  each. Water, oil and salt at masala_dosa's ratios; 78.8 g. INDB's other
+  uttapam (BFP152) is marked "serving unit - guessed" and was not used; web
+  calorie sites (45-150 g, no method) were not used.
+
+Cross-check of that INDB manual against the library: ASC146 masala dosa ~40 g
+dry grain per dosa (library 35); ASC144 idli 10 g per idli (library 14.3).
+
+Measured, South breakfast, 72 bodies per diet (scratch drivers on
+`accepted_rung_valid_plate_count` and `plan_meal`):
+
+```
+BEFORE
+vegan            tiffin shown {'idli': 32, 'soya_idli': 35, '(declined)': 5}
+vegetarian       tiffin shown {'idli': 32, 'soya_idli': 36, '(declined)': 4}
+eggetarian       tiffin shown {'soya_idli': 35, 'idli': 33, '(declined)': 4}
+non_vegetarian   tiffin shown {'soya_idli': 38, 'idli': 32, '(declined)': 2}
+AFTER
+vegan            tiffin shown {'idli': 24, 'soya_idli': 35, 'plain_dosa': 4, 'onion_tomato_uttapam': 4, '(declined)': 5}
+vegetarian       tiffin shown {'idli': 24, 'soya_idli': 36, 'plain_dosa': 4, 'onion_tomato_uttapam': 4, '(declined)': 4}
+eggetarian       tiffin shown {'soya_idli': 32, 'idli': 29, 'onion_tomato_uttapam': 3, 'plain_dosa': 6, '(declined)': 2}
+non_vegetarian   tiffin shown {'soya_idli': 38, 'idli': 28, 'plain_dosa': 4, '(declined)': 2}
+```
+
+Plate counts (0/1/2+): vegan 5/9/58 and vegetarian 4/8/60 unchanged;
+eggetarian 4/0/68 -> 2/0/70; non-veg 2/4/66 unchanged. Eggetarian shown an
+egg 68 -> 70.
+
+**Finding, logged not fixed.** The shown plate is the single best one per
+body, so dosa or uttapam is picked for only 4-9 of 72 bodies; idli and
+soya_idli take the rest, and masala_dosa and egg_dosa are never shown. The
+owner's "alternate the carbs" is a day-to-day rotation, which one best plate
+per meal does not do. This is for step 4 to look at, not a recipe defect.
+Suite with browser tests: 562 passed.
+
 ## 2026-09-29 — boiled egg and omelette for the South breakfast egg side (N7 step 2)
 
 Owner's basis (2026-09-29, their experience as a South Indian): an ordinary
