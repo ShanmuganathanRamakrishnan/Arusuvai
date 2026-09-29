@@ -32,6 +32,8 @@ from api.models import (
     ProfileOut,
     ProteinOut,
     RejectedCitationOut,
+    SwapOptionOut,
+    SwapSlotOut,
     ScienceOut,
     SignupIn,
     SourceOut,
@@ -418,25 +420,34 @@ def plan(body: PlanRequestIn) -> PlanOut:
     # off a default two modules away is how a label ends up describing a run
     # that did not happen.
     dev_mode = True
+    library = default_library()
     outcome = plan_meal(
-        default_library(),
+        library,
         dt.nutrition_target,
         region=body.region,
         meal_slot=body.meal_slot,
         diet_pattern=body.diet,
         profile=profile,
         dev_mode=dev_mode,
+        picks=frozenset(body.picks),
     )
 
     components: list[ComponentOut] = []
     estimate: PlanEstimateOut | None = None
     if outcome.plan is not None:
-        for component in outcome.plan.combination.components:
+        combination = outcome.plan.combination
+        filled = (
+            (slot, component)
+            for slot, selection in zip(combination.template.slots, combination.slot_selections)
+            for component in selection
+        )
+        for slot, component in filled:
             components.append(
                 ComponentOut(
                     recipe_id=component.recipe.id,
                     recipe_name=component.recipe.name,
                     category=component.category,
+                    slot=slot.name,
                     unit_count=outcome.plan.counts_for(component),
                     unit_name=component.recipe.serving_unit.name,
                     grams=component.recipe.serving_unit.grams_for(
@@ -482,4 +493,17 @@ def plan(body: PlanRequestIn) -> PlanOut:
         ],
         components=components,
         estimate=estimate,
+        swap_options=[
+            SwapSlotOut(
+                slot=slot,
+                options=[
+                    SwapOptionOut(
+                        recipe_id=rid,
+                        recipe_name=library.recipes.components[rid].recipe.name,
+                    )
+                    for rid in ids
+                ],
+            )
+            for slot, ids in outcome.swap_options
+        ],
     )
