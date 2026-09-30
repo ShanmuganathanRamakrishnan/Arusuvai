@@ -90,7 +90,36 @@
     el.innerHTML = amberCallout(text);
   }
 
-  function renderPlanSuccess(data, plate, profile) {
+  // N8 (owner 2026-09-29): swap a dish for another the user likes better.
+  // The menu lists only `swap_options` for this dish's slot -- dishes the
+  // server found on a valid plate at the limits this meal was planned to --
+  // so nothing here decides what fits. Names only; the id rides in `value`.
+  // No menu when the slot has one dish: a menu with nothing to choose is a
+  // control that does nothing.
+  function swapControl(c, options, onSwap) {
+    if (!onSwap || !options || options.length < 2) return null;
+    const label = document.createElement("label");
+    label.className = "dash-dish-swap";
+    const text = document.createElement("span");
+    text.textContent = "Swap for";
+    const select = document.createElement("select");
+    select.setAttribute("aria-label", `Swap ${c.recipe_name} for another dish`);
+    for (const o of options) {
+      const opt = document.createElement("option");
+      opt.value = o.recipe_id;
+      opt.textContent = o.recipe_name;
+      opt.selected = o.recipe_id === c.recipe_id;
+      select.appendChild(opt);
+    }
+    select.addEventListener("change", () =>
+      onSwap(select.value, select.selectedOptions[0].textContent, options)
+    );
+    label.appendChild(text);
+    label.appendChild(select);
+    return label;
+  }
+
+  function renderPlanSuccess(data, plate, profile, onSwap) {
     document.getElementById("obPlanSuccess").hidden = false;
     const label = plateLabel(plate);
 
@@ -113,6 +142,8 @@
     const wrap = document.getElementById("obPlanMeals");
     wrap.className = "dash-dish-card";
     wrap.innerHTML = `<div class="dash-dish-card-label">On the plate · ${label}</div>`;
+    const optionsBySlot = {};
+    for (const s of data.swap_options || []) optionsBySlot[s.slot] = s.options;
     data.components.forEach((c, i) => {
       const row = document.createElement("div");
       row.className = "dash-dish-row";
@@ -123,6 +154,8 @@
         `<div class="dash-dish-role">${c.category}</div>` +
         `</div>` +
         `<span class="dash-dish-qty">${c.unit_count} × ${c.unit_name} · ${Math.round(c.grams)} g</span>`;
+      const swap = swapControl(c, optionsBySlot[c.slot], onSwap);
+      if (swap) row.appendChild(swap);
       wrap.appendChild(row);
     });
 

@@ -92,7 +92,8 @@
   // ------------------------------------------------------------------
 
   const generateBtn = document.getElementById("dashGenerate");
-  const regenerateBtn = document.getElementById("dashRegenerate");
+  const resetPicksBtn = document.getElementById("dashResetPicks");
+  const swapNoteEl = document.getElementById("obPlanSwapNote");
   const tryAnotherBtn = document.getElementById("dashTryAnother");
   const endpointLabel = document.getElementById("dashEndpointLabel");
   const planLoadingEl = document.getElementById("obPlanLoading");
@@ -106,21 +107,47 @@
     return { region, meal_slot };
   }
 
-  generateBtn.addEventListener("click", fetchPlan);
-  regenerateBtn.addEventListener("click", fetchPlan);
+  // N8: dishes the user swapped in, for this visit only (owner 2026-09-29:
+  // saving favourites is a later task). Held here, not in storage, so a
+  // reload starts from the suggested plate.
+  let picks = [];
+  // The last plate shown, so a swap that finds no plate can leave it on
+  // screen and say so, instead of replacing it with a decline page.
+  let shown = null;
+
+  generateBtn.addEventListener("click", () => {
+    picks = [];
+    shown = null;
+    fetchPlan();
+  });
+  resetPicksBtn.addEventListener("click", () => {
+    picks = [];
+    fetchPlan({ plate: shown && shown.plate });
+  });
+
+  // A swap replaces whatever was picked for that slot and keeps the other
+  // slots' picks. Counts for every dish come back from the server.
+  function onSwap(recipeId, recipeName, slotOptions) {
+    const inSlot = new Set(slotOptions.map((o) => o.recipe_id));
+    const previous = picks;
+    picks = picks.filter((r) => !inSlot.has(r)).concat([recipeId]);
+    // The plate the menu belongs to, not whatever the picker reads now.
+    fetchPlan({ previous, tried: recipeName, plate: shown.plate });
+  }
   tryAnotherBtn.addEventListener("click", () => {
     planDeclineEl.hidden = true;
     document.getElementById("obPlatePicker").scrollIntoView({ behavior: "smooth", block: "center" });
   });
 
-  async function fetchPlan() {
+  async function fetchPlan({ previous = null, tried = null, plate = null } = {}) {
     endpointLabel.textContent = `Calling ${API_BASE}/api/plan`;
+    swapNoteEl.textContent = "";
     planLoadingEl.hidden = false;
     planNetworkErrorEl.hidden = true;
     planSuccessEl.hidden = true;
     planDeclineEl.hidden = true;
 
-    const plate = collectPlate();
+    plate = plate || collectPlate();
     const body = Object.assign(
       {
         weight_kg: profile.weight_kg,
@@ -131,6 +158,7 @@
         goal: profile.goal,
         diet: profile.diet,
         clinical_flags: profile.clinical_flags,
+        picks,
       },
       plate
     );
@@ -164,7 +192,20 @@
 
     planLoadingEl.hidden = true;
     if (data.passed) {
-      ArusuvaiDashboardSuccess.render(data, plate, profile);
+      shown = { data, plate };
+      resetPicksBtn.hidden = picks.length === 0;
+      ArusuvaiDashboardSuccess.render(data, plate, profile, onSwap);
+    } else if (previous && shown) {
+      // A swap found no valid plate. Not a decline of the meal: the plate on
+      // screen is still valid, so keep it, undo the swap, and say which dish
+      // did not fit, by the name its menu showed, never the id. Nothing is
+      // loosened to make the dish fit (owner 2026-09-29).
+      picks = previous;
+      resetPicksBtn.hidden = picks.length === 0;
+      ArusuvaiDashboardSuccess.render(shown.data, shown.plate, profile, onSwap);
+      swapNoteEl.textContent =
+        `${tried || "That dish"} couldn't be fitted into a plate that stays within ` +
+        `this meal's limits, so your plate is unchanged.`;
     } else {
       ArusuvaiDashboardDecline.render(data, plate);
     }

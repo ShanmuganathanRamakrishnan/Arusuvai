@@ -80,6 +80,10 @@ class PlanRequestIn(ProfileIn):
 
     region: Region
     meal_slot: MealSlot
+    #: Recipe ids the user chose to swap in (TASKS_3.md N8). The plate is
+    #: chosen only among valid plates holding all of them; limits are never
+    #: loosened to fit one, so an unplaceable pick is a decline.
+    picks: list[str] = Field(default_factory=list)
 
 
 class ComponentOut(BaseModel):
@@ -88,6 +92,9 @@ class ComponentOut(BaseModel):
     recipe_id: str
     recipe_name: str
     category: str
+    #: ``TemplateSlot.name`` this dish fills, so a client can put that slot's
+    #: ``swap_options`` beside it. A ``snake_case`` token: never rendered.
+    slot: str
     unit_count: int
     unit_name: str
     #: The weight the plate's nutrition was computed from: ``unit_count`` x the
@@ -272,6 +279,22 @@ class ViolationOut(BaseModel):
     text: str
 
 
+class SwapOptionOut(BaseModel):
+    """One dish the user may pick for a slot."""
+
+    recipe_id: str
+    recipe_name: str
+
+
+class SwapSlotOut(BaseModel):
+    """Every dish that fills ``slot`` on some plate valid for this profile at
+    the limits this meal was planned to, keeping the user's other picks.
+    Read off ``LadderOutcome.swap_options``; nothing is solved here."""
+
+    slot: str
+    options: list[SwapOptionOut]
+
+
 class PlanOut(BaseModel):
     """Either a solved, validated plate or an honest decline.
 
@@ -304,3 +327,6 @@ class PlanOut(BaseModel):
     violation_detail: list[ViolationOut] = Field(default_factory=list)
     components: list[ComponentOut] = Field(default_factory=list)
     estimate: PlanEstimateOut | None = None
+    #: Per template slot, what may be picked. Empty when the whole ladder
+    #: declined; present on a declined pick, so the user can choose again.
+    swap_options: list[SwapSlotOut] = Field(default_factory=list)
