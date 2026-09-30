@@ -89,10 +89,9 @@ def walk():
             "#obPlanMeals select option", "els => els.map(e => e.textContent)"
         )
 
-        with page.expect_request("**/api/plan", timeout=30000) as req:
-            with page.expect_response("**/api/plan", timeout=30000) as resp:
-                page.select_option(TIFFIN_MENU, "onion_tomato_uttapam")
-        seen["swap_request"] = req.value.post_data_json
+        with page.expect_response("**/api/plan", timeout=30000) as resp:
+            page.select_option(TIFFIN_MENU, "onion_tomato_uttapam")
+        seen["swap_request"] = resp.value.request.post_data_json
         seen["swapped"] = resp.value.json()
         page.wait_for_function(
             "() => [...document.querySelectorAll('#obPlanMeals .dash-dish-name')]"
@@ -110,10 +109,9 @@ def walk():
               s.appendChild(o);
             }"""
         )
-        with page.expect_request("**/api/plan", timeout=30000) as req:
-            with page.expect_response("**/api/plan", timeout=30000) as resp:
-                page.select_option(TIFFIN_MENU, "plain_dosa")
-        seen["declined_request"] = req.value.post_data_json
+        with page.expect_response("**/api/plan", timeout=30000) as resp:
+            page.select_option(TIFFIN_MENU, "plain_dosa")
+        seen["declined_request"] = resp.value.request.post_data_json
         seen["declined"] = resp.value.json()
         page.wait_for_function(
             "() => document.getElementById('obPlanSwapNote').innerText.length > 0",
@@ -123,10 +121,9 @@ def walk():
         seen["declined_dishes"] = _dishes(page)
         seen["decline_page_hidden"] = page.is_hidden("#obPlanDecline")
 
-        with page.expect_request("**/api/plan", timeout=30000) as req:
-            with page.expect_response("**/api/plan", timeout=30000):
-                page.click("#dashResetPicks")
-        seen["reset_request"] = req.value.post_data_json
+        with page.expect_response("**/api/plan", timeout=30000) as resp:
+            page.click("#dashResetPicks")
+        seen["reset_request"] = resp.value.request.post_data_json
         page.wait_for_function(
             "() => ![...document.querySelectorAll('#obPlanMeals .dash-dish-name')]"
             ".some(e => e.innerText === 'Onion tomato uttapam')",
@@ -145,11 +142,10 @@ def walk():
                   .findIndex(s => [...s.options].some(o => o.value === v))""",
                 value,
             )
-            with page.expect_request("**/api/plan", timeout=30000) as req:
-                with page.expect_response("**/api/plan", timeout=30000):
-                    page.select_option(f"#obPlanMeals select[aria-label^='Swap'] >> nth={menu}", value)
+            with page.expect_response("**/api/plan", timeout=30000) as resp:
+                page.select_option(f"#obPlanMeals select[aria-label^='Swap'] >> nth={menu}", value)
             page.wait_for_load_state("networkidle")
-            return req.value.post_data_json
+            return resp.value.request.post_data_json
 
         seen["egg_request"] = swap("muttai_omelette")
         page.evaluate(

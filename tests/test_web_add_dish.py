@@ -94,10 +94,9 @@ def walk():
             "#obPlanMeals .dash-dish-row", "els => els.length"
         )
 
-        with page.expect_request("**/api/plan", timeout=30000) as req:
-            with page.expect_response("**/api/plan", timeout=30000) as resp:
-                page.select_option(ADD_MENUS + " >> nth=0", "soya_curd")
-        seen["add_request"] = req.value.post_data_json
+        with page.expect_response("**/api/plan", timeout=30000) as resp:
+            page.select_option(ADD_MENUS + " >> nth=0", "soya_curd")
+        seen["add_request"] = resp.value.request.post_data_json
         seen["added"] = resp.value.json()
         page.wait_for_function(
             "() => [...document.querySelectorAll('#obPlanMeals .dash-dish-name')]"
