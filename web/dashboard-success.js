@@ -112,11 +112,27 @@
       select.appendChild(opt);
     }
     select.addEventListener("change", () =>
-      onSwap(select.value, select.selectedOptions[0].textContent, options)
+      onSwap(select.value, select.selectedOptions[0].textContent, options, c.slot)
     );
     label.appendChild(text);
     label.appendChild(select);
     return label;
+  }
+
+  // N10 (owner 2026-09-30): take one dish off the plate, whether the user
+  // added it or the planner chose it. Offered only where the server says the
+  // course can be empty -- some valid plate at these limits has no dish there
+  // -- so nothing here decides what may go. The server plans the plate again
+  // without that course; every other count is its answer, not ours.
+  function removeControl(c, canBeEmpty, onRemove) {
+    if (!onRemove || !canBeEmpty) return null;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "dash-dish-remove";
+    button.textContent = "Remove";
+    button.setAttribute("aria-label", `Remove ${c.recipe_name}`);
+    button.addEventListener("click", () => onRemove(c.slot, c.recipe_name));
+    return button;
   }
 
   // N9 (owner 2026-09-30): an optional course the plate leaves empty -- curd
@@ -153,7 +169,7 @@
       select.appendChild(opt);
     }
     select.addEventListener("change", () =>
-      onSwap(select.value, select.selectedOptions[0].textContent, slotOptions.options)
+      onSwap(select.value, select.selectedOptions[0].textContent, slotOptions.options, slotOptions.slot)
     );
     label.appendChild(text);
     label.appendChild(select);
@@ -161,7 +177,7 @@
     return row;
   }
 
-  function renderPlanSuccess(data, plate, profile, onSwap) {
+  function renderPlanSuccess(data, plate, profile, onSwap, onRemove) {
     document.getElementById("obPlanSuccess").hidden = false;
     const label = plateLabel(plate);
 
@@ -185,7 +201,11 @@
     wrap.className = "dash-dish-card";
     wrap.innerHTML = `<div class="dash-dish-card-label">On the plate · ${label}</div>`;
     const optionsBySlot = {};
-    for (const s of data.swap_options || []) optionsBySlot[s.slot] = s.options;
+    const canBeEmpty = {};
+    for (const s of data.swap_options || []) {
+      optionsBySlot[s.slot] = s.options;
+      canBeEmpty[s.slot] = s.can_be_empty;
+    }
     data.components.forEach((c, i) => {
       const row = document.createElement("div");
       row.className = "dash-dish-row";
@@ -197,7 +217,14 @@
         `</div>` +
         `<span class="dash-dish-qty">${c.unit_count} × ${c.unit_name} · ${Math.round(c.grams)} g</span>`;
       const swap = swapControl(c, optionsBySlot[c.slot], onSwap);
-      if (swap) row.appendChild(swap);
+      const remove = removeControl(c, canBeEmpty[c.slot], onRemove);
+      if (swap || remove) {
+        const controls = document.createElement("div");
+        controls.className = "dash-dish-controls";
+        if (swap) controls.appendChild(swap);
+        if (remove) controls.appendChild(remove);
+        row.appendChild(controls);
+      }
       wrap.appendChild(row);
     });
     const onPlate = new Set(data.components.map((c) => c.slot));
