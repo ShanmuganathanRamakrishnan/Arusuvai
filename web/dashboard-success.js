@@ -119,6 +119,48 @@
     return label;
   }
 
+  // N9 (owner 2026-09-30): an optional course the plate leaves empty -- curd
+  // at South breakfast, say -- has no dish row to hang a swap menu on, though
+  // the server lists what fits there. This is that row. Choosing a dish sends
+  // it as a pick like any swap; the server decides every count.
+  //
+  // The first option is a blank prompt, not a dish: with a dish preselected
+  // the menu would read as if that dish were on the plate. Unlike a swap, one
+  // dish is enough for a menu here -- adding it or not is still a choice.
+  function addControl(slotOptions, onSwap) {
+    if (!onSwap || !slotOptions.options.length) return null;
+    const row = document.createElement("div");
+    // Not .dash-dish-row: every row of that class is a dish on the plate, and
+    // readers of the plate (tests/test_web_portion_grams.py) rely on it.
+    row.className = "dash-dish-add";
+    const label = document.createElement("label");
+    label.className = "dash-dish-swap";
+    const text = document.createElement("span");
+    const course = Copy.SLOT_LABELS[slotOptions.slot] || Copy.humanise(slotOptions.slot).toLowerCase();
+    text.textContent = `Add ${course}`;
+    const select = document.createElement("select");
+    select.setAttribute("aria-label", `Add ${course}`);
+    const prompt = document.createElement("option");
+    prompt.value = "";
+    prompt.textContent = "Choose a dish";
+    prompt.disabled = true;
+    prompt.selected = true;
+    select.appendChild(prompt);
+    for (const o of slotOptions.options) {
+      const opt = document.createElement("option");
+      opt.value = o.recipe_id;
+      opt.textContent = o.recipe_name;
+      select.appendChild(opt);
+    }
+    select.addEventListener("change", () =>
+      onSwap(select.value, select.selectedOptions[0].textContent, slotOptions.options)
+    );
+    label.appendChild(text);
+    label.appendChild(select);
+    row.appendChild(label);
+    return row;
+  }
+
   function renderPlanSuccess(data, plate, profile, onSwap) {
     document.getElementById("obPlanSuccess").hidden = false;
     const label = plateLabel(plate);
@@ -158,6 +200,12 @@
       if (swap) row.appendChild(swap);
       wrap.appendChild(row);
     });
+    const onPlate = new Set(data.components.map((c) => c.slot));
+    for (const s of data.swap_options || []) {
+      if (onPlate.has(s.slot)) continue;
+      const add = addControl(s, onSwap);
+      if (add) wrap.appendChild(add);
+    }
 
     // Plate total: kcal headline, then protein/carb/fat as bars sized to
     // each macro's own gram value relative to the largest of the three shown

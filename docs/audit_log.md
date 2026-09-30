@@ -6,6 +6,82 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-30 — add a dish to an empty optional course (N9)
+
+**Asked.** Owner, 2026-09-30, chose the first N8 follow-up: let the user add a
+dish to an optional course the plate leaves empty. The N8 entry below logged
+the gap: the server lists `curd_course` dishes for the South breakfast plate,
+but that plate has no curd row, so there was no menu to choose one from.
+
+**Premise checked before building.** Asking for one of those dishes already
+returns a valid plate, so no core or API change is needed. TestClient, 70 kg
+male, maintain, 2026-09-30:
+
+```
+eggetarian south_indian breakfast True empty slots: [('curd_course', ['Soya curd', 'Curd']), ('beverage', [])]
+   add soya_curd -> True [('tiffin_item', 'soya_idli', 5), ('gravy_accompaniment', 'sambar', 1), ('chutney', 'coconut_chutney', 3), ('egg_side', 'muttai_omelette', 1), ('curd_course', 'soya_curd', 1)]
+vegetarian south_indian lunch True empty slots: [('crisp', [])]
+vegetarian north_indian lunch True empty slots: [('sabzi', ['Aloo sabzi', 'Paneer masala', 'Tofu bhurji'])]
+   add aloo_sabzi -> True [('grain_base', 'phulka', 3), ('legume_curry', 'soya_chunk_masala', 2), ('sabzi', 'aloo_sabzi', 1)]
+non_vegetarian north_indian dinner True empty slots: [('salad_or_raita', ['Onion raita', 'Soya onion raita'])]
+   add onion_raita -> True [('bread', 'phulka', 3), ('dal', 'dal_tadka', 1), ('sabzi', 'anda_curry', 1), ('salad_or_raita', 'onion_raita', 1)]
+vegetarian south_indian snack True empty slots: [('drink', ['Neer mor'])]
+   add neer_mor -> True [('sundal', 'soya_chunk_sundal', 4), ('drink', 'neer_mor', 1)]
+```
+
+**What was built** (page only). Below the dishes, the page shows one "Add a
+curd course" style menu for each course the plate leaves empty that has a dish
+to offer. The menu opens on "Choose a dish", not on a dish: a preselected dish
+would read as if it were on the plate. A course with a single dish still gets
+a menu, because adding it or not is a choice. The chosen dish is sent as a
+pick, exactly like an N8 swap. The server sets every count, and the limits
+are not loosened. The row is deliberately not a `.dash-dish-row`, because
+`tests/test_web_portion_grams.py` reads every such row as a dish on the
+plate. New course names in `SLOT_LABELS`: egg side, drink, crisp side, salad
+or raita, curd or raita, pickle, bread.
+
+**Deletion checks, by hand.** Each mechanism was removed from the real file,
+the four web files touching this page were run with
+`FOODAI_WEB_TESTS=required`, and the file was restored (`git diff --stat
+web/` unchanged after):
+
+```
+A1 skip courses already on the plate     RED  22 passed, 7 errors in 69.65s (0:01:09)
+A2 no menu for a course with no dish     RED  1 failed, 28 passed in 39.69s
+A3 menu opens on a prompt                RED  3 failed, 26 passed in 39.63s
+A4 choice is sent as a pick              RED  1 passed, 28 errors in 35.19s
+A5 course named in the label             RED  1 failed, 28 passed in 39.34s
+A6 add row is not a dish row             RED  1 failed, 26 passed, 2 errors in 39.99s
+A7 add rows are drawn at all             RED  22 passed, 7 errors in 69.52s (0:01:09)
+```
+
+A1 and A7 go red by the shared fixture timing out, not by a named assertion.
+A4's 28 errors overstate the catch. Rerun against `tests/test_web_add_dish.py`
+alone, the real failure is `TimeoutError: Timeout 30000ms exceeded while
+waiting for event "response"` (choosing a dish sent nothing). The other 21
+errors across three files are `It looks like you are using Playwright Sync
+API inside the asyncio loop`. That is a cascade: a fixture that times out
+inside `sync_playwright()` does not release it, so every later browser module
+in the same run errors too.
+
+**Suite, final tree.**
+
+```
+$ FOODAI_WEB_TESTS=required python -m pytest tests/ -q -p no:cacheprovider --color=no
+592 passed, 1 warning in 226.93s (0:03:46)
+```
+
+**Found, not fixed.**
+
+- **One timed-out browser fixture crashes every browser module after it** in
+  the same run (the cascade above). It makes a single real failure read as
+  dozens. A deletion check that reads only the count would over-report. The
+  fix is `try/finally` around each web fixture's browser. That is a separate
+  task, across every `tests/test_web_*.py` fixture.
+- **An added dish can only be removed by "Back to the suggested plate"**, which
+  drops every swap. A "remove" control for an optional dish was not asked
+  for, and is not built.
+
 ## 2026-09-29 — dish swap: the user picks a dish, the planner keeps the plate valid (N8)
 
 **Asked.** Owner, 2026-09-29: "the user can alternate between dishes based on
