@@ -1268,6 +1268,9 @@ a:focus-visible {
    for about ten characters and dish names were cut off. */
 .dash-dish-row:has(.dash-dish-swap) { flex-wrap: wrap; row-gap: 8px; }
 .dash-dish-swap { flex-basis: 100%; margin-left: 21px; display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: rgba(43, 38, 34, .58); }
+/* N9: an empty optional course's "Add ..." row, divided like a dish row. */
+.dash-dish-add { padding: 14px 0 0; border-top: 1px solid rgba(43, 38, 34, .08); }
+.dash-dish-add + .dash-dish-add { margin-top: 14px; }
 .dash-dish-swap span { flex: none; white-space: nowrap; }
 .dash-dish-swap select { flex: 0 1 auto; min-width: 12ch; max-width: calc(100% - 21px); background: var(--surface); border: 1px solid var(--border); border-radius: 9px; padding: 5px 10px; font-family: var(--sans); font-size: 13px; color: var(--ink); }
 .dash-dish-swap select:focus { outline: none; border-color: var(--green); }
