@@ -6,6 +6,52 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-30 — "Remove an added dish" cannot be done by dropping its pick (found before building)
+
+**Asked.** Owner, 2026-09-30: remove a single dish the user added (N9)
+without undoing every other swap.
+
+**Premise tested before building.** The cheap design is a "Remove" button
+that drops the added dish's pick and asks the planner again. That only
+removes the dish if the planner then leaves the course empty.
+`docs/design/probes/probe_remove_added_dish.py` runs the realistic flow on
+the real library (4 diets × 3 weights × 6 templates, 70 kg-style bodies):
+suggested plate, add a dish to an empty optional course, optionally swap one
+other dish, then drop the added dish's pick.
+
+```
+$ PYTHONPATH=. python docs/design/probes/probe_remove_added_dish.py
+remove flows: 155 course comes back: 67
+  ('vegetarian', 70, 'north_indian', 'lunch', 'added', 'paneer_masala', 'other pick', 'soya_chunk_curry', 'after remove:', ['Paneer masala'])
+  ('vegetarian', 70, 'north_indian', 'lunch', 'added', 'paneer_masala', 'other pick', 'soya_onion_raita', 'after remove:', ['Paneer masala'])
+  ('vegetarian', 70, 'north_indian', 'lunch', 'added', 'tofu_bhurji', 'other pick', 'soya_onion_raita', 'after remove:', ['Paneer masala'])
+  ('eggetarian', 55, 'north_indian', 'lunch', 'added', 'soya_onion_raita', 'other pick', 'soya_chunk_masala', 'after remove:', ['Soya onion raita'])
+  ('eggetarian', 55, 'north_indian', 'lunch', 'added', 'soya_onion_raita', 'other pick', 'aloo_sabzi', 'after remove:', ['Soya onion raita'])
+  ('eggetarian', 55, 'north_indian', 'dinner', 'added', 'onion_raita', 'other pick', 'soya_chunk_curry', 'after remove:', ['Soya onion raita'])
+```
+
+In 67 of 155 flows (43%) the course comes back, often with the very dish the
+user just removed. This happens because a swap elsewhere moves the planner's
+best plate to one that includes that course. A "Remove" built this way would
+visibly do nothing almost half the time. That is a control that lies. Not
+built.
+
+**What a real remove needs.** The planner has to accept "leave this course
+empty" as an input, the way it accepts picks:
+- a new argument through `plan_within_ladder`, `plan_meal` and
+  `POST /api/plan`;
+- a decline when no valid plate leaves the course empty (the added dish may
+  have been carrying protein), named, never loosened;
+- `swap_options` that respect it;
+- mutation rows;
+- the page control.
+
+That is core, API and web, which is larger than the small page change this
+was proposed as. Stopped here for the owner to decide scope, in particular
+whether "remove" also applies to optional dishes the planner itself chose
+(e.g. the egg side on an eggetarian plate), which the same mechanism would
+cover.
+
 ## 2026-09-30 — one timed-out browser wait broke every browser test after it: cause was nested waits, not missing clean-up
 
 **Correction first.** The N9 entry below logged this and said the fix was
