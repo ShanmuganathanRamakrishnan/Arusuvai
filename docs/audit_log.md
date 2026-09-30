@@ -6,6 +6,79 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-30 — one timed-out browser wait broke every browser test after it: cause was nested waits, not missing clean-up
+
+**Correction first.** The N9 entry below logged this and said the fix was
+`try/finally` around the browser in every `tests/test_web_*.py` fixture.
+That diagnosis was a guess, and it was wrong about both the cause and the
+reach. A timeout does not break the run in general. Only one pattern does,
+and only the two newest web test files used it.
+
+**Reproduced in isolation.** `docs/design/probes/probe_nested_network_waits.py`
+runs, on a blank page with no servers, a module whose fixture times out, then
+a clean module that only launches a browser:
+
+```
+$ python docs/design/probes/probe_nested_network_waits.py
+plain wait_for_selector timeout          next module: passed  1 passed, 1 error in 1.58s
+single expect_response timeout           next module: passed  1 passed, 1 error in 2.09s
+expect_request around expect_response    next module: FAILED  1 failed, 1 error in 1.62s
+```
+
+Only `expect_request` wrapped around `expect_response` breaks the next module
+("This event loop is already running", then "using Playwright Sync API inside
+the asyncio loop" everywhere after). In scratch runs, `try/finally` around
+that nesting also stopped the cascade. The nesting has no purpose, though: the
+request a response answers is `resp.value.request`.
+
+**Fixed.** The five nested waits (`tests/test_web_dish_swap.py` 4,
+`tests/test_web_add_dish.py` 1) are now a single `expect_response`, with the
+request read from it. `tests/test_web_no_nested_waits.py` fails if any
+`tests/test_web_*.py` calls `expect_request`. Deletion check: with the old
+`test_web_dish_swap.py` restored it went red, naming lines 92, 113, 126, 148.
+
+**Before and after, the case that exposed it** (N9 row A4, same four web
+files):
+
+```
+before  A4 choice is sent as a pick              RED  1 passed, 28 errors in 35.19s
+after   A4 choice is sent as a pick              RED  22 passed, 7 errors in 73.01s (0:01:13)
+```
+
+The 7 are all in `tests/test_web_add_dish.py`, where the fault is.
+
+**The N8 and N9 web deletion checks, rerun on the changed tests.** All 17
+are still red. S8's search text now matched twice (N9's add menu repeats the
+line), so the sweep stopped at S8 without editing anything. It was narrowed to
+the swap menu, and S8 to S10 were run on their own:
+
+```
+S1 picks sent in the request             RED  12 passed, 8 errors in 36.76s
+S2 a refused swap keeps the plate        RED  12 passed, 8 errors in 38.02s
+S3 a refused swap is undone              RED  1 failed, 19 passed in 32.21s
+S4 a swap replaces its slot's pick       RED  1 failed, 19 passed in 31.56s
+S5 reset drops the picks                 RED  12 passed, 8 errors in 39.35s
+S6 reset hidden with no picks            RED  2 failed, 18 passed in 32.18s
+S7 note names the dish                   RED  1 failed, 19 passed in 32.73s
+S8 menu shows names                      RED  2 failed, 18 passed in 36.88s
+S9 no menu for a one-dish slot           RED  1 failed, 19 passed in 36.27s
+S10 swap uses the shown meal             RED  1 failed, 19 passed in 35.53s
+A1 skip courses already on the plate     RED  22 passed, 7 errors in 72.04s (0:01:12)
+A2 no menu for a course with no dish     RED  1 failed, 28 passed in 42.48s
+A3 menu opens on a prompt                RED  3 failed, 26 passed in 43.57s
+A4 choice is sent as a pick              RED  22 passed, 7 errors in 73.01s (0:01:13)
+A5 course named in the label             RED  1 failed, 28 passed in 47.52s
+A6 add row is not a dish row             RED  1 failed, 26 passed, 2 errors in 46.78s
+A7 add rows are drawn at all             RED  22 passed, 7 errors in 76.17s (0:01:16)
+```
+
+**Suite.**
+
+```
+$ FOODAI_WEB_TESTS=required python -m pytest tests/ -q -p no:cacheprovider --color=no
+593 passed, 1 warning in 294.39s (0:04:54)
+```
+
 ## 2026-09-30 — add a dish to an empty optional course (N9)
 
 **Asked.** Owner, 2026-09-30, chose the first N8 follow-up: let the user add a
@@ -60,9 +133,10 @@ A4's 28 errors overstate the catch. Rerun against `tests/test_web_add_dish.py`
 alone, the real failure is `TimeoutError: Timeout 30000ms exceeded while
 waiting for event "response"` (choosing a dish sent nothing). The other 21
 errors across three files are `It looks like you are using Playwright Sync
-API inside the asyncio loop`. That is a cascade: a fixture that times out
-inside `sync_playwright()` does not release it, so every later browser module
-in the same run errors too.
+API inside the asyncio loop`. That is a cascade, so every later browser module in the same run errors too.
+*(Corrected 2026-09-30, entry above: the cause is a timeout inside nested
+`expect_request`/`expect_response` waits, not any timeout inside
+`sync_playwright()`.)*
 
 **Suite, final tree.**
 
@@ -75,9 +149,8 @@ $ FOODAI_WEB_TESTS=required python -m pytest tests/ -q -p no:cacheprovider --col
 
 - **One timed-out browser fixture crashes every browser module after it** in
   the same run (the cascade above). It makes a single real failure read as
-  dozens. A deletion check that reads only the count would over-report. The
-  fix is `try/finally` around each web fixture's browser. That is a separate
-  task, across every `tests/test_web_*.py` fixture.
+  dozens. A deletion check that reads only the count would over-report. *(Corrected 2026-09-30, entry above: the cause is nested
+  network waits in two files, not missing clean-up in every fixture.)* Fixed there.
 - **An added dish can only be removed by "Back to the suggested plate"**, which
   drops every swap. A "remove" control for an optional dish was not asked
   for, and is not built.
