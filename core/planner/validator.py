@@ -757,6 +757,10 @@ class LadderOutcome:
     #: valid at the rung the ladder stopped on, keeping the user's picks for
     #: the *other* slots. Empty on a decline. TASKS_3.md N8.
     swap_options: tuple[tuple[str, tuple[str, ...]], ...] = ()
+    #: Slot names the user may ask to have left empty: those with no dish on
+    #: some plate valid at that rung that keeps the other slots' picks and
+    #: the other slots already left empty. Never a required slot. TASKS_3.md N10.
+    emptiable_slots: tuple[str, ...] = ()
 
 
 def _protein_disclosure(point: NutritionVector, original: NutritionTarget) -> str:
@@ -1004,10 +1008,53 @@ def _blocking_violations(
     )
 
 
+def _leaves_empty(combination: MealCombination, leave_empty: frozenset[str]) -> bool:
+    """True if every slot named in ``leave_empty`` has no dish on this plate."""
+
+    return not any(
+        selection
+        for slot, selection in zip(combination.template.slots, combination.slot_selections)
+        if slot.name in leave_empty
+    )
+
+
+def _picks_outside(slot, picks: frozenset[str], category_of: Mapping[str, str]) -> frozenset[str]:
+    """The picks belonging to slots other than ``slot``: those whose category
+    it does not accept. A pick outside the pool has no category and so
+    belongs to no slot -- it is kept for every slot."""
+
+    return frozenset(
+        r for r in picks if category_of.get(r) not in slot.accepted_categories
+    )
+
+
+def _emptiable_slots(
+    solved: tuple[SolvedPlan, ...],
+    picks: frozenset[str],
+    leave_empty: frozenset[str],
+    category_of: Mapping[str, str],
+) -> tuple[str, ...]:
+    """Slots with no dish on some plate in ``solved`` that keeps the picks
+    and the emptied slots belonging to *other* slots -- the mirror of
+    `_swap_options`, so a "remove" is offered only where it has a plate."""
+
+    names = []
+    for slot in solved[0].combination.template.slots:
+        kept = _picks_outside(slot, picks, category_of)
+        if any(
+            kept <= p.combination.recipe_ids()
+            and _leaves_empty(p.combination, leave_empty | {slot.name})
+            for p in solved
+        ):
+            names.append(slot.name)
+    return tuple(names)
+
+
 def _swap_options(
     solved: tuple[SolvedPlan, ...],
     picks: frozenset[str],
     category_of: Mapping[str, str],
+    leave_empty: frozenset[str] = frozenset(),
 ) -> tuple[tuple[str, tuple[str, ...]], ...]:
     """Per slot, every recipe filling it on a plate in ``solved`` that keeps
     the picks belonging to *other* slots. A pick belongs to the slot whose
@@ -1016,18 +1063,21 @@ def _swap_options(
     still belongs to its slot, so that slot keeps offering the dishes that do
     fit. A pick outside the pool belongs to no slot, so it is kept everywhere
     and every slot's options come out empty.
+
+    ``leave_empty`` narrows the same way: a slot's options keep the *other*
+    slots the user emptied, and ignore its own, so a course the user removed
+    still lists what could be put back.
     """
 
     template = solved[0].combination.template
     options = []
     for i, slot in enumerate(template.slots):
-        kept = frozenset(
-            r for r in picks if category_of.get(r) not in slot.accepted_categories
-        )
+        kept = _picks_outside(slot, picks, category_of)
         ids = {
             c.recipe.id
             for p in solved
             if kept <= p.combination.recipe_ids()
+            and _leaves_empty(p.combination, leave_empty - {slot.name})
             for c in p.combination.slot_selections[i]
         }
         options.append((slot.name, tuple(sorted(ids))))
@@ -1043,6 +1093,7 @@ def plan_within_ladder(
     empty_required_slots: tuple[str, ...] = (),
     prefer: Callable[[SolvedPlan], bool] | None = None,
     picks: frozenset[str] = frozenset(),
+    leave_empty: frozenset[str] = frozenset(),
 ) -> LadderOutcome:
     """Solve, and if nothing is feasible, walk the ladder in order.
 
@@ -1085,6 +1136,14 @@ def plan_within_ladder(
     plate at that rung holds them, the result is a decline naming them: the
     owner decided a liking never loosens a limit, so a pick never moves the
     ladder to a later rung.
+
+    ``leave_empty`` are slot names the user wants no dish in (TASKS_3.md N10,
+    owner 2026-09-30: remove a dish, including one the planner chose). It is
+    held exactly as picks are: the rung is chosen without it, then the plate
+    is chosen among those leaving every named slot empty, and no such plate
+    is a decline. Dropping the dish's pick instead was measured not to work:
+    the course came back in 67 of 155 flows (docs/audit_log.md 2026-09-30).
+    A required slot is never empty on any plate, so naming one declines.
     """
 
     locked = locked_macros(profile)
@@ -1110,15 +1169,35 @@ def plan_within_ladder(
         applied: tuple[str, ...],
         skipped: tuple[str, ...],
     ) -> LadderOutcome:
-        options = _swap_options(solved, picks, category_of)
-        chosen = tuple(p for p in solved if picks <= p.combination.recipe_ids())
+        options = _swap_options(solved, picks, category_of, leave_empty)
+        emptiable = _emptiable_slots(solved, picks, leave_empty, category_of)
+        chosen = tuple(
+            p
+            for p in solved
+            if picks <= p.combination.recipe_ids()
+            and _leaves_empty(p.combination, leave_empty)
+        )
         if not chosen:
-            # Why, in the ladder's own terms: what the nearest plate holding
-            # the picks breaks at this rung, or no such plate at all.
-            with_picks = [c for c in combinations if picks <= c.recipe_ids()]
+            # Why, in the ladder's own terms: what the nearest plate honouring
+            # the user's choices breaks at this rung, or no such plate at all.
+            with_picks = [
+                c
+                for c in combinations
+                if picks <= c.recipe_ids() and _leaves_empty(c, leave_empty)
+            ]
             name_of = {
                 c.recipe.id: c.recipe.name for combo in combinations for c in combo.components
             }
+            asked = []
+            if picks:
+                asked.append(
+                    "includes " + ", ".join(sorted(name_of.get(r, r) for r in picks))
+                )
+            if leave_empty:
+                asked.append(
+                    "leaves out the "
+                    + ", ".join(sorted(s.replace("_", " ") for s in leave_empty))
+                )
             return LadderOutcome(
                 plan=None,
                 result=ValidationResult(
@@ -1131,14 +1210,15 @@ def plan_within_ladder(
                     relaxation_applied=applied,
                     disclosure=(
                         "No valid plate for this profile, at the limits this "
-                        "meal was planned to, includes "
-                        + ", ".join(sorted(name_of.get(r, r) for r in picks))
-                        + ". Limits are not loosened to fit a chosen dish."
+                        "meal was planned to, "
+                        + " and ".join(asked)
+                        + ". Limits are not loosened to fit a choice."
                     ),
                 ),
                 target_used=used,
                 skipped_locked_steps=skipped,
                 swap_options=options,
+                emptiable_slots=emptiable,
             )
         plan = _pick(chosen)
         disclosure = None
@@ -1156,6 +1236,7 @@ def plan_within_ladder(
             target_used=used,
             skipped_locked_steps=skipped,
             swap_options=options,
+            emptiable_slots=emptiable,
         )
 
     solved = _attempt(target)
