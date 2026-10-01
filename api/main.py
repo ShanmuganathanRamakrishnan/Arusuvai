@@ -430,6 +430,7 @@ def plan(body: PlanRequestIn) -> PlanOut:
         profile=profile,
         dev_mode=dev_mode,
         picks=frozenset(body.picks),
+        leave_empty=frozenset(body.leave_empty),
     )
 
     components: list[ComponentOut] = []
@@ -503,6 +504,7 @@ def plan(body: PlanRequestIn) -> PlanOut:
                     )
                     for rid in ids
                 ],
+                can_be_empty=slot in outcome.emptiable_slots,
             )
             for slot, ids in outcome.swap_options
         ],

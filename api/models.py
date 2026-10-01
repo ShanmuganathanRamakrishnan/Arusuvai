@@ -84,6 +84,10 @@ class PlanRequestIn(ProfileIn):
     #: chosen only among valid plates holding all of them; limits are never
     #: loosened to fit one, so an unplaceable pick is a decline.
     picks: list[str] = Field(default_factory=list)
+    #: ``TemplateSlot.name`` of each course the user wants no dish in
+    #: (TASKS_3.md N10). Held as picks are: the plate is chosen only among
+    #: valid plates leaving them empty, and none is a decline.
+    leave_empty: list[str] = Field(default_factory=list)
 
 
 class ComponentOut(BaseModel):
@@ -293,6 +297,10 @@ class SwapSlotOut(BaseModel):
 
     slot: str
     options: list[SwapOptionOut]
+    #: True if some valid plate at these limits has no dish in this slot while
+    #: keeping the user's other choices, so "remove" has a plate to land on.
+    #: Required, not defaulted: an omitted answer must not read as "no".
+    can_be_empty: bool
 
 
 class PlanOut(BaseModel):

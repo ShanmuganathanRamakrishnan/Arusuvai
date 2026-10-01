@@ -6,6 +6,115 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-09-30 — N10: "Remove" on any optional dish, built as a planner input (core, API, web)
+
+**Asked.** Owner, 2026-09-30, chose the real build: remove a single dish,
+whether the user added it or the planner chose it ("no egg today"). Follows
+the entry below, which showed that dropping the pick brings the course back.
+
+**What was built.** "Leave this course empty" is an input the planner holds
+exactly as it holds picks.
+- Core (`d64c9c2`): `leave_empty` on `plan_within_ladder` and `plan_meal`.
+  The rung is chosen without it; the plate is chosen among those valid at that
+  rung with no dish in any named slot; none is a decline that names the course
+  ("leaves out the egg side"). No limit is loosened. `LadderOutcome.emptiable_slots`
+  says which courses have such a plate, keeping the other slots' picks and
+  removals.
+- API (`153cc07`): `POST /api/plan` takes `leave_empty`; each `swap_options`
+  entry carries `can_be_empty`, required on the wire (finding 40).
+- Web: a "Remove" on each dish whose course the server marks removable.
+  Removing sends the slot in `leave_empty` and drops any pick in that course;
+  putting a dish back into a course ends its removal; "Back to the suggested
+  plate" and "Generate" clear removals; a refused removal keeps the plate on
+  screen and says which dish, by name.
+- Invariant 1 holds: no quantity is set by anything but the solver. Removing
+  the egg re-solves the whole plate (measured on screen: idli 6 → 3, sambar →
+  soya kuzhambu, curd added at 2 katori), because the protein the egg carried
+  has to come from somewhere. The page shows the server's plate, not an edit
+  of the old one.
+
+**Measured on the real library** (70 kg eggetarian South breakfast,
+`can_be_empty`): tiffin_item False, gravy_accompaniment False, chutney False,
+egg_side True, curd_course True, beverage True. Removing any of the three
+required courses declines by name and leaves the plate alone.
+
+**Deletion checks.**
+- Planner, `d4b_mutations.py` rows V30–V42 (V41, V42 new this task):
+  13 mechanisms: 13 covered, 0 survived, 0 harness errors. Two problems on
+  the way, both fixed: V32's search line existed twice after this work (the
+  harness refused to guess; the line is now one shared helper), and V41
+  survived because the synthetic template has one optional course. Added
+  `TestTwoRemovableCourses`, which makes the curd course optional too
+  (800 kcal: 58 valid plates, 3 without curd, 12 without crisp, none
+  without both).
+- API, by hand, `tests/test_api_leave_empty.py`: P1 (leave_empty not passed on)
+  RED 2, P2 (can_be_empty hard-coded True) RED 1, P3 (can_be_empty defaulted)
+  RED 1.
+- Web, by hand, `web/` (the harness cannot grade it), tests
+  `test_web_remove_dish.py`, `test_web_add_dish.py`, `test_web_dish_swap.py`:
+  R1–R11 all RED. R1, R8, R9, R10: one named test fails. R2–R7, R11: the
+  whole browser walk stops (8 errors) because a click or wait it needs never
+  happens. That is a real failure, but it is coarse: it does not say which
+  test's mechanism broke, so read it as "something in the removal flow".
+
+**Not covered.** Layout. The screenshot check (desktop 1300 px and phone
+390 px) found one defect: the egg menu was cut off ("Avicha muttai (boil")
+when "Remove" shared its line. Fixed by letting that line wrap; re-shot, full
+name shown, "Remove" drops below when tight. No test guards this.
+
+**Full suite.** `FOODAI_WEB_TESTS=required python -m pytest tests/ -q`:
+`621 passed, 1 warning in 205.43s`.
+
+**Disposition.** Done. Still open, not part of this task: saving favourites
+across visits; South snack egg side; the AI ranking layer; chicken fat
+review; owner check of the AMDR source; omelette oil constant.
+
+## 2026-09-30 — "Remove an added dish" cannot be done by dropping its pick (found before building)
+
+**Asked.** Owner, 2026-09-30: remove a single dish the user added (N9)
+without undoing every other swap.
+
+**Premise tested before building.** The cheap design is a "Remove" button
+that drops the added dish's pick and asks the planner again. That only
+removes the dish if the planner then leaves the course empty.
+`docs/design/probes/probe_remove_added_dish.py` runs the realistic flow on
+the real library (4 diets × 3 weights × 6 templates, 70 kg-style bodies):
+suggested plate, add a dish to an empty optional course, optionally swap one
+other dish, then drop the added dish's pick.
+
+```
+$ PYTHONPATH=. python docs/design/probes/probe_remove_added_dish.py
+remove flows: 155 course comes back: 67
+  ('vegetarian', 70, 'north_indian', 'lunch', 'added', 'paneer_masala', 'other pick', 'soya_chunk_curry', 'after remove:', ['Paneer masala'])
+  ('vegetarian', 70, 'north_indian', 'lunch', 'added', 'paneer_masala', 'other pick', 'soya_onion_raita', 'after remove:', ['Paneer masala'])
+  ('vegetarian', 70, 'north_indian', 'lunch', 'added', 'tofu_bhurji', 'other pick', 'soya_onion_raita', 'after remove:', ['Paneer masala'])
+  ('eggetarian', 55, 'north_indian', 'lunch', 'added', 'soya_onion_raita', 'other pick', 'soya_chunk_masala', 'after remove:', ['Soya onion raita'])
+  ('eggetarian', 55, 'north_indian', 'lunch', 'added', 'soya_onion_raita', 'other pick', 'aloo_sabzi', 'after remove:', ['Soya onion raita'])
+  ('eggetarian', 55, 'north_indian', 'dinner', 'added', 'onion_raita', 'other pick', 'soya_chunk_curry', 'after remove:', ['Soya onion raita'])
+```
+
+In 67 of 155 flows (43%) the course comes back, often with the very dish the
+user just removed. This happens because a swap elsewhere moves the planner's
+best plate to one that includes that course. A "Remove" built this way would
+visibly do nothing almost half the time. That is a control that lies. Not
+built.
+
+**What a real remove needs.** The planner has to accept "leave this course
+empty" as an input, the way it accepts picks:
+- a new argument through `plan_within_ladder`, `plan_meal` and
+  `POST /api/plan`;
+- a decline when no valid plate leaves the course empty (the added dish may
+  have been carrying protein), named, never loosened;
+- `swap_options` that respect it;
+- mutation rows;
+- the page control.
+
+That is core, API and web, which is larger than the small page change this
+was proposed as. Stopped here for the owner to decide scope, in particular
+whether "remove" also applies to optional dishes the planner itself chose
+(e.g. the egg side on an eggetarian plate), which the same mechanism would
+cover.
+
 ## 2026-09-30 — one timed-out browser wait broke every browser test after it: cause was nested waits, not missing clean-up
 
 **Correction first.** The N9 entry below logged this and said the fix was

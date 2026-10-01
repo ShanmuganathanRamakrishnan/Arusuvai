@@ -459,8 +459,8 @@ MUTATIONS: tuple[Mutation, ...] = (
     # N8 (2026-09-29): the user picks dishes; a pick never loosens a limit.
     Mutation(
         "V30", VALIDATOR, "a plate is chosen only among those holding the picks",
-        "        chosen = tuple(p for p in solved if picks <= p.combination.recipe_ids())",
-        "        chosen = solved",
+        "            if picks <= p.combination.recipe_ids()\n            and _leaves_empty(p.combination, leave_empty)\n        )\n        if not chosen:",
+        "            if _leaves_empty(p.combination, leave_empty)\n        )\n        if not chosen:",
     ),
     Mutation(
         "V31", VALIDATOR, "picks narrow after the rung is chosen, never before",
@@ -469,8 +469,8 @@ MUTATIONS: tuple[Mutation, ...] = (
     ),
     Mutation(
         "V32", VALIDATOR, "a pick does not narrow its own slot's options",
-        "            r for r in picks if category_of.get(r) not in slot.accepted_categories",
-        "            r for r in picks",
+        "        r for r in picks if category_of.get(r) not in slot.accepted_categories",
+        "        r for r in picks",
     ),
     Mutation(
         "V33", VALIDATOR, "other slots' options keep the picks",
@@ -481,6 +481,47 @@ MUTATIONS: tuple[Mutation, ...] = (
         "V34", VALIDATOR, "a pick with no valid plate still belongs to its slot",
         "        c.recipe.id: c.category for combo in combinations for c in combo.components\n    }",
         "        c.recipe.id: c.category for combo in () for c in combo.components\n    }",
+    ),
+    # --------------------------------------------- leave a course empty (N10)
+    Mutation(
+        "V35", VALIDATOR, "a plate is chosen only among those leaving the removed courses empty",
+        "            if picks <= p.combination.recipe_ids()\n            and _leaves_empty(p.combination, leave_empty)\n        )\n        if not chosen:",
+        "            if picks <= p.combination.recipe_ids()\n        )\n        if not chosen:",
+    ),
+    Mutation(
+        "V36", VALIDATOR, "a removal narrows after the rung is chosen, never before",
+        "    locked = locked_macros(profile)\n",
+        "    combinations = [c for c in combinations if _leaves_empty(c, leave_empty)]\n    locked = locked_macros(profile)\n",
+    ),
+    Mutation(
+        "V37", VALIDATOR, "other slots' options keep the removal",
+        "            and _leaves_empty(p.combination, leave_empty - {slot.name})",
+        "            and _leaves_empty(p.combination, frozenset())",
+    ),
+    Mutation(
+        "V38", VALIDATOR, "a removed course still lists what could go back",
+        "            and _leaves_empty(p.combination, leave_empty - {slot.name})",
+        "            and _leaves_empty(p.combination, leave_empty)",
+    ),
+    Mutation(
+        "V39", VALIDATOR, "a course is removable only if some valid plate lacks it",
+        "            and _leaves_empty(p.combination, leave_empty | {slot.name})",
+        "            and _leaves_empty(p.combination, leave_empty)",
+    ),
+    Mutation(
+        "V40", VALIDATOR, "a course is not removable when other slots' picks need it",
+        "            kept <= p.combination.recipe_ids()\n            and _leaves_empty(p.combination, leave_empty | {slot.name})",
+        "            _leaves_empty(p.combination, leave_empty | {slot.name})",
+    ),
+    Mutation(
+        "V41", VALIDATOR, "a course is not removable when that needs another removed course back",
+        "            and _leaves_empty(p.combination, leave_empty | {slot.name})",
+        "            and _leaves_empty(p.combination, frozenset({slot.name}))",
+    ),
+    Mutation(
+        "V42", VALIDATOR, "a removal's own slot does not count against its picks",
+        "        if any(\n            kept <= p.combination.recipe_ids()",
+        "        if any(\n            picks <= p.combination.recipe_ids()",
     ),
     # ------------------------------------------------- nutrition_of (D6)
     # Finding 20's fix. Note the real library cannot grade any of these: every
@@ -679,7 +720,7 @@ OWN_TESTS: dict[str, tuple[str, ...]] = {
     VALIDATOR: (
         "test_planner_validator.py", "test_planner_decline.py",
         "test_planner_quality.py", "test_shown_plate_preference.py",
-        "test_dish_picks.py",
+        "test_dish_picks.py", "test_leave_empty.py",
     ),
     # `test_recipes.py` is scoped here too: it is where the derived-uncertainty
     # rules live, and a reader editing it knows they are editing evidence
