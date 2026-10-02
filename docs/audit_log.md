@@ -6,6 +6,50 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-02 — Saved dish choices stop fitting after a profile edit 20% of the time (measured before building N11)
+
+**Asked.** Owner, 2026-10-02: save favourites, so a user's swaps and
+removals for a meal carry over to the next visit.
+
+**Premise tested before building.** Saving means replaying the same picks and
+removed courses later. The planner never loosens a limit to fit a choice, so
+a saved choice that no longer fits is a decline. How often is that?
+`docs/design/probes/probe_saved_choices_drift.py`, real library via
+TestClient: 4 diets × 2 weights × 6 meals; for each suggested plate, every
+removal the server offers and the first three swaps; each choice that fits
+today is replayed after the profile edits a returning user is likeliest to
+make.
+
+```
+$ PYTHONPATH=. python docs/design/probes/probe_saved_choices_drift.py
+choice   profile edit replays  no longer fit
+pick     goal gain_muscle     110     10 (9%)
+pick     goal lose_fat     109     74 (68%)
+pick     weight +5        110     15 (14%)
+pick     weight -5        110      5 (5%)
+remove   goal gain_muscle      36      0 (0%)
+remove   goal lose_fat      36      5 (14%)
+remove   weight +5         36      3 (8%)
+remove   weight -5         36      3 (8%)
+total                     583    115 (20%)
+```
+
+A sample, not the full sweep: the first version (3 weights, every swap) was
+stopped at the ten-minute tool limit before printing anything.
+
+**What it means for the build.** Replaying a saved choice is fine most of the
+time, but not rarely-failing: a user who switches to fat loss loses most
+swapped-in dishes. So:
+- a saved choice that no longer fits must never be forced (no limit
+  loosened) and never silently dropped: the page shows the suggested plate
+  and says the saved choices don't fit this meal's limits today;
+- saved choices are kept, not deleted, when they don't fit, since the user
+  may change back; a "forget" control removes them;
+- saving is explicit ("Remember these choices"), not automatic, so a one-off
+  swap does not become a standing preference.
+
+**Disposition.** Building N11 on this basis.
+
 ## 2026-09-30 — N10: "Remove" on any optional dish, built as a planner input (core, API, web)
 
 **Asked.** Owner, 2026-09-30, chose the real build: remove a single dish,
