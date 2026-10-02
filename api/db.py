@@ -1,11 +1,13 @@
 """SQLite persistence for accounts and profiles — Tier B, not Tier C.
 
-Two tables, no ORM cleverness: ``User`` (id, email, hashed_password,
+Three tables, no ORM cleverness: ``User`` (id, email, hashed_password,
 created_at) and ``StoredProfile`` (one row per user, upserted whenever the
 onboarding flow or the dashboard's "edit profile" link saves). Nothing here
 computes a nutritional number — ``StoredProfile`` is a dumb row of the same
 fields ``core.schemas.Profile`` already validates; ``api/main.py`` builds a
 real ``Profile`` from it the same way it builds one from a fresh request body.
+``SavedChoices`` (TASKS_3.md N11) holds the dish choices a user asked to keep
+for one meal: recipe ids and slot names, never a quantity.
 
 The engine is created via ``make_sessionmaker`` rather than at import time
 against a fixed path, so tests can point it at an isolated in-memory database
@@ -22,7 +24,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, create_engine
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -47,6 +49,9 @@ class User(Base):
 
     profile: Mapped["StoredProfile | None"] = relationship(
         back_populates="user", uselist=False, cascade="all, delete-orphan"
+    )
+    saved_choices: Mapped[list["SavedChoices"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
     )
 
 
@@ -83,6 +88,38 @@ class StoredProfile(Base):
 
     def flags_list(self) -> list[str]:
         return [f for f in self.clinical_flags.split(",") if f]
+
+
+class SavedChoices(Base):
+    """The dish choices one user asked to keep for one meal (TASKS_3.md N11).
+
+    One row per (user, region, meal_slot); saving again replaces it, and
+    saving no choices deletes it. ``picks`` are recipe ids and
+    ``leave_empty`` slot names, each comma-joined like
+    ``StoredProfile.clinical_flags``. No gram value or count lives here: the
+    planner solves every plate afresh, and a saved choice that no longer
+    fits the user's limits is declined, never forced (docs/audit_log.md
+    2026-10-02: 20% of replays after a profile edit).
+    """
+
+    __tablename__ = "saved_choices"
+    __table_args__ = (UniqueConstraint("user_id", "region", "meal_slot"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    region: Mapped[str] = mapped_column(String(32), nullable=False)
+    meal_slot: Mapped[str] = mapped_column(String(32), nullable=False)
+    picks: Mapped[str] = mapped_column(Text, nullable=False)
+    leave_empty: Mapped[str] = mapped_column(Text, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+    user: Mapped["User"] = relationship(back_populates="saved_choices")
+
+    def picks_list(self) -> list[str]:
+        return [p for p in self.picks.split(",") if p]
+
+    def leave_empty_list(self) -> list[str]:
+        return [s for s in self.leave_empty.split(",") if s]
 
 
 def make_sessionmaker(database_url: str) -> tuple[sessionmaker[Session], "object"]:
