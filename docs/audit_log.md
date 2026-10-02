@@ -6,6 +6,64 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-02 — N11: a user's dish choices are kept per meal between visits
+
+**Asked.** Owner, 2026-10-02: save favourites. Built on the measurement in the
+entry below (saved choices stop fitting after a profile edit 20% of the time).
+
+**What was built.**
+- API (`3868f1e`): table `saved_choices`, one row per (user, region,
+  meal_slot), holding recipe ids and course names, never a quantity.
+  `GET /api/choices` lists them; `PUT /api/choices` keeps, replaces or (two
+  empty lists) forgets one meal's. Both lists required. A pick must be a dish
+  the meal can hold; a removed course must be optional. Fit to the user's
+  limits is not checked here: the planner asks that afresh every visit.
+- Page: "Remember these choices" (shown when the plate has choices that
+  differ from what is kept) and "Forget saved choices" (shown when something
+  is kept). Generating a meal starts from its kept choices. When they don't
+  fit, the page asks again with none, shows the suggested plate and says
+  "Your saved choices for this meal don't fit its limits today, so this is
+  the suggested plate. They are still saved." Nothing is loosened and nothing
+  is deleted. If kept choices cannot be loaded, the page says so and offers
+  neither button, since either could overwrite what is kept.
+- Invariant 1 holds: nothing saved is a quantity; every count is solved.
+
+**Deletion checks.**
+- API, by hand, `tests/test_api_saved_choices.py`: C1–C9 all RED, each on
+  the test named for it.
+- Web, by hand, `tests/test_web_saved_choices.py`, rows F1–F14. **Correction
+  during the work:** the first run was stopped at the ten-minute tool limit
+  partway through F13, which left F13's deliberate break in
+  `web/dashboard.js`. Found by checking every row's original line was
+  present; restored before anything else ran. In that run F7 (remember sends
+  no picks) and F8 (forget sends the current choices) **survived**: the walk
+  saved only a removal, and forgot only when the plate had no choices, so
+  neither mutation changed anything the test saw. The walk now saves a swap
+  (onion tomato uttapam) beside the removal, and forgets while the saved
+  choices are on the plate. All 14 rows were then re-graded against the final
+  test:
+
+```
+F1  RED 8 errors        F2  RED 8 errors        F3  RED 8 errors
+F4  RED 8 errors        F5  RED 2 failed        F6  RED 4 failed
+F7  RED 2 failed        F8  RED 8 errors        F9  RED 2 failed
+F10 RED 8 errors        F11 RED 1 failed        F12 RED 1 failed
+F13 RED 1 failed        F14 RED 8 errors
+```
+
+"8 errors" means the browser walk stopped (a wait it needed never came):
+a real failure, but it does not say which step broke.
+
+**Not covered.** Layout: screenshots at 1300 px and 390 px show the buttons
+and note correctly; no test guards layout. Saved choices in a database that
+existed before this change: `create_all` adds the new table at start-up;
+checked by the live servers in this session, not by a test.
+
+**Full suite.** `FOODAI_WEB_TESTS=required python -m pytest tests/ -q`:
+`641 passed, 1 warning in 271.12s (0:04:31)`.
+
+**Disposition.** Done.
+
 ## 2026-10-02 — Saved dish choices stop fitting after a profile edit 20% of the time (measured before building N11)
 
 **Asked.** Owner, 2026-10-02: save favourites, so a user's swaps and
