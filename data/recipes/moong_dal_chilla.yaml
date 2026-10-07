@@ -30,6 +30,7 @@ region: north_indian
 # Not jain: onion_raw is classed root_vegetable.
 
 category: dal_chilla
+main_ingredients: [moong]
 prep_minutes: 20
 tags: [pancake, breakfast, high_protein, everyday]
 

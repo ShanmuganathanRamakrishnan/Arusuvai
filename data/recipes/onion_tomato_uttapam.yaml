@@ -32,6 +32,7 @@ region: south_indian
 # classes.
 
 category: tiffin
+main_ingredients: [rice]
 prep_minutes: 15
 tags: [breakfast, fermented, griddled]
 

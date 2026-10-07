@@ -16,7 +16,13 @@ from typing import Mapping, Sequence
 
 import yaml
 
-from core.foods.models import Component, Ingredient, Recipe, RecipeIngredient
+from core.foods.models import (
+    MAIN_INGREDIENTS,
+    Component,
+    Ingredient,
+    Recipe,
+    RecipeIngredient,
+)
 from core.foods.nutrition_of import nutrition_of_lines
 from core.foods.portions import serving_unit as build_serving_unit
 from core.foods.templates import ALL_TEMPLATES
@@ -327,6 +333,16 @@ def load_recipe_file(
     _check_zero_process_is_earned(doc, lines, ingredients, unassessed, path)
     uncertainty = _derive_process_uncertainty(lines, ingredients, unassessed, path)
 
+    main_ingredients = frozenset(
+        str(m) for m in (_require(doc, "main_ingredients", path) or [])
+    )
+    unknown = sorted(main_ingredients - MAIN_INGREDIENTS)
+    if unknown:
+        raise ValueError(
+            f"{path.name}: main_ingredients {unknown} are not in "
+            f"MAIN_INGREDIENTS {sorted(MAIN_INGREDIENTS)} (core/foods/models.py)"
+        )
+
     recipe = Recipe(
         id=recipe_id,
         name=str(_require(doc, "name", path)),
@@ -334,6 +350,7 @@ def load_recipe_file(
         ingredients=tuple(lines),
         serving_unit=serving,
         prep_minutes=int(doc.get("prep_minutes", 0)),
+        main_ingredients=main_ingredients,
         tags=frozenset(str(t) for t in (doc.get("tags") or [])),
         process_uncertainty=uncertainty,
     )

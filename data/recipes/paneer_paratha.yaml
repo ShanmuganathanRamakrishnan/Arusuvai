@@ -27,6 +27,7 @@ region: north_indian
 # plain_paratha.
 
 category: paratha
+main_ingredients: [wheat, paneer]
 prep_minutes: 30
 tags: [bread, breakfast, stuffed, everyday]
 

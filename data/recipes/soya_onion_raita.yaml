@@ -23,6 +23,7 @@ region: north_indian
 # classed root_vegetable.
 
 category: raita
+main_ingredients: [soya]
 
 # Nothing is heated, drained, griddled or fried -- onion_raita's reasoning,
 # unchanged.

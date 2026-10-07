@@ -43,6 +43,7 @@ region: south_indian
 # ingredient rows.
 
 category: sundal
+main_ingredients: [soya, chickpea]
 prep_minutes: 20
 tags: [snack, legume, tempered, high_protein, vegan]
 

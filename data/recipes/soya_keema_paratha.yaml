@@ -23,6 +23,7 @@ region: north_indian
 # data/recipes/schema.yaml). Not jain: onion_raw is classed root_vegetable.
 
 category: paratha
+main_ingredients: [wheat, soya]
 prep_minutes: 35
 tags: [bread, stuffed, breakfast, high_protein, vegan]
 

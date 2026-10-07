@@ -35,6 +35,7 @@ region: south_indian
 # that (derived from ingredient classes; see data/recipes/schema.yaml).
 
 category: tiffin
+main_ingredients: [rice]
 prep_minutes: 20
 tags: [breakfast, fermented, steamed, low_fat]
 

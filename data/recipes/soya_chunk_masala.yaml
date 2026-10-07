@@ -70,6 +70,7 @@ region: north_indian
 # egg, fish or poultry ingredient on this row.
 
 category: legume_curry
+main_ingredients: [soya]
 prep_minutes: 30
 tags: [everyday, lunch, dinner, high_protein, vegan, high_fat]
 

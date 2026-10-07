@@ -27,6 +27,7 @@ region: south_indian
 # mechanism as soya_idli/soya_chunk_curry -- see core/schemas/common.py.
 
 category: curd
+main_ingredients: [soya]
 prep_minutes: 2
 tags: [lunch, cooling, quick, vegan]
 

@@ -136,6 +136,9 @@ SCHEMAS_COMMON = "core/schemas/common.py"
 #: reported defect (docs/audit_log.md 2026-09-27, shown plate for egg and
 #: non-veg).
 PLAN = "core/planner/plan.py"
+#: Added for N14 (2026-10-08): a dish must name what it is built around, or
+#: it would read as repeating nothing on a plate.
+MODELS = "core/foods/models.py"
 
 MUTATIONS: tuple[Mutation, ...] = (
     # ---------------------------------------------------------------- candidates
@@ -660,6 +663,22 @@ MUTATIONS: tuple[Mutation, ...] = (
         "        ingredient = ingredients[line.ingredient_id]\n"
         "        if line.state is not RawOrCooked.RAW:\n",
     ),
+    # -------------------------------------- main ingredients (N14)
+    Mutation(
+        "R8", RECIPE_LOADER, "a recipe file must carry main_ingredients",
+        '        str(m) for m in (_require(doc, "main_ingredients", path) or [])\n',
+        '        str(m) for m in (doc.get("main_ingredients") or [])\n',
+    ),
+    Mutation(
+        "R9", RECIPE_LOADER, "main_ingredients come from the closed list",
+        "    unknown = sorted(main_ingredients - MAIN_INGREDIENTS)\n    if unknown:\n",
+        "    unknown = sorted(main_ingredients - MAIN_INGREDIENTS)\n    if False:\n",
+    ),
+    Mutation(
+        "M1", MODELS, "a recipe names at least one main ingredient",
+        "        if not self.main_ingredients:\n",
+        "        if False:\n",
+    ),
     # -------------------------------------------- schemas/common (R1b)
     Mutation(
         "D1", SCHEMAS_COMMON, "diet_pattern_permits: jain dairy-sourcing gate",
@@ -733,7 +752,8 @@ OWN_TESTS: dict[str, tuple[str, ...]] = {
     WEB_GATE: ("test_web_gate.py",),
     # Same file as NUTRITION_OF's second entry, and for the same reason: a
     # reader editing `test_recipes.py` knows they are editing evidence rules.
-    RECIPE_LOADER: ("test_recipes.py",),
+    RECIPE_LOADER: ("test_recipes.py", "test_main_ingredients.py"),
+    MODELS: ("test_main_ingredients.py",),
     # TestDietPatternPermittedClassTable and TestDairySourcingGate (R1b) target
     # D1 and D2 respectively, but not symmetrically — see that file's module
     # docstring above the two classes, and finding 49 (docs/audit_log.md).

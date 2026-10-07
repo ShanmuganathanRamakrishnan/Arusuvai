@@ -28,6 +28,7 @@ region: north_indian
 # data/recipes/schema.yaml).
 
 category: chaat
+main_ingredients: [egg]
 # Nothing is heated, drained, griddled or fried by this recipe: the egg row
 # is IFCT's boiled (served-basis) composition, and the rest is raw.
 preparation: uncooked

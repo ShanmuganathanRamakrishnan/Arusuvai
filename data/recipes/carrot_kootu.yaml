@@ -23,6 +23,7 @@ region: south_indian
 # classes; see data/recipes/schema.yaml).
 
 category: kootu
+main_ingredients: [carrot]
 prep_minutes: 30
 tags: [lunch, vegetable, high_protein]
 

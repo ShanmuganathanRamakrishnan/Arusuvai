@@ -41,10 +41,23 @@ __all__ = [
     "RecipeIngredient",
     "ServingUnit",
     "Recipe",
+    "MAIN_INGREDIENTS",
     "Component",
     "TemplateSlot",
     "MealTemplate",
 ]
+
+
+#: What a dish can be named for or built around, as a diner sees it: the
+#: words a plate repeats when it serves the same thing twice (TASKS_3.md N14,
+#: audit 2026-10-08 "N14"). A closed list, checked when a recipe file loads
+#: (the place a label is typed), so a misspelt one fails to load instead of
+#: quietly never matching anything. Synthetic test dishes may use any word. Not a nutrient grouping: soya
+#: curd is "soya", plain curd is "curd", and tofu is "soya".
+MAIN_INGREDIENTS = frozenset({
+    "carrot", "chicken", "chickpea", "coconut", "curd", "dal", "egg", "fish",
+    "moong", "paneer", "potato", "rajma", "rice", "soya", "wheat",
+})
 
 
 @dataclass(frozen=True)
@@ -317,6 +330,11 @@ class Recipe:
     ingredients: tuple[RecipeIngredient, ...]
     serving_unit: ServingUnit
     prep_minutes: int
+    #: What the dish is named for or built around (``MAIN_INGREDIENTS``), so
+    #: the planner can prefer a plate that does not serve the same thing in
+    #: two dishes. Required, with no default: an unlabelled dish would read as
+    #: repeating nothing, the cheapest path giving the most confident answer.
+    main_ingredients: frozenset[str]
     tags: frozenset[str] = frozenset()
     #: Fractional process uncertainty keyed by macro. **Every macro in
     #: MACRO_KEYS must be present** — there is no default-zero, because an
@@ -336,6 +354,8 @@ class Recipe:
     def __post_init__(self) -> None:
         if not self.ingredients:
             raise ValueError(f"recipe {self.id!r} has no ingredients")
+        if not self.main_ingredients:
+            raise ValueError(f"recipe {self.id!r} names no main ingredient")
         for macro, unc in self.process_uncertainty.items():
             if macro not in MACRO_KEYS:
                 raise ValueError(

@@ -38,6 +38,7 @@ region: north_indian
 # data/recipes/schema.yaml).
 
 category: tikka
+main_ingredients: [chicken]
 prep_minutes: 40
 tags: [snack, pan_roasted, high_protein, non_vegetarian]
 

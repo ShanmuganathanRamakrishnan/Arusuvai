@@ -23,6 +23,7 @@ region: south_indian
 # ingredient classes.
 
 category: egg
+main_ingredients: [egg]
 # Nothing is heated by this recipe: the egg row is IFCT's boiled
 # (served-basis) composition, anda_chaat's precedent.
 preparation: uncooked

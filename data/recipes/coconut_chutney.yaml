@@ -18,6 +18,7 @@ region: south_indian
 # from ingredient classes; see data/recipes/schema.yaml).
 
 category: chutney
+main_ingredients: [coconut]
 prep_minutes: 10
 tags: [breakfast, condiment, quick]
 

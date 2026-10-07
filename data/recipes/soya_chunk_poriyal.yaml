@@ -23,6 +23,7 @@ region: south_indian
 # data/recipes/schema.yaml). Not jain: onion is classed root_vegetable.
 
 category: poriyal
+main_ingredients: [soya]
 prep_minutes: 25
 tags: [lunch, high_protein, vegan]
 

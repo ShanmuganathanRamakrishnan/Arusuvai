@@ -98,6 +98,13 @@ region: south_indian | north_indian | pan_indian
 # Must be a category some template accepts, or the recipe can never be planned.
 category: string # e.g. tiffin, sambar, chutney, rice, mixed_rice, poriyal, dal, sabzi, roti
 
+# What the dish is named for or built around, as a diner sees it: one or two
+# of carrot, chicken, chickpea, coconut, curd, dal, egg, fish, moong, paneer,
+# potato, rajma, rice, soya, wheat (core/foods/models.py MAIN_INGREDIENTS).
+# Required. The planner prefers a plate that does not serve one twice; it never
+# loosens a limit for it (TASKS_3.md N14).
+main_ingredients: [string]
+
 prep_minutes: int
 tags: [string] # free-form: one_pot, high_protein, festive, ...
 
