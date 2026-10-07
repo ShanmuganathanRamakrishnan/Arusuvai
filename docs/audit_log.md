@@ -6,6 +6,73 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-07 — N13: stopped at the premise — the local model does not choose better plates
+
+**Asked.** Owner, 2026-10-07 (option 1): build AI ranking. The model picks
+among plates the planner has already made valid; the planner's nearest plate
+stays the fallback; the model never touches a count.
+
+**Checked before wiring anything in.** `llm/ranker.py` (the model call) was
+written and measured live; nothing in the app calls it. Model
+`qwen2.5:7b-instruct` on Ollama 0.13.5, RTX 4060 laptop GPU. The model sees
+the region, the meal and, per plate, a letter and dish names: no digit at
+all. Its reply is held to one of the letters. Cases: the 96 of entry "N12";
+83 had two or more plates to choose from. Offered: the nearest 8 plates,
+animal-protein plates only where the diet permits one and one exists (the
+planner's existing preference).
+
+`docs/design/probes/probe_ranker_live.py`, run twice, with an Ollama restart
+in between:
+
+```
+run 1: cases 83  no answer 4  chose the nearest (A) 43  seconds: first 15.07, median 0.52, max after first 15.02
+run 2: cases 83  no answer 0  chose the nearest (A) 45  seconds: first 0.64, median 0.55, max after first 0.95
+answered in both runs 79 same plate 75
+```
+
+- Speed is fine once loaded: about half a second. Run 1's four misses were
+  the first four requests while the model was still loading; each waited the
+  full 15 s and fell back, as designed.
+- Not fully repeatable: 4 of 79 answers changed across the restart, despite
+  temperature 0 and a fixed seed.
+
+**The question that decides it: are its choices better?** "Better to eat"
+cannot be counted, but one part of it can: the same main ingredient in
+several dishes. N12's reason for ranking was exactly that (soya in three
+courses). The count, over the plates each run answered:
+
+```
+run 1: soya dishes on the plate: nearest 103, model 102; model plate has more soya dishes in 10 cases, fewer in 9
+run 2: soya dishes on the plate: nearest 108, model 106; model plate has more in 10 cases, fewer in 10
+```
+
+No better than the nearest plate. One fairer try, so the result is not just
+the first prompt: `docs/design/probes/probe_ranker_reason.py` asks for a short
+reason per plate before the choice (often helps small models). The prompt
+names no ingredient, so the count is not the prompt's own words coming back.
+
+```
+cases 83 no answer 0 chose A 9 seconds median 5.31 max 11.26
+soya dishes: nearest 108 model 137
+model more soya than nearest 34 fewer 11
+```
+
+Worse, and ten times slower. Its reasons do not match the plates. On the
+vegetarian 55 kg South Indian lunch, it wrote that plate A ("Soya kuzhambu …
+Soya curd") repeats no main ingredient, then chose plate C, which its own
+reason said repeats two.
+
+**Conclusion.** The goal was a better plate from the model. On the one
+property that can be checked, this model gives a different plate, not a
+better one. Wiring it in would change what people see on no evidence that it
+helps. Stopped under the queue rule: the premise was wrong, so the work was not
+reshaped to fit it. No planner, API or page change.
+
+**Not tested.** Larger or hosted models; other prompt styles beyond the two
+above; any property of "good to eat" other than repeated main ingredient.
+
+**Disposition.** Stopped. The next step is the owner's decision.
+
 ## 2026-10-07 — N12: is there anything for an AI ranking step to choose between?
 
 **Asked.** Owner, 2026-10-07: start the AI ranking series (architecture step
