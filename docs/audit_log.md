@@ -6,6 +6,72 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-07 — N12: is there anything for an AI ranking step to choose between?
+
+**Asked.** Owner, 2026-10-07: start the AI ranking series (architecture step
+5: the model ranks plates that are already valid; it never sets a count).
+Measure first whether a meal usually has several valid plates that differ.
+
+**How.** `docs/design/probes/probe_ranking_room.py`, real library, the call
+the API makes. 4 diets (vegetarian, eggetarian, non-vegetarian, vegan) x 3
+weights (55, 70, 90 kg; male, 170 cm, 30 y, moderate, maintain) x 8 meals =
+96 cases. The valid plates are those `solve` returns at the rung the ladder
+stopped on (the probe records the last `solve` call; the ladder stops on the
+first non-empty one).
+
+**Result.**
+
+```
+meal             bodies declined | valid plates min/median/max | different dishes median | of nearest 10, differ from shown by 2+ dishes: median | bodies with only 1 plate
+south breakfast      12        0 |     7     20    41            |     10                  |      5                                            |   0
+south lunch          12        0 |     1      8    20            |      8                  |      4                                            |   1
+south dinner         12        0 |     2     12    22            |     10                  |      6                                            |   0
+south snack          12        0 |     1      2     3            |      2                  |      0                                            |   2
+north breakfast      12        0 |     1     10    14            |      9                  |      5                                            |   1
+north lunch          12        0 |     4     15    30            |      8                  |      5                                            |   0
+north dinner         12        0 |     7     16    25            |     11                  |      7                                            |   0
+north snack          12        2 |     1      3     4            |      3                  |      0                                            |   1
+
+vegetarian 70 kg south_indian lunch: 9 valid plates
+   shown: Carrot poriyal, Soya curd, Soya kuzhambu, Steamed rice
+   1. Carrot poriyal, Soya curd, Soya kuzhambu, Steamed rice
+   2. Sambar, Soya chunk poriyal, Soya curd, Steamed rice
+   3. Carrot poriyal, Curd, Soya kuzhambu, Steamed rice
+   4. Carrot kootu, Soya chunk poriyal, Soya curd, Soya kuzhambu, Steamed rice
+   5. Carrot poriyal, Soya chunk poriyal, Soya curd, Soya kuzhambu, Steamed rice
+
+non_vegetarian 70 kg north_indian dinner: 25 valid plates
+   shown: Anda curry, Dal tadka, Phulka
+   1. Aloo sabzi, Phulka, Soya chunk masala, Soya onion raita
+   2. Aloo sabzi, Onion raita, Phulka, Soya chunk masala
+   3. Anda curry, Dal tadka, Phulka
+   4. Anda curry, Dal tadka, Phulka, Soya onion raita
+   5. Aloo sabzi, Paneer paratha, Soya chunk curry, Soya onion raita
+```
+
+Run time 18.6 s.
+
+**Reading.**
+- Main meals: yes, there is room. A median of 8 to 20 valid plates, and about
+  half of the nearest 10 differ from the shown plate in two or more dishes.
+- Snacks: little room. A median of 2 to 3 plates, and none of the nearest
+  differ by two dishes. Ranking would change almost nothing there.
+- Nearest-to-target order is a number fit, not a food judgment. It ranks
+  plates with soya in three courses high: plate 5 of the vegetarian lunch, and
+  plate 1 of the dinner (soya chunk masala and soya onion raita). Plate 3 of
+  the vegetarian lunch swaps soya curd for plain curd at no loss of validity.
+  Whether any of these is worse to eat is a judgment, not a measurement. This
+  is the gap ranking is meant to fill.
+- Seven cases have only one valid plate. Ranking there must leave the plate
+  as it is.
+
+**Not measured.** Whether the model's order is better than the current
+order. That needs a person to judge plates side by side. It is the check the
+ranking step itself must carry.
+
+**Disposition.** Premise holds for main meals. Ranking (N13) only with the
+owner's go-ahead.
+
 ## 2026-09-30 — N10: "Remove" on any optional dish, built as a planner input (core, API, web)
 
 **Asked.** Owner, 2026-09-30, chose the real build: remove a single dish,
