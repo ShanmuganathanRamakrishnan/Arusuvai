@@ -704,15 +704,14 @@ MUTATIONS: tuple[Mutation, ...] = (
         "            pool = tuple(p for p in solved if prefer(p)) or solved\n",
         "            pass\n",
     ),
+    # N3b and N3c were one row per rung until N8 (deba558, 2026-09-29) moved
+    # the pick into `_accepted`, shared by every rung. From then both
+    # reported "pattern not found" and tested nothing (audit 2026-10-08,
+    # "N15"). One call site, one row; N3c is retired, not kept as dead.
     Mutation(
-        "N3b", VALIDATOR, "rung 0 returns the picked plate, not solved[0]",
-        "        plan = _pick(solved)\n        return LadderOutcome(",
-        "        plan = solved[0]\n        return LadderOutcome(",
-    ),
-    Mutation(
-        "N3c", VALIDATOR, "a relaxed rung returns the picked plate, not solved[0]",
-        "        plan = _pick(solved)\n        disclosure = None",
-        "        plan = solved[0]\n        disclosure = None",
+        "N3b", VALIDATOR, "every rung returns the picked plate, not the nearest",
+        "        plan = _pick(chosen)\n",
+        "        plan = chosen[0]\n",
     ),
     # --------------------------------------- repeated main ingredient (N14)
     Mutation(
