@@ -465,6 +465,11 @@ class TemplateSlot:
     variable-length: a South Indian lunch takes one or two poriyals depending on
     the day, and that is a property of the slot, not something the solver should
     infer.
+
+    ``on_request`` marks an optional course the planner leaves empty unless the
+    user adds a dish to it: offered, never served by default. TASKS_3.md N19
+    (owner 2026-10-08): an egg beside the evening sundal is something some
+    people choose, not the ordinary snack. Only an optional slot can be one.
     """
 
     name: str
@@ -472,6 +477,7 @@ class TemplateSlot:
     required: bool = True
     min_selections: int = 1
     max_selections: int = 1
+    on_request: bool = False
 
     def __post_init__(self) -> None:
         if not self.accepted_categories:
@@ -485,6 +491,10 @@ class TemplateSlot:
         if self.required and self.min_selections == 0:
             raise ValueError(
                 f"slot {self.name!r}: a required slot must demand at least one"
+            )
+        if self.on_request and self.required:
+            raise ValueError(
+                f"slot {self.name!r}: a required slot cannot wait to be requested"
             )
 
     def accepts(self, component: Component) -> bool:

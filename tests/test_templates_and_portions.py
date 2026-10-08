@@ -141,11 +141,15 @@ class TestTemplatesAreNotUniform:
         # A later edit that adds a required course, or makes the drink
         # required, changes the plate count the entry reports.
         by_name = {s.name: s for s in templates.SOUTH_SNACK.slots}
-        assert set(by_name) == {"sundal", "drink"}
+        assert set(by_name) == {"sundal", "egg_side", "drink"}
         assert by_name["sundal"].required is True
-        # "egg" since 2026-09-27 (TASKS_3.md N2c): an egg snack takes the
-        # sundal's place. Still one required dish.
-        assert by_name["sundal"].accepted_categories == frozenset({"sundal", "egg"})
+        # Sundal only since 2026-10-08 (TASKS_3.md N19): an egg never takes
+        # the sundal's place. It may sit beside it, only when asked for.
+        assert by_name["sundal"].accepted_categories == frozenset({"sundal"})
+        assert by_name["egg_side"].accepted_categories == frozenset({"egg"})
+        assert by_name["egg_side"].required is False
+        assert by_name["egg_side"].on_request is True
+        assert by_name["drink"].on_request is False
         assert by_name["drink"].required is False
         assert by_name["drink"].min_selections == 0
         assert by_name["drink"].max_selections == 1

@@ -191,6 +191,17 @@ def plan_meal(
         dev_mode=dev_mode,
     )
     combinations = enumerate_combinations(pool)
+    # An on-request course stays empty unless one of the user's picks belongs
+    # to it (TemplateSlot.on_request; TASKS_3.md N19). Joined to leave_empty
+    # rather than given its own path, so swap options, emptiable courses and
+    # declines all treat it exactly as a course the user emptied.
+    category_of = {c.recipe.id: c.category for c in library.components()}
+    leave_empty = leave_empty | {
+        slot.name
+        for slot in template.slots
+        if slot.on_request
+        and not any(category_of.get(r) in slot.accepted_categories for r in picks)
+    }
     return plan_within_ladder(
         combinations,
         single_meal_target,
