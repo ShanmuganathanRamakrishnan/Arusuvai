@@ -207,6 +207,25 @@ class TestFeasibilityPreFilter:
         target = NutritionTarget(floors={"energy_kcal": 1000.0})
         assert feasible_combinations(combos, target, FEASIBILITY_INGREDIENTS) == ()
 
+    def test_a_combination_that_cannot_reach_the_quality_floor_is_dropped(self):
+        # Harness row B8. The quality pre-filter changes no final verdict (the
+        # solver re-checks the floor), so only this function's own output can
+        # show it is there. No fixture ingredient has a DIAAS, so none
+        # qualifies; give a1 one of 1.0 (above the 0.75 threshold). Every
+        # unit is pinned at one 100 g serving, so reachable qualifying
+        # protein is a1's protein or nothing:
+        #   (a1,b1) 5   (a1,b2) 5   (a2,b1) 0   (a2,b2) 0
+        # A 4 g floor keeps exactly the two combinations holding a1.
+        ingredients = dict(FEASIBILITY_INGREDIENTS)
+        ingredients["a1"] = dataclasses.replace(ingredients["a1"], diaas=1.0)
+        combos = enumerate_combinations(self._pool())
+        target = NutritionTarget(quality_protein_floor_g=4.0)
+        survivors = feasible_combinations(combos, target, ingredients)
+        assert {c.recipe_ids() for c in survivors} == {
+            frozenset({"a1", "b1"}),
+            frozenset({"a1", "b2"}),
+        }
+
 
 class TestMacroBounds:
     """Each component's least and greatest contribution, from its serving unit.

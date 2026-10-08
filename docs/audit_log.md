@@ -6,6 +6,35 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-08 — N18: the three accepted survivors get tests after all
+
+**Asked.** Owner, 2026-10-08, after N17: fix the remaining flags now rather
+than leave them. Entry "N16" left three rows surviving, each documented as
+expected: B2 (finding 33), B5 (D4b, "a bad mutation of the probe's own"),
+B8 ("a pure optimisation: removing it changes no verdict"). Each statement
+was about the *pipeline's* verdict. Each mechanism still changes what its
+own function returns or logs, and that is testable directly, as N17 did for
+B4. One commit per row.
+
+### B8 — the quality pre-filter
+
+`feasible_combinations` drops a combination whose components, all at their
+maximum count, cannot reach `quality_protein_floor_g`. The solver re-checks
+the floor, so the final plate never changes; the pre-filter's own return
+value does. No test called `feasible_combinations` with a quality floor.
+
+New: `tests/test_planner_combinations.py::TestFeasibilityPreFilter::test_a_combination_that_cannot_reach_the_quality_floor_is_dropped`.
+Fixture a1 given DIAAS 1.0; hand arithmetic in the test (4 g floor keeps the
+two combinations holding a1's 5 g).
+
+```
+B8   covered      tests/test_planner_combinations.py::TestFeasibilityPreFilter::test_a_combination_that_cannot_reach_the_quality_floor_is_dropped
+1 mechanisms: 1 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+The statement "removing it changes no verdict" stays true and stays in
+`docs/build_status.md`; it no longer means "no test can see it".
+
 ## 2026-10-08 — N17: B4 gets a test of its own
 
 **Asked.** Owner, 2026-10-08 (option 1 after N16): close the one gap the
