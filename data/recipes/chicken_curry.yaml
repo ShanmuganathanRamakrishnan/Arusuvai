@@ -27,6 +27,7 @@ region: north_indian
 # ginger-garlic are classed root_vegetable. Derived from ingredient classes.
 
 category: sabzi
+main_ingredients: [chicken]
 prep_minutes: 40
 tags: [everyday, lunch, dinner, high_protein, non_vegetarian]
 

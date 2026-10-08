@@ -69,6 +69,7 @@ the feasible set empty is an outcome to report, not to work around.
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass, replace
 from typing import Callable, Mapping, Sequence
 
@@ -1008,6 +1009,21 @@ def _blocking_violations(
     )
 
 
+def _repeated_mains(plan: SolvedPlan) -> int:
+    """Dishes on this plate whose main ingredient an earlier dish already has.
+
+    Soya kuzhambu with soya curd is 1; with soya chunk poriyal too, 2. A dish
+    named for two things (masala dosa: rice, potato) counts once per thing.
+    TASKS_3.md N14: on 43 of 94 shown plates one main ingredient was served
+    twice, and for 31 a valid plate without it existed (audit 2026-10-08).
+    """
+
+    counts = Counter(
+        m for c in plan.combination.components for m in c.recipe.main_ingredients
+    )
+    return sum(n - 1 for n in counts.values())
+
+
 def _leaves_empty(combination: MealCombination, leave_empty: frozenset[str]) -> bool:
     """True if every slot named in ``leave_empty`` has no dish on this plate."""
 
@@ -1115,9 +1131,12 @@ def plan_within_ladder(
     ladder stopped on: the nearest-to-target plate it accepts, else the
     nearest plate overall. It never widens a target, never moves the ladder
     to a later rung, and never touches a unit count -- a preference with no
-    valid plate to satisfy it changes nothing. Owner report 2026-09-27: a
-    non-vegetarian was shown soya at every dinner although valid egg plates
-    existed (docs/audit_log.md 2026-09-27, shown plate for egg and non-veg).
+    valid plate to satisfy it changes nothing. Within that, a plate serving
+    the same main ingredient in fewer dishes comes first (TASKS_3.md N14,
+    owner 2026-10-08), under the same terms: chosen among valid plates only.
+    Owner report 2026-09-27: a non-vegetarian was shown soya at every
+    dinner although valid egg plates existed (docs/audit_log.md 2026-09-27,
+    shown plate for egg and non-veg).
 
     ``empty_required_slots`` is which of the template's required courses had no
     legal selection, when ``combinations`` is empty because of that. This
@@ -1155,13 +1174,14 @@ def plan_within_ladder(
         return solve(feasible_combinations(combinations, t, ingredients), t, ingredients)
 
     def _pick(solved: tuple[SolvedPlan, ...]) -> SolvedPlan:
-        # `solved` is already nearest-first, so the first preferred plate is
-        # the nearest preferred one.
+        # Among plates all valid at this rung: the preferred ones if any, then
+        # those repeating the fewest main ingredients, then the nearest.
+        # `solved` is nearest-first and `min` keeps the first of equals, so
+        # the last step needs no key of its own.
+        pool = solved
         if prefer is not None:
-            for plan in solved:
-                if prefer(plan):
-                    return plan
-        return solved[0]
+            pool = tuple(p for p in solved if prefer(p)) or solved
+        return min(pool, key=_repeated_mains)
 
     def _accepted(
         solved: tuple[SolvedPlan, ...],

@@ -47,6 +47,7 @@ region: south_indian
 # this comment alone.
 
 category: tiffin
+main_ingredients: [rice, soya]
 prep_minutes: 20
 tags: [breakfast, fermented, steamed, high_protein, vegan]
 

@@ -310,6 +310,14 @@ class TestAgainstTheRealLibrary:
             assert outcome.plan.quality_protein_g >= _MEAL_QUALITY_FLOOR_G
 
     def test_the_reference_breakfast_plate_is_idli_soya_kuzhambu_chutney(self, real):
+        # Re-measured 2026-10-08 (N14, docs/audit_log.md "N14"): the planner
+        # now prefers a valid plate that does not serve one main ingredient
+        # twice, so soya_curd (soya, beside soya_kuzhambu) gives way to
+        # thayir_plain, and the solver re-fits idli to 5. thayir_plain's
+        # curd_dahi now counts too (DIAAS 1.09): 145 g x 3.1/100 = 4.495 g, so
+        # 13.0 + 4.495 = 17.495 g. Re-derived from the solver's own choice.
+        #
+        # Previously:
         # Re-measured 2026-09-29 (N6, docs/audit_log.md "fat band from the
         # AMDR"): fat's default band widened from +/-15% to +/-27.3%, and a
         # plain-idli plate with soya_kuzhambu in the gravy slot is now inside
@@ -332,12 +340,12 @@ class TestAgainstTheRealLibrary:
         outcome = _plan(real, Region.SOUTH_INDIAN, MealSlot.BREAKFAST)
         assert outcome.result.relaxation_applied == ()
         assert outcome.plan.unit_counts == {
-            "idli@tiffin": 3,
+            "idli@tiffin": 5,
             "soya_kuzhambu@kuzhambu": 1,
             "coconut_chutney@chutney": 4,
-            "soya_curd@curd": 2,
+            "thayir_plain@curd": 1,
         }
-        assert outcome.plan.quality_protein_g == pytest.approx(13.0, abs=1e-3)
+        assert outcome.plan.quality_protein_g == pytest.approx(17.495, abs=1e-3)
 
     def test_the_reference_lunch_now_passes_unrelaxed(self, real):
         # Until 2026-08-24, south_lunch needed three relaxation rungs to pass
@@ -496,6 +504,15 @@ class TestThePerturbationTest:
     """CLAUDE.md's round-4 rule: move the input and watch the output move."""
 
     def test_disqualifying_soya_chunks_moves_the_south_breakfast_figure(self, real):
+        # Re-derived 2026-10-08 (N14): the reference plate now carries
+        # thayir_plain, so curd_dahi is on it -- but disqualifying curd_dahi
+        # still leaves the same plate, because soya_kuzhambu alone clears the
+        # floor (13.0 g >= 11.2 g): only its quality figure drops by curd's
+        # 4.495 g. Disqualifying soya chunks still moves the plate to
+        # soya_idli; with no curd course now (optional), its figure is
+        # soya_flour_defatted's alone, unchanged at 12.3504 g.
+        #
+        # Previously:
         # Re-derived 2026-09-29 (N6): the reference plate is now the plain-idli
         # soya_kuzhambu plate (plate test above), so soya_chunks_dry is the
         # source that carries it, and disqualifying it reverts the plate to
@@ -527,9 +544,9 @@ class TestThePerturbationTest:
             Region.SOUTH_INDIAN,
             MealSlot.BREAKFAST,
         )
-        assert before.plan.quality_protein_g == pytest.approx(13.0, abs=1e-3)
-        # Disqualifying curd_dahi changes nothing: the accepted plate never
-        # used it (it uses soya_curd for the curd course).
+        assert before.plan.quality_protein_g == pytest.approx(17.495, abs=1e-3)
+        # Disqualifying curd_dahi keeps the plate and drops only its share:
+        # 17.495 - 4.495 = 13.0 g, soya_kuzhambu's alone.
         assert after_curd.plan is not None
         assert after_curd.plan.unit_counts == before.plan.unit_counts
         assert after_curd.plan.quality_protein_g == pytest.approx(13.0, abs=1e-3)
@@ -539,9 +556,8 @@ class TestThePerturbationTest:
         assert after_soya_chunks.plan is not None
         assert after_soya_chunks.plan.unit_counts == {
             "soya_idli@tiffin": 6,
-            "sambar@sambar": 1,
-            "coconut_chutney@chutney": 4,
-            "soya_curd@curd": 1,
+            "sambar@sambar": 2,
+            "coconut_chutney@chutney": 3,
         }
         assert after_soya_chunks.plan.quality_protein_g == pytest.approx(12.3504, abs=1e-3)
 
@@ -582,15 +598,18 @@ class TestThePerturbationTest:
         # optional raita slot, so the returning plate now carries one katori
         # of it and one phulka fewer. The tofu-and-dal core is what the rule
         # decides, and it is unchanged.
+        #
+        # 2026-10-08 (N14): soya_onion_raita (soya) beside tofu_bhurji (soya)
+        # serves soya twice; the planner now prefers the valid plate without
+        # it, which is the pre-slice-4 plate exactly again.
         after = _plan(
             _with_diaas(real, "tofu_firm", 0.80), Region.NORTH_INDIAN, MealSlot.LUNCH
         )
         assert after.plan is not None
         assert after.plan.unit_counts == {
-            "phulka@roti": 3,
+            "phulka@roti": 4,
             "dal_tadka@dal": 2,
             "tofu_bhurji@sabzi": 1,
-            "soya_onion_raita@raita": 1,
         }
 
     def test_the_rule_is_not_hard_coded_to_dairy(self, real):

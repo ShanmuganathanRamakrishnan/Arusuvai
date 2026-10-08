@@ -25,6 +25,7 @@ region: south_indian
 # onion_raw is classed root_vegetable. Both derived from ingredient classes.
 
 category: egg
+main_ingredients: [egg]
 prep_minutes: 10
 tags: [snack, scrambled, eggetarian, high_protein]
 

@@ -18,6 +18,7 @@ region: south_indian
 # ingredient classes; see data/recipes/schema.yaml).
 
 category: tiffin
+main_ingredients: [rice, potato]
 prep_minutes: 25
 tags: [breakfast, fermented, griddled]
 

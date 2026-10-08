@@ -26,6 +26,7 @@ region: north_indian
 # is classed root_vegetable. Both derived from ingredient classes.
 
 category: egg
+main_ingredients: [egg]
 prep_minutes: 15
 tags: [breakfast, scrambled, eggetarian, high_protein]
 

@@ -127,6 +127,7 @@ def _recipe(**kw) -> Recipe:
         ),
         serving_unit=make_unit(name="katori", grams_per_unit=100.0),
         prep_minutes=10,
+        main_ingredients=frozenset({"rice"}),
         process_uncertainty=_full_uncertainty(),
     )
     base.update(kw)

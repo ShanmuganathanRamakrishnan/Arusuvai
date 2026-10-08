@@ -16,6 +16,7 @@ region: north_indian
 # from ingredient classes; see data/recipes/schema.yaml).
 
 category: sabzi
+main_ingredients: [potato]
 prep_minutes: 25
 tags: [everyday, dinner, vegetable]
 

@@ -24,6 +24,7 @@ region: north_indian
 # see data/recipes/schema.yaml).
 
 category: buttermilk
+main_ingredients: [buttermilk]
 prep_minutes: 3
 tags: [snack, beverage, cooling, quick]
 

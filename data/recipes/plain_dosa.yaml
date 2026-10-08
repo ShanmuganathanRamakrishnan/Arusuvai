@@ -23,6 +23,7 @@ region: south_indian
 # Vegan and jain: rice, urad, oil, salt. Derived from ingredient classes.
 
 category: tiffin
+main_ingredients: [rice]
 prep_minutes: 10
 tags: [breakfast, fermented, griddled]
 
