@@ -14,6 +14,7 @@ from core.planner.combinations import (
     enumerate_combinations,
     feasible_combinations,
     macro_bounds,
+    quality_protein_bounds,
 )
 from core.foods.models import Component
 from core.nutrition.target import NutritionTarget
@@ -251,3 +252,18 @@ class TestMacroBounds:
         assert macro_bounds(component, "sodium_mg", FEASIBILITY_INGREDIENTS) == pytest.approx(
             (1000.0, 2000.0)
         )
+
+    def test_quality_protein_bounds_span_the_fewest_to_the_most_servings(self):
+        # Harness row B5, the quality analogue of the test above. Today's
+        # callers read only the high side; the low side is still part of
+        # what the function returns, so it is pinned too. a1 given DIAAS 1.0
+        # (above the 0.75 threshold) so all 5 g of its protein per 100 g
+        # qualifies; a unit of 2..4 servings of 100 g:
+        #   low = 2 * 5 = 10    high = 4 * 5 = 20
+        ingredients = dict(FEASIBILITY_INGREDIENTS)
+        ingredients["a1"] = dataclasses.replace(ingredients["a1"], diaas=1.0)
+        recipe = make_recipe(
+            "a1", ingredients["a1"], min_count=2, default_count=3, max_count=4
+        )
+        component = Component(recipe=recipe, category="cat_a")
+        assert quality_protein_bounds(component, ingredients) == pytest.approx((10.0, 20.0))

@@ -35,6 +35,22 @@ B8   covered      tests/test_planner_combinations.py::TestFeasibilityPreFilter::
 The statement "removing it changes no verdict" stays true and stays in
 `docs/build_status.md`; it no longer means "no test can see it".
 
+### B5 — the low side of `quality_protein_bounds`
+
+Earlier called "a bad mutation of the probe's own" because no caller reads
+`[0]`. That is still true of the callers (`combinations.py` and
+`validator.py` both read `[1]`), but the function returns the pair and
+promises both sides in its docstring. A direct test pins both, so the row is
+kept and now graded.
+
+New: `tests/test_planner_combinations.py::TestMacroBounds::test_quality_protein_bounds_span_the_fewest_to_the_most_servings`
+(2..4 servings of a1 at DIAAS 1.0: low 10 g, high 20 g).
+
+```
+B5   covered      tests/test_planner_combinations.py::TestMacroBounds::test_quality_protein_bounds_span_the_fewest_to_the_most_servings
+1 mechanisms: 1 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
 ## 2026-10-08 — N17: B4 gets a test of its own
 
 **Asked.** Owner, 2026-10-08 (option 1 after N16): close the one gap the
