@@ -28,6 +28,7 @@ region: north_indian
 # data/recipes/schema.yaml).
 
 category: tikka
+main_ingredients: [soya]
 prep_minutes: 30
 tags: [snack, pan_roasted, high_protein]
 

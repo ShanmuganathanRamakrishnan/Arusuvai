@@ -17,6 +17,7 @@ region: south_indian
 # ingredient classes; see data/recipes/schema.yaml).
 
 category: poriyal
+main_ingredients: [carrot]
 prep_minutes: 20
 tags: [lunch, vegetable, quick]
 

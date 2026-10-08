@@ -20,6 +20,7 @@ region: north_indian
 # root_vegetable.
 
 category: dal_chilla
+main_ingredients: [moong, paneer]
 prep_minutes: 25
 tags: [pancake, breakfast, high_protein, everyday]
 

@@ -43,6 +43,7 @@ region: north_indian
 # (derived from ingredient classes; see data/recipes/schema.yaml).
 
 category: raita
+main_ingredients: [curd]
 
 # D10 (docs/audit_log.md finding 2, settled 2026-08-09). This file's header
 # has claimed since it was written that nothing here is heated, drained,

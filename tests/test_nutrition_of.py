@@ -207,6 +207,7 @@ class TestUnverifiedEnergyAttribution:
                 min_count=1, default_count=1, max_count=3,
             ),
             prep_minutes=10,
+            main_ingredients=frozenset({"rice"}),
             process_uncertainty={m: 0.0 for m in MACRO_KEYS},
         )
         return Component(recipe=recipe, category="base"), ingredients

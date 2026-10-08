@@ -26,6 +26,7 @@ region: south_indian
 # data/recipes/schema.yaml).
 
 category: curd
+main_ingredients: [curd]
 prep_minutes: 2
 # `breakfast` added alongside `lunch` when SOUTH_BREAKFAST gained an optional
 # curd_course. Tags are free-form and nothing filters on them, so this is a

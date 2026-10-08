@@ -28,6 +28,7 @@ region: north_indian
 # Jain-safe: flour, water and salt only — no onion, no garlic, no root vegetable.
 
 category: roti
+main_ingredients: [wheat]
 prep_minutes: 20
 tags: [bread, lunch, dinner, everyday]
 

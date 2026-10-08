@@ -91,6 +91,7 @@ def make_recipe(
     default_count: int = 1,
     max_count: int = 2,
     region: Region = Region.SOUTH_INDIAN,
+    main_ingredients: frozenset[str] | None = None,
 ) -> Recipe:
     return Recipe(
         id=id,
@@ -105,6 +106,9 @@ def make_recipe(
             max_count=max_count,
         ),
         prep_minutes=10,
+        # Each synthetic dish is its own main ingredient, so a synthetic plate
+        # repeats one only when a test says so.
+        main_ingredients=frozenset({id}) if main_ingredients is None else main_ingredients,
         process_uncertainty=_NO_PROCESS_UNCERTAINTY,
     )
 

@@ -6,6 +6,258 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-08 — N14: the shown plate avoids serving one main ingredient twice
+
+**Asked.** Owner, 2026-10-08 (option 1 after N13): simple written rules
+instead of AI ranking. First rule: prefer a plate where no main ingredient
+appears in more than one dish. Never loosen a limit for it.
+
+**Not a nutrition rule.** It changes which valid plate is shown, never what
+counts as valid: no target, band, tolerance or count moves. That is why no
+paper is cited for it. It is a judgment about how a plate is served, and
+the labels below are the owner's to check.
+
+**Labels (`a535939`).** Every recipe file now carries `main_ingredients`:
+what the dish is named for or built around, from a closed list of 15
+(`core/foods/models.py` `MAIN_INGREDIENTS`). Required. A misspelt word fails
+to load. Judgment calls for the owner to confirm:
+- Soya curd, soya onion raita and tofu bhurji count as **soya**, not curd.
+  This is the soya-in-three-courses case from N12.
+- Curd, onion raita, chaas and neer mor are all **curd**: raita with
+  buttermilk counts as a repeat. No shown plate hits this today.
+- Base dishes name their grain as well: masala dosa is rice and potato;
+  aloo paratha is wheat and potato.
+- Coconut is the label only for coconut chutney. Poriyals that use coconut
+  are labelled for their vegetable.
+
+**Premise measured before the planner change.**
+`docs/design/probes/probe_repeated_main.py`, the 96 cases of N12:
+
+```
+before: plates shown 94; repeat a main ingredient 43; of those, a valid plate with fewer repeats exists 31
+repeated ingredient on shown plates: {'soya': 41, 'carrot': 6}
+```
+
+**Change.** `plan_within_ladder`'s `_pick`, among plates valid at the
+rung the ladder stopped on: the preferred plates (egg, fish or chicken where
+the diet permits) if any, then the fewest repeated main ingredients, then
+the nearest. The egg/chicken preference still comes first, as decided
+2026-09-27.
+
+```
+after:  plates shown 94; repeat a main ingredient 21; of those, a valid plate with fewer repeats exists 0
+repeated ingredient on shown plates: {'soya': 21, 'carrot': 1}
+```
+
+The 21 left have no valid plate with fewer repeats. All 31 plates that had a
+better option improved: 22 now repeat nothing, and 9 repeat less. Most of
+the 21 are vegan or vegetarian meals where soya is the only protein that
+meets the floor.
+
+**Plates that changed in pinned tests**, each re-derived by hand in its comment:
+- South breakfast reference: soya curd x2 -> plain curd x1, idli 3 -> 5.
+  Quality protein 13.0 + curd 145 g x 3.1/100 = 4.495 -> 17.495 g.
+- The same plate with curd's DIAAS disqualified keeps its dishes and drops to
+  13.0 g. With soya chunks disqualified it moves to soya idli 6, sambar 2,
+  chutney 3, at 12.3504 g (soya flour alone).
+- Tofu at DIAAS 0.80, North lunch: the soya onion raita is dropped, so
+  phulka 4 + dal tadka 2 + tofu bhurji 1, the pre-slice-4 plate exactly.
+- Vegetarian North dinner: soya onion raita -> onion raita. The test now
+  asks for the nearest plate with the fewest repeats.
+
+**Deletion checks.** Rows R8, R9 and M1 (labels): all covered, transcript in
+`a535939`. Planner rows, from `docs/design/probes/d4b_mutations.py` and the
+full failure list by hand:
+
+```
+N3a  covered      tests/test_dish_picks.py
+V43  covered      tests/test_repeated_mains.py::test_a_valid_plate_without_the_repeat_is_shown_over_the_nearer_one
+V44  covered      tests/test_dish_picks.py::TestAPickIsHonoured::test_a_pick_the_shown_plate_lacks_is_on_the_plate
+V45  covered      tests/test_dish_picks.py::TestAPickIsHonoured::test_a_pick_the_shown_plate_lacks_is_on_the_plate
+```
+
+**Correction during the work.** The N3a line above is false. The mutation
+deleted a line and left an empty block, so every planner test file failed
+to import ("16 errors"). The harness scored that as covered. Fixed to
+`pass`, then re-graded by hand with the full failure list:
+
+```
+N3a 5 failed, 534 passed, 94 deselected, 1 warning in 62.44s (0:01:02)
+    FAILED tests/test_api_leave_empty.py::test_a_removed_course_is_off_the_plate_with_solver_counts
+    FAILED tests/test_repeated_mains.py::test_a_preference_still_comes_before_fewer_repeats
+    FAILED tests/test_shown_plate_preference.py::TestPreferChoosesAmongValidPlates::test_the_nearest_preferred_plate_is_shown_over_a_nearer_one
+    FAILED tests/test_shown_plate_preference.py::TestPreferChoosesAmongValidPlates::test_the_preference_also_applies_on_a_relaxed_rung
+    FAILED tests/test_shown_plate_preference.py::TestTheRealDinner::test_a_non_vegetarian_north_dinner_shows_an_animal_protein_dish
+```
+
+V44 (equal repeats: nearest) and V45 (count repeats, not dishes) each have
+their own test among the failures listed by hand: V44 fails
+`test_among_plates_without_a_repeat_the_nearest_is_shown`, and V45 fails all
+six tests in `tests/test_repeated_mains.py`. The harness named
+`test_dish_picks.py` only because it is first in collection order.
+
+**Found in passing, not fixed** (queue rule). Rows N3b and N3c search for
+`plan = _pick(solved)`. Since N8 the code says `plan = _pick(chosen)`, once,
+for every rung. Both rows report "pattern not found" and test nothing. The
+2026-09-27 transcript showing them covered predates that change. They should
+become one row.
+
+**Not explained.** One run of the non-browser suite stalled for over 10
+minutes at near-zero CPU and was stopped. The immediate rerun took 59 s and
+passed, and the full run below did not stall. Cause unknown.
+
+**Full suite.** `FOODAI_WEB_TESTS=required python -m pytest tests/ -q` (on
+`ai-ranking`, which does not yet include N11's 8 tests):
+`633 passed, 1 warning in 212.10s (0:03:32)`.
+
+**Owner's check (2026-10-08).** Soya curd, soya onion raita and tofu stay
+soya. Grains in base dishes stay counted. Chaas and neer mor change from curd
+to a new word, buttermilk: raita with buttermilk is a usual pairing, not a
+repeat. Re-measured after the change, with the same results, since no shown
+plate had paired them:
+
+```
+plates shown 94; repeat a main ingredient 21; of those, a valid plate with fewer repeats exists 0
+repeated ingredient on shown plates: {'soya': 21, 'carrot': 1}
+```
+
+`FOODAI_WEB_TESTS=required python -m pytest tests/ -q`:
+`633 passed, 1 warning in 249.78s (0:04:09)`.
+
+**Disposition.** Done; labels checked by the owner.
+
+## 2026-10-07 — N13: stopped at the premise — the local model does not choose better plates
+
+**Asked.** Owner, 2026-10-07 (option 1): build AI ranking. The model picks
+among plates the planner has already made valid; the planner's nearest plate
+stays the fallback; the model never touches a count.
+
+**Checked before wiring anything in.** `llm/ranker.py` (the model call) was
+written and measured live; nothing in the app calls it. Model
+`qwen2.5:7b-instruct` on Ollama 0.13.5, RTX 4060 laptop GPU. The model sees
+the region, the meal and, per plate, a letter and dish names: no digit at
+all. Its reply is held to one of the letters. Cases: the 96 of entry "N12";
+83 had two or more plates to choose from. Offered: the nearest 8 plates,
+animal-protein plates only where the diet permits one and one exists (the
+planner's existing preference).
+
+`docs/design/probes/probe_ranker_live.py`, run twice, with an Ollama restart
+in between:
+
+```
+run 1: cases 83  no answer 4  chose the nearest (A) 43  seconds: first 15.07, median 0.52, max after first 15.02
+run 2: cases 83  no answer 0  chose the nearest (A) 45  seconds: first 0.64, median 0.55, max after first 0.95
+answered in both runs 79 same plate 75
+```
+
+- Speed is fine once loaded: about half a second. Run 1's four misses were
+  the first four requests while the model was still loading; each waited the
+  full 15 s and fell back, as designed.
+- Not fully repeatable: 4 of 79 answers changed across the restart, despite
+  temperature 0 and a fixed seed.
+
+**The question that decides it: are its choices better?** "Better to eat"
+cannot be counted, but one part of it can: the same main ingredient in
+several dishes. N12's reason for ranking was exactly that (soya in three
+courses). The count, over the plates each run answered:
+
+```
+run 1: soya dishes on the plate: nearest 103, model 102; model plate has more soya dishes in 10 cases, fewer in 9
+run 2: soya dishes on the plate: nearest 108, model 106; model plate has more in 10 cases, fewer in 10
+```
+
+No better than the nearest plate. One fairer try, so the result is not just
+the first prompt: `docs/design/probes/probe_ranker_reason.py` asks for a short
+reason per plate before the choice (often helps small models). The prompt
+names no ingredient, so the count is not the prompt's own words coming back.
+
+```
+cases 83 no answer 0 chose A 9 seconds median 5.31 max 11.26
+soya dishes: nearest 108 model 137
+model more soya than nearest 34 fewer 11
+```
+
+Worse, and ten times slower. Its reasons do not match the plates. On the
+vegetarian 55 kg South Indian lunch, it wrote that plate A ("Soya kuzhambu …
+Soya curd") repeats no main ingredient, then chose plate C, which its own
+reason said repeats two.
+
+**Conclusion.** The goal was a better plate from the model. On the one
+property that can be checked, this model gives a different plate, not a
+better one. Wiring it in would change what people see on no evidence that it
+helps. Stopped under the queue rule: the premise was wrong, so the work was not
+reshaped to fit it. No planner, API or page change.
+
+**Not tested.** Larger or hosted models; other prompt styles beyond the two
+above; any property of "good to eat" other than repeated main ingredient.
+
+**Disposition.** Stopped. The next step is the owner's decision.
+
+## 2026-10-07 — N12: is there anything for an AI ranking step to choose between?
+
+**Asked.** Owner, 2026-10-07: start the AI ranking series (architecture step
+5: the model ranks plates that are already valid; it never sets a count).
+Measure first whether a meal usually has several valid plates that differ.
+
+**How.** `docs/design/probes/probe_ranking_room.py`, real library, the call
+the API makes. 4 diets (vegetarian, eggetarian, non-vegetarian, vegan) x 3
+weights (55, 70, 90 kg; male, 170 cm, 30 y, moderate, maintain) x 8 meals =
+96 cases. The valid plates are those `solve` returns at the rung the ladder
+stopped on (the probe records the last `solve` call; the ladder stops on the
+first non-empty one).
+
+**Result.**
+
+```
+meal             bodies declined | valid plates min/median/max | different dishes median | of nearest 10, differ from shown by 2+ dishes: median | bodies with only 1 plate
+south breakfast      12        0 |     7     20    41            |     10                  |      5                                            |   0
+south lunch          12        0 |     1      8    20            |      8                  |      4                                            |   1
+south dinner         12        0 |     2     12    22            |     10                  |      6                                            |   0
+south snack          12        0 |     1      2     3            |      2                  |      0                                            |   2
+north breakfast      12        0 |     1     10    14            |      9                  |      5                                            |   1
+north lunch          12        0 |     4     15    30            |      8                  |      5                                            |   0
+north dinner         12        0 |     7     16    25            |     11                  |      7                                            |   0
+north snack          12        2 |     1      3     4            |      3                  |      0                                            |   1
+
+vegetarian 70 kg south_indian lunch: 9 valid plates
+   shown: Carrot poriyal, Soya curd, Soya kuzhambu, Steamed rice
+   1. Carrot poriyal, Soya curd, Soya kuzhambu, Steamed rice
+   2. Sambar, Soya chunk poriyal, Soya curd, Steamed rice
+   3. Carrot poriyal, Curd, Soya kuzhambu, Steamed rice
+   4. Carrot kootu, Soya chunk poriyal, Soya curd, Soya kuzhambu, Steamed rice
+   5. Carrot poriyal, Soya chunk poriyal, Soya curd, Soya kuzhambu, Steamed rice
+
+non_vegetarian 70 kg north_indian dinner: 25 valid plates
+   shown: Anda curry, Dal tadka, Phulka
+   1. Aloo sabzi, Phulka, Soya chunk masala, Soya onion raita
+   2. Aloo sabzi, Onion raita, Phulka, Soya chunk masala
+   3. Anda curry, Dal tadka, Phulka
+   4. Anda curry, Dal tadka, Phulka, Soya onion raita
+   5. Aloo sabzi, Paneer paratha, Soya chunk curry, Soya onion raita
+```
+
+Run time 18.6 s.
+
+**Reading.**
+- Main meals: yes, there is room. A median of 8 to 20 valid plates, and about
+  half of the nearest 10 differ from the shown plate in two or more dishes.
+- Snacks: little room. A median of 2 to 3 plates, and none of the nearest
+  differ by two dishes. Ranking would change almost nothing there.
+- Nearest-to-target order is a number fit, not a food judgment. It ranks
+  plates with soya in three courses high: plate 5 of the vegetarian lunch, and
+  plate 1 of the dinner (soya chunk masala and soya onion raita). Plate 3 of
+  the vegetarian lunch swaps soya curd for plain curd at no loss of validity.
+  Whether any of these is worse to eat is a judgment, not a measurement. This
+  is the gap ranking is meant to fill.
+- Seven cases have only one valid plate. Ranking there must leave the plate
+  as it is.
+
+**Not measured.** Whether the model's order is better than the current
+order. That needs a person to judge plates side by side. It is the check the
+ranking step itself must carry.
+
+**Disposition.** Premise holds for main meals. Ranking (N13) only with the
+owner's go-ahead.
 ## 2026-10-02 — N11: a user's dish choices are kept per meal between visits
 
 **Asked.** Owner, 2026-10-02: save favourites. Built on the measurement in the

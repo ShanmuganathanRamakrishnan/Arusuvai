@@ -11,6 +11,7 @@ region: north_indian
 # from ingredient classes; see data/recipes/schema.yaml).
 
 category: combo_rice_legume
+main_ingredients: [rice, rajma]
 prep_minutes: 55
 tags: [one_plate, lunch, high_protein]
 

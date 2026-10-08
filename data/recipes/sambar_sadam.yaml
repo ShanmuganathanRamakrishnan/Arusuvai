@@ -10,6 +10,7 @@ region: south_indian
 # ingredient classes; see data/recipes/schema.yaml).
 
 category: mixed_rice
+main_ingredients: [rice, dal]
 prep_minutes: 40
 tags: [one_pot, lunch, comfort]
 

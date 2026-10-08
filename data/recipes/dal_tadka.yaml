@@ -26,6 +26,7 @@ region: north_indian
 # from ingredient classes; see data/recipes/schema.yaml).
 
 category: dal
+main_ingredients: [dal]
 prep_minutes: 35
 tags: [everyday, lunch, dinner, high_protein]
 

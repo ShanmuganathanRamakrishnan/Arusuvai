@@ -35,6 +35,7 @@ region: south_indian
 # data/recipes/schema.yaml). Not jain: onion_raw is classed root_vegetable.
 
 category: sundal
+main_ingredients: [soya]
 prep_minutes: 20
 tags: [snack, tempered, high_protein, vegan]
 

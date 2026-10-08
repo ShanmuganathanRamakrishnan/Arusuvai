@@ -28,6 +28,7 @@ region: south_indian
 # and carrot are classed root_vegetable. Derived from ingredient classes.
 
 category: poriyal
+main_ingredients: [egg, carrot]
 prep_minutes: 20
 tags: [lunch, dinner, vegetable, eggetarian, high_protein]
 

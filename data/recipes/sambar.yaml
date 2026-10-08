@@ -19,6 +19,7 @@ region: south_indian
 # ingredient classes; see data/recipes/schema.yaml).
 
 category: sambar
+main_ingredients: [dal]
 prep_minutes: 35
 tags: [everyday, breakfast, lunch, gravy]
 
