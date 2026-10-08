@@ -4,6 +4,7 @@ feasibility pre-filter."""
 from __future__ import annotations
 
 import dataclasses
+import logging
 
 import pytest
 
@@ -13,7 +14,10 @@ from core.planner.combinations import (
     combinations_excluding_recent,
     enumerate_combinations,
     feasible_combinations,
+    macro_bounds,
+    quality_protein_bounds,
 )
+from core.foods.models import Component
 from core.nutrition.target import NutritionTarget
 from core.schemas import DietPattern
 from tests.factories import (
@@ -22,6 +26,7 @@ from tests.factories import (
     FEASIBILITY_TEMPLATE,
     SOUTH_LUNCH_COMPONENTS,
     SOUTH_LUNCH_INGREDIENTS,
+    make_recipe,
 )
 
 
@@ -110,6 +115,28 @@ class TestEnumeration:
         )
         assert enumerate_combinations(real) != ()
         assert enumerate_combinations(pool) == ()
+
+    def test_an_unfillable_slot_is_logged_once_and_by_name(self, caplog):
+        # Harness row B2 (finding 33). Deleting the early `return ()` keeps
+        # the return value -- product over an empty slot is empty anyway --
+        # but falls through to the second log line, which reports "0
+        # combinations" and never names the slot. What the early return
+        # protects is this one line naming slot "b", so the test reads it.
+        # Pool: the two-slot fixture with only its cat_a dishes, so slot "b"
+        # has no candidate.
+        pool = build_candidate_pool(
+            [c for c in FEASIBILITY_COMPONENTS if c.category == "cat_a"],
+            FEASIBILITY_INGREDIENTS,
+            template=FEASIBILITY_TEMPLATE,
+            diet_pattern=DietPattern.VEGETARIAN,
+            dev_mode=False,
+        )
+        with caplog.at_level(logging.INFO, logger="core.planner.combinations"):
+            assert enumerate_combinations(pool) == ()
+        lines = [r.getMessage() for r in caplog.records if r.name == "core.planner.combinations"]
+        assert len(lines) == 1
+        assert "no legal selection" in lines[0]
+        assert "['b']" in lines[0]
 
     def test_no_repeat_window_filters_combinations_reusing_a_recent_recipe(self):
         pool = _south_lunch_pool()
@@ -203,3 +230,63 @@ class TestFeasibilityPreFilter:
         combos = enumerate_combinations(self._pool())
         target = NutritionTarget(floors={"energy_kcal": 1000.0})
         assert feasible_combinations(combos, target, FEASIBILITY_INGREDIENTS) == ()
+
+    def test_a_combination_that_cannot_reach_the_quality_floor_is_dropped(self):
+        # Harness row B8. The quality pre-filter changes no final verdict (the
+        # solver re-checks the floor), so only this function's own output can
+        # show it is there. No fixture ingredient has a DIAAS, so none
+        # qualifies; give a1 one of 1.0 (above the 0.75 threshold). Every
+        # unit is pinned at one 100 g serving, so reachable qualifying
+        # protein is a1's protein or nothing:
+        #   (a1,b1) 5   (a1,b2) 5   (a2,b1) 0   (a2,b2) 0
+        # A 4 g floor keeps exactly the two combinations holding a1.
+        ingredients = dict(FEASIBILITY_INGREDIENTS)
+        ingredients["a1"] = dataclasses.replace(ingredients["a1"], diaas=1.0)
+        combos = enumerate_combinations(self._pool())
+        target = NutritionTarget(quality_protein_floor_g=4.0)
+        survivors = feasible_combinations(combos, target, ingredients)
+        assert {c.recipe_ids() for c in survivors} == {
+            frozenset({"a1", "b1"}),
+            frozenset({"a1", "b2"}),
+        }
+
+
+class TestMacroBounds:
+    """Each component's least and greatest contribution, from its serving unit.
+
+    TASKS_3.md N17 (docs/audit_log.md 2026-10-08, "N16"): deleting the low
+    bound's use of `min_count` (harness row B4) turned 37 tests red, none of
+    them here. The feasibility fixture pins every unit at min=max=1, where
+    the two counts agree and no test of this file can tell them apart.
+    """
+
+    def test_the_low_bound_is_the_fewest_servings_and_the_high_the_most(self):
+        # a1 is 100 kcal and 500 mg sodium per 100 g; one serving unit is
+        # 100 g of it. A unit of 2..4 servings:
+        #   energy low  = 2 * 100 = 200    high = 4 * 100 = 400
+        #   sodium low  = 2 * 500 = 1000   high = 4 * 500 = 2000
+        recipe = make_recipe(
+            "a1", FEASIBILITY_INGREDIENTS["a1"], min_count=2, default_count=3, max_count=4
+        )
+        component = Component(recipe=recipe, category="cat_a")
+        assert macro_bounds(component, "energy_kcal", FEASIBILITY_INGREDIENTS) == pytest.approx(
+            (200.0, 400.0)
+        )
+        assert macro_bounds(component, "sodium_mg", FEASIBILITY_INGREDIENTS) == pytest.approx(
+            (1000.0, 2000.0)
+        )
+
+    def test_quality_protein_bounds_span_the_fewest_to_the_most_servings(self):
+        # Harness row B5, the quality analogue of the test above. Today's
+        # callers read only the high side; the low side is still part of
+        # what the function returns, so it is pinned too. a1 given DIAAS 1.0
+        # (above the 0.75 threshold) so all 5 g of its protein per 100 g
+        # qualifies; a unit of 2..4 servings of 100 g:
+        #   low = 2 * 5 = 10    high = 4 * 5 = 20
+        ingredients = dict(FEASIBILITY_INGREDIENTS)
+        ingredients["a1"] = dataclasses.replace(ingredients["a1"], diaas=1.0)
+        recipe = make_recipe(
+            "a1", ingredients["a1"], min_count=2, default_count=3, max_count=4
+        )
+        component = Component(recipe=recipe, category="cat_a")
+        assert quality_protein_bounds(component, ingredients) == pytest.approx((10.0, 20.0))

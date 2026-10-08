@@ -135,6 +135,8 @@ def enumerate_combinations(pool: CandidatePool) -> tuple[MealCombination, ...]:
         # `docs/audit_log.md` finding 33 (2026-08-09) reports this as a
         # behaviour-preserving deletion no test can catch, and it is -- the
         # decision recorded here is to keep it anyway.
+        # Since N18 (2026-10-08) a test reads the log line below, so deleting
+        # this return is caught after all.
         #
         # What it preserves is the diagnosis, not the answer. Falling through
         # reaches the second logger.info, which reports "0 combinations, bound

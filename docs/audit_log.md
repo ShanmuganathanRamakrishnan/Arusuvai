@@ -6,6 +6,112 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-08 — N18: the three accepted survivors get tests after all
+
+**Asked.** Owner, 2026-10-08, after N17: fix the remaining flags now rather
+than leave them. Entry "N16" left three rows surviving, each documented as
+expected: B2 (finding 33), B5 (D4b, "a bad mutation of the probe's own"),
+B8 ("a pure optimisation: removing it changes no verdict"). Each statement
+was about the *pipeline's* verdict. Each mechanism still changes what its
+own function returns or logs, and that is testable directly, as N17 did for
+B4. One commit per row.
+
+### B8 — the quality pre-filter
+
+`feasible_combinations` drops a combination whose components, all at their
+maximum count, cannot reach `quality_protein_floor_g`. The solver re-checks
+the floor, so the final plate never changes; the pre-filter's own return
+value does. No test called `feasible_combinations` with a quality floor.
+
+New: `tests/test_planner_combinations.py::TestFeasibilityPreFilter::test_a_combination_that_cannot_reach_the_quality_floor_is_dropped`.
+Fixture a1 given DIAAS 1.0; hand arithmetic in the test (4 g floor keeps the
+two combinations holding a1's 5 g).
+
+```
+B8   covered      tests/test_planner_combinations.py::TestFeasibilityPreFilter::test_a_combination_that_cannot_reach_the_quality_floor_is_dropped
+1 mechanisms: 1 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+The statement "removing it changes no verdict" stays true and stays in
+`docs/build_status.md`; it no longer means "no test can see it".
+
+### B5 — the low side of `quality_protein_bounds`
+
+Earlier called "a bad mutation of the probe's own" because no caller reads
+`[0]`. That is still true of the callers (`combinations.py` and
+`validator.py` both read `[1]`), but the function returns the pair and
+promises both sides in its docstring. A direct test pins both, so the row is
+kept and now graded.
+
+New: `tests/test_planner_combinations.py::TestMacroBounds::test_quality_protein_bounds_span_the_fewest_to_the_most_servings`
+(2..4 servings of a1 at DIAAS 1.0: low 10 g, high 20 g).
+
+```
+B5   covered      tests/test_planner_combinations.py::TestMacroBounds::test_quality_protein_bounds_span_the_fewest_to_the_most_servings
+1 mechanisms: 1 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+### B2 — the early return on an unfillable required slot
+
+Finding 33 kept this `return ()` on purpose: deleting it leaves the return
+value the same, but falls through to the second log line, which says "0
+combinations" and never names the blocking slot. The finding recorded that
+no assertion reads the log line. One now does.
+
+New: `tests/test_planner_combinations.py::TestEnumeration::test_an_unfillable_slot_is_logged_once_and_by_name`
+(two-slot fixture with only its cat_a dishes; exactly one log record from
+`core.planner.combinations`, saying "no legal selection" and naming `['b']`).
+
+```
+B2   covered      tests/test_planner_combinations.py::TestEnumeration::test_an_unfillable_slot_is_logged_once_and_by_name
+1 mechanisms: 1 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+Two comments that said otherwise now carry a dated note rather than being
+rewritten: the one above the `return ()` in `core/planner/combinations.py`
+(comment only, no code change) and the B2 row in
+`docs/design/probes/d4b_mutations.py`.
+
+**Disposition.** FIXED for B2, B5, B8. With N17's B4, every row the N16
+sweep did not grade "covered" is now covered by a test that names it.
+Finding 33's decision to keep the early return stands; its "no test can
+catch" no longer does.
+
+## 2026-10-08 — N17: B4 gets a test of its own
+
+**Asked.** Owner, 2026-10-08 (option 1 after N16): close the one gap the
+full sweep found. Entry "N16" below: harness row B4 (`macro_bounds`' low
+bound uses the unit's `min_count`) was soft-covered, caught by 37 tests,
+none in `OWN_TESTS[COMBINATIONS]`.
+
+**Why the combinations tests could not see it.** Their feasibility fixture
+(`tests/factories.py`, `FEASIBILITY_RECIPES`) pins every serving unit at
+`min_count = max_count = 1`. At those counts the low and high bounds are the
+same number, so moving the low side to `max_count` changes nothing any test
+in that file reads.
+
+**Changed.** `tests/test_planner_combinations.py::TestMacroBounds`, one test:
+`a1` (100 kcal, 500 mg sodium per 100 g, one unit = 100 g) with a unit of
+2..4 servings. Hand arithmetic in the test: energy (200, 400), sodium
+(1000, 2000). No code under `core/` changed; the fixture is untouched, so no
+other test moves.
+
+**Before** (entry "N16"):
+
+```
+  soft-covered B4   combinations.py    macro_bounds low uses the unit's min_count
+               37 incidental: tests/test_api_leave_empty.py::test_only_optional_courses_are_marked_removable
+```
+
+**After:**
+
+```
+B4   covered      tests/test_planner_combinations.py::TestMacroBounds::test_the_low_bound_is_the_fewest_servings_and_the_high_the_most
+1 mechanisms: 1 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+**Disposition.** FIXED. B4 is covered by a test that names it.
+
 ## 2026-10-08 — N16: full deletion sweep after N15, every row read
 
 **Asked.** Owner, 2026-10-08 (option 1 after N15): run the whole harness to
