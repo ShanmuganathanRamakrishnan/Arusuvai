@@ -13,7 +13,9 @@ from core.planner.combinations import (
     combinations_excluding_recent,
     enumerate_combinations,
     feasible_combinations,
+    macro_bounds,
 )
+from core.foods.models import Component
 from core.nutrition.target import NutritionTarget
 from core.schemas import DietPattern
 from tests.factories import (
@@ -22,6 +24,7 @@ from tests.factories import (
     FEASIBILITY_TEMPLATE,
     SOUTH_LUNCH_COMPONENTS,
     SOUTH_LUNCH_INGREDIENTS,
+    make_recipe,
 )
 
 
@@ -203,3 +206,29 @@ class TestFeasibilityPreFilter:
         combos = enumerate_combinations(self._pool())
         target = NutritionTarget(floors={"energy_kcal": 1000.0})
         assert feasible_combinations(combos, target, FEASIBILITY_INGREDIENTS) == ()
+
+
+class TestMacroBounds:
+    """Each component's least and greatest contribution, from its serving unit.
+
+    TASKS_3.md N17 (docs/audit_log.md 2026-10-08, "N16"): deleting the low
+    bound's use of `min_count` (harness row B4) turned 37 tests red, none of
+    them here. The feasibility fixture pins every unit at min=max=1, where
+    the two counts agree and no test of this file can tell them apart.
+    """
+
+    def test_the_low_bound_is_the_fewest_servings_and_the_high_the_most(self):
+        # a1 is 100 kcal and 500 mg sodium per 100 g; one serving unit is
+        # 100 g of it. A unit of 2..4 servings:
+        #   energy low  = 2 * 100 = 200    high = 4 * 100 = 400
+        #   sodium low  = 2 * 500 = 1000   high = 4 * 500 = 2000
+        recipe = make_recipe(
+            "a1", FEASIBILITY_INGREDIENTS["a1"], min_count=2, default_count=3, max_count=4
+        )
+        component = Component(recipe=recipe, category="cat_a")
+        assert macro_bounds(component, "energy_kcal", FEASIBILITY_INGREDIENTS) == pytest.approx(
+            (200.0, 400.0)
+        )
+        assert macro_bounds(component, "sodium_mg", FEASIBILITY_INGREDIENTS) == pytest.approx(
+            (1000.0, 2000.0)
+        )

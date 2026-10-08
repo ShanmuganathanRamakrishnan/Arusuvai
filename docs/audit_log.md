@@ -6,6 +6,41 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-08 — N17: B4 gets a test of its own
+
+**Asked.** Owner, 2026-10-08 (option 1 after N16): close the one gap the
+full sweep found. Entry "N16" below: harness row B4 (`macro_bounds`' low
+bound uses the unit's `min_count`) was soft-covered, caught by 37 tests,
+none in `OWN_TESTS[COMBINATIONS]`.
+
+**Why the combinations tests could not see it.** Their feasibility fixture
+(`tests/factories.py`, `FEASIBILITY_RECIPES`) pins every serving unit at
+`min_count = max_count = 1`. At those counts the low and high bounds are the
+same number, so moving the low side to `max_count` changes nothing any test
+in that file reads.
+
+**Changed.** `tests/test_planner_combinations.py::TestMacroBounds`, one test:
+`a1` (100 kcal, 500 mg sodium per 100 g, one unit = 100 g) with a unit of
+2..4 servings. Hand arithmetic in the test: energy (200, 400), sodium
+(1000, 2000). No code under `core/` changed; the fixture is untouched, so no
+other test moves.
+
+**Before** (entry "N16"):
+
+```
+  soft-covered B4   combinations.py    macro_bounds low uses the unit's min_count
+               37 incidental: tests/test_api_leave_empty.py::test_only_optional_courses_are_marked_removable
+```
+
+**After:**
+
+```
+B4   covered      tests/test_planner_combinations.py::TestMacroBounds::test_the_low_bound_is_the_fewest_servings_and_the_high_the_most
+1 mechanisms: 1 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+**Disposition.** FIXED. B4 is covered by a test that names it.
+
 ## 2026-10-08 — N16: full deletion sweep after N15, every row read
 
 **Asked.** Owner, 2026-10-08 (option 1 after N15): run the whole harness to
