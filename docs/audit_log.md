@@ -110,7 +110,21 @@ passed, and the full run below did not stall. Cause unknown.
 `ai-ranking`, which does not yet include N11's 8 tests):
 `633 passed, 1 warning in 212.10s (0:03:32)`.
 
-**Disposition.** Done. The labels await the owner's check.
+**Owner's check (2026-10-08).** Soya curd, soya onion raita and tofu stay
+soya. Grains in base dishes stay counted. Chaas and neer mor change from curd
+to a new word, buttermilk: raita with buttermilk is a usual pairing, not a
+repeat. Re-measured after the change, with the same results, since no shown
+plate had paired them:
+
+```
+plates shown 94; repeat a main ingredient 21; of those, a valid plate with fewer repeats exists 0
+repeated ingredient on shown plates: {'soya': 21, 'carrot': 1}
+```
+
+`FOODAI_WEB_TESTS=required python -m pytest tests/ -q`:
+`633 passed, 1 warning in 249.78s (0:04:09)`.
+
+**Disposition.** Done; labels checked by the owner.
 
 ## 2026-10-07 — N13: stopped at the premise — the local model does not choose better plates
 
