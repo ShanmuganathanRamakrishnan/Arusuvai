@@ -6,6 +6,61 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-08 — N16: full deletion sweep after N15, every row read
+
+**Asked.** Owner, 2026-10-08 (option 1 after N15): run the whole harness to
+find any other row that tests nothing. Report only.
+
+**Run.** Branch `full-sweep` off main `61531f8`, working tree clean apart
+from the untracked queue file:
+
+```
+PYTHONHASHSEED=0 PYTHONPATH=. NO_COLOR=1 PY_COLORS=0 python docs/design/probes/d4b_mutations.py
+98 mechanisms: 94 covered, 1 soft-covered, 3 SURVIVED, 0 harness errors.
+  soft-covered B4   combinations.py    macro_bounds low uses the unit's min_count
+               37 incidental: tests/test_api_leave_empty.py::test_only_optional_courses_are_marked_removable
+  SURVIVED     B2   combinations.py    unfillable required slot returns no combinations
+  SURVIVED     B5   combinations.py    quality_protein_bounds spans min..max count
+  SURVIVED     B8   combinations.py    pre-filter discards combos that cannot reach the quality floor
+```
+
+Started 12:54, finished after 15:10 (about 2 h 20 min).
+
+**No harness errors.** No other row matches nothing, so the N3b/N3c defect
+(entry "N15" below) has no siblings today.
+
+**Survivors: all three already documented, none new.** `B2` is finding 33's
+accepted survivor (comment on the row). `B5` is a bad mutation of the probe's
+own: it moves the low side of `quality_protein_bounds`, which no caller
+reads (D4b entries, "Three survivors are not in this table"). `B8` is the
+quality pre-filter, documented as an optimisation that changes no verdict.
+
+**B4, soft-covered: guarded, but not by a test written for it.** Full
+failure list by hand (same edit, non-browser suite, restored after; `git
+status --short core/` empty):
+
+```
+B4 37 failed, 514 passed, 102 deselected, 1 warning in 63.47s (0:01:03)
+   10 tests/test_planner_quality.py      4 tests/test_shown_plate_preference.py
+    4 tests/test_planner_validator.py    4 tests/test_dish_picks.py
+    3 tests/test_leave_empty.py          3 tests/test_api_targets.py
+    3 tests/test_api_picks.py            3 tests/test_api_leave_empty.py
+    2 tests/test_planner_decline.py      1 tests/test_planner_solver.py
+```
+
+Among them `test_planner_validator.py::TestAHardCeilingIsNeverWidened::test_relaxation_recovers_combinations_the_tight_pre_filter_discarded`
+and `test_planner_solver.py::TestModerateProfileProperty::test_200_random_moderate_profiles_all_solve`.
+None is in `OWN_TESTS[COMBINATIONS]` (`test_planner_combinations.py`,
+`test_planner_determinism.py`), so the harness grades it soft. Deleting the
+mechanism is not silent; what is missing is a test in the combinations file
+that pins the low bound of `macro_bounds` at the unit's `min_count` by hand
+arithmetic. The D4b-i sweep (55 rows) listed `C3`, not `B4`, as its one
+soft-covered row; when `B4` stopped being caught by a scoped test is not
+established here.
+
+**Disposition.** OPEN, low: B4 needs one focused test in
+`tests/test_planner_combinations.py`. Not fixed here (report-only task).
+
 ## 2026-10-08 — N15: deletion rows N3b/N3c had tested nothing since N8
 
 **Asked.** Owner, 2026-10-08 (option 1 after N14): fix the two broken
