@@ -680,6 +680,11 @@ MUTATIONS: tuple[Mutation, ...] = (
         "        if not self.main_ingredients:\n",
         "        if False:\n",
     ),
+    Mutation(
+        "M2", MODELS, "a required slot cannot be on request (N19)",
+        "        if self.on_request and self.required:\n",
+        "        if False:\n",
+    ),
     # -------------------------------------------- schemas/common (R1b)
     Mutation(
         "D1", SCHEMAS_COMMON, "diet_pattern_permits: jain dairy-sourcing gate",
@@ -735,6 +740,17 @@ MUTATIONS: tuple[Mutation, ...] = (
         "        prefer=_animal_protein_preference(diet_pattern, library.ingredients),\n",
         "",
     ),
+    # ------------------------------------------- on-request course (N19)
+    Mutation(
+        "N19a", PLAN, "an on-request course is left empty by default",
+        "        if slot.on_request\n",
+        "        if False\n",
+    ),
+    Mutation(
+        "N19b", PLAN, "a pick belonging to an on-request course fills it",
+        "        and not any(category_of.get(r) in slot.accepted_categories for r in picks)\n",
+        "",
+    ),
 )
 
 
@@ -768,12 +784,12 @@ OWN_TESTS: dict[str, tuple[str, ...]] = {
     # Same file as NUTRITION_OF's second entry, and for the same reason: a
     # reader editing `test_recipes.py` knows they are editing evidence rules.
     RECIPE_LOADER: ("test_recipes.py", "test_main_ingredients.py"),
-    MODELS: ("test_main_ingredients.py",),
+    MODELS: ("test_main_ingredients.py", "test_on_request_slot.py"),
     # TestDietPatternPermittedClassTable and TestDairySourcingGate (R1b) target
     # D1 and D2 respectively, but not symmetrically — see that file's module
     # docstring above the two classes, and finding 49 (docs/audit_log.md).
     SCHEMAS_COMMON: ("test_planner_candidates.py",),
-    PLAN: ("test_shown_plate_preference.py",),
+    PLAN: ("test_shown_plate_preference.py", "test_on_request_slot.py"),
 }
 
 

@@ -356,15 +356,26 @@ SOUTH_SNACK = MealTemplate(
     region=Region.SOUTH_INDIAN,
     meal_slot=MealSlot.SNACK,
     slots=(
-        # "egg" added 2026-09-27 (TASKS_3.md N2c): a boiled egg with pepper
-        # and salt, or muttai podimas, is the ordinary Tamil egg eaten as an
-        # evening snack, in the place a sundal takes. The slot keeps its name
-        # because `blocking_slots` carries it on the wire; the categories are
-        # what decide which dishes may fill it. docs/audit_log.md 2026-09-27
-        # (egg category).
+        # "egg" was added here 2026-09-27 (TASKS_3.md N2c) on the claim that a
+        # boiled egg or muttai podimas is "the ordinary Tamil egg eaten as an
+        # evening snack, in the place a sundal takes". Corrected 2026-10-08
+        # (N19) by the owner, from their own experience: sundal is eaten alone
+        # as the snack; an egg is not, and boiled egg with sundal is a
+        # breakfast habit. Measured too: in that place no egg plate was ever
+        # valid -- an egg has no fibre (docs/audit_log.md 2026-10-08, "N19").
         TemplateSlot(
             name="sundal",
-            accepted_categories=frozenset({"sundal", "egg"}),
+            accepted_categories=frozenset({"sundal"}),
+        ),
+        # An egg beside the sundal, offered but never served by default
+        # (`on_request`): some people choose it, it is not the ordinary snack.
+        TemplateSlot(
+            name="egg_side",
+            accepted_categories=frozenset({"egg"}),
+            required=False,
+            min_selections=0,
+            max_selections=1,
+            on_request=True,
         ),
         # Optional for the reason this module's header gives: a ~31 kcal extra
         # the solver can use to close a small energy gap. A sundal alone is a

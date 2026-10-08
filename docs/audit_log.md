@@ -6,6 +6,100 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-08 — N19: the South snack's egg is a side, offered on request
+
+**Asked.** Owner, 2026-10-08 (option 1 after N18): an egg option for the
+South Indian snack. The task as first stated -- add an egg dish -- rested on
+a wrong premise, and the egg claim already in the template was wrong too.
+
+**Premise check.** Three South egg dishes already existed and the snack's
+one required course already accepted them (N2c, 2026-09-27). Measured, 36
+egg-eating bodies (eggetarian and non-vegetarian x 3 goals x 2 sexes x 55/70/90
+kg): 0 shown plates and 0 valid plates held an egg. Reference eggetarian
+(70 kg, 170 cm, 30, male, maintain) snack target: energy 225.6-275.8 kcal,
+fat <= 9.75 g, fibre >= 3.51 g, protein >= 16.8 g, quality protein >= 11.2 g.
+avicha_muttai x2 = 147.7 kcal, fat 10.5 g, fibre 0.0 g, protein 13.4 g;
+neer_mor adds 0.1 g fibre. An egg alone can never meet the fibre floor, so
+no added egg dish could have changed the count.
+
+**Owner's correction (lived experience).** Sundal is the snack and is eaten
+alone. An egg is not eaten alone as an evening snack; boiled egg with sundal
+or sweet potato is a breakfast habit. An egg beside the sundal is acceptable
+as an option, "not a regular thing". This contradicts the N2c comment that
+a boiled egg or podimas is "the ordinary Tamil egg eaten as an evening snack,
+in the place a sundal takes". The comment is corrected in place with a dated
+note, not deleted.
+
+**Changed.**
+- `TemplateSlot.on_request` (`core/foods/models.py`): an optional course the
+  planner leaves empty unless a pick belongs to it. A required slot cannot
+  be one (construction-time check).
+- `SOUTH_SNACK`: the `sundal` course takes sundal only; a new `egg_side`
+  course takes egg, optional, `on_request=True`; the drink is unchanged.
+- `plan_meal` joins every on-request course with no pick in it to
+  `leave_empty`. Swap options, emptiable courses and declines then treat it
+  exactly as a course the user emptied. The animal-protein preference
+  therefore never puts an egg on the snack by itself.
+
+**Measured** (`docs/design/probes/probe_snack_egg_side.py`; reads only
+`plan_meal`'s outcome and `Component.category`, so it ran on both trees):
+
+```
+--- before (main 65d0e63)
+vegetarian      {'bodies': 18, 'with a plate': 18, 'shown egg': 0}
+eggetarian      {'bodies': 18, 'with a plate': 18, 'shown egg': 0, 'asked avicha_muttai: passes': 0, 'asked muttai_omelette: passes': 0, 'asked muttai_podimas: passes': 0}
+non_vegetarian  {'bodies': 18, 'with a plate': 18, 'shown egg': 0, 'asked avicha_muttai: passes': 0, 'asked muttai_omelette: passes': 0, 'asked muttai_podimas: passes': 0}
+vegan           {'bodies': 18, 'with a plate': 16, 'shown egg': 0}
+--- after
+vegetarian      {'bodies': 18, 'with a plate': 18, 'shown egg': 0}
+eggetarian      {'bodies': 18, 'with a plate': 18, 'shown egg': 0, 'asked avicha_muttai: passes': 6, 'asked muttai_omelette: passes': 0, 'asked muttai_podimas: passes': 0}
+non_vegetarian  {'bodies': 18, 'with a plate': 18, 'shown egg': 0, 'asked avicha_muttai: passes': 6, 'asked muttai_omelette: passes': 0, 'asked muttai_podimas: passes': 0}
+vegan           {'bodies': 18, 'with a plate': 16, 'shown egg': 0}
+```
+
+Default plates unchanged for every diet. A boiled egg can be added for 6 of
+18 bodies per egg-eating diet; omelette and podimas fit none (why is not
+measured). The egg is offered only where it fits: over
+the same 36 bodies, `egg_side` swap options list `avicha_muttai` for 12 and
+are empty for the other 24. Why the other 24 cannot fit it is not measured.
+
+**Deletion rows.** M2 (MODELS), N19a and N19b (PLAN), `OWN_TESTS` extended:
+
+```
+M2   covered      tests/test_on_request_slot.py::test_a_required_slot_cannot_be_on_request
+N19a covered      tests/test_on_request_slot.py::test_by_default_the_snack_holds_no_egg
+N19b covered      tests/test_on_request_slot.py::test_asking_for_an_egg_puts_it_beside_the_sundal
+3 mechanisms: 3 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+**Web, by hand** (the harness cannot grade `web/`). Playwright script against
+the dev servers, eggetarian 70 kg / 170 cm / 30 / male / maintain:
+
+```
+default dishes: ['Soya chana sundal']
+add menus: [{'label': 'Add an egg side', 'options': ['Choose a dish', 'Avicha muttai (boiled egg)']}, {'label': 'Add a drink', 'options': ['Choose a dish', 'Neer mor']}]
+request: {..., 'picks': ['avicha_muttai'], 'leave_empty': [], 'region': 'south_indian', 'meal_slot': 'snack'}
+passed: True
+after adding: ['Soya chunk sundal', 'Avicha muttai (boiled egg)']
+```
+
+Adding the egg re-solves the plate, so the sundal can change (chana to chunk
+here) to keep the snack within its limits. `tests/test_web_add_dish.py`'s
+snack body (175 cm, 28) is one the egg does not fit, so it still sees only
+the drink menu and passes unchanged.
+
+**Logged, not done.**
+- Bread omelette (owner, 2026-10-08: a normal snack across India). No bread
+  row exists in `data/raw/ifct`. Owner chose to do it after N19, starting
+  with the IFCT 2017 PDF (download permitted by the owner for that task).
+  A rough check from memory, not a source, suggests it misses the snack's
+  protein and fibre floors; to be measured, not assumed.
+- Sweet potato with boiled egg at South breakfast (owner's description of
+  the breakfast habit). `SOUTH_BREAKFAST` already has an optional egg side
+  (N7); no sweet potato dish exists.
+
+**Disposition.** DONE. The N2c snack claim is CORRECTED.
+
 ## 2026-10-08 — N18: the three accepted survivors get tests after all
 
 **Asked.** Owner, 2026-10-08, after N17: fix the remaining flags now rather
