@@ -6,6 +6,71 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-08 — N15: deletion rows N3b/N3c had tested nothing since N8
+
+**Asked.** Owner, 2026-10-08 (option 1 after N14): fix the two broken
+removal checks, so the egg/fish/chicken preference is really guarded.
+
+**Found.** Rows N3b ("rung 0 returns the picked plate") and N3c ("a relaxed
+rung returns the picked plate") in `docs/design/probes/d4b_mutations.py`
+searched for `plan = _pick(solved)` at two call sites. N8 (`deba558`,
+2026-09-29) removed both and added one shared call, `plan = _pick(chosen)`,
+in `_accepted`. Checked with `git show deba558 -- core/planner/validator.py`:
+two `-        plan = _pick(solved)` lines, one `+        plan = _pick(chosen)`.
+From then both rows reported a harness error and deleted nothing. Before,
+old rows run against today's tree:
+
+```
+2 mechanisms: 0 covered, 0 soft-covered, 0 SURVIVED, 2 harness errors.
+  ERROR        N3b  validator.py       rung 0 returns the picked plate, not solved[0]
+               pattern not found in source
+  ERROR        N3c  validator.py       a relaxed rung returns the picked plate, not solved[0]
+               pattern not found in source
+```
+
+**Changed.** One call site, so one row: N3b now replaces
+`plan = _pick(chosen)` with `plan = chosen[0]` (show the nearest plate,
+ignoring both the preference and N14's fewer-repeats rule). N3c is retired,
+not kept as documented-dead: the mechanism it named still exists and is
+covered by the new N3b. Comment in the row says so.
+
+**After.**
+
+```
+N3b  covered      tests/test_planner_quality.py::TestThePerturbationTest::test_disqualifying_soya_chunks_moves_the_south_breakfast_figure
+1 mechanisms: 1 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+The harness names only the first failure. Full list, by hand (same edit,
+non-browser suite, then restored; `git diff --stat core/` empty after):
+
+```
+N3b 10 failed, 541 passed, 102 deselected, 1 warning in 68.15s (0:01:08)
+    FAILED tests/test_api_leave_empty.py::test_a_removed_course_is_off_the_plate_with_solver_counts
+    FAILED tests/test_planner_quality.py::TestAgainstTheRealLibrary::test_the_reference_breakfast_plate_is_idli_soya_kuzhambu_chutney
+    FAILED tests/test_planner_quality.py::TestThePerturbationTest::test_disqualifying_soya_chunks_moves_the_south_breakfast_figure
+    FAILED tests/test_planner_quality.py::TestThePerturbationTest::test_qualifying_tofu_hands_back_the_pre_slice_4_plate
+    FAILED tests/test_repeated_mains.py::test_a_valid_plate_without_the_repeat_is_shown_over_the_nearer_one
+    FAILED tests/test_repeated_mains.py::test_among_plates_without_a_repeat_the_nearest_is_shown
+    FAILED tests/test_shown_plate_preference.py::TestPreferChoosesAmongValidPlates::test_the_nearest_preferred_plate_is_shown_over_a_nearer_one
+    FAILED tests/test_shown_plate_preference.py::TestPreferChoosesAmongValidPlates::test_the_preference_also_applies_on_a_relaxed_rung
+    FAILED tests/test_shown_plate_preference.py::TestTheRealDinner::test_a_non_vegetarian_north_dinner_shows_an_animal_protein_dish
+    FAILED tests/test_shown_plate_preference.py::TestTheRealDinner::test_a_vegetarian_north_dinner_is_the_nearest_plate_with_fewest_repeats
+restored
+```
+
+Both rungs the old rows split are red: rung 0
+(`test_the_nearest_preferred_plate_is_shown_over_a_nearer_one`) and a
+relaxed rung (`test_the_preference_also_applies_on_a_relaxed_rung`).
+
+**Not checked.** A sweep of every row was started to look for other
+"pattern not found" rows; it hit a 5-minute limit and printed nothing, so
+it says nothing either way. How N3b/N3c went unnoticed for nine days: the
+sweep reports harness errors in its summary line, and no full sweep was
+read after N8. Worth a full sweep before the next harness change.
+
+**Disposition.** FIXED for N3b/N3c. Other rows not re-swept.
+
 ## 2026-10-08 — N14: the shown plate avoids serving one main ingredient twice
 
 **Asked.** Owner, 2026-10-08 (option 1 after N13): simple written rules
