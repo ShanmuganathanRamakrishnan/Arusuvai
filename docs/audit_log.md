@@ -6,6 +6,61 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-08 — N20: a bread omelette cannot fit any snack target -- stopped at premise
+
+**Asked.** Owner, 2026-10-08: include bread omelette as a snack ("a normal
+snack throughout India"). Owner chose to start from the IFCT 2017 PDF and
+permitted its download.
+
+**Source search.** `IFCT2017.pdf` downloaded from
+`https://www.nin.res.in/ebooks/IFCT2017.pdf` (12,401,190 bytes, sha256
+`7fc5a5112a57240d25bf695dca82cccd8d93ed54e8c39530e42b5ad1820d0e8c`), text
+extracted with `pdftotext -layout`, searched for bread, bun and rusk. The
+only "bread" is a lab-method reference (AOAC, acetic and propionic acids in
+bread); "bun" appears only inside a fish name. **IFCT 2017 has no bread
+row.** Bread was taken from USDA FoodData Central SR Legacy instead, the
+source this project already used for egg B12 when IFCT lacked a figure:
+white FDC 174924, whole wheat FDC 172688 (values in the probe's docstring).
+American commercial bread is not Indian bread; nothing here is added to the
+library, so no row carries that mismatch.
+
+**Measured.** `docs/design/probes/probe_bread_omelette.py`, against the
+unrelaxed snack target of the same 36 egg-eating bodies as N19:
+
+```
+bodies: 36
+white 1egg 2sl           fits  0/36  [226 kcal, prot 11.2, qual 6.6, fat 8.8, fibre 1.5]  misses: {'carb_g>': 6, 'energy_kcal<': 10, 'energy_kcal>': 12, 'fat_g>': 16, 'fibre_g<': 36, 'protein_g<': 36, 'quality<': 36}
+white 1egg 2sl +nm       fits  0/36  [257 kcal, prot 12.8, qual 8.2, fat 10.8, fibre 1.6]  misses: {'carb_g>': 10, 'energy_kcal<': 2, 'energy_kcal>': 20, 'fat_g>': 30, 'fibre_g<': 36, 'protein_g<': 36, 'quality<': 36}
+white 2egg 2sl           fits  0/36  [320 kcal, prot 17.9, qual 13.3, fat 15.8, fibre 1.7]  misses: {'carb_g>': 8, 'energy_kcal>': 34, 'fat_g>': 36, 'fibre_g<': 36, 'protein_g<': 20, 'quality<': 12}
+white 2egg 2sl +nm       fits  0/36  [351 kcal, prot 19.5, qual 14.8, fat 17.8, fibre 1.8]  misses: {'carb_g>': 10, 'energy_kcal>': 36, 'fat_g>': 36, 'fibre_g<': 36, 'protein_g<': 12, 'quality<': 8}
+white 2egg 4sl           fits  0/36  [453 kcal, prot 22.4, qual 13.3, fat 17.5, fibre 3.1]  misses: {'carb_g>': 36, 'energy_kcal>': 36, 'fat_g>': 36, 'fibre_g<': 24, 'protein_g<': 8, 'quality<': 12}
+white 2egg 4sl +nm       fits  0/36  [484 kcal, prot 24.0, qual 14.8, fat 19.5, fibre 3.1]  misses: {'carb_g>': 36, 'energy_kcal>': 36, 'fat_g>': 36, 'fibre_g<': 22, 'protein_g<': 8, 'quality<': 8}
+wheat 1egg 2sl           fits  0/36  [220 kcal, prot 13.0, qual 6.6, fat 8.8, fibre 3.2]  misses: {'carb_g>': 2, 'energy_kcal<': 16, 'energy_kcal>': 6, 'fat_g>': 18, 'fibre_g<': 16, 'protein_g<': 36, 'quality<': 36}
+wheat 1egg 2sl +nm       fits  0/36  [251 kcal, prot 14.6, qual 8.2, fat 10.8, fibre 3.2]  misses: {'carb_g>': 4, 'energy_kcal<': 6, 'energy_kcal>': 20, 'fat_g>': 30, 'fibre_g<': 16, 'protein_g<': 32, 'quality<': 36}
+wheat 2egg 2sl           fits  0/36  [314 kcal, prot 19.7, qual 13.3, fat 15.9, fibre 3.4]  misses: {'carb_g>': 4, 'energy_kcal>': 34, 'fat_g>': 36, 'fibre_g<': 16, 'protein_g<': 12, 'quality<': 12}
+wheat 2egg 2sl +nm       fits  0/36  [345 kcal, prot 21.3, qual 14.8, fat 17.9, fibre 3.4]  misses: {'carb_g>': 6, 'energy_kcal>': 36, 'fat_g>': 36, 'fibre_g<': 16, 'protein_g<': 12, 'quality<': 8}
+wheat 2egg 4sl           fits  0/36  [441 kcal, prot 25.9, qual 13.3, fat 17.7, fibre 6.4]  misses: {'carb_g>': 34, 'energy_kcal>': 36, 'fat_g>': 36, 'quality<': 12}
+wheat 2egg 4sl +nm       fits  0/36  [472 kcal, prot 27.5, qual 14.8, fat 19.7, fibre 6.4]  misses: {'carb_g>': 36, 'energy_kcal>': 36, 'fat_g>': 36, 'quality<': 8}
+```
+
+The first run doubled the bread with the eggs (two eggs, four slices only);
+corrected to add two eggs on two slices, which also fits 0/36.
+Output order is sorted; the same table came out byte-identical under
+`PYTHONHASHSEED=1` and `PYTHONHASHSEED=777` (an unsorted first version listed
+the same counts in a seed-dependent order).
+
+**Why, in one line each.** One egg: 6.6 g qualifying protein against a
+floor no rung relaxes, missed by all 36. Two eggs: the egg's own fat puts
+every body over its fat ceiling (36/36) and nearly every body over its
+energy ceiling. The bread is not what fails it, so a different bread value
+would not rescue it; no toasting fat was counted, which would only add fat.
+
+**Assumptions, stated in the probe:** 25 g slice (not sourced); bread
+protein non-qualifying (wheat DIAAS below 0.75 from memory, unverified).
+
+**Disposition.** STOPPED at premise. Not added. No limit was widened to make
+it fit. The downloaded PDF stays outside the repo (untracked scratch).
+
 ## 2026-10-08 — N19: the South snack's egg is a side, offered on request
 
 **Asked.** Owner, 2026-10-08 (option 1 after N18): an egg option for the
