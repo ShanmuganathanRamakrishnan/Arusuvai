@@ -51,6 +51,32 @@ B5   covered      tests/test_planner_combinations.py::TestMacroBounds::test_qual
 1 mechanisms: 1 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
 ```
 
+### B2 — the early return on an unfillable required slot
+
+Finding 33 kept this `return ()` on purpose: deleting it leaves the return
+value the same, but falls through to the second log line, which says "0
+combinations" and never names the blocking slot. The finding recorded that
+no assertion reads the log line. One now does.
+
+New: `tests/test_planner_combinations.py::TestEnumeration::test_an_unfillable_slot_is_logged_once_and_by_name`
+(two-slot fixture with only its cat_a dishes; exactly one log record from
+`core.planner.combinations`, saying "no legal selection" and naming `['b']`).
+
+```
+B2   covered      tests/test_planner_combinations.py::TestEnumeration::test_an_unfillable_slot_is_logged_once_and_by_name
+1 mechanisms: 1 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+Two comments that said otherwise now carry a dated note rather than being
+rewritten: the one above the `return ()` in `core/planner/combinations.py`
+(comment only, no code change) and the B2 row in
+`docs/design/probes/d4b_mutations.py`.
+
+**Disposition.** FIXED for B2, B5, B8. With N17's B4, every row the N16
+sweep did not grade "covered" is now covered by a test that names it.
+Finding 33's decision to keep the early return stands; its "no test can
+catch" no longer does.
+
 ## 2026-10-08 — N17: B4 gets a test of its own
 
 **Asked.** Owner, 2026-10-08 (option 1 after N16): close the one gap the

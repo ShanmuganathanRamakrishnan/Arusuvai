@@ -203,7 +203,8 @@ MUTATIONS: tuple[Mutation, ...] = (
         "    for size in (slot.min_selections,):",
     ),
     Mutation(
-        # KNOWN AND ACCEPTED SURVIVOR. `itertools.product` over an empty
+        # Was a KNOWN AND ACCEPTED SURVIVOR until N18 (2026-10-08), which
+        # added a test reading the log line. Original note: `itertools.product` over an empty
         # sequence yields nothing, so deleting this early return leaves the
         # return value identical and no test can go red. Kept in the code and
         # kept as a row here, both deliberately (`docs/audit_log.md` finding

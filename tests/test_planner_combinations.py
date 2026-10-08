@@ -4,6 +4,7 @@ feasibility pre-filter."""
 from __future__ import annotations
 
 import dataclasses
+import logging
 
 import pytest
 
@@ -114,6 +115,28 @@ class TestEnumeration:
         )
         assert enumerate_combinations(real) != ()
         assert enumerate_combinations(pool) == ()
+
+    def test_an_unfillable_slot_is_logged_once_and_by_name(self, caplog):
+        # Harness row B2 (finding 33). Deleting the early `return ()` keeps
+        # the return value -- product over an empty slot is empty anyway --
+        # but falls through to the second log line, which reports "0
+        # combinations" and never names the slot. What the early return
+        # protects is this one line naming slot "b", so the test reads it.
+        # Pool: the two-slot fixture with only its cat_a dishes, so slot "b"
+        # has no candidate.
+        pool = build_candidate_pool(
+            [c for c in FEASIBILITY_COMPONENTS if c.category == "cat_a"],
+            FEASIBILITY_INGREDIENTS,
+            template=FEASIBILITY_TEMPLATE,
+            diet_pattern=DietPattern.VEGETARIAN,
+            dev_mode=False,
+        )
+        with caplog.at_level(logging.INFO, logger="core.planner.combinations"):
+            assert enumerate_combinations(pool) == ()
+        lines = [r.getMessage() for r in caplog.records if r.name == "core.planner.combinations"]
+        assert len(lines) == 1
+        assert "no legal selection" in lines[0]
+        assert "['b']" in lines[0]
 
     def test_no_repeat_window_filters_combinations_reusing_a_recent_recipe(self):
         pool = _south_lunch_pool()
