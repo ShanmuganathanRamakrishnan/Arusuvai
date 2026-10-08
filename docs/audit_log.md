@@ -6,6 +6,112 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-08 — N14: the shown plate avoids serving one main ingredient twice
+
+**Asked.** Owner, 2026-10-08 (option 1 after N13): simple written rules
+instead of AI ranking. First rule: prefer a plate where no main ingredient
+appears in more than one dish. Never loosen a limit for it.
+
+**Not a nutrition rule.** It changes which valid plate is shown, never what
+counts as valid: no target, band, tolerance or count moves. That is why no
+paper is cited for it. It is a judgment about how a plate is served, and
+the labels below are the owner's to check.
+
+**Labels (`a535939`).** Every recipe file now carries `main_ingredients`:
+what the dish is named for or built around, from a closed list of 15
+(`core/foods/models.py` `MAIN_INGREDIENTS`). Required. A misspelt word fails
+to load. Judgment calls for the owner to confirm:
+- Soya curd, soya onion raita and tofu bhurji count as **soya**, not curd.
+  This is the soya-in-three-courses case from N12.
+- Curd, onion raita, chaas and neer mor are all **curd**: raita with
+  buttermilk counts as a repeat. No shown plate hits this today.
+- Base dishes name their grain as well: masala dosa is rice and potato;
+  aloo paratha is wheat and potato.
+- Coconut is the label only for coconut chutney. Poriyals that use coconut
+  are labelled for their vegetable.
+
+**Premise measured before the planner change.**
+`docs/design/probes/probe_repeated_main.py`, the 96 cases of N12:
+
+```
+before: plates shown 94; repeat a main ingredient 43; of those, a valid plate with fewer repeats exists 31
+repeated ingredient on shown plates: {'soya': 41, 'carrot': 6}
+```
+
+**Change.** `plan_within_ladder`'s `_pick`, among plates valid at the
+rung the ladder stopped on: the preferred plates (egg, fish or chicken where
+the diet permits) if any, then the fewest repeated main ingredients, then
+the nearest. The egg/chicken preference still comes first, as decided
+2026-09-27.
+
+```
+after:  plates shown 94; repeat a main ingredient 21; of those, a valid plate with fewer repeats exists 0
+repeated ingredient on shown plates: {'soya': 21, 'carrot': 1}
+```
+
+The 21 left have no valid plate with fewer repeats. All 31 plates that had a
+better option improved: 22 now repeat nothing, and 9 repeat less. Most of
+the 21 are vegan or vegetarian meals where soya is the only protein that
+meets the floor.
+
+**Plates that changed in pinned tests**, each re-derived by hand in its comment:
+- South breakfast reference: soya curd x2 -> plain curd x1, idli 3 -> 5.
+  Quality protein 13.0 + curd 145 g x 3.1/100 = 4.495 -> 17.495 g.
+- The same plate with curd's DIAAS disqualified keeps its dishes and drops to
+  13.0 g. With soya chunks disqualified it moves to soya idli 6, sambar 2,
+  chutney 3, at 12.3504 g (soya flour alone).
+- Tofu at DIAAS 0.80, North lunch: the soya onion raita is dropped, so
+  phulka 4 + dal tadka 2 + tofu bhurji 1, the pre-slice-4 plate exactly.
+- Vegetarian North dinner: soya onion raita -> onion raita. The test now
+  asks for the nearest plate with the fewest repeats.
+
+**Deletion checks.** Rows R8, R9 and M1 (labels): all covered, transcript in
+`a535939`. Planner rows, from `docs/design/probes/d4b_mutations.py` and the
+full failure list by hand:
+
+```
+N3a  covered      tests/test_dish_picks.py
+V43  covered      tests/test_repeated_mains.py::test_a_valid_plate_without_the_repeat_is_shown_over_the_nearer_one
+V44  covered      tests/test_dish_picks.py::TestAPickIsHonoured::test_a_pick_the_shown_plate_lacks_is_on_the_plate
+V45  covered      tests/test_dish_picks.py::TestAPickIsHonoured::test_a_pick_the_shown_plate_lacks_is_on_the_plate
+```
+
+**Correction during the work.** The N3a line above is false. The mutation
+deleted a line and left an empty block, so every planner test file failed
+to import ("16 errors"). The harness scored that as covered. Fixed to
+`pass`, then re-graded by hand with the full failure list:
+
+```
+N3a 5 failed, 534 passed, 94 deselected, 1 warning in 62.44s (0:01:02)
+    FAILED tests/test_api_leave_empty.py::test_a_removed_course_is_off_the_plate_with_solver_counts
+    FAILED tests/test_repeated_mains.py::test_a_preference_still_comes_before_fewer_repeats
+    FAILED tests/test_shown_plate_preference.py::TestPreferChoosesAmongValidPlates::test_the_nearest_preferred_plate_is_shown_over_a_nearer_one
+    FAILED tests/test_shown_plate_preference.py::TestPreferChoosesAmongValidPlates::test_the_preference_also_applies_on_a_relaxed_rung
+    FAILED tests/test_shown_plate_preference.py::TestTheRealDinner::test_a_non_vegetarian_north_dinner_shows_an_animal_protein_dish
+```
+
+V44 (equal repeats: nearest) and V45 (count repeats, not dishes) each have
+their own test among the failures listed by hand: V44 fails
+`test_among_plates_without_a_repeat_the_nearest_is_shown`, and V45 fails all
+six tests in `tests/test_repeated_mains.py`. The harness named
+`test_dish_picks.py` only because it is first in collection order.
+
+**Found in passing, not fixed** (queue rule). Rows N3b and N3c search for
+`plan = _pick(solved)`. Since N8 the code says `plan = _pick(chosen)`, once,
+for every rung. Both rows report "pattern not found" and test nothing. The
+2026-09-27 transcript showing them covered predates that change. They should
+become one row.
+
+**Not explained.** One run of the non-browser suite stalled for over 10
+minutes at near-zero CPU and was stopped. The immediate rerun took 59 s and
+passed, and the full run below did not stall. Cause unknown.
+
+**Full suite.** `FOODAI_WEB_TESTS=required python -m pytest tests/ -q` (on
+`ai-ranking`, which does not yet include N11's 8 tests):
+`633 passed, 1 warning in 212.10s (0:03:32)`.
+
+**Disposition.** Done. The labels await the owner's check.
+
 ## 2026-10-07 — N13: stopped at the premise — the local model does not choose better plates
 
 **Asked.** Owner, 2026-10-07 (option 1): build AI ranking. The model picks

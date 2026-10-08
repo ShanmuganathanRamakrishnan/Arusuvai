@@ -699,11 +699,10 @@ MUTATIONS: tuple[Mutation, ...] = (
     # ------------------------------------------------ shown-plate preference (N3)
     Mutation(
         "N3a", VALIDATOR, "_pick honours prefer among valid plates",
-        "        if prefer is not None:\n"
-        "            for plan in solved:\n"
-        "                if prefer(plan):\n"
-        "                    return plan\n",
-        "",
+        # Pattern moved by N14 (2026-10-08): _pick now narrows to preferred
+        # plates, then takes the fewest repeated main ingredients.
+        "            pool = tuple(p for p in solved if prefer(p)) or solved\n",
+        "            pass\n",
     ),
     Mutation(
         "N3b", VALIDATOR, "rung 0 returns the picked plate, not solved[0]",
@@ -714,6 +713,22 @@ MUTATIONS: tuple[Mutation, ...] = (
         "N3c", VALIDATOR, "a relaxed rung returns the picked plate, not solved[0]",
         "        plan = _pick(solved)\n        disclosure = None",
         "        plan = solved[0]\n        disclosure = None",
+    ),
+    # --------------------------------------- repeated main ingredient (N14)
+    Mutation(
+        "V43", VALIDATOR, "_pick prefers fewer repeated main ingredients",
+        "        return min(pool, key=_repeated_mains)\n",
+        "        return pool[0]\n",
+    ),
+    Mutation(
+        "V44", VALIDATOR, "among equal repeats, the nearest plate",
+        "        return min(pool, key=_repeated_mains)\n",
+        "        return min(reversed(pool), key=_repeated_mains)\n",
+    ),
+    Mutation(
+        "V45", VALIDATOR, "repeats count dishes past the first, not all dishes",
+        "    return sum(n - 1 for n in counts.values())\n",
+        "    return sum(n for n in counts.values())\n",
     ),
     Mutation(
         "N3d", PLAN, "plan_meal passes the diet's animal-protein preference",
@@ -739,7 +754,7 @@ OWN_TESTS: dict[str, tuple[str, ...]] = {
     VALIDATOR: (
         "test_planner_validator.py", "test_planner_decline.py",
         "test_planner_quality.py", "test_shown_plate_preference.py",
-        "test_dish_picks.py", "test_leave_empty.py",
+        "test_dish_picks.py", "test_leave_empty.py", "test_repeated_mains.py",
     ),
     # `test_recipes.py` is scoped here too: it is where the derived-uncertainty
     # rules live, and a reader editing it knows they are editing evidence

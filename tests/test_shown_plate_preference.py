@@ -26,7 +26,7 @@ from core.planner.plan import (
     plan_meal,
 )
 from core.planner.solver import solve
-from core.planner.validator import plan_within_ladder
+from core.planner.validator import _repeated_mains, plan_within_ladder
 from core.schemas import (
     ActivityLevel,
     DietPattern,
@@ -165,7 +165,11 @@ class TestTheRealDinner:
             for c in outcome.plan.combination.components
         ), _ids(outcome.plan)
 
-    def test_a_vegetarian_north_dinner_is_still_the_nearest_plate(self):
+    def test_a_vegetarian_north_dinner_is_the_nearest_plate_with_fewest_repeats(self):
+        # No animal-protein preference for a vegetarian. Since N14
+        # (2026-10-08) the shown plate is the nearest of those serving a main
+        # ingredient in the fewest dishes -- no longer simply the nearest,
+        # which put soya_onion_raita beside soya_chunk_masala.
         outcome, lib = self._shown(DietPattern.VEGETARIAN)
 
         combos = enumerate_combinations(build_candidate_pool(
@@ -173,8 +177,10 @@ class TestTheRealDinner:
             template=templates.template_for(Region.NORTH_INDIAN, MealSlot.DINNER),
             diet_pattern=DietPattern.VEGETARIAN, dev_mode=True,
         ))
-        nearest = solve(
+        solved = solve(
             feasible_combinations(combos, outcome.target_used, lib.ingredients),
             outcome.target_used, lib.ingredients,
-        )[0]
-        assert _ids(outcome.plan) == _ids(nearest)
+        )
+        fewest = min(_repeated_mains(p) for p in solved)
+        expected = next(p for p in solved if _repeated_mains(p) == fewest)
+        assert _ids(outcome.plan) == _ids(expected)
