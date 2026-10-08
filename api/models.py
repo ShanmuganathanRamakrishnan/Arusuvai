@@ -290,6 +290,24 @@ class SwapOptionOut(BaseModel):
     recipe_name: str
 
 
+class SavedChoicesIn(BaseModel):
+    """The choices to keep for one meal (TASKS_3.md N11). Both lists are
+    required: a client that forgets one must not save "nothing" by accident.
+    Saving two empty lists forgets the meal's choices."""
+
+    region: Region
+    meal_slot: MealSlot
+    picks: list[str]
+    leave_empty: list[str]
+
+
+class SavedChoicesOut(BaseModel):
+    region: Region
+    meal_slot: MealSlot
+    picks: list[str]
+    leave_empty: list[str]
+
+
 class SwapSlotOut(BaseModel):
     """Every dish that fills ``slot`` on some plate valid for this profile at
     the limits this meal was planned to, keeping the user's other picks.

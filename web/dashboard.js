@@ -83,6 +83,18 @@
       return;
     }
 
+    // N11: choices kept from earlier visits. `null` means they could not be
+    // loaded -- not "none saved" -- so the page says so instead of quietly
+    // showing the suggested plate as if nothing had been kept.
+    try {
+      saved = {};
+      for (const c of await ArusuvaiAuth.getChoices()) {
+        saved[`${c.region}:${c.meal_slot}`] = { picks: c.picks, leave_empty: c.leave_empty };
+      }
+    } catch {
+      saved = null;
+    }
+
     mainEl.hidden = false;
     ArusuvaiDashboardSuccess.renderProfileTags(profile);
   }
@@ -93,6 +105,9 @@
 
   const generateBtn = document.getElementById("dashGenerate");
   const resetPicksBtn = document.getElementById("dashResetPicks");
+  const rememberBtn = document.getElementById("dashRememberChoices");
+  const forgetBtn = document.getElementById("dashForgetChoices");
+  const savedNoteEl = document.getElementById("dashSavedNote");
   const swapNoteEl = document.getElementById("obPlanSwapNote");
   const tryAnotherBtn = document.getElementById("dashTryAnother");
   const endpointLabel = document.getElementById("dashEndpointLabel");
@@ -116,16 +131,78 @@
   // pick alone was measured to bring the course back in 67 of 155 flows
   // (docs/audit_log.md 2026-09-30).
   let leaveEmpty = [];
+  // N11 (owner 2026-10-02): choices the user asked to keep, per meal, as the
+  // server holds them: {"south_indian:breakfast": {picks, leave_empty}}.
+  // A new plan for a meal starts from them. They are asked of the planner
+  // afresh each time and never forced: after a profile edit they stop
+  // fitting 20% of the time (docs/audit_log.md 2026-10-02).
+  let saved = {};
   // The last plate shown, so a swap that finds no plate can leave it on
   // screen and say so, instead of replacing it with a decline page.
   let shown = null;
 
   generateBtn.addEventListener("click", () => {
-    picks = [];
-    leaveEmpty = [];
+    const plate = collectPlate();
+    const kept = saved && saved[plateKey(plate)];
+    picks = kept ? kept.picks.slice() : [];
+    leaveEmpty = kept ? kept.leave_empty.slice() : [];
     shown = null;
-    fetchPlan();
+    fetchPlan({
+      plate,
+      fromSaved: Boolean(kept),
+      note: saved === null
+        ? "Your saved choices couldn't be loaded, so this is the suggested plate."
+        : "",
+    });
   });
+
+  function plateKey(plate) {
+    return `${plate.region}:${plate.meal_slot}`;
+  }
+
+  function sameChoices(a, b) {
+    const norm = (xs) => JSON.stringify(xs.slice().sort());
+    return norm(a.picks) === norm(b.picks) && norm(a.leave_empty) === norm(b.leave_empty);
+  }
+
+  // What the remember/forget controls say depends only on the plate on
+  // screen and what is saved for its meal. With saved choices unknown
+  // (could not be loaded) neither is offered: either could overwrite them.
+  function renderSavedControls(message = "") {
+    const kept = saved && shown && saved[plateKey(shown.plate)];
+    const current = { picks, leave_empty: leaveEmpty };
+    const hasChoices = picks.length > 0 || leaveEmpty.length > 0;
+    rememberBtn.hidden = !(saved && shown && hasChoices && !(kept && sameChoices(kept, current)));
+    forgetBtn.hidden = !kept;
+    savedNoteEl.textContent = message ||
+      (kept && sameChoices(kept, current) ? "This plate uses your saved choices for this meal." : "");
+  }
+
+  async function storeChoices(choices, done) {
+    try {
+      await ArusuvaiAuth.saveChoices(Object.assign({}, shown.plate, choices));
+    } catch {
+      renderSavedControls("Couldn't reach the server, so nothing was saved or forgotten.");
+      return;
+    }
+    const key = plateKey(shown.plate);
+    if (choices.picks.length || choices.leave_empty.length) saved[key] = choices;
+    else delete saved[key];
+    renderSavedControls(done);
+  }
+
+  rememberBtn.addEventListener("click", () =>
+    storeChoices(
+      { picks: picks.slice(), leave_empty: leaveEmpty.slice() },
+      "Saved. This meal will start from these choices next time."
+    )
+  );
+  forgetBtn.addEventListener("click", () =>
+    storeChoices(
+      { picks: [], leave_empty: [] },
+      "Forgotten. This meal will start from the suggested plate next time."
+    )
+  );
   resetPicksBtn.addEventListener("click", () => {
     picks = [];
     leaveEmpty = [];
@@ -160,9 +237,12 @@
     document.getElementById("obPlatePicker").scrollIntoView({ behavior: "smooth", block: "center" });
   });
 
-  async function fetchPlan({ previous = null, tried = null, removing = false, plate = null } = {}) {
+  async function fetchPlan({
+    previous = null, tried = null, removing = false, plate = null, fromSaved = false, note = "",
+  } = {}) {
     endpointLabel.textContent = `Calling ${API_BASE}/api/plan`;
     swapNoteEl.textContent = "";
+    savedNoteEl.textContent = "";
     planLoadingEl.hidden = false;
     planNetworkErrorEl.hidden = true;
     planSuccessEl.hidden = true;
@@ -217,6 +297,19 @@
       shown = { data, plate };
       resetPicksBtn.hidden = picks.length === 0 && leaveEmpty.length === 0;
       ArusuvaiDashboardSuccess.render(data, plate, profile, onSwap, onRemove);
+      renderSavedControls(note);
+    } else if (fromSaved) {
+      // The saved choices don't fit this meal's limits today -- usually a
+      // profile edit since they were saved. Nothing is loosened to fit them
+      // and they are not deleted (the user may change back): show the
+      // suggested plate and say so.
+      picks = [];
+      leaveEmpty = [];
+      fetchPlan({
+        plate,
+        note: "Your saved choices for this meal don't fit its limits today, so this is " +
+          "the suggested plate. They are still saved.",
+      });
     } else if (previous && shown) {
       // A swap or a removal found no valid plate. Not a decline of the meal:
       // the plate on screen is still valid, so keep it, undo the change, and
@@ -226,6 +319,7 @@
       leaveEmpty = previous.leaveEmpty;
       resetPicksBtn.hidden = picks.length === 0 && leaveEmpty.length === 0;
       ArusuvaiDashboardSuccess.render(shown.data, shown.plate, profile, onSwap, onRemove);
+      renderSavedControls();
       swapNoteEl.textContent = removing
         ? `${tried || "That dish"} couldn't be removed: no plate without it stays within ` +
           `this meal's limits, so your plate is unchanged.`

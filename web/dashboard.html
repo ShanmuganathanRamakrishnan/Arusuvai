@@ -223,7 +223,16 @@
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"></path></svg>
                 Back to the suggested plate
               </button>
+              <!-- N11: keep this meal's swaps and removals for next visit, or
+                   forget them. Shown by dashboard.js only when they apply. -->
+              <button type="button" class="btn btn-primary btn-action" id="dashRememberChoices" hidden>
+                Remember these choices
+              </button>
+              <button type="button" class="btn btn-action is-quiet" id="dashForgetChoices" hidden>
+                Forget saved choices
+              </button>
             </div>
+            <p class="dash-note" id="dashSavedNote" role="status"></p>
           </aside>
         </div>
       </section>

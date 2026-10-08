@@ -45,6 +45,19 @@
       return res.json();
     },
 
+    // N11: the dish choices a user asked to keep, per meal.
+    async getChoices() {
+      const res = await apiFetch("/api/choices");
+      if (!res.ok) throw new Error(`GET /api/choices failed (HTTP ${res.status})`);
+      return res.json();
+    },
+
+    async saveChoices(choices) {
+      const res = await apiFetch("/api/choices", { method: "PUT", body: JSON.stringify(choices) });
+      if (!res.ok) throw await _apiError(res);
+      return res.json();
+    },
+
     async saveProfile(profile) {
       const res = await apiFetch("/api/profile", { method: "PUT", body: JSON.stringify(profile) });
       if (!res.ok) throw await _apiError(res);

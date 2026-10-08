@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
 from api.auth import current_user, hash_password, login_session, logout_session, verify_password
-from api.db import StoredProfile, User, get_db
+from api.db import SavedChoices, StoredProfile, User, get_db
 from api.models import (
     AuthOut,
     ComponentOut,
@@ -32,6 +32,8 @@ from api.models import (
     ProfileOut,
     ProteinOut,
     RejectedCitationOut,
+    SavedChoicesIn,
+    SavedChoicesOut,
     SwapOptionOut,
     SwapSlotOut,
     ScienceOut,
@@ -43,6 +45,7 @@ from api.models import (
 )
 from core.nutrition import citations
 from core.nutrition.targets import DerivedTarget, derive_target
+from core.foods.templates import template_for
 from core.planner.plan import default_library, plan_meal
 from core.schemas import ClinicalFlag, Profile
 
@@ -282,6 +285,87 @@ def _sources_out(dt: DerivedTarget) -> list[SourceOut]:
                 verified=ev.verified,
             )
         )
+    return out
+
+
+def _choices_out(sc: SavedChoices) -> SavedChoicesOut:
+    return SavedChoicesOut(
+        region=sc.region,
+        meal_slot=sc.meal_slot,
+        picks=sc.picks_list(),
+        leave_empty=sc.leave_empty_list(),
+    )
+
+
+@app.get("/api/choices", response_model=list[SavedChoicesOut])
+def get_choices(request: Request, db: Session = Depends(get_db)) -> list[SavedChoicesOut]:
+    """Every meal this user saved dish choices for (TASKS_3.md N11)."""
+
+    user = current_user(request, db)
+    rows = (
+        db.query(SavedChoices)
+        .filter(SavedChoices.user_id == user.id)
+        .order_by(SavedChoices.region, SavedChoices.meal_slot)
+        .all()
+    )
+    return [_choices_out(sc) for sc in rows]
+
+
+@app.put("/api/choices", response_model=SavedChoicesOut)
+def put_choices(body: SavedChoicesIn, request: Request, db: Session = Depends(get_db)) -> SavedChoicesOut:
+    """Keep, replace or (with two empty lists) forget one meal's choices.
+
+    Checked against this meal's template, not against the user's limits: a
+    pick must be a dish some course of this meal accepts, and a removed
+    course must exist and be optional -- a required course is never empty,
+    so saving one would decline every visit. Whether the choices fit the
+    user's limits is the planner's question at plan time, asked afresh each
+    visit, because a profile edit can change the answer
+    (docs/audit_log.md 2026-10-02).
+    """
+
+    user = current_user(request, db)
+    try:
+        template = template_for(body.region, body.meal_slot)
+    except KeyError as exc:
+        raise HTTPException(status_code=422, detail="This meal has no plate to save choices for.") from exc
+    accepted = set().union(*(s.accepted_categories for s in template.slots))
+    library = default_library()
+    for rid in body.picks:
+        comp = library.recipes.components.get(rid)
+        if comp is None or comp.category not in accepted:
+            raise HTTPException(status_code=422, detail=f"{rid!r} is not a dish this meal can hold.")
+    optional = {s.name for s in template.slots if not s.required}
+    for slot in body.leave_empty:
+        if slot not in optional:
+            raise HTTPException(status_code=422, detail=f"{slot!r} is not an optional course of this meal.")
+
+    sc = (
+        db.query(SavedChoices)
+        .filter(
+            SavedChoices.user_id == user.id,
+            SavedChoices.region == body.region.value,
+            SavedChoices.meal_slot == body.meal_slot.value,
+        )
+        .one_or_none()
+    )
+    out = SavedChoicesOut(
+        region=body.region,
+        meal_slot=body.meal_slot,
+        picks=sorted(set(body.picks)),
+        leave_empty=sorted(set(body.leave_empty)),
+    )
+    if not out.picks and not out.leave_empty:
+        if sc is not None:
+            db.delete(sc)
+            db.commit()
+        return out
+    if sc is None:
+        sc = SavedChoices(user_id=user.id, region=body.region.value, meal_slot=body.meal_slot.value)
+        db.add(sc)
+    sc.picks = ",".join(out.picks)
+    sc.leave_empty = ",".join(out.leave_empty)
+    db.commit()
     return out
 
 
