@@ -6,6 +6,81 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-08 — N22: boiled egg with sweet potato cannot fit any breakfast target -- stopped at premise
+
+**Asked.** Owner, 2026-10-08: boiled egg with sundal or sweet potato is a
+breakfast habit; add sweet potato with boiled egg at South breakfast, "with
+proper backing" (a published source shown before building).
+
+**Source.** IFCT 2017 has sweet potato, read from the primary NIN-published
+`IFCT2017.pdf` (downloaded for N20; sha256
+`7fc5a5112a57240d25bf695dca82cccd8d93ed54e8c39530e42b5ad1820d0e8c`), not from a
+digitization:
+- F013 "Sweet potato, brown skin (Ipomoea batatas)", 4 regions, RAW, Table 1
+  (PDF page 53): water 69.21, protein 1.33, ash 0.96, fat 0.26, total fibre
+  3.99, available carbohydrate 24.25 g, energy 456 kJ (109.0 kcal) per 100 g.
+- Sodium 29.60 mg, Table 5 (PDF page 176). The selenium cell is blank on
+  this row, so the column was settled with `pdftotext -table`, which keeps
+  column alignment: 29.60 sits under NA.
+- F014 (pink skin) is nearly identical (69.58 water, 1.27 protein, 0.33 fat,
+  3.94 fibre, 23.93 carbohydrate, 452 kJ, sodium 29.04).
+- Column reading cross-checked on a row already in the library: F006 potato
+  on the same page reads 80.72 / 1.54 / 0.23 / 1.71 fibre / 14.89 / 292 kJ,
+  matching `potato_raw` (carb_g 16.6 = 14.89 + 1.71; 292 kJ = 69.8 kcal).
+IFCT measured RAW sweet potato only. For boiled, USDA FoodData Central SR
+Legacy FDC 168484 "Sweet potato, cooked, boiled, without skin" (fetched
+2026-10-08): 76 kcal, protein 1.37, fat 0.14, carb 17.72, fibre 2.5, sodium
+27 mg, water 80.13. That is American sweet potato: USDA's raw row (FDC
+168482) is 77.28% water against IFCT's 69.21%, so it is not the Indian tuber.
+Neither source is the right food cooked the right way; the probe runs both as
+a low and a high case.
+
+**Plate shape.** `template_for` holds one template per region and meal, and
+`SOUTH_BREAKFAST` requires a tiffin, a gravy and a chutney. Egg with sweet
+potato as its own breakfast is a second shape, which the planner cannot hold
+today. Before proposing that change, the arithmetic.
+
+**Measured.** `docs/design/probes/probe_sweet_potato_breakfast.py`, 36
+egg-eating bodies (as N19-N21), unrelaxed breakfast target and every rung of
+`RELAXATION_ORDER`. Output byte-identical under PYTHONHASHSEED=1 and 777:
+
+```
+bodies: 36; e.g. eggetarian lose_fat male 55kg breakfast, unrelaxed: energy 432-478 kcal, protein >= 24.8 g, quality >= 9.9 g, fat <= 17.7 g
+IFCT raw    1 egg + 100 g  [183 kcal, prot  8.0, qual  6.7, fat  5.5, fibre 4.0]  fits unrelaxed  0/36, at some rung  0/36  last-rung misses: {'carb_g below floor': 36, 'energy_kcal below floor': 36, 'fat_g below floor': 36, 'fibre_g below floor': 16, 'protein_g below floor': 36, 'quality protein below floor': 36}
+IFCT raw    1 egg + 150 g  [237 kcal, prot  8.7, qual  6.7, fat  5.7, fibre 6.0]  fits unrelaxed  0/36, at some rung  0/36  last-rung misses: {'carb_g below floor': 30, 'energy_kcal below floor': 36, 'fat_g below floor': 36, 'protein_g below floor': 36, 'quality protein below floor': 36}
+IFCT raw    1 egg + 200 g  [292 kcal, prot  9.4, qual  6.7, fat  5.8, fibre 8.0]  fits unrelaxed  0/36, at some rung  0/36  last-rung misses: {'carb_g below floor': 20, 'energy_kcal below floor': 36, 'fat_g below floor': 36, 'protein_g below floor': 36, 'quality protein below floor': 36}
+IFCT raw    1 egg + 250 g  [346 kcal, prot 10.0, qual  6.7, fat  5.9, fibre 10.0]  fits unrelaxed  0/36, at some rung  0/36  last-rung misses: {'carb_g above ceiling': 6, 'carb_g below floor': 2, 'energy_kcal below floor': 36, 'fat_g below floor': 36, 'protein_g below floor': 36, 'quality protein below floor': 36}
+IFCT raw    2 egg + 100 g  [257 kcal, prot 14.8, qual 13.4, fat 10.8, fibre 4.0]  fits unrelaxed  0/36, at some rung  0/36  last-rung misses: {'carb_g below floor': 36, 'energy_kcal below floor': 36, 'fat_g below floor': 30, 'fibre_g below floor': 16, 'protein_g below floor': 36, 'quality protein below floor': 12}
+IFCT raw    2 egg + 150 g  [311 kcal, prot 15.4, qual 13.4, fat 10.9, fibre 6.0]  fits unrelaxed  0/36, at some rung  0/36  last-rung misses: {'carb_g below floor': 30, 'energy_kcal below floor': 36, 'fat_g below floor': 30, 'protein_g below floor': 36, 'quality protein below floor': 12}
+IFCT raw    2 egg + 200 g  [366 kcal, prot 16.1, qual 13.4, fat 11.1, fibre 8.0]  fits unrelaxed  0/36, at some rung  0/36  last-rung misses: {'carb_g below floor': 20, 'energy_kcal below floor': 34, 'fat_g below floor': 30, 'protein_g below floor': 36, 'quality protein below floor': 12}
+IFCT raw    2 egg + 250 g  [420 kcal, prot 16.8, qual 13.4, fat 11.2, fibre 10.0]  fits unrelaxed  0/36, at some rung  0/36  last-rung misses: {'carb_g above ceiling': 6, 'carb_g below floor': 2, 'energy_kcal below floor': 30, 'fat_g below floor': 28, 'protein_g below floor': 36, 'quality protein below floor': 12}
+USDA boiled 1 egg + 100 g  [150 kcal, prot  8.1, qual  6.7, fat  5.4, fibre 2.5]  fits unrelaxed  0/36, at some rung  0/36  last-rung misses: {'carb_g below floor': 36, 'energy_kcal below floor': 36, 'fat_g below floor': 36, 'fibre_g below floor': 36, 'protein_g below floor': 36, 'quality protein below floor': 36}
+USDA boiled 1 egg + 150 g  [188 kcal, prot  8.8, qual  6.7, fat  5.5, fibre 3.8]  fits unrelaxed  0/36, at some rung  0/36  last-rung misses: {'carb_g below floor': 36, 'energy_kcal below floor': 36, 'fat_g below floor': 36, 'fibre_g below floor': 24, 'protein_g below floor': 36, 'quality protein below floor': 36}
+USDA boiled 1 egg + 200 g  [226 kcal, prot  9.5, qual  6.7, fat  5.5, fibre 5.0]  fits unrelaxed  0/36, at some rung  0/36  last-rung misses: {'carb_g below floor': 36, 'energy_kcal below floor': 36, 'fat_g below floor': 36, 'fibre_g below floor': 2, 'protein_g below floor': 36, 'quality protein below floor': 36}
+USDA boiled 1 egg + 250 g  [264 kcal, prot 10.1, qual  6.7, fat  5.6, fibre 6.2]  fits unrelaxed  0/36, at some rung  0/36  last-rung misses: {'carb_g below floor': 28, 'energy_kcal below floor': 36, 'fat_g below floor': 36, 'protein_g below floor': 36, 'quality protein below floor': 36}
+USDA boiled 2 egg + 100 g  [224 kcal, prot 14.8, qual 13.4, fat 10.7, fibre 2.5]  fits unrelaxed  0/36, at some rung  0/36  last-rung misses: {'carb_g below floor': 36, 'energy_kcal below floor': 36, 'fat_g below floor': 30, 'fibre_g below floor': 36, 'protein_g below floor': 36, 'quality protein below floor': 12}
+USDA boiled 2 egg + 150 g  [262 kcal, prot 15.5, qual 13.4, fat 10.8, fibre 3.8]  fits unrelaxed  0/36, at some rung  0/36  last-rung misses: {'carb_g below floor': 36, 'energy_kcal below floor': 36, 'fat_g below floor': 30, 'fibre_g below floor': 24, 'protein_g below floor': 36, 'quality protein below floor': 12}
+USDA boiled 2 egg + 200 g  [300 kcal, prot 16.2, qual 13.4, fat 10.8, fibre 5.0]  fits unrelaxed  0/36, at some rung  0/36  last-rung misses: {'carb_g below floor': 36, 'energy_kcal below floor': 36, 'fat_g below floor': 30, 'fibre_g below floor': 2, 'protein_g below floor': 36, 'quality protein below floor': 12}
+USDA boiled 2 egg + 250 g  [338 kcal, prot 16.9, qual 13.4, fat 10.9, fibre 6.2]  fits unrelaxed  0/36, at some rung  0/36  last-rung misses: {'carb_g below floor': 28, 'energy_kcal below floor': 36, 'fat_g below floor': 30, 'protein_g below floor': 36, 'quality protein below floor': 12}
+```
+
+**Read.** 0/36 for all 16 versions, both sources, at every rung. The
+protein floor is missed by all 36 bodies in every version: the best plate (2
+eggs, 250 g) carries 16.9 g against a floor of at least 24.8 g. Energy and
+fat also fall short for at least 28 of 36 bodies in every version. As a whole breakfast, egg
+with sweet potato is too small; the source chosen does not change that.
+
+**Assumptions, stated in the probe:** portions 100-250 g (not sourced);
+sweet potato protein non-qualifying (no DIAAS row).
+
+**Not measured.** Egg and sweet potato as part of a larger breakfast (beside
+a tiffin, or with sundal) -- the owner has not described that plate, and
+building one to make the numbers fit would be reshaping the task to fit.
+
+**Disposition.** STOPPED at premise. Nothing added to the library, no
+template changed, no limit widened. The IFCT F013 reading above is ready for
+any later sweet potato row; it is unverified until a human opens page 53.
+
 ## 2026-10-08 — N21: why the boiled-egg snack side fits only 12 of 36 bodies
 
 **Asked.** Owner, 2026-10-08 (option 1 after N20). N19 found that asking for
