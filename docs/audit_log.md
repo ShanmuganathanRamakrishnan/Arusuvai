@@ -6,6 +6,127 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-08 — N21: why the boiled-egg snack side fits only 12 of 36 bodies
+
+**Asked.** Owner, 2026-10-08 (option 1 after N20). N19 found that asking for
+`avicha_muttai` beside the South snack's sundal gives a valid plate for 12 of
+36 egg-eating bodies, and logged the other 24 as not measured. Measure only;
+no change.
+
+**Method.** `docs/design/probes/probe_egg_side_fit.py` tries every plate the
+planner could build with the egg in it (every combination
+`enumerate_combinations` yields that holds the egg, at every legal serving
+count: 64 plates per diet) against the snack target at each rung of
+`RELAXATION_ORDER`, applied cumulatively. It first checks itself against
+`plan_meal`: the bodies it says fit must be the bodies the planner passes.
+Output is byte-identical under PYTHONHASHSEED=1 and 777.
+
+```
+plates with the egg: eggetarian 64, non_vegetarian 64
+cross-check against plan_meal: 36 agree, 0 disagree
+first rung at which some egg plate fits:
+  unrelaxed              12
+  sodium_max_fibre_min   0
+  fat_carb_tolerance     0
+  energy_tolerance       0
+  protein_tolerance      0
+  no rung                24
+bodies with no fitting plate, per bound:
+  energy_kcal below floor        blocks every plate on  0   the only thing in the way on 16
+  fat_g above ceiling            blocks every plate on  2   the only thing in the way on 24
+per body:
+  eggetarian     lose_fat  male   55kg  no plate fits; nearest plate misses: ['energy_kcal below floor']
+  eggetarian     lose_fat  male   70kg  no plate fits; nearest plate misses: ['fat_g above ceiling']
+  eggetarian     lose_fat  male   90kg  no plate fits; nearest plate misses: ['energy_kcal below floor']
+  eggetarian     lose_fat  female 55kg  no plate fits; nearest plate misses: ['fat_g above ceiling']
+  eggetarian     lose_fat  female 70kg  no plate fits; nearest plate misses: ['fat_g above ceiling']
+  eggetarian     lose_fat  female 90kg  no plate fits; nearest plate misses: ['fat_g above ceiling']
+  eggetarian     maintain  male   55kg  no plate fits; nearest plate misses: ['energy_kcal below floor']
+  eggetarian     maintain  male   70kg  fits at rung: unrelaxed
+  eggetarian     maintain  male   90kg  fits at rung: unrelaxed
+  eggetarian     maintain  female 55kg  no plate fits; nearest plate misses: ['energy_kcal below floor']
+  eggetarian     maintain  female 70kg  no plate fits; nearest plate misses: ['energy_kcal below floor']
+  eggetarian     maintain  female 90kg  no plate fits; nearest plate misses: ['energy_kcal below floor']
+  eggetarian     gain_muscle male   55kg  fits at rung: unrelaxed
+  eggetarian     gain_muscle male   70kg  no plate fits; nearest plate misses: ['energy_kcal below floor']
+  eggetarian     gain_muscle male   90kg  fits at rung: unrelaxed
+  eggetarian     gain_muscle female 55kg  no plate fits; nearest plate misses: ['energy_kcal below floor']
+  eggetarian     gain_muscle female 70kg  fits at rung: unrelaxed
+  eggetarian     gain_muscle female 90kg  fits at rung: unrelaxed
+  non_vegetarian lose_fat  male   55kg  no plate fits; nearest plate misses: ['energy_kcal below floor']
+  non_vegetarian lose_fat  male   70kg  no plate fits; nearest plate misses: ['fat_g above ceiling']
+  non_vegetarian lose_fat  male   90kg  no plate fits; nearest plate misses: ['energy_kcal below floor']
+  non_vegetarian lose_fat  female 55kg  no plate fits; nearest plate misses: ['fat_g above ceiling']
+  non_vegetarian lose_fat  female 70kg  no plate fits; nearest plate misses: ['fat_g above ceiling']
+  non_vegetarian lose_fat  female 90kg  no plate fits; nearest plate misses: ['fat_g above ceiling']
+  non_vegetarian maintain  male   55kg  no plate fits; nearest plate misses: ['energy_kcal below floor']
+  non_vegetarian maintain  male   70kg  fits at rung: unrelaxed
+  non_vegetarian maintain  male   90kg  fits at rung: unrelaxed
+  non_vegetarian maintain  female 55kg  no plate fits; nearest plate misses: ['energy_kcal below floor']
+  non_vegetarian maintain  female 70kg  no plate fits; nearest plate misses: ['energy_kcal below floor']
+  non_vegetarian maintain  female 90kg  no plate fits; nearest plate misses: ['energy_kcal below floor']
+  non_vegetarian gain_muscle male   55kg  fits at rung: unrelaxed
+  non_vegetarian gain_muscle male   70kg  no plate fits; nearest plate misses: ['energy_kcal below floor']
+  non_vegetarian gain_muscle male   90kg  fits at rung: unrelaxed
+  non_vegetarian gain_muscle female 55kg  no plate fits; nearest plate misses: ['energy_kcal below floor']
+  non_vegetarian gain_muscle female 70kg  fits at rung: unrelaxed
+  non_vegetarian gain_muscle female 90kg  fits at rung: unrelaxed
+one serving of each dish on these plates (fat share = fat kcal / all kcal):
+  avicha_muttai      1 egg            (allowed 1-2)   73.8 kcal  fat 5.27 g  fat share 0.64
+  neer_mor           1 glass          (allowed 1-1)   30.9 kcal  fat 2.01 g  fat share 0.58
+  soya_chana_sundal  1 quarter katori (allowed 1-8)   65.6 kcal  fat 1.89 g  fat share 0.26
+  soya_chunk_sundal  1 quarter katori (allowed 1-8)   52.1 kcal  fat 1.41 g  fat share 0.24
+eggetarian maintain male 55kg, unrelaxed: energy 205-250 kcal, fat <= 8.8 g; egg plates missing at most one bound:
+   178 kcal  fat  8.1  soya_chunk_sundalx2 + avicha_muttaix1                energy_kcal below floor
+   205 kcal  fat  9.1  soya_chana_sundalx2 + avicha_muttaix1                fat_g above ceiling
+   209 kcal  fat 10.1  soya_chunk_sundalx2 + avicha_muttaix1 + neer_morx1   fat_g above ceiling
+   230 kcal  fat  9.5  soya_chunk_sundalx3 + avicha_muttaix1                fat_g above ceiling
+   236 kcal  fat 11.1  soya_chana_sundalx2 + avicha_muttaix1 + neer_morx1   fat_g above ceiling
+eggetarian maintain male 70kg, unrelaxed: energy 226-276 kcal, fat <= 9.7 g; egg plates missing at most one bound:
+   230 kcal  fat  9.5  soya_chunk_sundalx3 + avicha_muttaix1                FITS
+   236 kcal  fat 11.1  soya_chana_sundalx2 + avicha_muttaix1 + neer_morx1   fat_g above ceiling
+   261 kcal  fat 11.5  soya_chunk_sundalx3 + avicha_muttaix1 + neer_morx1   fat_g above ceiling
+   271 kcal  fat 11.0  soya_chana_sundalx3 + avicha_muttaix1                fat_g above ceiling
+```
+
+**Read.**
+- The cross-check holds (36 agree, 0 disagree), so the arithmetic measures
+  the planner.
+- Every body that fits, fits before any loosening. No rung rescues a body.
+  For a snack the energy and fat rungs change nothing, by design: the snack's
+  energy band is already the relaxed width (`tolerance.energy_snack` =
+  `tolerance.energy_relaxed` = 0.10), and the fat band from the AMDR
+  (`tolerance.fat_default` = 0.2727) is already wider than the fat rung's
+  0.25, and a rung only widens. So the question is settled at the unrelaxed
+  limits.
+- The 24 bodies that cannot fit are stopped by two limits together, energy
+  floor and fat ceiling: on 24 of 24 some plate is stopped by fat alone, and
+  on 16 some plate is stopped by too little energy alone. Fat blocks every
+  plate outright on only 2. No other bound (quality protein, protein, carb,
+  fibre, sodium) is ever the only thing in the way or blocks every plate.
+- Why: one boiled egg is 64% of its energy from fat (5.27 g in 73.8 kcal).
+  The snack's fat ceiling is 35% of the snack's energy (the AMDR upper bound,
+  applied per meal by project decision). The sundal (24-26% fat) has to
+  dilute the egg; enough sundal to do that pushes energy past the band's top,
+  too little leaves fat over the ceiling. Portions move in whole quarter
+  katoris (52-66 kcal) and whole eggs (74 kcal), so for most bodies no step
+  lands in the gap. The 55 kg / 70 kg pair above shows it: the same plate
+  (3 quarter katoris of chunk sundal, 1 egg, 230 kcal, 9.5 g fat) fits a
+  9.7 g ceiling and misses an 8.8 g one.
+- Which bodies fit does not rise with body size (maintain male fits at 70 and
+  90 kg, not 55; gain_muscle male fits at 55 and 90, not 70). Expected from
+  whole-portion steps against a band that moves with the body.
+
+**Not checked.** The egg's fat figure is an unverified IFCT-derived row like
+the rest of the library; nothing here re-checks it. Whether a daily fat range
+should be applied to a single snack is a project decision (citations.py,
+`tolerance.fat_default`), not a sourced fact; changing it would need a
+published source first.
+
+**Disposition.** DONE, measurement only. No code, rule or limit changed. The
+omelette and podimas fitting no snack (N19) is probably the same fat
+arithmetic; that is a guess, not measured.
+
 ## 2026-10-08 — N20: a bread omelette cannot fit any snack target -- stopped at premise
 
 **Asked.** Owner, 2026-10-08: include bread omelette as a snack ("a normal
