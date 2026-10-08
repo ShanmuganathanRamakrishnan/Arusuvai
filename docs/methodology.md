@@ -872,6 +872,21 @@ accepts for any meal, so for a snack that rung changes nothing.
 relaxation; one plate is solved per request, so nothing yet balances that
 against the rest of the day.
 
+## A snack has no protein floor (2026-10-08)
+
+A snack has neither a protein floor nor a quality-protein floor. It keeps the
+protein ceiling and the protein point. Breakfast, lunch and dinner keep both
+floors. Owner decision, `docs/audit_log.md` "N23": most snacks people eat
+carry little or no protein (a banana, a rice cake, tea with a savoury). Both
+floors were project decisions with no source. The closest intake data found
+(UDAY, J Nutr 2023, 8762 adults in Visakhapatnam and Sonipat) agrees on the
+foods -- savoury snacks most frequent, fruit second, tea/coffee -- but no study
+found measured protein per snack. **Limitations:** the snack's share of the
+day protein floor (10% of it) is now asked of no meal, and one plate is solved
+per request, so nothing yet checks that the rest of the day makes it up. With
+the snack exempt, the `protein.meal_floor_fraction` guard binds on no slot at
+the registered shares.
+
 ## Sodium is a day budget, not a share of one (2026-08-02)
 
 Until 2026-08-02 every bound in a day target was scaled to a meal by the meal's
@@ -1132,7 +1147,10 @@ snack      share 0.10 x 112 = 11.2   guard 16.8   floor 16.8   <- the only slot 
 ```
 
 The snack slot is the only one whose share falls below the guard, which is
-precisely the case the bound exists for.
+precisely the case the bound exists for. *(Corrected 2026-10-08,
+`docs/audit_log.md` "N23": a snack has no protein floor now, so the snack row
+above no longer applies and the guard binds on no slot. It is kept as live
+code; a change to a share or to 0.15 makes it bind again.)*
 
 ### The ceiling is a backstop, not a shaper — and it is measurable
 
@@ -1589,7 +1607,9 @@ That last case is pinned in
    **Decided 2026-09-25: kept flat for snacks too**, before any snack template
    was built. It leaves snacks reachable but soya-, fish-, chicken- or
    egg-based (paneer and curd breach the snack fat ceiling first). See
-   `docs/audit_log.md`, 2026-09-25.
+   `docs/audit_log.md`, 2026-09-25. *(Reversed 2026-10-08, owner decision,
+   `docs/audit_log.md` "N23": a snack has no quality floor now. Flat still
+   holds for breakfast, lunch and dinner.)*
 2. **The decline can now hide the other reasons.** When a bound is *unreachable*,
    `_blocking_violations` reports it from its first branch and returns
    immediately, so the energy, fat and sodium misses that came from the later

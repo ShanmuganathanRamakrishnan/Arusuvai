@@ -1597,7 +1597,11 @@ PROTEIN_MEAL_FLOOR_FRACTION = register_constant(
             "loosening nobody asked for; the stated purpose of the bound is to "
             "stop a meal being empty of protein, which is a guard. In practice "
             "it therefore binds only on the snack slot, whose 0.10 energy share "
-            "is the only one below it -- that is the case it exists for."
+            "is the only one below it -- that is the case it exists for. "
+            "(Corrected 2026-10-08, docs/audit_log.md \"N23\": a snack has no "
+            "protein floor now, so at the registered shares this guard binds "
+            "on no slot. Kept, not deleted: it is live code, and a change to a "
+            "share or to this value makes it bind again.)"
         ),
     )
 )
@@ -1728,7 +1732,9 @@ PROTEIN_QUALITY_MEAL_FLOOR_FRACTION = register_constant(
             "in place; this said no snack template existed): the floor "
             "cuts one-plate snack coverage from 46/144 to 25/144 profiles "
             "but is not why none reach two plates -- see docs/audit_log.md "
-            "2026-09-25."
+            "2026-09-25. (2026-10-08, docs/audit_log.md \"N23\": a snack no "
+            "longer has this floor; it applies to breakfast, lunch and "
+            "dinner.)"
         ),
     )
 )

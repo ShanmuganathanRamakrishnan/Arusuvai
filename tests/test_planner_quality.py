@@ -184,7 +184,7 @@ class TestQualityProteinArithmetic:
 
 
 class TestThePerMealFloor:
-    """11.2 g, flat, on every slot."""
+    """11.2 g, flat, on every main meal. None on a snack since N23."""
 
     def test_the_floor_is_a_tenth_of_the_day_protein_floor(self):
         # 70 kg x protein.g_per_kg_maintain (1.6) = 112.0 g/day.
@@ -201,11 +201,13 @@ class TestThePerMealFloor:
         # the same quality floor: the rule is "no meal is pure lentil", which is
         # a statement about each plate rather than a share of a day. Asserted so
         # that making it proportional later is a visible decision.
+        #
+        # The snack left this list on 2026-10-08 (docs/audit_log.md "N23"): it
+        # has no quality floor at all now, asserted in
+        # tests/test_nutrition_meal_target.py TestASnackHasNoProteinFloor.
         day = derive_target(_profile()).nutrition_target
-        floors = {
-            slot: meal_target(day, slot).quality_protein_floor() for slot in MealSlot
-        }
-        assert set(floors) == set(MealSlot)
+        main_meals = (MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER)
+        floors = {slot: meal_target(day, slot).quality_protein_floor() for slot in main_meals}
         assert all(f == pytest.approx(_MEAL_QUALITY_FLOOR_G) for f in floors.values())
 
     def test_no_day_protein_floor_means_no_quality_floor(self):
