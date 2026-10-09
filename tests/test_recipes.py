@@ -131,6 +131,31 @@ class TestRajmaChawal:
         assert v.sodium_mg == pytest.approx(796.76)
 
 
+class TestMilkTeaHasNoAddedSugar:
+    """One cup, 150 g: milk 70, brewed tea 80. No sugar since 2026-10-09
+    (TASKS_3.md N27, owner decision, docs/audit_log.md "N27"). Red if sugar
+    comes back: the first draft's 8 g would add 8.0 g carb and 31 kcal.
+    """
+
+    def test_carb_is_the_milk_and_tea_alone(self, library, ingredients):
+        #   milk 0.0494 x 70 = 3.458
+        #   tea  0.0030 x 80 = 0.240
+        #   total            = 3.698
+        v = nutrition_of_recipe(library.recipes["milk_tea"], 1, ingredients)
+        assert v.carb_g == pytest.approx(3.698)
+
+    def test_energy(self, library, ingredients):
+        #   milk 0.729 x 70 = 51.03
+        #   tea  0.010 x 80 =  0.80
+        #   total           = 51.83
+        v = nutrition_of_recipe(library.recipes["milk_tea"], 1, ingredients)
+        assert v.energy_kcal == pytest.approx(51.83)
+
+    def test_only_milk_and_tea(self, library):
+        lines = {line.ingredient_id for line in library.recipes["milk_tea"].ingredients}
+        assert lines == {"milk_cow_whole", "tea_black_brewed"}
+
+
 class TestMasalaDosa:
     """One dosa unit, 150 g = 90 g dosa + 60 g potato masala.
     Batter is recorded as raw rice 26 + raw urad 9 + water 51, because no

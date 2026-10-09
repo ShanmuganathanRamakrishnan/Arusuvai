@@ -18,6 +18,12 @@ joined the snack drinks and now fills the 70 kg South snack's drink, and no
 plate for that body leaves a course empty with exactly one dish to offer. The
 snack step now uses a 55 kg eggetarian woman (same age, height, activity and
 goal), whose North snack leaves ``drink`` empty with one dish (chaas).
+
+Re-picked again 2026-10-09 (TASKS_3.md N27, docs/audit_log.md "N27"): with
+no sugar, milk tea is 31 kcal lighter and fits that woman's drink too, so
+two dishes were offered. The snack step now uses a 55 kg eggetarian man
+losing fat (same age, height and activity), whose North snack leaves
+``drink`` empty with one dish (chaas).
 """
 
 from __future__ import annotations
@@ -124,7 +130,7 @@ def walk():
         seen["reset_visible_after_add"] = page.is_visible("#dashResetPicks")
 
         # The snack step's own body -- see the module docstring (N26).
-        _put_profile(page, *account, **{**_BODY, "sex": "female", "weight_kg": 55})
+        _put_profile(page, *account, **{**_BODY, "weight_kg": 55, "goal": "lose_fat"})
         seen["snack"] = _generate(page, "north_indian:snack")
         seen["snack_menus"] = _add_menus(page)
         browser.close()

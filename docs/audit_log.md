@@ -6,6 +6,157 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-09 — N27: the app suggests only healthy snacks; milk tea has no sugar
+
+**Owner decisions, 2026-10-09.**
+1. The app promotes healthy eating with proper choices. It does not suggest
+   unhealthy snacks such as vada or other deep-fried snacks; eating them is
+   the user's own choice. Vada, open since N24, is dropped. This holds even
+   though intake data (UDAY) shows fried snacks are commonly eaten.
+2. "Option 1": milk tea is suggested without sugar; the user may add their
+   own.
+
+**Evidence on added sugar.**
+- WHO, *Guideline: sugars intake for adults and children* (2015, ISBN
+  978-92-4-154902-8, WHO/NMH/NHD/15.2): free sugars below 10% of total
+  energy (strong recommendation), and below 5%, about 25 g a day
+  (conditional). Free sugars include sugar added by the cook or the eater.
+  Read through WHO's release and summaries; the guideline PDF returned 403.
+- ICMR-NIN *Dietary Guidelines for Indians* (2024): added sugar below 5% of
+  daily energy, per Singh, Agrawal & Bhardwaj, Indian J Community Med 2025
+  (DOI 10.4103/ijcm.ijcm_597_24). Shah et al., Indian J Med Res 2025 (DOI
+  10.25259/IJMR_1674_2024) quote both "5-10%, 23-30 g/day" and "5% or 25
+  g/day", so the gram figure is not settled. The NIN PDF itself (over 10 MB)
+  was not opened.
+- The cup had 8 g sugar: about a third of the 25 g (5%) figure, in one cup.
+
+**Changed.**
+- `data/recipes/milk_tea.yaml`: no sugar line. One cup is now 150 g (70 g
+  milk + 80 g brewed tea), shown as "Milk tea (no sugar)". The id stays
+  `milk_tea`.
+- `data/raw/ifct/fixture_ingredients.csv`: `sugar_white` removed. Nothing
+  else used it. Its USDA FDC 169655 reading stays in the N24 and N26
+  entries above.
+- New `tests/test_recipes.py::TestMilkTeaHasNoAddedSugar`, hand-computed:
+  carb 3.698 g, energy 51.83 kcal, ingredients exactly milk and tea. With
+  the sweetened recipe and row put back, all three went red (`3 failed`);
+  restored, `3 passed`.
+- `tests/test_ifct_loader.py`: rows 41 to 40, warnings 40 to 39.
+- `tests/test_web_add_dish.py` re-picked its snack example again: the
+  lighter tea now also fits the 55 kg woman's drink, so two drinks were
+  offered. It now uses a 55 kg eggetarian man losing fat (North snack,
+  drink empty, chaas the one option).
+
+**Before / after.** `docs/design/probes/probe_banana_tea_dishes.py`; the
+after side is byte-identical under PYTHONHASHSEED=1 and 777. Before is the
+N26 tree (main c1cc4e1):
+```
+south_indian  vegetarian      plate 18, unrelaxed 18, options 82, banana in shown 0, milk_tea in shown 12, banana asked 10, milk_tea asked 18
+    shown 10x  milk_tea + soya_chana_sundal
+    shown  2x  milk_tea + soya_chunk_sundal
+    shown  5x  neer_mor + soya_chana_sundal
+    shown  1x  soya_chana_sundal
+south_indian  eggetarian      plate 18, unrelaxed 18, options 88, banana in shown 0, milk_tea in shown 12, banana asked 10, milk_tea asked 18
+    shown 10x  milk_tea + soya_chana_sundal
+    shown  2x  milk_tea + soya_chunk_sundal
+    shown  5x  neer_mor + soya_chana_sundal
+    shown  1x  soya_chana_sundal
+south_indian  non_vegetarian  plate 18, unrelaxed 18, options 88, banana in shown 0, milk_tea in shown 12, banana asked 10, milk_tea asked 18
+    shown 10x  milk_tea + soya_chana_sundal
+    shown  2x  milk_tea + soya_chunk_sundal
+    shown  5x  neer_mor + soya_chana_sundal
+    shown  1x  soya_chana_sundal
+south_indian  vegan           plate 18, unrelaxed 18, options 35, banana in shown 2, milk_tea in shown 0, banana asked 6, milk_tea asked 0
+    shown  2x  banana
+    shown 12x  soya_chana_sundal
+    shown  4x  soya_chunk_sundal
+north_indian  vegetarian      plate 18, unrelaxed 18, options 86, banana in shown 13, milk_tea in shown 4, banana asked 18, milk_tea asked 16
+    shown  1x  banana + chaas
+    shown  3x  banana + chaas + soya_chana_chaat
+    shown  6x  banana + chaas + soya_tikka
+    shown  3x  banana + soya_tikka
+    shown  3x  milk_tea + soya_chana_chaat
+    shown  1x  milk_tea + soya_tikka
+    shown  1x  soya_chana_chaat
+north_indian  eggetarian      plate 18, unrelaxed 18, options 102, banana in shown 2, milk_tea in shown 7, banana asked 18, milk_tea asked 16
+    shown  1x  anda_chaat + banana
+    shown  4x  anda_chaat + chaas + soya_chana_chaat
+    shown  7x  anda_chaat + milk_tea + soya_chana_chaat
+    shown  4x  anda_chaat + soya_chana_chaat
+    shown  1x  banana + chaas
+    shown  1x  soya_chana_chaat
+north_indian  non_vegetarian  plate 18, unrelaxed 18, options 102, banana in shown 2, milk_tea in shown 7, banana asked 18, milk_tea asked 16
+    shown  1x  anda_chaat + banana
+    shown  4x  anda_chaat + chaas + soya_chana_chaat
+    shown  7x  anda_chaat + milk_tea + soya_chana_chaat
+    shown  4x  anda_chaat + soya_chana_chaat
+    shown  1x  banana + chaas
+    shown  1x  soya_chana_chaat
+north_indian  vegan           plate 15, unrelaxed 15, options 23, banana in shown 10, milk_tea in shown 0, banana asked 11, milk_tea asked 0
+    shown  4x  banana
+    shown  6x  banana + soya_chana_chaat
+    shown  5x  soya_chana_chaat
+```
+After:
+```
+south_indian  vegetarian      plate 18, unrelaxed 18, options 82, banana in shown 0, milk_tea in shown 6, banana asked 10, milk_tea asked 18
+    shown  6x  milk_tea + soya_chana_sundal
+    shown  9x  neer_mor + soya_chana_sundal
+    shown  3x  soya_chana_sundal
+south_indian  eggetarian      plate 18, unrelaxed 18, options 88, banana in shown 0, milk_tea in shown 6, banana asked 10, milk_tea asked 18
+    shown  6x  milk_tea + soya_chana_sundal
+    shown  9x  neer_mor + soya_chana_sundal
+    shown  3x  soya_chana_sundal
+south_indian  non_vegetarian  plate 18, unrelaxed 18, options 88, banana in shown 0, milk_tea in shown 6, banana asked 10, milk_tea asked 18
+    shown  6x  milk_tea + soya_chana_sundal
+    shown  9x  neer_mor + soya_chana_sundal
+    shown  3x  soya_chana_sundal
+south_indian  vegan           plate 18, unrelaxed 18, options 35, banana in shown 2, milk_tea in shown 0, banana asked 6, milk_tea asked 0
+    shown  2x  banana
+    shown 12x  soya_chana_sundal
+    shown  4x  soya_chunk_sundal
+north_indian  vegetarian      plate 18, unrelaxed 18, options 84, banana in shown 14, milk_tea in shown 3, banana asked 18, milk_tea asked 14
+    shown  1x  banana + chaas + soya_chana_chaat
+    shown  6x  banana + chaas + soya_tikka
+    shown  1x  banana + milk_tea + soya_chana_chaat
+    shown  1x  banana + milk_tea + soya_tikka
+    shown  5x  banana + soya_tikka
+    shown  1x  chaas + soya_chana_chaat
+    shown  1x  milk_tea + soya_chana_chaat
+    shown  2x  soya_chana_chaat
+north_indian  eggetarian      plate 18, unrelaxed 18, options 100, banana in shown 1, milk_tea in shown 5, banana asked 18, milk_tea asked 14
+    shown  1x  anda_chaat + banana
+    shown  4x  anda_chaat + chaas + soya_chana_chaat
+    shown  4x  anda_chaat + milk_tea + soya_chana_chaat
+    shown  7x  anda_chaat + soya_chana_chaat
+    shown  1x  milk_tea + soya_chana_chaat
+    shown  1x  soya_chana_chaat
+north_indian  non_vegetarian  plate 18, unrelaxed 18, options 100, banana in shown 1, milk_tea in shown 5, banana asked 18, milk_tea asked 14
+    shown  1x  anda_chaat + banana
+    shown  4x  anda_chaat + chaas + soya_chana_chaat
+    shown  4x  anda_chaat + milk_tea + soya_chana_chaat
+    shown  7x  anda_chaat + soya_chana_chaat
+    shown  1x  milk_tea + soya_chana_chaat
+    shown  1x  soya_chana_chaat
+north_indian  vegan           plate 15, unrelaxed 15, options 23, banana in shown 10, milk_tea in shown 0, banana asked 11, milk_tea asked 0
+    shown  4x  banana
+    shown  6x  banana + soya_chana_chaat
+    shown  5x  soya_chana_chaat
+```
+
+**Read.** No region or diet lost a plate; all are unrelaxed, as before.
+Milk tea is on 31 of 144 shown plates, down from 54. It is 31 kcal lighter,
+so the solver now prefers neer mor more often in the South (5 to 9 plates
+per non-vegan diet). Picked by hand, it still passes for 18/18 South
+non-vegan bodies; in the North 14/18, down from 16/18. Banana is on 28 of
+144 shown plates (was 29).
+
+**Suite.** `FOODAI_WEB_TESTS=required python -m pytest tests/ -q`, servers
+up, same session:
+```
+677 passed, 1 warning in 271.56s (0:04:31)
+```
+
 ## 2026-10-09 — N26: banana and milk tea join the snack plates
 
 **Asked.** Owner, 2026-10-09, "option 1": after removing the snack carb

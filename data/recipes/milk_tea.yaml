@@ -1,9 +1,17 @@
-# Milk tea (chai) -- black tea boiled with milk and sugar.
+# Milk tea (chai), no sugar -- black tea boiled with milk.
 #
 # TASKS_3.md N26. "Tea/coffee" is one of the ten snack types the UDAY study
 # asked Indian adults about (J Nutr 2023, DOI 10.1016/j.tjnut.2022.12.032),
 # and hot drinks are among the main snack energy sources in France's
 # NutriNet-Sante cohort. The ordinary Indian evening tea.
+#
+# No sugar since 2026-10-09 (TASKS_3.md N27, owner decision, docs/audit_log.md
+# "N27"): the app suggests healthy choices, and sugar is the user's to add.
+# WHO's 2015 guideline (ISBN 978-92-4-154902-8) strongly recommends keeping
+# free sugars -- sugar added by the cook or the eater included -- below 10% of
+# the day's energy, and conditionally below 5% (about 25 g); ICMR-NIN's 2024
+# Dietary Guidelines for Indians are reported to set the same 5% limit. The
+# 8 g first used here would have been about a third of that 25 g, in one cup.
 #
 # Pan-Indian, category tea. Only the snack templates' drink slots accept
 # it, so nothing changes at breakfast, lunch or dinner. Tea alone has no
@@ -11,12 +19,12 @@
 # beside a dish (docs/audit_log.md 2026-10-09 "N24").
 #
 # Proportion, stated as an assumption, not a measurement: one cup =
-# 70 g milk + 80 g brewed tea + 8 g sugar (about two teaspoons). No source
-# for a typical Indian cup was found; this is the proportion N24 measured.
+# 70 g milk + 80 g brewed tea. No source for a typical Indian cup was found;
+# it is N24's proportion without the sugar.
 id: milk_tea
-name: Milk tea
-name_ta: பால் டீ
-name_hi: चाय
+name: Milk tea (no sugar)
+name_ta: சர்க்கரை இல்லாத பால் டீ
+name_hi: बिना चीनी की चाय
 
 region: pan_indian
 # Dairy via milk_cow_whole's class, so not vegan (derived from ingredient
@@ -25,12 +33,12 @@ region: pan_indian
 category: tea
 main_ingredients: [tea]
 prep_minutes: 7
-tags: [snack, beverage, hot, quick]
+tags: [snack, beverage, hot, quick, no_added_sugar]
 
 serving_unit:
   measure: cup
   name: cup
-  grams_per_unit: 158.0
+  grams_per_unit: 150.0
   min_count: 1
   default_count: 1
   max_count: 1
@@ -55,7 +63,3 @@ ingredients:
     note: >-
       The tea water. The row is brewed tea, so the leaves themselves are not
       listed.
-  - id: sugar_white
-    quantity_g: 8.0
-    state: as_used
-    note: About two teaspoons. An authored quantity, not a measurement.

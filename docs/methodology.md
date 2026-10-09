@@ -889,6 +889,18 @@ per request, so nothing yet checks that the rest of the day makes it up. With
 the snack exempt, the `protein.meal_floor_fraction` guard binds on no slot at
 the registered shares.
 
+## What the app suggests: healthy choices only (2026-10-09)
+
+Owner decision, `docs/audit_log.md` "N27". The planner suggests healthy
+foods with proper choices. It does not suggest deep-fried snacks such as
+vada, even though intake surveys show they are commonly eaten; eating them is
+the user's choice, not the planner's suggestion. Real intake data still
+decides the shape and size of a meal, but not whether an unhealthy food is
+offered. For the same reason milk tea is suggested without sugar: WHO (2015)
+advises free sugars below 10% of the day's energy and, conditionally, below
+5% (about 25 g), and ICMR-NIN's 2024 guidelines are reported to set the same
+5% limit for added sugar.
+
 ## A snack has no carbohydrate ceiling (2026-10-09)
 
 A snack has no carbohydrate ceiling. Breakfast, lunch and dinner keep theirs;

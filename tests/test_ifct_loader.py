@@ -41,8 +41,10 @@ class TestFixtureSet:
         # (IFCT M001) for pan-cooked egg dishes. 41 rows from 2026-10-09's
         # TASKS_3.md N26, which added banana_ripe (IFCT E012), milk_cow_whole
         # (IFCT L002), sugar_white (USDA FDC 169655) and tea_black_brewed
-        # (USDA FDC 173227) for the banana and milk tea snacks.
-        assert len(load_report.loaded) == 41
+        # (USDA FDC 173227) for the banana and milk tea snacks. 40 rows from
+        # 2026-10-09's TASKS_3.md N27, which removed sugar_white with the
+        # sugar in milk tea; nothing else used it.
+        assert len(load_report.loaded) == 40
 
     def test_no_ifct_code_is_invented(self, ingredients):
         # Seven rows now carry real IFCT 2017 codes, extracted from a
@@ -103,7 +105,8 @@ class TestFixtureSet:
         # the assistant read the paper and the mirror, not a human. The four
         # N26 rows (2026-10-09) stay unverified for the same reason: the
         # assistant read IFCT2017.pdf and queried USDA FDC, not a human.
-        assert len(load_report.warnings) == 40
+        # One fewer from N27 (sugar_white removed).
+        assert len(load_report.warnings) == 39
 
     def test_states_parse(self, ingredients):
         assert ingredients["rice_cooked"].state is RawOrCooked.COOKED
