@@ -6,6 +6,82 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-09 — N24: a banana or tea snack cannot fit any snack target -- stopped at premise
+
+**Asked.** Owner, 2026-10-09, after N23 merged: add real low-protein snacks
+-- banana, vada, tea -- each backed by a published source.
+
+**Premise.** N23 removed the snack's protein floors so that snacks like
+these could be served. That assumed protein was what kept them out. Before
+building any dish, the arithmetic.
+
+**Which snacks, from intake data.** UDAY (J Nutr 2023, DOI
+10.1016/j.tjnut.2022.12.032, PMC7616315; 8762 adults, Visakhapatnam and
+Sonipat) asked about 10 snack types, among them "fried snacks (vada,
+samosa, etc.)", "tea/coffee" and "fruits". It gives no per-item amounts.
+
+**Sources read.**
+- Banana: IFCT 2017 E012 "Banana, ripe, robusta", 6 regions, from the
+  primary `IFCT2017.pdf` (same file as N20/N22). Table 1, PDF page 49: water 71.93,
+  protein 1.23, fat 0.33, total fibre 1.94, available carbohydrate 23.63,
+  energy 440 kJ (105.2 kcal) per 100 g. Sodium 0.85 mg, Table 5 PDF page
+  168, placed under (Na) by column position (the Hg and Se cells are blank).
+- Cow milk: IFCT 2017 L002 "Milk, whole, Cow", 6 regions, Table 1 PDF page 57: protein 3.26,
+  fat 4.48, carbohydrate 4.94, energy 305 kJ (72.9 kcal). Sodium 25.46 mg,
+  Table 5 PDF page 184, by column position (0.95 sits under Se).
+- Sugar: IFCT 2017 has none refined (I001 jaggery, I002 cane juice only).
+  USDA FDC 169655 "Sugars, granulated": 387 kcal, carb 99.98, sodium 1 mg.
+- Brewed tea: not in IFCT. USDA FDC 173227 "Beverages, tea, black, brewed,
+  prepared with tap water": 1 kcal, carb 0.3, sodium 3 mg.
+- Banana piece: USDA FDC 173944, "medium" 118 g (Cavendish; robusta is a
+  Cavendish type).
+- **Vada: no measured source found.** Two searches turned up no laboratory
+  fat value for a fried urad dal vada. Calorie-tracker sites disagree, 7 to
+  16 g fat per 100 g. A vada would also need a deep-frying oil-uptake
+  constant of its own. Not run.
+
+Assumption, not sourced: one cup of tea = 70 g milk + 80 g brewed tea + 8 g
+sugar.
+
+**Measured.** `docs/design/probes/probe_banana_tea_snack.py`, 18 bodies,
+unrelaxed snack target and after every step of `RELAXATION_ORDER`.
+Byte-identical under PYTHONHASHSEED=1 and 777:
+
+```
+18 bodies. snack energy window: lowest 145-178, highest 279-341 kcal; fibre floor 2.3-4.3 g
+1 banana                 [ 124 kcal, prot  1.5, fat  0.4, carb  30.2, fibre 2.3, Na   1.0]  unrelaxed  0/18, some rung  0/18  last-rung misses {'carb_g above ceiling': 5, 'energy_kcal below floor': 18}
+2 bananas                [ 248 kcal, prot  2.9, fat  0.8, carb  60.3, fibre 4.6, Na   2.0]  unrelaxed  0/18, some rung  0/18  last-rung misses {'carb_g above ceiling': 18, 'energy_kcal above ceiling': 9, 'energy_kcal below floor': 4}
+tea                      [  83 kcal, prot  2.3, fat  3.1, carb  11.7, fibre 0.0, Na  20.3]  unrelaxed  0/18, some rung  0/18  last-rung misses {'energy_kcal below floor': 18, 'fibre_g below floor': 18}
+tea + 1 banana           [ 207 kcal, prot  3.7, fat  3.5, carb  41.9, fibre 2.3, Na  21.3]  unrelaxed  0/18, some rung  0/18  last-rung misses {'carb_g above ceiling': 12, 'energy_kcal above ceiling': 3, 'energy_kcal below floor': 8}
+tea + 2 bananas          [ 331 kcal, prot  5.2, fat  3.9, carb  72.0, fibre 4.6, Na  22.3]  unrelaxed  0/18, some rung  0/18  last-rung misses {'carb_g above ceiling': 18, 'energy_kcal above ceiling': 17}
+tea + soya_chana_sundal  [ 148 kcal, prot  7.0, fat  5.0, carb  19.4, fibre 2.5, Na 120.8]  unrelaxed  1/18, some rung  1/18  last-rung misses {'energy_kcal below floor': 17}
+carb ceiling unrelaxed 22.3-46.0 g, last rung 24.2-50.0 g
+  e.g. last rung: energy 164-200 kcal, carb <= 28.9 g -> max carb share of energy at the energy floor 70%
+  e.g. last rung: energy 205-250 kcal, carb <= 40.5 g -> max carb share of energy at the energy floor 79%
+  e.g. last rung: energy 225-275 kcal, carb <= 44.3 g -> max carb share of energy at the energy floor 79%
+```
+
+**Read.** 0/18 for every banana and tea plate, at every rung. Protein is not
+in any miss list. What stops them:
+- **The snack carb ceiling.** A banana takes 97% of its energy from
+  carbohydrate (30.2 g x 4 / 124 kcal). The snack's carb ceiling allows at
+  most 70-79% of the energy floor even at the last rung. Two bananas are
+  over it for all 18 bodies; one banana is also too small for every energy
+  window.
+- **Energy steps.** A banana is 124 kcal and the windows are 33-62 kcal
+  wide, so whole bananas skip over most of them.
+- **Fibre floor** for tea alone: tea has none; the snack floor is 2.3-4.3 g.
+The snack carb ceiling is the day carbohydrate range scaled to the snack's
+energy share -- daily guidance, the same reasoning N23 and the 2026-09-25
+fat/carb floor decision questioned for floors. N23's premise holds for
+protein but did not reach these snacks: a second limit stops them first.
+
+**Disposition.** STOPPED at premise. No dish, ingredient or template added,
+no limit changed. The IFCT E012 and L002 readings above are ready for later
+rows; unverified until a human opens PDF pages 49, 168 (E012) and 57, 184 (L002).
+Changing the snack carb ceiling is a rule change and needs the owner's
+decision and evidence first.
+
 ## 2026-10-08 — N23: a snack has no protein floor and no quality-protein floor
 
 **Asked.** Owner, 2026-10-08, from experience: most people do not eat protein
