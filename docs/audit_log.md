@@ -6,6 +6,142 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-09 — N28: soya chana chaat served by the quarter katori
+
+**Asked.** Owner, 2026-10-09, "option 1": find out why 3 of 18 North vegan
+bodies get no snack, report, then serve the chaat by the quarter katori.
+
+**Cause, measured.** The three are the lightest lose_fat bodies (170 cm,
+30 y): male 55 kg (snack window 163.8-200.2 kcal), female 55 kg
+(145.2-177.5), female 70 kg (162.0-198.0). A North vegan snack can use only
+banana (124.1 kcal each, 1-2) and soya_chana_chaat (100.3 kcal per half
+katori, 1-4); soya_tikka has curd. Reachable plates were 100, 124, 201,
+224 and 248 kcal, so none landed in those windows. Two half katoris miss
+the ceiling by 0.4 and 2.6 kcal. No limit, fibre or protein rule was the
+cause; the decline named `energy_kcal above_ceiling` at every rung.
+
+**Changed.** `data/recipes/soya_chana_chaat.yaml`: unit 80 g half katori
+(1-4, default 2) to 40 g quarter katori (1-8, default 4). Every line is
+exactly halved, so the recipe and its ratio are unchanged and the ceiling
+is still 320 g. This is the same step the owner approved for
+soya_chana_sundal on 2026-09-26.
+
+**Before / after.** `docs/design/probes/probe_banana_tea_dishes.py`.
+Before is main c4252ba (N27's after, same session); after is byte-identical
+under PYTHONHASHSEED=1 and 777.
+
+Before:
+```
+south_indian  vegetarian      plate 18, unrelaxed 18, options 82, banana in shown 0, milk_tea in shown 6, banana asked 10, milk_tea asked 18
+    shown  6x  milk_tea + soya_chana_sundal
+    shown  9x  neer_mor + soya_chana_sundal
+    shown  3x  soya_chana_sundal
+south_indian  eggetarian      plate 18, unrelaxed 18, options 88, banana in shown 0, milk_tea in shown 6, banana asked 10, milk_tea asked 18
+    shown  6x  milk_tea + soya_chana_sundal
+    shown  9x  neer_mor + soya_chana_sundal
+    shown  3x  soya_chana_sundal
+south_indian  non_vegetarian  plate 18, unrelaxed 18, options 88, banana in shown 0, milk_tea in shown 6, banana asked 10, milk_tea asked 18
+    shown  6x  milk_tea + soya_chana_sundal
+    shown  9x  neer_mor + soya_chana_sundal
+    shown  3x  soya_chana_sundal
+south_indian  vegan           plate 18, unrelaxed 18, options 35, banana in shown 2, milk_tea in shown 0, banana asked 6, milk_tea asked 0
+    shown  2x  banana
+    shown 12x  soya_chana_sundal
+    shown  4x  soya_chunk_sundal
+north_indian  vegetarian      plate 18, unrelaxed 18, options 84, banana in shown 14, milk_tea in shown 3, banana asked 18, milk_tea asked 14
+    shown  1x  banana + chaas + soya_chana_chaat
+    shown  6x  banana + chaas + soya_tikka
+    shown  1x  banana + milk_tea + soya_chana_chaat
+    shown  1x  banana + milk_tea + soya_tikka
+    shown  5x  banana + soya_tikka
+    shown  1x  chaas + soya_chana_chaat
+    shown  1x  milk_tea + soya_chana_chaat
+    shown  2x  soya_chana_chaat
+north_indian  eggetarian      plate 18, unrelaxed 18, options 100, banana in shown 1, milk_tea in shown 5, banana asked 18, milk_tea asked 14
+    shown  1x  anda_chaat + banana
+    shown  4x  anda_chaat + chaas + soya_chana_chaat
+    shown  4x  anda_chaat + milk_tea + soya_chana_chaat
+    shown  7x  anda_chaat + soya_chana_chaat
+    shown  1x  milk_tea + soya_chana_chaat
+    shown  1x  soya_chana_chaat
+north_indian  non_vegetarian  plate 18, unrelaxed 18, options 100, banana in shown 1, milk_tea in shown 5, banana asked 18, milk_tea asked 14
+    shown  1x  anda_chaat + banana
+    shown  4x  anda_chaat + chaas + soya_chana_chaat
+    shown  4x  anda_chaat + milk_tea + soya_chana_chaat
+    shown  7x  anda_chaat + soya_chana_chaat
+    shown  1x  milk_tea + soya_chana_chaat
+    shown  1x  soya_chana_chaat
+north_indian  vegan           plate 15, unrelaxed 15, options 23, banana in shown 10, milk_tea in shown 0, banana asked 11, milk_tea asked 0
+    shown  4x  banana
+    shown  6x  banana + soya_chana_chaat
+    shown  5x  soya_chana_chaat
+```
+After:
+```
+south_indian  vegetarian      plate 18, unrelaxed 18, options 82, banana in shown 0, milk_tea in shown 6, banana asked 10, milk_tea asked 18
+    shown  6x  milk_tea + soya_chana_sundal
+    shown  9x  neer_mor + soya_chana_sundal
+    shown  3x  soya_chana_sundal
+south_indian  eggetarian      plate 18, unrelaxed 18, options 88, banana in shown 0, milk_tea in shown 6, banana asked 10, milk_tea asked 18
+    shown  6x  milk_tea + soya_chana_sundal
+    shown  9x  neer_mor + soya_chana_sundal
+    shown  3x  soya_chana_sundal
+south_indian  non_vegetarian  plate 18, unrelaxed 18, options 88, banana in shown 0, milk_tea in shown 6, banana asked 10, milk_tea asked 18
+    shown  6x  milk_tea + soya_chana_sundal
+    shown  9x  neer_mor + soya_chana_sundal
+    shown  3x  soya_chana_sundal
+south_indian  vegan           plate 18, unrelaxed 18, options 35, banana in shown 2, milk_tea in shown 0, banana asked 6, milk_tea asked 0
+    shown  2x  banana
+    shown 12x  soya_chana_sundal
+    shown  4x  soya_chunk_sundal
+north_indian  vegetarian      plate 18, unrelaxed 18, options 90, banana in shown 13, milk_tea in shown 4, banana asked 18, milk_tea asked 18
+    shown  1x  banana + chaas + soya_chana_chaat
+    shown  6x  banana + chaas + soya_tikka
+    shown  1x  banana + milk_tea + soya_chana_chaat
+    shown  1x  banana + milk_tea + soya_tikka
+    shown  4x  banana + soya_tikka
+    shown  3x  chaas + soya_chana_chaat
+    shown  2x  milk_tea + soya_chana_chaat
+north_indian  eggetarian      plate 18, unrelaxed 18, options 106, banana in shown 0, milk_tea in shown 7, banana asked 18, milk_tea asked 18
+    shown  7x  anda_chaat + chaas + soya_chana_chaat
+    shown  5x  anda_chaat + milk_tea + soya_chana_chaat
+    shown  4x  anda_chaat + soya_chana_chaat
+    shown  2x  milk_tea + soya_chana_chaat
+north_indian  non_vegetarian  plate 18, unrelaxed 18, options 107, banana in shown 0, milk_tea in shown 7, banana asked 18, milk_tea asked 18
+    shown  7x  anda_chaat + chaas + soya_chana_chaat
+    shown  5x  anda_chaat + milk_tea + soya_chana_chaat
+    shown  4x  anda_chaat + soya_chana_chaat
+    shown  2x  milk_tea + soya_chana_chaat
+north_indian  vegan           plate 18, unrelaxed 18, options 34, banana in shown 14, milk_tea in shown 0, banana asked 16, milk_tea asked 0
+    shown 14x  banana + soya_chana_chaat
+    shown  4x  soya_chana_chaat
+```
+
+**Read.**
+- North vegan: 15 to 18 of 18, all unrelaxed. 14 of them are shown
+  banana + chaat.
+- No other row lost a plate. South rows are byte-identical.
+- North vegetarian, eggetarian and non-vegetarian swap menus grew (84 to
+  90, 100 to 106, 100 to 107). Milk tea picked by hand now passes for
+  18/18 North non-vegan bodies (was 14/18).
+
+**Test re-picked, third time.** `tests/test_web_add_dish.py`'s lone-dish
+example moved again: finer chaat steps let milk tea fit the 55 kg
+lose_fat man's North snack, so two drinks were offered. This example
+has broken on N26, N27 and N28, because each snack change moves it. It
+now uses a dinner, which snack changes cannot reach: the 70 kg eggetarian
+man with goal lose_fat. His North dinner leaves `salad_or_raita` empty
+with one dish (soya onion raita).
+
+**Not deletion-tested.** A serving unit is data, not a gate. Nothing pins
+the North vegan count; the probe above records it.
+
+**Suite.** `FOODAI_WEB_TESTS=required python -m pytest tests/ -q`, servers
+up, same session:
+```
+677 passed, 1 warning in 278.04s (0:04:38)
+```
+
 ## 2026-10-09 — N27: the app suggests only healthy snacks; milk tea has no sugar
 
 **Owner decisions, 2026-10-09.**

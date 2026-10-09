@@ -24,6 +24,13 @@ no sugar, milk tea is 31 kcal lighter and fits that woman's drink too, so
 two dishes were offered. The snack step now uses a 55 kg eggetarian man
 losing fat (same age, height and activity), whose North snack leaves
 ``drink`` empty with one dish (chaas).
+
+Re-picked a third time 2026-10-09 (TASKS_3.md N28, docs/audit_log.md "N28"):
+chaat in quarter katoris let milk tea fit that plate too. Each snack change
+moved the snack example, so the lone-dish step now uses a dinner, which snack
+changes cannot reach: the same 70 kg eggetarian man with goal lose_fat, whose
+North dinner leaves ``salad_or_raita`` empty with one dish (soya onion
+raita).
 """
 
 from __future__ import annotations
@@ -129,10 +136,10 @@ def walk():
         seen["added_menus"] = _add_menus(page)
         seen["reset_visible_after_add"] = page.is_visible("#dashResetPicks")
 
-        # The snack step's own body -- see the module docstring (N26).
-        _put_profile(page, *account, **{**_BODY, "weight_kg": 55, "goal": "lose_fat"})
-        seen["snack"] = _generate(page, "north_indian:snack")
-        seen["snack_menus"] = _add_menus(page)
+        # The lone-dish step's own body -- see the module docstring (N28).
+        _put_profile(page, *account, **{**_BODY, "goal": "lose_fat"})
+        seen["lone"] = _generate(page, "north_indian:dinner")
+        seen["lone_menus"] = _add_menus(page)
         browser.close()
     return seen
 
@@ -171,7 +178,8 @@ def test_a_filled_course_has_no_add_menu(walk):
 
 def test_a_course_with_one_dish_still_gets_a_menu(walk):
     # Unlike a swap, adding a lone dish or not is still a choice.
-    assert walk["snack"]["passed"]
-    assert walk["snack_menus"] == [
-        {"label": "Add a drink", "value": "", "options": ["Choose a dish", "Chaas"]}
+    assert walk["lone"]["passed"]
+    assert walk["lone_menus"] == [
+        {"label": "Add a salad or raita", "value": "",
+         "options": ["Choose a dish", "Soya onion raita"]}
     ]
