@@ -6,6 +6,241 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-08 — N23: a snack has no protein floor and no quality-protein floor
+
+**Asked.** Owner, 2026-10-08, from experience: most people do not eat protein
+at a snack -- a banana, a rice cake with peanut butter -- so protein at every
+meal is ideal but not realistic. A South Indian breakfast is coffee/tea,
+idli/dosa, sambar/chutney, eggs/omelette. The owner asked for data on meals
+people actually ate, not dietary guidelines ("guidelines wouldnt tell actual
+meals people have"), then chose: drop the protein floor and the
+quality-protein floor for snacks only, keep both for breakfast, lunch and
+dinner, and show the before and after before anything is merged.
+
+**What the code had.** Every per-meal protein floor was a `PROJECT_DECISION`
+with no source, and `citations.py` said so: `protein.meal_floor_fraction`
+0.15 (a guard beneath each meal's energy share; it bound only on the snack,
+whose share is 0.10) and `protein.quality_meal_floor_fraction` 0.10 (flat on
+every plate, snack included, kept flat for snacks by owner decision
+2026-09-25).
+
+**Sources searched, intake data first.** What was found:
+- UDAY (J Nutr 2023, DOI 10.1016/j.tjnut.2022.12.032; 8762 adults,
+  Visakhapatnam and Sonipat). Food-frequency questionnaire over 10 predefined
+  snack types. Savoury snacks most frequent, fruit second; tea/coffee alongside.
+  In Visakhapatnam 60% eat savoury snacks weekly, mostly in the morning.
+  Agrees with the owner on *which foods*. **Limitation:** the list is fixed
+  and holds no protein foods, so it cannot say how much protein a snack
+  carries.
+- Mumbai breakfast (Sivaramakrishnan & Kamath, Public Health Nutr 2012, DOI
+  10.1017/S1368980012002777; n=1027). 64% of breakfasts give 15% or less of
+  the day's energy RDA; breakfast protein well below 25% of the day's RDA;
+  21% of adults 18-40 skip breakfast. About breakfast, not snacks; the
+  tables are images and were not transcribed. Not used for any change here.
+
+What was searched and holds no per-meal or per-snack protein:
+- NIN "What India Eats" (NNMB): day-level only.
+- CURES-68 (Chennai): day-level.
+- Kerala KDPP: dietary patterns only.
+- Hyderabad older adults: day-level.
+- I-STARCH-1 (Nutrients 2026, PMC13610836): no meal breakdown.
+- Bengaluru CGM study (BMC Endocr Disord 2026, PMC13563805, n=46):
+  correlations only.
+- South Asia Biobank Intake24 (PMC11847516): records eating occasions, but
+  the paper is methods only and the data is access-restricted. Applying for
+  it is the owner's option, not done.
+- A Kellogg-linked breakfast survey: 1 in 4 urban Indians skip breakfast.
+  Sponsor-linked; not used.
+
+**No study found measured protein per snack in Indian adults.** The decision
+rests on the owner's account, consistent with UDAY's food list. Nothing here
+is a sourced number, and no constant was added or changed.
+
+**Change.** `core/nutrition/meal_target.py`:
+- `_FLOORLESS_BY_SLOT[SNACK]` now holds `protein_g` beside `fat_g` and
+  `carb_g`. The pop moved to after `_apply_protein_meal_bounds`, which adds a
+  guard floor of its own; popping first would let the guard put 15% back.
+- New `_NO_QUALITY_FLOOR_SLOTS = {SNACK}`: a snack's
+  `quality_protein_floor_g` is `None`.
+- The snack keeps the protein ceiling (0.50 x day floor) and the protein
+  point (0.10 x day floor).
+
+Stale wording corrected in place, each with a dated note: the two constants'
+notes in `core/nutrition/citations.py`, two docstrings in `meal_target.py`,
+two passages in `docs/methodology.md` (plus a new section "A snack has no
+protein floor"), and the onboarding sentence in `web/onboarding.js`, which
+said "every plate carries a share of that floor" and now says "every
+breakfast, lunch and dinner ... (a snack does not)".
+
+**Before and after.** `docs/design/probes/probe_snack_protein_floor.py`,
+18 bodies per region x diet (3 goals x 2 sexes x 55/70/90 kg). It reads only
+fields present on both trees. BEFORE was run on this branch with only the
+probe added (code at main 5fa8f9d); AFTER on the change. Each side is
+byte-identical under PYTHONHASHSEED=1 and 777.
+
+BEFORE:
+
+```
+south_indian  vegetarian      protein floor 13.2-24.3, quality floor 8.8-16.2; bodies 18, plate 18, unrelaxed 15, options 39
+    shown  4x  neer_mor + soya_chana_sundal
+    shown  7x  neer_mor + soya_chunk_sundal
+    shown  1x  soya_chana_sundal
+    shown  6x  soya_chunk_sundal
+south_indian  eggetarian      protein floor 13.2-24.3, quality floor 8.8-16.2; bodies 18, plate 18, unrelaxed 15, options 45, egg asked 6
+    shown  4x  neer_mor + soya_chana_sundal
+    shown  7x  neer_mor + soya_chunk_sundal
+    shown  1x  soya_chana_sundal
+    shown  6x  soya_chunk_sundal
+south_indian  non_vegetarian  protein floor 13.2-24.3, quality floor 8.8-16.2; bodies 18, plate 18, unrelaxed 15, options 45, egg asked 6
+    shown  4x  neer_mor + soya_chana_sundal
+    shown  7x  neer_mor + soya_chunk_sundal
+    shown  1x  soya_chana_sundal
+    shown  6x  soya_chunk_sundal
+south_indian  vegan           protein floor 13.2-24.3, quality floor 8.8-16.2; bodies 18, plate 16, unrelaxed 14, options 18
+    shown  2x  soya_chana_sundal
+    shown 14x  soya_chunk_sundal
+north_indian  vegetarian      protein floor 13.2-24.3, quality floor 8.8-16.2; bodies 18, plate 17, unrelaxed 14, options 45
+    shown  4x  chaas + soya_chana_chaat
+    shown  5x  chaas + soya_chana_chaat + soya_tikka
+    shown  1x  chaas + soya_tikka
+    shown  2x  soya_chana_chaat
+    shown  3x  soya_chana_chaat + soya_tikka
+    shown  2x  soya_tikka
+north_indian  eggetarian      protein floor 13.2-24.3, quality floor 8.8-16.2; bodies 18, plate 17, unrelaxed 14, options 53
+    shown  4x  anda_chaat + chaas + soya_chana_chaat
+    shown  4x  anda_chaat + soya_chana_chaat
+    shown  2x  chaas + soya_chana_chaat
+    shown  2x  chaas + soya_chana_chaat + soya_tikka
+    shown  1x  chaas + soya_tikka
+    shown  2x  soya_chana_chaat + soya_tikka
+    shown  2x  soya_tikka
+north_indian  non_vegetarian  protein floor 13.2-24.3, quality floor 8.8-16.2; bodies 18, plate 17, unrelaxed 14, options 53
+    shown  4x  anda_chaat + chaas + soya_chana_chaat
+    shown  4x  anda_chaat + soya_chana_chaat
+    shown  2x  chaas + soya_chana_chaat
+    shown  2x  chaas + soya_chana_chaat + soya_tikka
+    shown  1x  chaas + soya_tikka
+    shown  2x  soya_chana_chaat + soya_tikka
+    shown  2x  soya_tikka
+north_indian  vegan           protein floor 13.2-24.3, quality floor 8.8-16.2; bodies 18, plate 4, unrelaxed 2, options 4
+    shown  4x  soya_chana_chaat
+```
+
+AFTER:
+
+```
+south_indian  vegetarian      protein floor none, quality floor none; bodies 18, plate 18, unrelaxed 18, options 54
+    shown 10x  neer_mor + soya_chana_sundal
+    shown  8x  soya_chana_sundal
+south_indian  eggetarian      protein floor none, quality floor none; bodies 18, plate 18, unrelaxed 18, options 60, egg asked 6
+    shown 10x  neer_mor + soya_chana_sundal
+    shown  8x  soya_chana_sundal
+south_indian  non_vegetarian  protein floor none, quality floor none; bodies 18, plate 18, unrelaxed 18, options 60, egg asked 6
+    shown 10x  neer_mor + soya_chana_sundal
+    shown  8x  soya_chana_sundal
+south_indian  vegan           protein floor none, quality floor none; bodies 18, plate 18, unrelaxed 17, options 29
+    shown 13x  soya_chana_sundal
+    shown  5x  soya_chunk_sundal
+north_indian  vegetarian      protein floor none, quality floor none; bodies 18, plate 18, unrelaxed 18, options 50
+    shown  6x  chaas + soya_chana_chaat
+    shown  4x  chaas + soya_chana_chaat + soya_tikka
+    shown  3x  soya_chana_chaat
+    shown  3x  soya_chana_chaat + soya_tikka
+    shown  2x  soya_tikka
+north_indian  eggetarian      protein floor none, quality floor none; bodies 18, plate 18, unrelaxed 18, options 63
+    shown  4x  anda_chaat + chaas + soya_chana_chaat
+    shown  8x  anda_chaat + soya_chana_chaat
+    shown  4x  chaas + soya_chana_chaat
+    shown  1x  soya_chana_chaat + soya_tikka
+    shown  1x  soya_tikka
+north_indian  non_vegetarian  protein floor none, quality floor none; bodies 18, plate 18, unrelaxed 18, options 63
+    shown  4x  anda_chaat + chaas + soya_chana_chaat
+    shown  8x  anda_chaat + soya_chana_chaat
+    shown  4x  chaas + soya_chana_chaat
+    shown  1x  soya_chana_chaat + soya_tikka
+    shown  1x  soya_tikka
+north_indian  vegan           protein floor none, quality floor none; bodies 18, plate 6, unrelaxed 3, options 6
+    shown  6x  soya_chana_chaat
+```
+
+**Read.** Over all 144 region x diet x body cases:
+- A passing snack plate: 125 before (18+18+18+16+17+17+17+4), 132 after
+  (18x7+6).
+- Passing with no relaxation: 103 before (15x3+14x4+2), 128 after
+  (18x3+17+18x3+3).
+- Swap choices offered rise in every row (e.g. South vegetarian 39 to 54).
+- The shown plate shifts from soya-chunk sundal to the lighter soya-chana
+  sundal in the South (soya_chunk_sundal shown 13 of 18 times before for
+  vegetarian, 0 after).
+- **Unchanged:** the boiled egg asked for in the South, still 6 of 18 per egg
+  diet. N21 found that blocked by the energy floor and the fat ceiling, not
+  protein, and this confirms protein was not what held it.
+- **Unchanged in kind:** North vegan reaches 6 of 18 (was 4). What blocks the
+  other 12 was not measured here.
+- No new kind of snack appears. The library holds no low-protein snack dish
+  (no banana, vada or tea): dropping the floor changes which existing plates
+  fit; it does not add the snacks the owner described. Those would be new
+  dishes, each with its own source.
+
+**Cost, stated.**
+- The snack's share of the day protein floor (10% of it) is now asked of no
+  meal. One plate is solved per request, so nothing checks that the rest of
+  the day makes it up.
+- With the snack exempt, `protein.meal_floor_fraction` (0.15) binds on no
+  slot at the registered shares (0.25 / 0.35 / 0.30 are all above it). It is
+  kept, not deleted: it is live code, a change to a share or to 0.15 makes it
+  bind again, and `test_the_floor_is_the_larger_of_the_share_and_the_guard`
+  now raises it to 0.30 to show the max() still works.
+  `test_at_the_registered_guard_it_binds_on_no_slot` asserts the cost so it
+  is not forgotten.
+
+**Deletion checks.** Three new rows in `docs/design/probes/d4b_mutations.py`
+(SP1-SP3, `meal_target.py`, own tests `test_nutrition_meal_target.py` and
+`test_planner_quality.py`). Full failure list per mutation, whole suite, no
+`-x`, `PYTHONHASHSEED=0`:
+
+```
+   all failures (1):
+      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_protein_floor
+SP1  covered      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_protein_floor
+   all failures (1):
+      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_quality_protein_floor
+SP2  covered      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_quality_protein_floor
+   all failures (1):
+      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_protein_floor
+SP3  covered      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_protein_floor
+====================================================================================================
+3 mechanisms: 3 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+SP3 moves the pop back above `_apply_protein_meal_bounds`; the guard then
+re-adds a 15.0 g floor and the snack test goes red. Each mutation turned
+exactly one test red, the one named for it. `meal_target.py`'s older bounds
+(fat/carb pop, energy band, protein ceiling) still have no rows; logged, not
+added here.
+
+The `web/onboarding.js` sentence is copy, not a mechanism; no hand deletion
+check applies. It was not looked at on screen.
+
+**Suite.** Both dev servers started (API :8000, page :3000), then:
+
+```
+$ FOODAI_WEB_TESTS=required python -m pytest tests/ -q -p no:cacheprovider
+669 passed, 1 warning in 241.86s (0:04:01)
+```
+
+The one warning is `FOODAI_SESSION_SECRET` unset (local dev, as always).
+
+**Disposition.** DONE on branch `snack-protein`, not merged; the owner sees
+the before and after above first.
+Logged for later, not started:
+- Real low-protein snack dishes (fruit/banana, vada, tea/coffee), each with
+  a source.
+- Breakfast protein: Mumbai 2012 suggests real breakfasts carry less than the
+  25% share, but it is one city, 2012, tables not transcribed; wait for
+  better data.
+- South Asia Biobank meal-level data, if the owner applies.
+
 ## 2026-10-08 — N22: boiled egg with sweet potato cannot fit any breakfast target -- stopped at premise
 
 **Asked.** Owner, 2026-10-08: boiled egg with sundal or sweet potato is a

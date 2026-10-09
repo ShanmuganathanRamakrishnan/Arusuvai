@@ -139,6 +139,7 @@ PLAN = "core/planner/plan.py"
 #: Added for N14 (2026-10-08): a dish must name what it is built around, or
 #: it would read as repeating nothing on a plate.
 MODELS = "core/foods/models.py"
+MEAL_TARGET = "core/nutrition/meal_target.py"
 
 MUTATIONS: tuple[Mutation, ...] = (
     # ---------------------------------------------------------------- candidates
@@ -751,6 +752,28 @@ MUTATIONS: tuple[Mutation, ...] = (
         "        and not any(category_of.get(r) in slot.accepted_categories for r in picks)\n",
         "",
     ),
+    # ------------------------------------------- snack protein floors (N23)
+    # Only the three N23 mechanisms. meal_target.py's older bounds are not
+    # rowed here yet; adding them is its own task, not this one.
+    Mutation(
+        "SP1", MEAL_TARGET, "a snack has no protein floor",
+        '    MealSlot.SNACK: frozenset({"fat_g", "carb_g", "protein_g"}),\n',
+        '    MealSlot.SNACK: frozenset({"fat_g", "carb_g"}),\n',
+    ),
+    Mutation(
+        "SP2", MEAL_TARGET, "a snack has no quality-protein floor",
+        "            None if meal_slot in _NO_QUALITY_FLOOR_SLOTS\n",
+        "            None if False\n",
+    ),
+    Mutation(
+        "SP3", MEAL_TARGET, "floors are dropped after the protein bounds add theirs",
+        "    _apply_protein_meal_bounds(day_target, floors, ceilings)\n"
+        "    for macro in _FLOORLESS_BY_SLOT.get(meal_slot, frozenset()):\n"
+        "        floors.pop(macro, None)\n",
+        "    for macro in _FLOORLESS_BY_SLOT.get(meal_slot, frozenset()):\n"
+        "        floors.pop(macro, None)\n"
+        "    _apply_protein_meal_bounds(day_target, floors, ceilings)\n",
+    ),
 )
 
 
@@ -790,6 +813,8 @@ OWN_TESTS: dict[str, tuple[str, ...]] = {
     # docstring above the two classes, and finding 49 (docs/audit_log.md).
     SCHEMAS_COMMON: ("test_planner_candidates.py",),
     PLAN: ("test_shown_plate_preference.py", "test_on_request_slot.py"),
+    # test_planner_quality.py owns the quality floor's per-slot rule.
+    MEAL_TARGET: ("test_nutrition_meal_target.py", "test_planner_quality.py"),
 }
 
 

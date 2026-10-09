@@ -200,14 +200,15 @@ class TestASnackHasNoFatOrCarbFloor:
         assert snack.point("fat_g") == pytest.approx(6.0)
         assert snack.point("carb_g") == pytest.approx(25.0)
 
-    def test_only_fat_and_carb_lose_a_floor_on_a_snack(self):
+    def test_energy_and_fibre_keep_their_floor_on_a_snack(self):
+        # Renamed 2026-10-08 (N23) from "only fat and carb lose a floor on a
+        # snack": protein loses its floor too now -- TestASnackHasNoProteinFloor
+        # below. What this still guards is that the drop stops there.
         snack = meal_target(_day(), MealSlot.SNACK)
         # Energy point 2000 x 0.10 = 200.0, band +/-10% (TestASnackHasAWider
-        # EnergyBand below) -> 180.0 ; fibre 28.0 x 0.10 = 2.8 ; protein guard
-        # 15.0 (TestProteinHasPerMealBounds below).
+        # EnergyBand below) -> 180.0 ; fibre 28.0 x 0.10 = 2.8.
         assert snack.floor("energy_kcal") == pytest.approx(180.0)
         assert snack.floor("fibre_g") == pytest.approx(2.8)
-        assert snack.floor("protein_g") == pytest.approx(15.0)
 
     @pytest.mark.parametrize(
         "slot", [MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER]
@@ -237,6 +238,43 @@ class TestASnackHasNoFatOrCarbFloor:
         assert relaxed.ceiling("carb_g") == pytest.approx(31.25)
 
 
+class TestASnackHasNoProteinFloor:
+    """Owner decision 2026-10-08 (docs/audit_log.md "N23").
+
+    A snack has neither a protein floor nor a quality-protein floor; it keeps
+    the protein ceiling and the protein point. Breakfast, lunch and dinner keep
+    both floors. One test per mechanism, each red when its own mechanism is
+    deleted (transcripts in the N23 entry).
+    """
+
+    def test_a_snack_has_no_protein_floor(self):
+        # Red if "protein_g" leaves _FLOORLESS_BY_SLOT[SNACK] (floor 15.0, the
+        # guard: 0.15 x 100.0), and red if the pop moves back above
+        # _apply_protein_meal_bounds, which then re-adds the same 15.0.
+        assert meal_target(_day(), MealSlot.SNACK).floor("protein_g") is None
+
+    def test_a_snack_has_no_quality_protein_floor(self):
+        # Red if _NO_QUALITY_FLOOR_SLOTS is ignored: the flat floor would come
+        # back as 0.10 x 100.0 = 10.0.
+        assert meal_target(_day(), MealSlot.SNACK).quality_protein_floor() is None
+
+    def test_a_snack_keeps_its_protein_ceiling_and_point(self):
+        # Ceiling 0.50 x 100.0 = 50.0 (unscaled); point 100.0 x 0.10 = 10.0.
+        snack = meal_target(_day(), MealSlot.SNACK)
+        assert snack.ceiling("protein_g") == pytest.approx(50.0)
+        assert snack.point("protein_g") == pytest.approx(10.0)
+
+    @pytest.mark.parametrize(
+        "slot, share_floor",
+        [(MealSlot.BREAKFAST, 25.0), (MealSlot.LUNCH, 35.0), (MealSlot.DINNER, 30.0)],
+    )
+    def test_every_other_slot_keeps_both_protein_floors(self, slot, share_floor):
+        # 100.0 x 0.25 / 0.35 / 0.30 ; quality 0.10 x 100.0 = 10.0, flat.
+        target = meal_target(_day(), slot)
+        assert target.floor("protein_g") == pytest.approx(share_floor)
+        assert target.quality_protein_floor() == pytest.approx(10.0)
+
+
 class TestProteinHasPerMealBounds:
     """Slice 3: no meal empty of protein, no meal packed with it.
 
@@ -245,20 +283,42 @@ class TestProteinHasPerMealBounds:
     """
 
     def test_the_floor_is_the_larger_of_the_share_and_the_guard(self):
-        # guard = protein.meal_floor_fraction (0.15) x 100.0 = 15.0 g
+        # Rewritten 2026-10-08 (N23). This used the snack (share 10.0 < guard
+        # 15.0) as the case where the guard wins; a snack has no protein floor
+        # now, and every remaining share (25 / 35 / 30) is above 15.0, so at
+        # the registered value the guard binds on no slot. The max() is still
+        # live code, so it is shown by raising the guard to 0.30:
         #
-        # lunch share = 0.35 x 100.0 = 35.0  -> share wins, floor 35.0
-        # snack share = 0.10 x 100.0 = 10.0  -> guard wins, floor 15.0
-        #
-        # The snack row is the whole point of the bound: it is the only slot
-        # whose energy share falls below the guard, so it is the only place
-        # "no meal empty of protein" has anything to do.
-        assert meal_target(_day(), MealSlot.LUNCH).floor("protein_g") == pytest.approx(
-            35.0
-        )
-        assert meal_target(_day(), MealSlot.SNACK).floor("protein_g") == pytest.approx(
-            15.0
-        )
+        # guard = 0.30 x 100.0 = 30.0 g
+        # breakfast share = 0.25 x 100.0 = 25.0 -> guard wins, floor 30.0
+        # lunch share     = 0.35 x 100.0 = 35.0 -> share wins, floor 35.0
+        import dataclasses
+
+        from core.nutrition import citations
+
+        original = citations.constant("protein.meal_floor_fraction")
+        try:
+            citations._CONSTANTS["protein.meal_floor_fraction"] = dataclasses.replace(
+                original, value=0.30
+            )
+            assert meal_target(_day(), MealSlot.BREAKFAST).floor(
+                "protein_g"
+            ) == pytest.approx(30.0)
+            assert meal_target(_day(), MealSlot.LUNCH).floor(
+                "protein_g"
+            ) == pytest.approx(35.0)
+        finally:
+            citations._CONSTANTS["protein.meal_floor_fraction"] = original
+
+    def test_at_the_registered_guard_it_binds_on_no_slot(self):
+        # N23's stated cost, asserted so it is not forgotten: with the snack
+        # exempt, every slot that has a protein floor has its plain share.
+        # If this goes red, a share or the guard moved and the guard binds
+        # somewhere again -- a change worth seeing.
+        day = _day()
+        for slot in (MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER):
+            share = 100.0 * meal_energy_fraction(slot)
+            assert meal_target(day, slot).floor("protein_g") == pytest.approx(share)
 
     def test_the_guard_never_lowers_a_floor(self):
         # The departure from docs/design/target_model_v2.md §3, asserted rather
@@ -266,8 +326,9 @@ class TestProteinHasPerMealBounds:
         # share with the fraction, which would move lunch from 35.0 down to 15.0
         # -- a loosening nobody asked for. Every slot's floor must be >= its
         # share.
+        # The snack has no protein floor since N23, so it is not in the loop.
         day = _day()
-        for slot in MealSlot:
+        for slot in (MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER):
             share = 100.0 * meal_energy_fraction(slot)
             assert meal_target(day, slot).floor("protein_g") >= share - 1e-9, slot
 
@@ -282,8 +343,10 @@ class TestProteinHasPerMealBounds:
         # A ceiling below its own floor would decline every plate with two
         # contradictory violations and no way to satisfy both. Cheap to assert,
         # and it is what would break first if either constant were edited.
+        # The snack has a ceiling and no floor since N23, so it is not in the
+        # loop; TestASnackHasNoProteinFloor checks its ceiling.
         day = _day()
-        for slot in MealSlot:
+        for slot in (MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER):
             mt = meal_target(day, slot)
             assert mt.floor("protein_g") < mt.ceiling("protein_g"), slot
 

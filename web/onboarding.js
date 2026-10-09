@@ -387,14 +387,16 @@
     // this line ended at "not what the plan is checked against", which was
     // true of the target and became misleading the moment protein quality
     // started deciding which dishes a plan may contain: a reader would have
-    // concluded DIAAS affects nothing at all.
+    // concluded DIAAS affects nothing at all. "(a snack does not)" added
+    // 2026-10-08, docs/audit_log.md "N23": a snack has no quality floor now.
     document.getElementById("obProtein").textContent =
       `${fmtGrams(p.base_g)} g/day (${fmtRatio(p.g_per_kg)} g/kg) · protein ` +
       `quality is not applied to this target: DIAAS ${p.diaas} would imply ` +
       `${fmtGrams(p.quality_adjusted_g)} g, which is not what the plan is ` +
       `checked against · quality is applied to the dishes instead — about ` +
       `${fmtGrams(p.quality_source_day_g)} g of the day should come from ` +
-      `high-quality sources, and every plate carries a share of that floor`;
+      `high-quality sources, and every breakfast, lunch and dinner carries a ` +
+      `share of that floor (a snack does not)`;
 
     document.getElementById("obMacros").textContent =
       `${fmtGrams(data.fat_g)} g fat · ${fmtGrams(data.carb_g)} g carbohydrate`;

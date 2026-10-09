@@ -50,6 +50,20 @@ cost, stated: the planner solves one plate per request, so nothing yet checks
 that the rest of the day makes up what a snack leaves out. See
 ``_FLOORLESS_BY_SLOT``.
 
+**No protein floor**, for a snack only (owner decision 2026-10-08,
+docs/audit_log.md "N23"): neither the protein floor (the energy share and the
+``protein.meal_floor_fraction`` guard beneath it) nor the quality-protein
+floor applies to a snack. Both were project decisions with no source. The
+owner's account is that most snacks carry little or no protein (a banana, a
+rice cake, tea with a savoury); the closest data on what adults actually eat
+agrees on the foods -- UDAY (J Nutr 2023, 8762 adults, Vizag and Sonipat):
+savoury snacks most frequent, fruit second, tea/coffee -- though no study found
+measured protein per snack. The protein *ceiling* stays, and so does the
+protein point. The cost, stated: the snack's share of the day protein floor
+(10% of it) is now asked of no meal, and nothing yet checks that the rest of
+the day makes it up. See ``_FLOORLESS_BY_SLOT`` and
+``_NO_QUALITY_FLOOR_SLOTS``.
+
 **Energy band**, for a snack only (owner decision 2026-09-26, docs/audit_log.md
 "snack energy band"): re-derived around the meal's energy point at
 ``tolerance.energy_snack`` (0.10) instead of the day's 0.05 scaled down. At
@@ -148,6 +162,8 @@ def _apply_protein_meal_bounds(
     meal is *empty* of protein, which is a guard beneath the share, not a new
     share. So it binds only where the energy share falls below it, which today is
     the snack slot alone (0.10 < 0.15) — precisely the case it exists for.
+    (Corrected 2026-10-08, N23: the snack's protein floor is popped after this
+    function runs, so at the registered shares the guard binds on no slot.)
 
     The ceiling is genuinely new: nothing previously stopped the solver answering
     a protein floor by piling three katoris of dal onto one plate.
@@ -186,7 +202,8 @@ def _quality_protein_floor(day_target: NutritionTarget) -> float | None:
     floor as a lunch on a quarter of the energy. No template exists for the
     snack slot today, so the case is unexercised, not solved. (Corrected
     2026-09-25: SOUTH_SNACK now exercises it -- docs/audit_log.md
-    2026-09-25.)
+    2026-09-25. And since N23, 2026-10-08, a snack gets no quality floor at
+    all -- ``_NO_QUALITY_FLOOR_SLOTS``.)
 
     Returns ``None`` when the day target states no protein floor, for the same
     reason ``_apply_protein_meal_bounds`` returns early: inventing a bound here
@@ -200,14 +217,23 @@ def _quality_protein_floor(day_target: NutritionTarget) -> float | None:
 
 
 #: Macros whose per-meal floor is dropped for a slot, ceiling kept. Snack
-#: only, fat and carb only -- see the module docstring's "No floor" rule.
+#: only: fat and carb (the module docstring's "No floor" rule) and, since N23,
+#: protein (its "No protein floor" rule). Popped after the protein bounds are
+#: applied, because ``_apply_protein_meal_bounds`` sets a protein floor of its
+#: own beneath the share.
 #: Dropping the floor rather than widening it is deliberate: the ladder's
 #: fat_carb rung re-derives only bounds that exist (``_widen_band`` checks
 #: ``if macro in floors``), so an absent floor stays absent at every rung,
 #: while the ceiling it widens still stands.
 _FLOORLESS_BY_SLOT: Mapping[MealSlot, frozenset[str]] = {
-    MealSlot.SNACK: frozenset({"fat_g", "carb_g"}),
+    MealSlot.SNACK: frozenset({"fat_g", "carb_g", "protein_g"}),
 }
+
+
+#: Slots with no per-meal quality-protein floor. Snack only -- see the module
+#: docstring's "No protein floor" rule. Separate from ``_FLOORLESS_BY_SLOT``
+#: because the quality floor is not a macro floor (``core/CLAUDE.md``).
+_NO_QUALITY_FLOOR_SLOTS: frozenset[MealSlot] = frozenset({MealSlot.SNACK})
 
 
 #: Slots whose energy band is re-derived around the meal's energy point at a
@@ -238,8 +264,6 @@ def meal_target(
     floors = _scaled(day_target.floors)
     ceilings = _scaled(day_target.ceilings)
     points = _scaled(day_target.points)
-    for macro in _FLOORLESS_BY_SLOT.get(meal_slot, frozenset()):
-        floors.pop(macro, None)
     tolerance_key = _ENERGY_TOLERANCE_BY_SLOT.get(meal_slot)
     if tolerance_key is not None and "energy_kcal" in points:
         floors["energy_kcal"], ceilings["energy_kcal"] = band(
@@ -247,6 +271,8 @@ def meal_target(
         )
 
     _apply_protein_meal_bounds(day_target, floors, ceilings)
+    for macro in _FLOORLESS_BY_SLOT.get(meal_slot, frozenset()):
+        floors.pop(macro, None)
     # Carried, not scaled: a hard ceiling is a bound on one plate already, not a
     # share of a day to be divided again.
     hard_ceilings = dict(day_target.hard_ceilings)
@@ -281,5 +307,8 @@ def meal_target(
         points=points,
         hard_ceilings=hard_ceilings,
         bound_sources=bound_sources,
-        quality_protein_floor_g=_quality_protein_floor(day_target),
+        quality_protein_floor_g=(
+            None if meal_slot in _NO_QUALITY_FLOOR_SLOTS
+            else _quality_protein_floor(day_target)
+        ),
     )
