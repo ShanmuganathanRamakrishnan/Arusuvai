@@ -858,6 +858,8 @@ from fat, ≈47–63% from carbohydrate), which declined ordinary lopsided snack
 such as a lean chaat or a low-carb tikka. Fat and carbohydrate ranges are
 daily guidance. **Limitation:** one plate is solved per request, so nothing
 yet checks that the rest of the day makes up what a snack leaves out.
+*(2026-10-09, `docs/audit_log.md` "N25": the carbohydrate ceiling went too;
+see "A snack has no carbohydrate ceiling" below. The fat ceiling stays.)*
 
 ## A snack's energy band is ±10% (2026-09-26)
 
@@ -886,6 +888,22 @@ day protein floor (10% of it) is now asked of no meal, and one plate is solved
 per request, so nothing yet checks that the rest of the day makes it up. With
 the snack exempt, the `protein.meal_floor_fraction` guard binds on no slot at
 the registered shares.
+
+## A snack has no carbohydrate ceiling (2026-10-09)
+
+A snack has no carbohydrate ceiling. Breakfast, lunch and dinner keep theirs;
+the snack keeps its carb point and its energy ceiling. Owner decision,
+`docs/audit_log.md` "N25". The ceiling was the day's carbohydrate (the energy
+left after protein and fat) scaled to the snack, with project-decision bands
+and no source, and it kept fruit out entirely: a banana takes 97% of its
+energy from carbohydrate (IFCT 2017 E012), and the ceiling allowed at most
+70-79% (`docs/audit_log.md` "N24"). Intake data agrees that real snacks lean
+on carbohydrate: in Norway's national survey (Norkost 3, 1787 adults, 24-hour
+recalls) snacks took 52-53% of energy from carbohydrate against 42% for main
+meals, and fruit was among the top five snack foods. No Indian study found
+splits nutrients by snack. **Limitations:** an all-carbohydrate snack is
+capped only by its energy window, and nothing yet checks the day's
+carbohydrate across meals.
 
 ## Sodium is a day budget, not a share of one (2026-08-02)
 

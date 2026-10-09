@@ -140,6 +140,10 @@ PLAN = "core/planner/plan.py"
 #: it would read as repeating nothing on a plate.
 MODELS = "core/foods/models.py"
 MEAL_TARGET = "core/nutrition/meal_target.py"
+#: Added for N26 (2026-10-09). Which dish kinds a snack slot accepts decides
+#: whether a banana or a cup of tea can ever be served, so each addition is a
+#: gate in this file's sense. Only the four N26 additions are rowed.
+TEMPLATES = "core/foods/templates.py"
 
 MUTATIONS: tuple[Mutation, ...] = (
     # ---------------------------------------------------------------- candidates
@@ -753,8 +757,8 @@ MUTATIONS: tuple[Mutation, ...] = (
         "",
     ),
     # ------------------------------------------- snack protein floors (N23)
-    # Only the three N23 mechanisms. meal_target.py's older bounds are not
-    # rowed here yet; adding them is its own task, not this one.
+    # Only the three N23 mechanisms and N25's (SP4). meal_target.py's older
+    # bounds are not rowed here yet; adding them is its own task, not this one.
     Mutation(
         "SP1", MEAL_TARGET, "a snack has no protein floor",
         '    MealSlot.SNACK: frozenset({"fat_g", "carb_g", "protein_g"}),\n',
@@ -773,6 +777,44 @@ MUTATIONS: tuple[Mutation, ...] = (
         "    for macro in _FLOORLESS_BY_SLOT.get(meal_slot, frozenset()):\n"
         "        floors.pop(macro, None)\n"
         "    _apply_protein_meal_bounds(day_target, floors, ceilings)\n",
+    ),
+    Mutation(
+        "SP4", MEAL_TARGET, "a snack has no carbohydrate ceiling (N25)",
+        '    MealSlot.SNACK: frozenset({"carb_g"}),\n',
+        "    MealSlot.SNACK: frozenset(),\n",
+    ),
+    # ------------------------------------------- banana and tea snacks (N26)
+    Mutation(
+        "FT1", TEMPLATES, "South snack's main dish may be a fruit",
+        '            accepted_categories=frozenset({"sundal", "fruit"}),\n',
+        '            accepted_categories=frozenset({"sundal"}),\n',
+    ),
+    Mutation(
+        "FT2", TEMPLATES, "South snack's drink may be tea",
+        "        # ordinary evening drink beside a snack; still at most one drink.\n"
+        "        TemplateSlot(\n"
+        '            name="drink",\n'
+        '            accepted_categories=frozenset({"buttermilk", "tea"}),\n',
+        "        # ordinary evening drink beside a snack; still at most one drink.\n"
+        "        TemplateSlot(\n"
+        '            name="drink",\n'
+        '            accepted_categories=frozenset({"buttermilk"}),\n',
+    ),
+    Mutation(
+        "FT3", TEMPLATES, "North snack's main dish may be a fruit",
+        '            accepted_categories=frozenset({"chaat", "tikka", "fruit"}),\n',
+        '            accepted_categories=frozenset({"chaat", "tikka"}),\n',
+    ),
+    Mutation(
+        "FT4", TEMPLATES, "North snack's drink may be tea",
+        "        # 2026-10-09 (N26), as in SOUTH_SNACK.drink.\n"
+        "        TemplateSlot(\n"
+        '            name="drink",\n'
+        '            accepted_categories=frozenset({"buttermilk", "tea"}),\n',
+        "        # 2026-10-09 (N26), as in SOUTH_SNACK.drink.\n"
+        "        TemplateSlot(\n"
+        '            name="drink",\n'
+        '            accepted_categories=frozenset({"buttermilk"}),\n',
     ),
 )
 
@@ -815,6 +857,8 @@ OWN_TESTS: dict[str, tuple[str, ...]] = {
     PLAN: ("test_shown_plate_preference.py", "test_on_request_slot.py"),
     # test_planner_quality.py owns the quality floor's per-slot rule.
     MEAL_TARGET: ("test_nutrition_meal_target.py", "test_planner_quality.py"),
+    # The file that pins each snack slot's accepted kinds.
+    TEMPLATES: ("test_templates_and_portions.py",),
 }
 
 

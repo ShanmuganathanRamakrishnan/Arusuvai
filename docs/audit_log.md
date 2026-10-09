@@ -6,6 +6,401 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-09 — N26: banana and milk tea join the snack plates
+
+**Asked.** Owner, 2026-10-09, "option 1": after removing the snack carb
+ceiling (N25), add banana and tea with their sources, and show before and
+after before merging. Separate commit from N25 (CLAUDE.md rule 8).
+
+**Sources.** All four rows `verified=false` (invariant 4); each row's
+`source_note` carries the full reading.
+- `banana_ripe`: IFCT 2017 E012 "Banana, ripe, robusta", n=6, read from the
+  primary `IFCT2017.pdf`. Table 1 PDF p.49; Ca/Fe Table 5 p.167; Na p.168.
+- `milk_cow_whole`: IFCT 2017 L002 "Milk, whole, Cow", n=6. Table 1 PDF p.57;
+  Ca/Fe p.183; Na p.184. B12 0.45 ug is a cross-source substitution from
+  USDA FDC 171265 (IFCT gives none), named in the note. DIAAS blank: not
+  sourced, so milk is not counted as quality protein.
+- `sugar_white`: USDA FDC 169655 (IFCT 2017 has no refined sugar).
+- `tea_black_brewed`: USDA FDC 173227 (not in IFCT 2017).
+- One banana = 118 g, USDA FDC 173944 "medium".
+- **Not sourced, stated as assumptions:** one cup of tea = 70 g milk + 80 g
+  brewed tea + 8 g sugar (no source for a typical Indian cup found); at most
+  two bananas per snack.
+
+**Built.**
+- `data/recipes/banana.yaml` (pan-Indian, category `fruit`, uncooked,
+  1-2 bananas) and `data/recipes/milk_tea.yaml` (pan-Indian, category `tea`,
+  one cup). Milk tea is boiled and no boiled-milk constant is registered, so
+  the loader required every macro the milk row feeds to be declared
+  unassessed; it is, so milk tea carries the wide band (protein 0.45, the
+  same as idli and phulka).
+- `core/foods/templates.py`: South snack's main slot accepts `fruit`; North
+  snack's main slot accepts `fruit`; both drink slots accept `tea`. No other
+  template accepts either kind, so breakfast, lunch and dinner cannot change.
+- `core/foods/models.py`: "banana" and "tea" added to `MAIN_INGREDIENTS`.
+
+**Before / after.** `docs/design/probes/probe_banana_tea_dishes.py`, 18
+bodies per row (3 goals x 2 sexes x 55/70/90 kg, 170 cm, 30 y, moderate).
+"options" is the number of different dishes offered in the swap menus,
+summed over bodies. "asked" is bodies whose plate passes when they pick that
+dish. Both sides byte-identical under PYTHONHASHSEED=1 and 777.
+
+Before (HEAD d3eb627, N25):
+```
+south_indian  vegetarian      plate 18, unrelaxed 18, options 54, banana in shown 0, milk_tea in shown 0, banana asked not in library, milk_tea asked not in library
+    shown 10x  neer_mor + soya_chana_sundal
+    shown  8x  soya_chana_sundal
+south_indian  eggetarian      plate 18, unrelaxed 18, options 60, banana in shown 0, milk_tea in shown 0, banana asked not in library, milk_tea asked not in library
+    shown 10x  neer_mor + soya_chana_sundal
+    shown  8x  soya_chana_sundal
+south_indian  non_vegetarian  plate 18, unrelaxed 18, options 60, banana in shown 0, milk_tea in shown 0, banana asked not in library, milk_tea asked not in library
+    shown 10x  neer_mor + soya_chana_sundal
+    shown  8x  soya_chana_sundal
+south_indian  vegan           plate 18, unrelaxed 18, options 29, banana in shown 0, milk_tea in shown 0, banana asked not in library, milk_tea asked not in library
+    shown 13x  soya_chana_sundal
+    shown  5x  soya_chunk_sundal
+north_indian  vegetarian      plate 18, unrelaxed 18, options 51, banana in shown 0, milk_tea in shown 0, banana asked not in library, milk_tea asked not in library
+    shown  7x  chaas + soya_chana_chaat
+    shown  8x  soya_chana_chaat
+    shown  3x  soya_chana_chaat + soya_tikka
+north_indian  eggetarian      plate 18, unrelaxed 18, options 63, banana in shown 0, milk_tea in shown 0, banana asked not in library, milk_tea asked not in library
+    shown  4x  anda_chaat + chaas + soya_chana_chaat
+    shown  8x  anda_chaat + soya_chana_chaat
+    shown  4x  chaas + soya_chana_chaat
+    shown  1x  soya_chana_chaat
+    shown  1x  soya_chana_chaat + soya_tikka
+north_indian  non_vegetarian  plate 18, unrelaxed 18, options 63, banana in shown 0, milk_tea in shown 0, banana asked not in library, milk_tea asked not in library
+    shown  4x  anda_chaat + chaas + soya_chana_chaat
+    shown  8x  anda_chaat + soya_chana_chaat
+    shown  4x  chaas + soya_chana_chaat
+    shown  1x  soya_chana_chaat
+    shown  1x  soya_chana_chaat + soya_tikka
+north_indian  vegan           plate 8, unrelaxed 8, options 8, banana in shown 0, milk_tea in shown 0, banana asked not in library, milk_tea asked not in library
+    shown  8x  soya_chana_chaat
+```
+
+After:
+```
+south_indian  vegetarian      plate 18, unrelaxed 18, options 82, banana in shown 0, milk_tea in shown 12, banana asked 10, milk_tea asked 18
+    shown 10x  milk_tea + soya_chana_sundal
+    shown  2x  milk_tea + soya_chunk_sundal
+    shown  5x  neer_mor + soya_chana_sundal
+    shown  1x  soya_chana_sundal
+south_indian  eggetarian      plate 18, unrelaxed 18, options 88, banana in shown 0, milk_tea in shown 12, banana asked 10, milk_tea asked 18
+    shown 10x  milk_tea + soya_chana_sundal
+    shown  2x  milk_tea + soya_chunk_sundal
+    shown  5x  neer_mor + soya_chana_sundal
+    shown  1x  soya_chana_sundal
+south_indian  non_vegetarian  plate 18, unrelaxed 18, options 88, banana in shown 0, milk_tea in shown 12, banana asked 10, milk_tea asked 18
+    shown 10x  milk_tea + soya_chana_sundal
+    shown  2x  milk_tea + soya_chunk_sundal
+    shown  5x  neer_mor + soya_chana_sundal
+    shown  1x  soya_chana_sundal
+south_indian  vegan           plate 18, unrelaxed 18, options 35, banana in shown 2, milk_tea in shown 0, banana asked 6, milk_tea asked 0
+    shown  2x  banana
+    shown 12x  soya_chana_sundal
+    shown  4x  soya_chunk_sundal
+north_indian  vegetarian      plate 18, unrelaxed 18, options 86, banana in shown 13, milk_tea in shown 4, banana asked 18, milk_tea asked 16
+    shown  1x  banana + chaas
+    shown  3x  banana + chaas + soya_chana_chaat
+    shown  6x  banana + chaas + soya_tikka
+    shown  3x  banana + soya_tikka
+    shown  3x  milk_tea + soya_chana_chaat
+    shown  1x  milk_tea + soya_tikka
+    shown  1x  soya_chana_chaat
+north_indian  eggetarian      plate 18, unrelaxed 18, options 102, banana in shown 2, milk_tea in shown 7, banana asked 18, milk_tea asked 16
+    shown  1x  anda_chaat + banana
+    shown  4x  anda_chaat + chaas + soya_chana_chaat
+    shown  7x  anda_chaat + milk_tea + soya_chana_chaat
+    shown  4x  anda_chaat + soya_chana_chaat
+    shown  1x  banana + chaas
+    shown  1x  soya_chana_chaat
+north_indian  non_vegetarian  plate 18, unrelaxed 18, options 102, banana in shown 2, milk_tea in shown 7, banana asked 18, milk_tea asked 16
+    shown  1x  anda_chaat + banana
+    shown  4x  anda_chaat + chaas + soya_chana_chaat
+    shown  7x  anda_chaat + milk_tea + soya_chana_chaat
+    shown  4x  anda_chaat + soya_chana_chaat
+    shown  1x  banana + chaas
+    shown  1x  soya_chana_chaat
+north_indian  vegan           plate 15, unrelaxed 15, options 23, banana in shown 10, milk_tea in shown 0, banana asked 11, milk_tea asked 0
+    shown  4x  banana
+    shown  6x  banana + soya_chana_chaat
+    shown  5x  soya_chana_chaat
+```
+
+**Read.**
+- No region or diet lost a plate. North vegan rose from 8/18 to 15/18
+  snack plates, all unrelaxed; every other row stays 18/18 unrelaxed.
+- Banana is on 29 of 144 shown plates, mostly North (vegetarian 13, vegan
+  10). In the South it is shown only to vegans (2): for other diets the
+  sundal fits better. Picked by hand it passes for 10/18 South
+  non-vegan bodies, 6/18 South vegan, 18/18 North non-vegan, 11/18 North
+  vegan.
+- Milk tea is on 54 of 144 shown plates and passes when picked for 18/18
+  South and 16/18 North bodies of every non-vegan diet. It never appears for
+  vegans (dairy).
+- Swap menus grew: South vegetarian 54 to 82 options, North eggetarian 63
+  to 102.
+- Neer mor is shown less (South: 10 to 5 plates per non-vegan diet): milk
+  tea now takes the drink place on most of those plates.
+
+**Deletion check.** `d4b_mutations.py` gains a `TEMPLATES` module and rows
+FT1-FT4, one per accepted kind added. Full failure lists,
+PYTHONHASHSEED=0:
+```
+   all failures (1):
+      tests/test_templates_and_portions.py::TestTemplatesAreNotUniform::test_south_snack_is_one_dish_and_an_optional_drink
+FT1  covered      tests/test_templates_and_portions.py::TestTemplatesAreNotUniform::test_south_snack_is_one_dish_and_an_optional_drink
+   all failures (1):
+      tests/test_templates_and_portions.py::TestTemplatesAreNotUniform::test_south_snack_is_one_dish_and_an_optional_drink
+FT2  covered      tests/test_templates_and_portions.py::TestTemplatesAreNotUniform::test_south_snack_is_one_dish_and_an_optional_drink
+   all failures (1):
+      tests/test_templates_and_portions.py::TestTemplatesAreNotUniform::test_north_snack_offers_two_dish_kinds_and_an_optional_drink
+FT3  covered      tests/test_templates_and_portions.py::TestTemplatesAreNotUniform::test_north_snack_offers_two_dish_kinds_and_an_optional_drink
+   all failures (1):
+      tests/test_templates_and_portions.py::TestTemplatesAreNotUniform::test_north_snack_offers_two_dish_kinds_and_an_optional_drink
+FT4  covered      tests/test_templates_and_portions.py::TestTemplatesAreNotUniform::test_north_snack_offers_two_dish_kinds_and_an_optional_drink
+====================================================================================================
+4 mechanisms: 4 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+Each mutation turns exactly one test red: the shape test that pins the
+slot's accepted kinds. No end-to-end test notices a fruit or tea removal on
+its own.
+
+**Tests changed.** Fixed counts and lists updated with dated comments:
+ingredient rows 37 to 41, unverified warnings 36 to 40, IFCT-coded rows plus
+E012 and L002, `NO_OIL_COOKED` plus milk_tea, and the two snack shape tests
+(now also pin both drink slots). `tests/test_web_add_dish.py` re-picked its
+example as its own header asks: milk tea now fills the 70 kg South snack's
+drink, and no plate for that body leaves a course empty with exactly one
+dish to offer; the snack step now uses a 55 kg eggetarian woman's North
+snack (drink empty, chaas the one option).
+
+**Suite.** `FOODAI_WEB_TESTS=required python -m pytest tests/ -q`, servers
+up, same session:
+```
+674 passed, 1 warning in 281.69s (0:04:41)
+```
+
+**Open.** Vada (no measured source, needs an oil-uptake constant). No
+boiled-milk constant. The cup proportion and the two-banana ceiling are
+authored, not sourced.
+
+## 2026-10-09 — N25: a snack has no carbohydrate ceiling
+
+**Asked.** Owner, 2026-10-09, after N24 stopped at the snack carb ceiling:
+search for evidence on how much of a real snack's energy is carbohydrate,
+show it, then (owner chose option 1) remove the ceiling for snacks only and
+measure before and after.
+
+**What the code had.** A snack's carb ceiling was the day carbohydrate
+target scaled by 0.10, plus `tolerance.fat_carb_default` (0.15), widened to
+`tolerance.fat_carb_relaxed` (0.25) by the ladder. The day carbohydrate is
+the energy left after protein and the AMDR-midpoint fat (`_compute_macros`
+in `core/nutrition/targets.py`). Both tolerances are `PROJECT_DECISION`, no
+source. N24 measured it: at most 70-79% of a snack's energy floor may be
+carbohydrate, and a banana is 97% (IFCT 2017 E012).
+
+**Sources searched, intake data first.** Found:
+- Norkost 3, Norway (Food Nutr Res 2015, PMC4409996; 1787 adults, two
+  24-hour recalls). Snacks: 52% (men) and 53% (women) of energy from
+  carbohydrate; main meals 42%. Snacks eaten at work 64%. Fruits among the
+  top five snack energy sources (cakes, fruits, sugar/sweets, bread,
+  alcoholic beverages).
+- NutriNet-Sante, France (PMC5828417; 104,265 adults, 24-hour records).
+  Fruit and hot beverages among the main food groups giving snack energy. No
+  snack carbohydrate share reported.
+- UDAY, India (PMC7616315): fruits and tea/coffee among the 10 snack types
+  asked about; no nutrient content.
+Searched, no per-snack nutrient split: ICMR-INDIAB-21 (Nat Med 2025,
+day-level, 62% carbohydrate), I-STARCH-1 (Nutrients 2026, day-level, 62.1%),
+NIN What India Eats (day-level), ultra-processed food intake in Indian adults
+(PMC10755415, day-level). **No Indian study found splits nutrients by
+snack.**
+
+**Read, stated plainly.** The Norway averages (52-64%) sit *under* the old
+ceiling. What the ceiling blocked was single-food snacks such as fruit,
+which are common in all three studies. The case for removing it is that one
+snack is often one food, not that the average snack is over it -- the same
+reasoning as the 2026-09-25 decision to drop the snack's fat and carb floors.
+The snack's energy ceiling still caps an all-carbohydrate snack.
+
+**Change.** `core/nutrition/meal_target.py`: new `_CEILINGLESS_BY_SLOT =
+{SNACK: {"carb_g"}}`, popped beside the floors. The carb point stays; the
+fat ceiling stays. `_widen_band` widens only ceilings that exist, so no rung
+restores it (tested). Methodology: new section "A snack has no carbohydrate
+ceiling", and a dated note on the fat/carb floor section, which said a snack
+keeps both ceilings.
+
+**Before and after.** `docs/design/probes/probe_snack_carb_ceiling.py` (the
+N23 probe with the bounds column changed), 18 bodies per region x diet. Each
+side byte-identical under PYTHONHASHSEED=1 and 777. Before is identical to
+N23's AFTER apart from that column. `diff before after`:
+
+```
+1c1
+< south_indian  vegetarian      carb ceiling 22.3-46.0; bodies 18, plate 18, unrelaxed 18, options 54
+---
+> south_indian  vegetarian      carb ceiling none; bodies 18, plate 18, unrelaxed 18, options 54
+4c4
+< south_indian  eggetarian      carb ceiling 22.3-46.0; bodies 18, plate 18, unrelaxed 18, options 60, egg asked 6
+---
+> south_indian  eggetarian      carb ceiling none; bodies 18, plate 18, unrelaxed 18, options 60, egg asked 6
+7c7
+< south_indian  non_vegetarian  carb ceiling 22.3-46.0; bodies 18, plate 18, unrelaxed 18, options 60, egg asked 6
+---
+> south_indian  non_vegetarian  carb ceiling none; bodies 18, plate 18, unrelaxed 18, options 60, egg asked 6
+10c10
+< south_indian  vegan           carb ceiling 22.3-46.0; bodies 18, plate 18, unrelaxed 17, options 29
+---
+> south_indian  vegan           carb ceiling none; bodies 18, plate 18, unrelaxed 18, options 29
+13,16c13,15
+< north_indian  vegetarian      carb ceiling 22.3-46.0; bodies 18, plate 18, unrelaxed 18, options 50
+<     shown  6x  chaas + soya_chana_chaat
+<     shown  4x  chaas + soya_chana_chaat + soya_tikka
+<     shown  3x  soya_chana_chaat
+---
+> north_indian  vegetarian      carb ceiling none; bodies 18, plate 18, unrelaxed 18, options 51
+>     shown  7x  chaas + soya_chana_chaat
+>     shown  8x  soya_chana_chaat
+18,19c17
+<     shown  2x  soya_tikka
+< north_indian  eggetarian      carb ceiling 22.3-46.0; bodies 18, plate 18, unrelaxed 18, options 63
+---
+> north_indian  eggetarian      carb ceiling none; bodies 18, plate 18, unrelaxed 18, options 63
+22a21
+>     shown  1x  soya_chana_chaat
+24,25c23
+<     shown  1x  soya_tikka
+< north_indian  non_vegetarian  carb ceiling 22.3-46.0; bodies 18, plate 18, unrelaxed 18, options 63
+---
+> north_indian  non_vegetarian  carb ceiling none; bodies 18, plate 18, unrelaxed 18, options 63
+28a27
+>     shown  1x  soya_chana_chaat
+30,32c29,30
+<     shown  1x  soya_tikka
+< north_indian  vegan           carb ceiling 22.3-46.0; bodies 18, plate 6, unrelaxed 3, options 6
+<     shown  6x  soya_chana_chaat
+---
+> north_indian  vegan           carb ceiling none; bodies 18, plate 8, unrelaxed 8, options 8
+>     shown  8x  soya_chana_chaat
+```
+
+**Read.** No banana or tea yet, so this only changes existing dishes:
+- A passing snack plate: 132 -> 134 of 144 (North vegan 6 -> 8).
+- Passing with no relaxation: 128 -> 134 (South vegan 17 -> 18, North vegan
+  3 -> 8).
+- North vegetarian shows soya_chana_chaat alone more often and the tikka
+  plates less (the chaat was being held back by carbohydrate).
+
+**Deletion checks.** New row SP4 in `docs/design/probes/d4b_mutations.py`.
+Full failure list per mutation (SP1-SP3 rerun), whole suite, no `-x`,
+`PYTHONHASHSEED=0`:
+
+```
+   all failures (1):
+      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_protein_floor
+SP1  covered      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_protein_floor
+   all failures (1):
+      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_quality_protein_floor
+SP2  covered      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_quality_protein_floor
+   all failures (1):
+      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_protein_floor
+SP3  covered      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_protein_floor
+   all failures (2):
+      tests/test_nutrition_meal_target.py::TestASnackHasNoFatOrCarbFloor::test_the_fat_carb_rung_does_not_restore_a_dropped_floor
+      tests/test_nutrition_meal_target.py::TestASnackHasNoCarbCeiling::test_a_snack_has_no_carb_ceiling
+SP4  covered      tests/test_nutrition_meal_target.py::TestASnackHasNoFatOrCarbFloor::test_the_fat_carb_rung_does_not_restore_a_dropped_floor
+====================================================================================================
+4 mechanisms: 4 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+**Suite.** Both dev servers running:
+
+```
+$ FOODAI_WEB_TESTS=required python -m pytest tests/ -q -p no:cacheprovider
+674 passed, 1 warning in 285.63s (0:04:45)
+```
+
+**Disposition.** DONE on branch `everyday-snacks`. Banana and tea dishes
+are the next commit (N26), measured separately.
+
+## 2026-10-09 — N24: a banana or tea snack cannot fit any snack target -- stopped at premise
+
+**Asked.** Owner, 2026-10-09, after N23 merged: add real low-protein snacks
+-- banana, vada, tea -- each backed by a published source.
+
+**Premise.** N23 removed the snack's protein floors so that snacks like
+these could be served. That assumed protein was what kept them out. Before
+building any dish, the arithmetic.
+
+**Which snacks, from intake data.** UDAY (J Nutr 2023, DOI
+10.1016/j.tjnut.2022.12.032, PMC7616315; 8762 adults, Visakhapatnam and
+Sonipat) asked about 10 snack types, among them "fried snacks (vada,
+samosa, etc.)", "tea/coffee" and "fruits". It gives no per-item amounts.
+
+**Sources read.**
+- Banana: IFCT 2017 E012 "Banana, ripe, robusta", 6 regions, from the
+  primary `IFCT2017.pdf` (same file as N20/N22). Table 1, PDF page 49: water 71.93,
+  protein 1.23, fat 0.33, total fibre 1.94, available carbohydrate 23.63,
+  energy 440 kJ (105.2 kcal) per 100 g. Sodium 0.85 mg, Table 5 PDF page
+  168, placed under (Na) by column position (the Hg and Se cells are blank).
+- Cow milk: IFCT 2017 L002 "Milk, whole, Cow", 6 regions, Table 1 PDF page 57: protein 3.26,
+  fat 4.48, carbohydrate 4.94, energy 305 kJ (72.9 kcal). Sodium 25.46 mg,
+  Table 5 PDF page 184, by column position (0.95 sits under Se).
+- Sugar: IFCT 2017 has none refined (I001 jaggery, I002 cane juice only).
+  USDA FDC 169655 "Sugars, granulated": 387 kcal, carb 99.98, sodium 1 mg.
+- Brewed tea: not in IFCT. USDA FDC 173227 "Beverages, tea, black, brewed,
+  prepared with tap water": 1 kcal, carb 0.3, sodium 3 mg.
+- Banana piece: USDA FDC 173944, "medium" 118 g (Cavendish; robusta is a
+  Cavendish type).
+- **Vada: no measured source found.** Two searches turned up no laboratory
+  fat value for a fried urad dal vada. Calorie-tracker sites disagree, 7 to
+  16 g fat per 100 g. A vada would also need a deep-frying oil-uptake
+  constant of its own. Not run.
+
+Assumption, not sourced: one cup of tea = 70 g milk + 80 g brewed tea + 8 g
+sugar.
+
+**Measured.** `docs/design/probes/probe_banana_tea_snack.py`, 18 bodies,
+unrelaxed snack target and after every step of `RELAXATION_ORDER`.
+Byte-identical under PYTHONHASHSEED=1 and 777:
+
+```
+18 bodies. snack energy window: lowest 145-178, highest 279-341 kcal; fibre floor 2.3-4.3 g
+1 banana                 [ 124 kcal, prot  1.5, fat  0.4, carb  30.2, fibre 2.3, Na   1.0]  unrelaxed  0/18, some rung  0/18  last-rung misses {'carb_g above ceiling': 5, 'energy_kcal below floor': 18}
+2 bananas                [ 248 kcal, prot  2.9, fat  0.8, carb  60.3, fibre 4.6, Na   2.0]  unrelaxed  0/18, some rung  0/18  last-rung misses {'carb_g above ceiling': 18, 'energy_kcal above ceiling': 9, 'energy_kcal below floor': 4}
+tea                      [  83 kcal, prot  2.3, fat  3.1, carb  11.7, fibre 0.0, Na  20.3]  unrelaxed  0/18, some rung  0/18  last-rung misses {'energy_kcal below floor': 18, 'fibre_g below floor': 18}
+tea + 1 banana           [ 207 kcal, prot  3.7, fat  3.5, carb  41.9, fibre 2.3, Na  21.3]  unrelaxed  0/18, some rung  0/18  last-rung misses {'carb_g above ceiling': 12, 'energy_kcal above ceiling': 3, 'energy_kcal below floor': 8}
+tea + 2 bananas          [ 331 kcal, prot  5.2, fat  3.9, carb  72.0, fibre 4.6, Na  22.3]  unrelaxed  0/18, some rung  0/18  last-rung misses {'carb_g above ceiling': 18, 'energy_kcal above ceiling': 17}
+tea + soya_chana_sundal  [ 148 kcal, prot  7.0, fat  5.0, carb  19.4, fibre 2.5, Na 120.8]  unrelaxed  1/18, some rung  1/18  last-rung misses {'energy_kcal below floor': 17}
+carb ceiling unrelaxed 22.3-46.0 g, last rung 24.2-50.0 g
+  e.g. last rung: energy 164-200 kcal, carb <= 28.9 g -> max carb share of energy at the energy floor 70%
+  e.g. last rung: energy 205-250 kcal, carb <= 40.5 g -> max carb share of energy at the energy floor 79%
+  e.g. last rung: energy 225-275 kcal, carb <= 44.3 g -> max carb share of energy at the energy floor 79%
+```
+
+**Read.** 0/18 for every banana and tea plate, at every rung. Protein is not
+in any miss list. What stops them:
+- **The snack carb ceiling.** A banana takes 97% of its energy from
+  carbohydrate (30.2 g x 4 / 124 kcal). The snack's carb ceiling allows at
+  most 70-79% of the energy floor even at the last rung. Two bananas are
+  over it for all 18 bodies; one banana is also too small for every energy
+  window.
+- **Energy steps.** A banana is 124 kcal and the windows are 33-62 kcal
+  wide, so whole bananas skip over most of them.
+- **Fibre floor** for tea alone: tea has none; the snack floor is 2.3-4.3 g.
+The snack carb ceiling is the day carbohydrate range scaled to the snack's
+energy share -- daily guidance, the same reasoning N23 and the 2026-09-25
+fat/carb floor decision questioned for floors. N23's premise holds for
+protein but did not reach these snacks: a second limit stops them first.
+
+**Disposition.** STOPPED at premise. No dish, ingredient or template added,
+no limit changed. The IFCT E012 and L002 readings above are ready for later
+rows; unverified until a human opens PDF pages 49, 168 (E012) and 57, 184 (L002).
+Changing the snack carb ceiling is a rule change and needs the owner's
+decision and evidence first.
+
 ## 2026-10-08 — N23: a snack has no protein floor and no quality-protein floor
 
 **Asked.** Owner, 2026-10-08, from experience: most people do not eat protein

@@ -38,8 +38,11 @@ class TestFixtureSet:
         # 36 rows from 2026-09-25's TASKS_3.md R4d South-snack work, which
         # added chickpea_boiled (USDA FDC 173757) for soya_chana_sundal.
         # 37 rows from 2026-09-27's TASKS_3.md N2b, which added egg_whole_raw
-        # (IFCT M001) for pan-cooked egg dishes.
-        assert len(load_report.loaded) == 37
+        # (IFCT M001) for pan-cooked egg dishes. 41 rows from 2026-10-09's
+        # TASKS_3.md N26, which added banana_ripe (IFCT E012), milk_cow_whole
+        # (IFCT L002), sugar_white (USDA FDC 169655) and tea_black_brewed
+        # (USDA FDC 173227) for the banana and milk tea snacks.
+        assert len(load_report.loaded) == 41
 
     def test_no_ifct_code_is_invented(self, ingredients):
         # Seven rows now carry real IFCT 2017 codes, extracted from a
@@ -60,6 +63,9 @@ class TestFixtureSet:
             "toor_dal_raw": "B021", "potato_raw": "F006",
             "egg_boiled": "M004", "egg_whole_raw": "M001",
             "chicken_breast_raw": "N003", "pomfret_white_raw": "P057",
+            # 2026-10-09 (N26): read by the assistant from the primary
+            # IFCT2017.pdf, not a mirror -- see each row's source_note.
+            "banana_ripe": "E012", "milk_cow_whole": "L002",
         }
         for ingredient_id, ingredient in ingredients.items():
             if ingredient_id in coded:
@@ -94,8 +100,10 @@ class TestFixtureSet:
         # unverified for the same reason: FDC queried by the assistant.
         # egg_whole_raw (2026-09-27, TASKS_3.md N2b) carries a published,
         # preparation-matched DIAAS and stays unverified for the same reason:
-        # the assistant read the paper and the mirror, not a human.
-        assert len(load_report.warnings) == 36
+        # the assistant read the paper and the mirror, not a human. The four
+        # N26 rows (2026-10-09) stay unverified for the same reason: the
+        # assistant read IFCT2017.pdf and queried USDA FDC, not a human.
+        assert len(load_report.warnings) == 40
 
     def test_states_parse(self, ingredients):
         assert ingredients["rice_cooked"].state is RawOrCooked.COOKED
