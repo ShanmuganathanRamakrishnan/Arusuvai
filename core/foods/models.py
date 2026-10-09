@@ -55,10 +55,11 @@ __all__ = [
 #: quietly never matching anything. Synthetic test dishes may use any word.
 #: Buttermilk is its own word, not curd: raita with buttermilk is a usual
 #: pairing, not a repeat (owner 2026-10-08). Not a nutrient grouping: soya
-#: curd is "soya", plain curd is "curd", and tofu is "soya".
+#: curd is "soya", plain curd is "curd", and tofu is "soya". "banana" and
+#: "tea" added 2026-10-09 (TASKS_3.md N26) with the first fruit and tea dishes.
 MAIN_INGREDIENTS = frozenset({
-    "buttermilk", "carrot", "chicken", "chickpea", "coconut", "curd", "dal", "egg", "fish",
-    "moong", "paneer", "potato", "rajma", "rice", "soya", "wheat",
+    "banana", "buttermilk", "carrot", "chicken", "chickpea", "coconut", "curd", "dal", "egg",
+    "fish", "moong", "paneer", "potato", "rajma", "rice", "soya", "tea", "wheat",
 })
 
 

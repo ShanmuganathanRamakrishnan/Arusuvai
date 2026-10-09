@@ -1,0 +1,61 @@
+# Milk tea (chai) -- black tea boiled with milk and sugar.
+#
+# TASKS_3.md N26. "Tea/coffee" is one of the ten snack types the UDAY study
+# asked Indian adults about (J Nutr 2023, DOI 10.1016/j.tjnut.2022.12.032),
+# and hot drinks are among the main snack energy sources in France's
+# NutriNet-Sante cohort. The ordinary Indian evening tea.
+#
+# Pan-Indian, category tea. Only the snack templates' drink slots accept
+# it, so nothing changes at breakfast, lunch or dinner. Tea alone has no
+# fibre, and every snack target has a fibre floor, so it can only be served
+# beside a dish (docs/audit_log.md 2026-10-09 "N24").
+#
+# Proportion, stated as an assumption, not a measurement: one cup =
+# 70 g milk + 80 g brewed tea + 8 g sugar (about two teaspoons). No source
+# for a typical Indian cup was found; this is the proportion N24 measured.
+id: milk_tea
+name: Milk tea
+name_ta: பால் டீ
+name_hi: चाय
+
+region: pan_indian
+# Dairy via milk_cow_whole's class, so not vegan (derived from ingredient
+# classes; see data/recipes/schema.yaml).
+
+category: tea
+main_ingredients: [tea]
+prep_minutes: 7
+tags: [snack, beverage, hot, quick]
+
+serving_unit:
+  measure: cup
+  name: cup
+  grams_per_unit: 158.0
+  min_count: 1
+  default_count: 1
+  max_count: 1
+  note: >-
+    One cup, weight overridden to the summed mass below. The ceiling is one,
+    as for neer_mor and chaas: a drink beside a snack, not a course.
+
+# Boiled. Boiling the milk loses some water (which concentrates what is
+# left) and may change its B12. No boiled-milk constant is registered, so
+# every macro the raw-basis milk row feeds takes the wide unassessed band.
+process_uncertainty_unassessed:
+  [energy_kcal, protein_g, fat_g, carb_g, sodium_mg, iron_mg, calcium_mg, b12_ug]
+
+ingredients:
+  - id: milk_cow_whole
+    quantity_g: 70.0
+    state: raw
+    note: Whole cow's milk, boiled with the tea.
+  - id: tea_black_brewed
+    quantity_g: 80.0
+    state: as_used
+    note: >-
+      The tea water. The row is brewed tea, so the leaves themselves are not
+      listed.
+  - id: sugar_white
+    quantity_g: 8.0
+    state: as_used
+    note: About two teaspoons. An authored quantity, not a measurement.

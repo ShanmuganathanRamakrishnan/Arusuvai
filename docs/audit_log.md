@@ -6,6 +6,186 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-09 — N26: banana and milk tea join the snack plates
+
+**Asked.** Owner, 2026-10-09, "option 1": after removing the snack carb
+ceiling (N25), add banana and tea with their sources, and show before and
+after before merging. Separate commit from N25 (CLAUDE.md rule 8).
+
+**Sources.** All four rows `verified=false` (invariant 4); each row's
+`source_note` carries the full reading.
+- `banana_ripe`: IFCT 2017 E012 "Banana, ripe, robusta", n=6, read from the
+  primary `IFCT2017.pdf`. Table 1 PDF p.49; Ca/Fe Table 5 p.167; Na p.168.
+- `milk_cow_whole`: IFCT 2017 L002 "Milk, whole, Cow", n=6. Table 1 PDF p.57;
+  Ca/Fe p.183; Na p.184. B12 0.45 ug is a cross-source substitution from
+  USDA FDC 171265 (IFCT gives none), named in the note. DIAAS blank: not
+  sourced, so milk is not counted as quality protein.
+- `sugar_white`: USDA FDC 169655 (IFCT 2017 has no refined sugar).
+- `tea_black_brewed`: USDA FDC 173227 (not in IFCT 2017).
+- One banana = 118 g, USDA FDC 173944 "medium".
+- **Not sourced, stated as assumptions:** one cup of tea = 70 g milk + 80 g
+  brewed tea + 8 g sugar (no source for a typical Indian cup found); at most
+  two bananas per snack.
+
+**Built.**
+- `data/recipes/banana.yaml` (pan-Indian, category `fruit`, uncooked,
+  1-2 bananas) and `data/recipes/milk_tea.yaml` (pan-Indian, category `tea`,
+  one cup). Milk tea is boiled and no boiled-milk constant is registered, so
+  the loader required every macro the milk row feeds to be declared
+  unassessed; it is, so milk tea carries the wide band (protein 0.45, the
+  same as idli and phulka).
+- `core/foods/templates.py`: South snack's main slot accepts `fruit`; North
+  snack's main slot accepts `fruit`; both drink slots accept `tea`. No other
+  template accepts either kind, so breakfast, lunch and dinner cannot change.
+- `core/foods/models.py`: "banana" and "tea" added to `MAIN_INGREDIENTS`.
+
+**Before / after.** `docs/design/probes/probe_banana_tea_dishes.py`, 18
+bodies per row (3 goals x 2 sexes x 55/70/90 kg, 170 cm, 30 y, moderate).
+"options" is the number of different dishes offered in the swap menus,
+summed over bodies. "asked" is bodies whose plate passes when they pick that
+dish. Both sides byte-identical under PYTHONHASHSEED=1 and 777.
+
+Before (HEAD d3eb627, N25):
+```
+south_indian  vegetarian      plate 18, unrelaxed 18, options 54, banana in shown 0, milk_tea in shown 0, banana asked not in library, milk_tea asked not in library
+    shown 10x  neer_mor + soya_chana_sundal
+    shown  8x  soya_chana_sundal
+south_indian  eggetarian      plate 18, unrelaxed 18, options 60, banana in shown 0, milk_tea in shown 0, banana asked not in library, milk_tea asked not in library
+    shown 10x  neer_mor + soya_chana_sundal
+    shown  8x  soya_chana_sundal
+south_indian  non_vegetarian  plate 18, unrelaxed 18, options 60, banana in shown 0, milk_tea in shown 0, banana asked not in library, milk_tea asked not in library
+    shown 10x  neer_mor + soya_chana_sundal
+    shown  8x  soya_chana_sundal
+south_indian  vegan           plate 18, unrelaxed 18, options 29, banana in shown 0, milk_tea in shown 0, banana asked not in library, milk_tea asked not in library
+    shown 13x  soya_chana_sundal
+    shown  5x  soya_chunk_sundal
+north_indian  vegetarian      plate 18, unrelaxed 18, options 51, banana in shown 0, milk_tea in shown 0, banana asked not in library, milk_tea asked not in library
+    shown  7x  chaas + soya_chana_chaat
+    shown  8x  soya_chana_chaat
+    shown  3x  soya_chana_chaat + soya_tikka
+north_indian  eggetarian      plate 18, unrelaxed 18, options 63, banana in shown 0, milk_tea in shown 0, banana asked not in library, milk_tea asked not in library
+    shown  4x  anda_chaat + chaas + soya_chana_chaat
+    shown  8x  anda_chaat + soya_chana_chaat
+    shown  4x  chaas + soya_chana_chaat
+    shown  1x  soya_chana_chaat
+    shown  1x  soya_chana_chaat + soya_tikka
+north_indian  non_vegetarian  plate 18, unrelaxed 18, options 63, banana in shown 0, milk_tea in shown 0, banana asked not in library, milk_tea asked not in library
+    shown  4x  anda_chaat + chaas + soya_chana_chaat
+    shown  8x  anda_chaat + soya_chana_chaat
+    shown  4x  chaas + soya_chana_chaat
+    shown  1x  soya_chana_chaat
+    shown  1x  soya_chana_chaat + soya_tikka
+north_indian  vegan           plate 8, unrelaxed 8, options 8, banana in shown 0, milk_tea in shown 0, banana asked not in library, milk_tea asked not in library
+    shown  8x  soya_chana_chaat
+```
+
+After:
+```
+south_indian  vegetarian      plate 18, unrelaxed 18, options 82, banana in shown 0, milk_tea in shown 12, banana asked 10, milk_tea asked 18
+    shown 10x  milk_tea + soya_chana_sundal
+    shown  2x  milk_tea + soya_chunk_sundal
+    shown  5x  neer_mor + soya_chana_sundal
+    shown  1x  soya_chana_sundal
+south_indian  eggetarian      plate 18, unrelaxed 18, options 88, banana in shown 0, milk_tea in shown 12, banana asked 10, milk_tea asked 18
+    shown 10x  milk_tea + soya_chana_sundal
+    shown  2x  milk_tea + soya_chunk_sundal
+    shown  5x  neer_mor + soya_chana_sundal
+    shown  1x  soya_chana_sundal
+south_indian  non_vegetarian  plate 18, unrelaxed 18, options 88, banana in shown 0, milk_tea in shown 12, banana asked 10, milk_tea asked 18
+    shown 10x  milk_tea + soya_chana_sundal
+    shown  2x  milk_tea + soya_chunk_sundal
+    shown  5x  neer_mor + soya_chana_sundal
+    shown  1x  soya_chana_sundal
+south_indian  vegan           plate 18, unrelaxed 18, options 35, banana in shown 2, milk_tea in shown 0, banana asked 6, milk_tea asked 0
+    shown  2x  banana
+    shown 12x  soya_chana_sundal
+    shown  4x  soya_chunk_sundal
+north_indian  vegetarian      plate 18, unrelaxed 18, options 86, banana in shown 13, milk_tea in shown 4, banana asked 18, milk_tea asked 16
+    shown  1x  banana + chaas
+    shown  3x  banana + chaas + soya_chana_chaat
+    shown  6x  banana + chaas + soya_tikka
+    shown  3x  banana + soya_tikka
+    shown  3x  milk_tea + soya_chana_chaat
+    shown  1x  milk_tea + soya_tikka
+    shown  1x  soya_chana_chaat
+north_indian  eggetarian      plate 18, unrelaxed 18, options 102, banana in shown 2, milk_tea in shown 7, banana asked 18, milk_tea asked 16
+    shown  1x  anda_chaat + banana
+    shown  4x  anda_chaat + chaas + soya_chana_chaat
+    shown  7x  anda_chaat + milk_tea + soya_chana_chaat
+    shown  4x  anda_chaat + soya_chana_chaat
+    shown  1x  banana + chaas
+    shown  1x  soya_chana_chaat
+north_indian  non_vegetarian  plate 18, unrelaxed 18, options 102, banana in shown 2, milk_tea in shown 7, banana asked 18, milk_tea asked 16
+    shown  1x  anda_chaat + banana
+    shown  4x  anda_chaat + chaas + soya_chana_chaat
+    shown  7x  anda_chaat + milk_tea + soya_chana_chaat
+    shown  4x  anda_chaat + soya_chana_chaat
+    shown  1x  banana + chaas
+    shown  1x  soya_chana_chaat
+north_indian  vegan           plate 15, unrelaxed 15, options 23, banana in shown 10, milk_tea in shown 0, banana asked 11, milk_tea asked 0
+    shown  4x  banana
+    shown  6x  banana + soya_chana_chaat
+    shown  5x  soya_chana_chaat
+```
+
+**Read.**
+- No region or diet lost a plate. North vegan rose from 8/18 to 15/18
+  snack plates, all unrelaxed; every other row stays 18/18 unrelaxed.
+- Banana is on 29 of 144 shown plates, mostly North (vegetarian 13, vegan
+  10). In the South it is shown only to vegans (2): for other diets the
+  sundal fits better. Picked by hand it passes for 10/18 South
+  non-vegan bodies, 6/18 South vegan, 18/18 North non-vegan, 11/18 North
+  vegan.
+- Milk tea is on 54 of 144 shown plates and passes when picked for 18/18
+  South and 16/18 North bodies of every non-vegan diet. It never appears for
+  vegans (dairy).
+- Swap menus grew: South vegetarian 54 to 82 options, North eggetarian 63
+  to 102.
+- Neer mor is shown less (South: 10 to 5 plates per non-vegan diet): milk
+  tea now takes the drink place on most of those plates.
+
+**Deletion check.** `d4b_mutations.py` gains a `TEMPLATES` module and rows
+FT1-FT4, one per accepted kind added. Full failure lists,
+PYTHONHASHSEED=0:
+```
+   all failures (1):
+      tests/test_templates_and_portions.py::TestTemplatesAreNotUniform::test_south_snack_is_one_dish_and_an_optional_drink
+FT1  covered      tests/test_templates_and_portions.py::TestTemplatesAreNotUniform::test_south_snack_is_one_dish_and_an_optional_drink
+   all failures (1):
+      tests/test_templates_and_portions.py::TestTemplatesAreNotUniform::test_south_snack_is_one_dish_and_an_optional_drink
+FT2  covered      tests/test_templates_and_portions.py::TestTemplatesAreNotUniform::test_south_snack_is_one_dish_and_an_optional_drink
+   all failures (1):
+      tests/test_templates_and_portions.py::TestTemplatesAreNotUniform::test_north_snack_offers_two_dish_kinds_and_an_optional_drink
+FT3  covered      tests/test_templates_and_portions.py::TestTemplatesAreNotUniform::test_north_snack_offers_two_dish_kinds_and_an_optional_drink
+   all failures (1):
+      tests/test_templates_and_portions.py::TestTemplatesAreNotUniform::test_north_snack_offers_two_dish_kinds_and_an_optional_drink
+FT4  covered      tests/test_templates_and_portions.py::TestTemplatesAreNotUniform::test_north_snack_offers_two_dish_kinds_and_an_optional_drink
+====================================================================================================
+4 mechanisms: 4 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+Each mutation turns exactly one test red: the shape test that pins the
+slot's accepted kinds. No end-to-end test notices a fruit or tea removal on
+its own.
+
+**Tests changed.** Fixed counts and lists updated with dated comments:
+ingredient rows 37 to 41, unverified warnings 36 to 40, IFCT-coded rows plus
+E012 and L002, `NO_OIL_COOKED` plus milk_tea, and the two snack shape tests
+(now also pin both drink slots). `tests/test_web_add_dish.py` re-picked its
+example as its own header asks: milk tea now fills the 70 kg South snack's
+drink, and no plate for that body leaves a course empty with exactly one
+dish to offer; the snack step now uses a 55 kg eggetarian woman's North
+snack (drink empty, chaas the one option).
+
+**Suite.** `FOODAI_WEB_TESTS=required python -m pytest tests/ -q`, servers
+up, same session:
+```
+674 passed, 1 warning in 281.69s (0:04:41)
+```
+
+**Open.** Vada (no measured source, needs an oil-uptake constant). No
+boiled-milk constant. The cup proportion and the two-banana ceiling are
+authored, not sourced.
+
 ## 2026-10-09 — N25: a snack has no carbohydrate ceiling
 
 **Asked.** Owner, 2026-10-09, after N24 stopped at the snack carb ceiling:

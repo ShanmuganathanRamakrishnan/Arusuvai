@@ -12,6 +12,12 @@ breakfast plate leaves ``curd_course`` empty with two dishes to offer and
 ``beverage`` empty with none; the South snack leaves ``drink`` empty with one
 (neer mor). A change to the library that moves these is a reason to re-pick
 the example, not to doubt the mechanism.
+
+Re-picked 2026-10-09 (TASKS_3.md N26, docs/audit_log.md "N26"): milk tea
+joined the snack drinks and now fills the 70 kg South snack's drink, and no
+plate for that body leaves a course empty with exactly one dish to offer. The
+snack step now uses a 55 kg eggetarian woman (same age, height, activity and
+goal), whose North snack leaves ``drink`` empty with one dish (chaas).
 """
 
 from __future__ import annotations
@@ -45,6 +51,29 @@ def _add_menus(page):
     )
 
 
+def _put_profile(page, email, password, **body):
+    page.evaluate(
+        """async ([email, password, body]) => {
+          const j = {'Content-Type': 'application/json'};
+          let r = await fetch('http://localhost:8000/api/auth/signup', {method: 'POST',
+            credentials: 'include', headers: j, body: JSON.stringify({email, password})});
+          if (!r.ok) await fetch('http://localhost:8000/api/auth/login', {method: 'POST',
+            credentials: 'include', headers: j, body: JSON.stringify({email, password})});
+          await fetch('http://localhost:8000/api/profile', {method: 'PUT',
+            credentials: 'include', headers: j, body: JSON.stringify(body)});
+        }""",
+        [email, password, body],
+    )
+    page.goto(f"{WEB_ORIGIN}/dashboard.html", wait_until="networkidle")
+    page.wait_for_selector("#dashGenerate")
+
+
+_BODY = dict(
+    age_years=28, sex="male", weight_kg=70, height_cm=175,
+    activity="moderate", goal="maintain", diet="eggetarian", clinical_flags=[],
+)
+
+
 def _generate(page, plate):
     page.click(f'input[name="plate"][value="{plate}"]')
     with page.expect_response("**/api/plan", timeout=30000) as resp:
@@ -70,23 +99,8 @@ def walk():
         browser = p.chromium.launch()
         page = browser.new_page(viewport={"width": 1600, "height": 950})
         page.goto(f"{WEB_ORIGIN}/dashboard.html", wait_until="networkidle")
-        page.evaluate(
-            """async ([email, password]) => {
-              const j = {'Content-Type': 'application/json'};
-              let r = await fetch('http://localhost:8000/api/auth/signup', {method: 'POST',
-                credentials: 'include', headers: j, body: JSON.stringify({email, password})});
-              if (!r.ok) await fetch('http://localhost:8000/api/auth/login', {method: 'POST',
-                credentials: 'include', headers: j, body: JSON.stringify({email, password})});
-              await fetch('http://localhost:8000/api/profile', {method: 'PUT',
-                credentials: 'include', headers: j, body: JSON.stringify({
-                  age_years: 28, sex: 'male', weight_kg: 70, height_cm: 175,
-                  activity: 'moderate', goal: 'maintain', diet: 'eggetarian',
-                  clinical_flags: []})});
-            }""",
-            ["add-dish@example.com", "add-dish-pw-52093"],
-        )
-        page.goto(f"{WEB_ORIGIN}/dashboard.html", wait_until="networkidle")
-        page.wait_for_selector("#dashGenerate")
+        account = ("add-dish@example.com", "add-dish-pw-52093")
+        _put_profile(page, *account, **_BODY)
 
         seen["breakfast"] = _generate(page, "south_indian:breakfast")
         seen["breakfast_menus"] = _add_menus(page)
@@ -109,7 +123,9 @@ def walk():
         seen["added_menus"] = _add_menus(page)
         seen["reset_visible_after_add"] = page.is_visible("#dashResetPicks")
 
-        seen["snack"] = _generate(page, "south_indian:snack")
+        # The snack step's own body -- see the module docstring (N26).
+        _put_profile(page, *account, **{**_BODY, "sex": "female", "weight_kg": 55})
+        seen["snack"] = _generate(page, "north_indian:snack")
         seen["snack_menus"] = _add_menus(page)
         browser.close()
     return seen
@@ -151,5 +167,5 @@ def test_a_course_with_one_dish_still_gets_a_menu(walk):
     # Unlike a swap, adding a lone dish or not is still a choice.
     assert walk["snack"]["passed"]
     assert walk["snack_menus"] == [
-        {"label": "Add a drink", "value": "", "options": ["Choose a dish", "Neer mor"]}
+        {"label": "Add a drink", "value": "", "options": ["Choose a dish", "Chaas"]}
     ]

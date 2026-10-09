@@ -1,0 +1,47 @@
+# Banana -- one ripe banana, eaten whole.
+#
+# TASKS_3.md N26. Fruit is one of the ten snack types the UDAY study asked
+# Indian adults about (J Nutr 2023, DOI 10.1016/j.tjnut.2022.12.032), and
+# fruit is among the top five snack foods in Norway's national intake survey
+# (Norkost 3). Until N25 (docs/audit_log.md 2026-10-09) the snack's
+# carbohydrate ceiling kept any banana plate out for every body
+# (docs/audit_log.md 2026-10-09 "N24").
+#
+# Pan-Indian: eaten as a snack in both regions, so it passes both snack
+# templates' region filter. Category fruit: only the snack templates accept
+# it, so nothing changes at breakfast, lunch or dinner.
+id: banana
+preparation: uncooked
+name: Banana
+name_ta: வாழைப்பழம்
+name_hi: केला
+
+region: pan_indian
+# Vegan: one plant row (derived from ingredient classes; see
+# data/recipes/schema.yaml).
+
+category: fruit
+main_ingredients: [banana]
+prep_minutes: 0
+tags: [snack, fruit, quick, vegan]
+
+serving_unit:
+  measure: katori
+  name: banana
+  grams_per_unit: 118.0
+  min_count: 1
+  default_count: 1
+  max_count: 2
+  note: >-
+    One medium banana, edible part: 118 g is USDA FoodData Central FDC 173944's
+    "medium" banana (Cavendish; robusta is a Cavendish type). No household
+    measure fits a whole fruit, so the katori measure carries the name
+    "banana" and its weight is overridden, as chaas does with "glass". The
+    ceiling of two is an authored limit: two bananas is an ordinary snack,
+    more is not.
+
+ingredients:
+  - id: banana_ripe
+    quantity_g: 118.0
+    state: raw
+    note: Peeled weight. Eaten as it is.

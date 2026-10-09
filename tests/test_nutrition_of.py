@@ -324,7 +324,10 @@ class TestEligibilityConsequence:
     #: `soya_chana_chaat` (TASKS_3.md R4d, 2026-09-25) joined the same way:
     #: `soya_chunks_dry` is a raw-basis row soaked in hot water, and the dish
     #: has no oil line, so it declares every macro unassessed.
-    NO_OIL_COOKED = ("idli", "phulka", "soya_idli", "soya_chana_chaat")
+    # milk_tea added 2026-10-09 (TASKS_3.md N26): boiled, no oil, and no
+    # boiled-milk constant is registered, so its protein is declared
+    # unassessed like the others here.
+    NO_OIL_COOKED = ("idli", "phulka", "soya_idli", "soya_chana_chaat", "milk_tea")
 
     def test_every_recipe_sits_at_exactly_its_registered_band(
         self, library, ingredients

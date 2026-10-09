@@ -145,7 +145,8 @@ class TestTemplatesAreNotUniform:
         assert by_name["sundal"].required is True
         # Sundal only since 2026-10-08 (TASKS_3.md N19): an egg never takes
         # the sundal's place. It may sit beside it, only when asked for.
-        assert by_name["sundal"].accepted_categories == frozenset({"sundal"})
+        # Fruit since 2026-10-09 (N26): a banana takes the sundal's place.
+        assert by_name["sundal"].accepted_categories == frozenset({"sundal", "fruit"})
         assert by_name["egg_side"].accepted_categories == frozenset({"egg"})
         assert by_name["egg_side"].required is False
         assert by_name["egg_side"].on_request is True
@@ -153,6 +154,8 @@ class TestTemplatesAreNotUniform:
         assert by_name["drink"].required is False
         assert by_name["drink"].min_selections == 0
         assert by_name["drink"].max_selections == 1
+        # Tea since 2026-10-09 (N26), beside buttermilk; still one drink.
+        assert by_name["drink"].accepted_categories == frozenset({"buttermilk", "tea"})
 
     def test_lookup_finds_north_snack(self):
         # Added 2026-09-25 (TASKS_3.md R4d) alongside NORTH_SNACK itself.
@@ -168,12 +171,15 @@ class TestTemplatesAreNotUniform:
         by_name = {s.name: s for s in templates.NORTH_SNACK.slots}
         assert set(by_name) == {"snack", "drink"}
         assert by_name["snack"].required is True
-        assert by_name["snack"].accepted_categories == frozenset({"chaat", "tikka"})
+        # Fruit since 2026-10-09 (N26): a banana, alone or beside a chaat.
+        assert by_name["snack"].accepted_categories == frozenset({"chaat", "tikka", "fruit"})
         assert by_name["snack"].min_selections == 1
         assert by_name["snack"].max_selections == 2
         assert by_name["drink"].required is False
         assert by_name["drink"].min_selections == 0
         assert by_name["drink"].max_selections == 1
+        # Tea since 2026-10-09 (N26), as in SOUTH_SNACK.
+        assert by_name["drink"].accepted_categories == frozenset({"buttermilk", "tea"})
 
     def test_missing_grammar_raises_rather_than_substituting_another_region(self):
         # Repointed 2026-09-25: this used (NORTH_INDIAN, SNACK), which

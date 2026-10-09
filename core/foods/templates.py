@@ -363,9 +363,12 @@ SOUTH_SNACK = MealTemplate(
         # as the snack; an egg is not, and boiled egg with sundal is a
         # breakfast habit. Measured too: in that place no egg plate was ever
         # valid -- an egg has no fibre (docs/audit_log.md 2026-10-08, "N19").
+        # "fruit" added 2026-10-09 (TASKS_3.md N26, docs/audit_log.md "N26"):
+        # a banana is an ordinary snack eaten in place of a sundal, not beside
+        # it. The slot keeps its name; it is the snack's one main dish.
         TemplateSlot(
             name="sundal",
-            accepted_categories=frozenset({"sundal"}),
+            accepted_categories=frozenset({"sundal", "fruit"}),
         ),
         # An egg beside the sundal, offered but never served by default
         # (`on_request`): some people choose it, it is not the ordinary snack.
@@ -379,10 +382,11 @@ SOUTH_SNACK = MealTemplate(
         ),
         # Optional for the reason this module's header gives: a ~31 kcal extra
         # the solver can use to close a small energy gap. A sundal alone is a
-        # complete snack.
+        # complete snack. "tea" added 2026-10-09 (N26): milk tea is the
+        # ordinary evening drink beside a snack; still at most one drink.
         TemplateSlot(
             name="drink",
-            accepted_categories=frozenset({"buttermilk"}),
+            accepted_categories=frozenset({"buttermilk", "tea"}),
             required=False,
             min_selections=0,
             max_selections=1,
@@ -413,16 +417,19 @@ NORTH_SNACK = MealTemplate(
     region=Region.NORTH_INDIAN,
     meal_slot=MealSlot.SNACK,
     slots=(
+        # "fruit" added 2026-10-09 (TASKS_3.md N26): a banana, alone or
+        # beside a chaat.
         TemplateSlot(
             name="snack",
-            accepted_categories=frozenset({"chaat", "tikka"}),
+            accepted_categories=frozenset({"chaat", "tikka", "fruit"}),
             max_selections=2,
         ),
         # Optional for SOUTH_SNACK.drink's reason. Region filtering keeps
-        # neer_mor (south_indian) out; chaas is the North filler.
+        # neer_mor (south_indian) out; chaas is the North filler. "tea" added
+        # 2026-10-09 (N26), as in SOUTH_SNACK.drink.
         TemplateSlot(
             name="drink",
-            accepted_categories=frozenset({"buttermilk"}),
+            accepted_categories=frozenset({"buttermilk", "tea"}),
             required=False,
             min_selections=0,
             max_selections=1,
