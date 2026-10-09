@@ -188,13 +188,14 @@ class TestASnackHasNoFatOrCarbFloor:
     other slot keeps both bounds.
     """
 
-    def test_snack_drops_both_floors_and_keeps_both_ceilings(self):
+    def test_snack_drops_both_floors_and_keeps_the_fat_ceiling(self):
+        # Renamed 2026-10-09 (N25) from "...keeps both ceilings": the carb
+        # ceiling went too -- TestASnackHasNoCarbCeiling below.
         snack = meal_target(_day(), MealSlot.SNACK)  # x0.10
         assert snack.floor("fat_g") is None
         assert snack.floor("carb_g") is None
-        # 60 x 14/11 x 0.10 = 7.636 ; 287.5 x 0.10 = 28.75
+        # 60 x 14/11 x 0.10 = 7.636
         assert snack.ceiling("fat_g") == pytest.approx(60.0 * 14 / 11 * 0.10)
-        assert snack.ceiling("carb_g") == pytest.approx(28.75)
         # Points stay: they are what the ladder widens ceilings around.
         # 60.0 x 0.10 = 6.0 ; 250.0 x 0.10 = 25.0
         assert snack.point("fat_g") == pytest.approx(6.0)
@@ -231,11 +232,40 @@ class TestASnackHasNoFatOrCarbFloor:
         assert relaxed.floor("carb_g") is None
         tol = citations.value_of("tolerance.fat_carb_relaxed")
         assert tol == 0.25
-        # Carb: 25.0 x 1.25 = 31.25. Fat: the rung's own 6.0 x 1.25 = 7.5 is
-        # tighter than fat's default ceiling since N6 (60 x 14/11 x 0.10 =
-        # 7.636), and a rung never narrows a band, so fat stays at 7.636.
+        # Fat: the rung's own 6.0 x 1.25 = 7.5 is tighter than fat's default
+        # ceiling since N6 (60 x 14/11 x 0.10 = 7.636), and a rung never
+        # narrows a band, so fat stays at 7.636. Carb has no ceiling since N25
+        # (it was 25.0 x 1.25 = 31.25 here); the rung must not bring one back.
         assert relaxed.ceiling("fat_g") == pytest.approx(60.0 * 14 / 11 * 0.10)
-        assert relaxed.ceiling("carb_g") == pytest.approx(31.25)
+        assert relaxed.ceiling("carb_g") is None
+
+
+class TestASnackHasNoCarbCeiling:
+    """Owner decision 2026-10-09 (docs/audit_log.md "N25").
+
+    A snack has no carbohydrate ceiling; its energy ceiling still caps it.
+    Breakfast, lunch and dinner keep theirs. The carb point stays.
+    """
+
+    def test_a_snack_has_no_carb_ceiling(self):
+        # Red if "carb_g" leaves _CEILINGLESS_BY_SLOT[SNACK]: the ceiling
+        # comes back as 287.5 x 0.10 = 28.75.
+        assert meal_target(_day(), MealSlot.SNACK).ceiling("carb_g") is None
+
+    def test_a_snack_keeps_its_carb_point_and_energy_ceiling(self):
+        # Carb point 250.0 x 0.10 = 25.0 ; energy 200.0 x 1.10 = 220.0.
+        snack = meal_target(_day(), MealSlot.SNACK)
+        assert snack.point("carb_g") == pytest.approx(25.0)
+        assert snack.ceiling("energy_kcal") == pytest.approx(220.0)
+
+    @pytest.mark.parametrize(
+        "slot", [MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER]
+    )
+    def test_every_other_slot_keeps_its_carb_ceiling(self, slot):
+        # 287.5 is the day carb ceiling in _day(); the slot's share.
+        target = meal_target(_day(), slot)
+        fraction = meal_energy_fraction(slot)
+        assert target.ceiling("carb_g") == pytest.approx(287.5 * fraction)
 
 
 class TestASnackHasNoProteinFloor:

@@ -6,6 +6,145 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-09 — N25: a snack has no carbohydrate ceiling
+
+**Asked.** Owner, 2026-10-09, after N24 stopped at the snack carb ceiling:
+search for evidence on how much of a real snack's energy is carbohydrate,
+show it, then (owner chose option 1) remove the ceiling for snacks only and
+measure before and after.
+
+**What the code had.** A snack's carb ceiling was the day carbohydrate
+target scaled by 0.10, plus `tolerance.fat_carb_default` (0.15), widened to
+`tolerance.fat_carb_relaxed` (0.25) by the ladder. The day carbohydrate is
+the energy left after protein and the AMDR-midpoint fat (`_compute_macros`
+in `core/nutrition/targets.py`). Both tolerances are `PROJECT_DECISION`, no
+source. N24 measured it: at most 70-79% of a snack's energy floor may be
+carbohydrate, and a banana is 97% (IFCT 2017 E012).
+
+**Sources searched, intake data first.** Found:
+- Norkost 3, Norway (Food Nutr Res 2015, PMC4409996; 1787 adults, two
+  24-hour recalls). Snacks: 52% (men) and 53% (women) of energy from
+  carbohydrate; main meals 42%. Snacks eaten at work 64%. Fruits among the
+  top five snack energy sources (cakes, fruits, sugar/sweets, bread,
+  alcoholic beverages).
+- NutriNet-Sante, France (PMC5828417; 104,265 adults, 24-hour records).
+  Fruit and hot beverages among the main food groups giving snack energy. No
+  snack carbohydrate share reported.
+- UDAY, India (PMC7616315): fruits and tea/coffee among the 10 snack types
+  asked about; no nutrient content.
+Searched, no per-snack nutrient split: ICMR-INDIAB-21 (Nat Med 2025,
+day-level, 62% carbohydrate), I-STARCH-1 (Nutrients 2026, day-level, 62.1%),
+NIN What India Eats (day-level), ultra-processed food intake in Indian adults
+(PMC10755415, day-level). **No Indian study found splits nutrients by
+snack.**
+
+**Read, stated plainly.** The Norway averages (52-64%) sit *under* the old
+ceiling. What the ceiling blocked was single-food snacks such as fruit,
+which are common in all three studies. The case for removing it is that one
+snack is often one food, not that the average snack is over it -- the same
+reasoning as the 2026-09-25 decision to drop the snack's fat and carb floors.
+The snack's energy ceiling still caps an all-carbohydrate snack.
+
+**Change.** `core/nutrition/meal_target.py`: new `_CEILINGLESS_BY_SLOT =
+{SNACK: {"carb_g"}}`, popped beside the floors. The carb point stays; the
+fat ceiling stays. `_widen_band` widens only ceilings that exist, so no rung
+restores it (tested). Methodology: new section "A snack has no carbohydrate
+ceiling", and a dated note on the fat/carb floor section, which said a snack
+keeps both ceilings.
+
+**Before and after.** `docs/design/probes/probe_snack_carb_ceiling.py` (the
+N23 probe with the bounds column changed), 18 bodies per region x diet. Each
+side byte-identical under PYTHONHASHSEED=1 and 777. Before is identical to
+N23's AFTER apart from that column. `diff before after`:
+
+```
+1c1
+< south_indian  vegetarian      carb ceiling 22.3-46.0; bodies 18, plate 18, unrelaxed 18, options 54
+---
+> south_indian  vegetarian      carb ceiling none; bodies 18, plate 18, unrelaxed 18, options 54
+4c4
+< south_indian  eggetarian      carb ceiling 22.3-46.0; bodies 18, plate 18, unrelaxed 18, options 60, egg asked 6
+---
+> south_indian  eggetarian      carb ceiling none; bodies 18, plate 18, unrelaxed 18, options 60, egg asked 6
+7c7
+< south_indian  non_vegetarian  carb ceiling 22.3-46.0; bodies 18, plate 18, unrelaxed 18, options 60, egg asked 6
+---
+> south_indian  non_vegetarian  carb ceiling none; bodies 18, plate 18, unrelaxed 18, options 60, egg asked 6
+10c10
+< south_indian  vegan           carb ceiling 22.3-46.0; bodies 18, plate 18, unrelaxed 17, options 29
+---
+> south_indian  vegan           carb ceiling none; bodies 18, plate 18, unrelaxed 18, options 29
+13,16c13,15
+< north_indian  vegetarian      carb ceiling 22.3-46.0; bodies 18, plate 18, unrelaxed 18, options 50
+<     shown  6x  chaas + soya_chana_chaat
+<     shown  4x  chaas + soya_chana_chaat + soya_tikka
+<     shown  3x  soya_chana_chaat
+---
+> north_indian  vegetarian      carb ceiling none; bodies 18, plate 18, unrelaxed 18, options 51
+>     shown  7x  chaas + soya_chana_chaat
+>     shown  8x  soya_chana_chaat
+18,19c17
+<     shown  2x  soya_tikka
+< north_indian  eggetarian      carb ceiling 22.3-46.0; bodies 18, plate 18, unrelaxed 18, options 63
+---
+> north_indian  eggetarian      carb ceiling none; bodies 18, plate 18, unrelaxed 18, options 63
+22a21
+>     shown  1x  soya_chana_chaat
+24,25c23
+<     shown  1x  soya_tikka
+< north_indian  non_vegetarian  carb ceiling 22.3-46.0; bodies 18, plate 18, unrelaxed 18, options 63
+---
+> north_indian  non_vegetarian  carb ceiling none; bodies 18, plate 18, unrelaxed 18, options 63
+28a27
+>     shown  1x  soya_chana_chaat
+30,32c29,30
+<     shown  1x  soya_tikka
+< north_indian  vegan           carb ceiling 22.3-46.0; bodies 18, plate 6, unrelaxed 3, options 6
+<     shown  6x  soya_chana_chaat
+---
+> north_indian  vegan           carb ceiling none; bodies 18, plate 8, unrelaxed 8, options 8
+>     shown  8x  soya_chana_chaat
+```
+
+**Read.** No banana or tea yet, so this only changes existing dishes:
+- A passing snack plate: 132 -> 134 of 144 (North vegan 6 -> 8).
+- Passing with no relaxation: 128 -> 134 (South vegan 17 -> 18, North vegan
+  3 -> 8).
+- North vegetarian shows soya_chana_chaat alone more often and the tikka
+  plates less (the chaat was being held back by carbohydrate).
+
+**Deletion checks.** New row SP4 in `docs/design/probes/d4b_mutations.py`.
+Full failure list per mutation (SP1-SP3 rerun), whole suite, no `-x`,
+`PYTHONHASHSEED=0`:
+
+```
+   all failures (1):
+      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_protein_floor
+SP1  covered      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_protein_floor
+   all failures (1):
+      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_quality_protein_floor
+SP2  covered      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_quality_protein_floor
+   all failures (1):
+      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_protein_floor
+SP3  covered      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_protein_floor
+   all failures (2):
+      tests/test_nutrition_meal_target.py::TestASnackHasNoFatOrCarbFloor::test_the_fat_carb_rung_does_not_restore_a_dropped_floor
+      tests/test_nutrition_meal_target.py::TestASnackHasNoCarbCeiling::test_a_snack_has_no_carb_ceiling
+SP4  covered      tests/test_nutrition_meal_target.py::TestASnackHasNoFatOrCarbFloor::test_the_fat_carb_rung_does_not_restore_a_dropped_floor
+====================================================================================================
+4 mechanisms: 4 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+**Suite.** Both dev servers running:
+
+```
+$ FOODAI_WEB_TESTS=required python -m pytest tests/ -q -p no:cacheprovider
+674 passed, 1 warning in 285.63s (0:04:45)
+```
+
+**Disposition.** DONE on branch `everyday-snacks`. Banana and tea dishes
+are the next commit (N26), measured separately.
+
 ## 2026-10-09 — N24: a banana or tea snack cannot fit any snack target -- stopped at premise
 
 **Asked.** Owner, 2026-10-09, after N23 merged: add real low-protein snacks

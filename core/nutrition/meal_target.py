@@ -64,6 +64,19 @@ protein point. The cost, stated: the snack's share of the day protein floor
 the day makes it up. See ``_FLOORLESS_BY_SLOT`` and
 ``_NO_QUALITY_FLOOR_SLOTS``.
 
+**No carbohydrate ceiling**, for a snack only (owner decision 2026-10-09,
+docs/audit_log.md "N25"). The ceiling was the day's carbohydrate (the energy
+left after protein and fat) scaled to the snack, with project-decision bands
+and no source, and it kept fruit out entirely: a banana takes 97% of its
+energy from carbohydrate (IFCT 2017 E012), the ceiling allowed at most 70-79%
+(docs/audit_log.md "N24"). Intake data agrees that real snacks lean on
+carbohydrate: in Norway's national survey (Norkost 3, 1787 adults, 24-h
+recalls) snacks took 52-53% of energy from carbohydrate against 42% for main
+meals, with fruit among the top five snack foods; no Indian study found splits
+nutrients by snack. The snack's energy ceiling still caps it -- an all-carb
+snack stays within its energy window. The carb point stays. See
+``_CEILINGLESS_BY_SLOT``.
+
 **Energy band**, for a snack only (owner decision 2026-09-26, docs/audit_log.md
 "snack energy band"): re-derived around the meal's energy point at
 ``tolerance.energy_snack`` (0.10) instead of the day's 0.05 scaled down. At
@@ -230,6 +243,15 @@ _FLOORLESS_BY_SLOT: Mapping[MealSlot, frozenset[str]] = {
 }
 
 
+#: Macros whose per-meal ceiling is dropped for a slot. Snack only, carb only
+#: -- see the module docstring's "No carbohydrate ceiling" rule. The fat_carb
+#: rung widens only ceilings that exist (``_widen_band`` checks
+#: ``if macro in ceilings``), so an absent ceiling stays absent at every rung.
+_CEILINGLESS_BY_SLOT: Mapping[MealSlot, frozenset[str]] = {
+    MealSlot.SNACK: frozenset({"carb_g"}),
+}
+
+
 #: Slots with no per-meal quality-protein floor. Snack only -- see the module
 #: docstring's "No protein floor" rule. Separate from ``_FLOORLESS_BY_SLOT``
 #: because the quality floor is not a macro floor (``core/CLAUDE.md``).
@@ -273,6 +295,8 @@ def meal_target(
     _apply_protein_meal_bounds(day_target, floors, ceilings)
     for macro in _FLOORLESS_BY_SLOT.get(meal_slot, frozenset()):
         floors.pop(macro, None)
+    for macro in _CEILINGLESS_BY_SLOT.get(meal_slot, frozenset()):
+        ceilings.pop(macro, None)
     # Carried, not scaled: a hard ceiling is a bound on one plate already, not a
     # share of a day to be divided again.
     hard_ceilings = dict(day_target.hard_ceilings)

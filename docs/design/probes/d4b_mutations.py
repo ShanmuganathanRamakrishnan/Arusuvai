@@ -753,8 +753,8 @@ MUTATIONS: tuple[Mutation, ...] = (
         "",
     ),
     # ------------------------------------------- snack protein floors (N23)
-    # Only the three N23 mechanisms. meal_target.py's older bounds are not
-    # rowed here yet; adding them is its own task, not this one.
+    # Only the three N23 mechanisms and N25's (SP4). meal_target.py's older
+    # bounds are not rowed here yet; adding them is its own task, not this one.
     Mutation(
         "SP1", MEAL_TARGET, "a snack has no protein floor",
         '    MealSlot.SNACK: frozenset({"fat_g", "carb_g", "protein_g"}),\n',
@@ -773,6 +773,11 @@ MUTATIONS: tuple[Mutation, ...] = (
         "    for macro in _FLOORLESS_BY_SLOT.get(meal_slot, frozenset()):\n"
         "        floors.pop(macro, None)\n"
         "    _apply_protein_meal_bounds(day_target, floors, ceilings)\n",
+    ),
+    Mutation(
+        "SP4", MEAL_TARGET, "a snack has no carbohydrate ceiling (N25)",
+        '    MealSlot.SNACK: frozenset({"carb_g"}),\n',
+        "    MealSlot.SNACK: frozenset(),\n",
     ),
 )
 
