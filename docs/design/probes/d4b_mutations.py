@@ -856,9 +856,14 @@ OWN_TESTS: dict[str, tuple[str, ...]] = {
     SCHEMAS_COMMON: ("test_planner_candidates.py",),
     PLAN: ("test_shown_plate_preference.py", "test_on_request_slot.py"),
     # test_planner_quality.py owns the quality floor's per-slot rule.
-    MEAL_TARGET: ("test_nutrition_meal_target.py", "test_planner_quality.py"),
+    # test_snack_coverage.py (N29) is scoped to both: it exists to notice a
+    # snack bound or a snack slot that takes a plate away from any body.
+    MEAL_TARGET: (
+        "test_nutrition_meal_target.py", "test_planner_quality.py",
+        "test_snack_coverage.py",
+    ),
     # The file that pins each snack slot's accepted kinds.
-    TEMPLATES: ("test_templates_and_portions.py",),
+    TEMPLATES: ("test_templates_and_portions.py", "test_snack_coverage.py"),
 }
 
 
