@@ -16,12 +16,19 @@
 # roasted cumin and fresh coriander are usual, but none has a row in the
 # ingredient table. Tamarind water supplies the sourness instead (imli chaat)
 # and garam masala the spice. Together the missing items would be about 2 g
-# of an 80 g serving.
+# of an 80 g half katori.
 #
-# Portion: the half-katori unit soya_chana_sundal uses, approved by the owner
+# Portion: the half-katori unit soya_chana_sundal used, approved by the owner
 # for that dish, reused so the two regions' snack units are comparable. The
 # chickpea:soya proportion was set as an ordinary home proportion before any
 # probe run, and is not tuned.
+#
+# 2026-10-09, owner decision (TASKS_3.md N28, docs/audit_log.md "N28"): the
+# unit was halved to a quarter katori (40 g), as soya_chana_sundal's was on
+# 2026-09-26. Whole ~100 kcal half-katori steps left the three lightest
+# lose_fat vegan profiles no North snack: their windows (145-200 kcal) fell
+# between one step and two. Same ratio: every line below is exactly half the
+# half-katori lines; ceiling 8 quarter katoris, the same 320 g total.
 id: soya_chana_chaat
 name: Soya chana chaat
 name_ta: சோயா சனா சாட்
@@ -38,16 +45,16 @@ tags: [snack, legume, chaat, high_protein, vegan]
 
 serving_unit:
   measure: katori
-  name: half katori
-  grams_per_unit: 80.0
+  name: quarter katori
+  grams_per_unit: 40.0
   min_count: 1
-  default_count: 2
-  max_count: 4
+  default_count: 4
+  max_count: 8
   note: >-
-    A half katori (80 g, the summed mass below), the same unit as
-    soya_chana_sundal and for the same reason: chaat is served in small
-    bowls or leaf cups. Four is the ceiling, two full katoris, so the
-    solver cannot close a protein gap by volume.
+    A quarter katori (40 g, the summed mass below), the same unit as
+    soya_chana_sundal and for the same reason: chaat is served by the
+    spoonful into small bowls or leaf cups. Eight is the ceiling, two full
+    katoris, so the solver cannot close a protein gap by volume.
 
 # Boiled and drained (chickpeas) or soaked in hot water and squeezed (soya
 # chunks); the rest is raw. The soya soak is a real process on a raw-basis
@@ -62,44 +69,44 @@ process_uncertainty_unassessed:
 
 ingredients:
   - id: chickpea_boiled
-    quantity_g: 35.0
+    quantity_g: 17.5
     state: cooked
     note: >-
       Boiled, drained weight. The row is FDC 173757's cooked, unsalted
       figure, so no yield factor applies.
   - id: soya_chunks_dry
-    quantity_g: 10.0
+    quantity_g: 5.0
     state: raw
     note: >-
       Dry mass. Soaked in hot water and squeezed; the water the chunks hold
       is the line below, as in soya_chana_sundal.
   - id: water
-    quantity_g: 19.5
+    quantity_g: 9.75
     state: as_used
     note: >-
       Water retained by the squeezed chunks, about twice their dry mass,
       rounded so the masses sum to the unit.
   - id: onion_raw
-    quantity_g: 7.0
+    quantity_g: 3.5
     state: raw
     note: Finely chopped, raw.
   - id: tomato_raw
-    quantity_g: 6.0
+    quantity_g: 3.0
     state: raw
     note: Finely chopped, raw.
   - id: tamarind_pulp
-    quantity_g: 1.5
+    quantity_g: 0.75
     state: as_used
     note: Thinned with a spoon of water and poured over, in place of lemon.
   - id: green_chilli
-    quantity_g: 0.3
+    quantity_g: 0.15
     state: raw
   - id: garam_masala
-    quantity_g: 0.2
+    quantity_g: 0.1
     state: as_used
     note: Sprinkled over, standing in for chaat masala (not in the table).
   - id: salt_iodised
-    quantity_g: 0.5
+    quantity_g: 0.25
     state: as_used
     note: >-
       0.63% of the finished weight, soya_chana_sundal's proportion. An
