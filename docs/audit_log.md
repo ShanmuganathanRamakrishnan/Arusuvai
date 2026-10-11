@@ -6,6 +6,81 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-11 — N30: a day without a snack (planner)
+
+**Asked.** Owner, 2026-10-11: "there should be an option for the person to
+have a snack", not always given. Then "option 1" on how to share the
+snack's part of the day, then "option 1 it is".
+
+**Found.** The dashboard plans one meal at a time, so a snack was only
+planned when picked. But `meal_target` sized every meal as a fixed share of
+the day: breakfast 0.25, lunch 0.35, dinner 0.30, snack 0.10
+(`meal_split.energy_fraction_*`, project decisions, no source). A user who
+skips the snack had 10% of the day planned nowhere.
+
+**Evidence searched (2026-10-11).**
+- Indian guidance: the day's energy "equally divided between the three
+  major meals", adjusted for snacks. Bamji, Rao & Reddy, *Textbook of Human
+  Nutrition*, 2nd ed., 2003, as quoted by Sivaramakrishnan & Kamath, Public
+  Health Nutr 2012;15(11):2040-6, DOI 10.1017/S1368980012002777 (1,027
+  people, Mumbai). The textbook itself was not opened.
+- No Indian study found that measured adults' energy share per meal. The
+  Mumbai study reports only breakfast: 64% got 15% or less of the day's
+  energy RDA from it.
+- Intake elsewhere: Japan breakfast 21 / lunch 32 / dinner 40 / snacks 11
+  (PMC9991704); US adults breakfast 18 / lunch 23 / dinner 36 (USDA WWEIA
+  Data Briefs 55, 57, 59, NHANES 2017-March 2020). Breakfast is the smallest
+  meal in both.
+
+**Decision (owner, "option 1").** Proportional: each meal's share divided
+by 1 - 0.10, so breakfast 0.2778, lunch 0.3889, dinner 0.3333. A rule on the
+registered shares, not a new constant. Equal thirds (the textbook) was
+offered and not taken: it would grow breakfast from 0.25 to 0.33 where
+intake data shows breakfast smallest. Per the owner's 2026-10-10 rule, a
+clear written boundary, with the disagreement noted.
+
+**Built.**
+- `Profile.eats_snack` (default True, the day every profile had before).
+- `meal_energy_fraction(slot, eats_snack=)` and `meal_target(...,
+  eats_snack=)`; `eats_snack=False` divides by 0.90, and a snack for that
+  day raises `ValueError` rather than being sized at 0.10.
+- `plan_meal` passes `profile.eats_snack` (True when no profile).
+- Tests: `TestADayWithoutASnack` (5) in
+  `tests/test_nutrition_meal_target.py`; one wiring test in
+  `tests/test_snack_coverage.py` (lunch point 0.35 vs 0.35 / 0.90 of the
+  day; snack refused).
+
+**Deletion rows.** NS1 (division removed), NS2 (snack refusal removed), NS3
+(`plan_meal` always passes True). `test_snack_coverage.py` added to `PLAN`'s
+scoped tests. PYTHONHASHSEED=0, full failure lists:
+```
+   all failures (4):
+      tests/test_nutrition_meal_target.py::TestADayWithoutASnack::test_each_meal_share_grows_in_proportion
+      tests/test_nutrition_meal_target.py::TestADayWithoutASnack::test_the_three_meals_still_make_a_whole_day
+      tests/test_nutrition_meal_target.py::TestADayWithoutASnack::test_meal_target_scales_by_the_grown_share
+      tests/test_snack_coverage.py::test_a_profile_without_a_snack_gets_bigger_meals_and_no_snack
+NS1  covered      tests/test_nutrition_meal_target.py::TestADayWithoutASnack::test_each_meal_share_grows_in_proportion
+   all failures (2):
+      tests/test_nutrition_meal_target.py::TestADayWithoutASnack::test_a_snack_for_a_day_without_one_is_refused
+      tests/test_snack_coverage.py::test_a_profile_without_a_snack_gets_bigger_meals_and_no_snack
+NS2  covered      tests/test_nutrition_meal_target.py::TestADayWithoutASnack::test_a_snack_for_a_day_without_one_is_refused
+   all failures (1):
+      tests/test_snack_coverage.py::test_a_profile_without_a_snack_gets_bigger_meals_and_no_snack
+NS3  covered      tests/test_snack_coverage.py::test_a_profile_without_a_snack_gets_bigger_meals_and_no_snack
+====================================================================================================
+3 mechanisms: 3 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+**Suite (this commit alone, api/ and web/ changes set aside).** Browser
+tests not run for this commit: the default is unchanged, and the next
+commit (the setting on the wire and the page) runs them required.
+```
+590 passed, 101 skipped, 1 warning in 123.89s (0:02:03)
+```
+
+**Disposition.** Planner half done. The profile setting, its storage and
+the page follow in the next commit.
+
 ## 2026-10-10 — N29: a standing check that every body gets a snack plate
 
 **Asked.** Owner, 2026-10-10, "option 1" after N28 merged: add a test that

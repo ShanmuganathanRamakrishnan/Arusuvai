@@ -58,3 +58,38 @@ def test_every_body_gets_a_snack_plate(region, diet_name):
                     missing.append(f"{goal.value} {sex.value} {weight} kg")
     # 3 goals x 2 sexes x 3 weights = 18 bodies, all with a plate.
     assert missing == [], f"{region.value} {diet_name}: no snack for {missing}"
+
+
+def test_a_profile_without_a_snack_gets_bigger_meals_and_no_snack():
+    """plan_meal reads ``Profile.eats_snack`` (TASKS_3.md N30).
+
+    Red if plan.py stops passing it to meal_target: the lunch would be sized
+    at 0.35 of the day instead of 0.35 / 0.90, and the snack would be planned.
+    """
+
+    def profile(eats_snack):
+        return Profile(
+            weight_kg=70, height_cm=170, age_years=30, sex=Sex.MALE,
+            activity=ActivityLevel.MODERATE, goal=Goal.MAINTAIN,
+            diet=DietPattern.VEGETARIAN, eats_snack=eats_snack,
+        )
+
+    day = derive_target(profile(True)).nutrition_target
+    assert derive_target(profile(False)).nutrition_target == day
+
+    def lunch_point(p):
+        out = plan_meal(
+            _library(), day, region=Region.SOUTH_INDIAN,
+            meal_slot=MealSlot.LUNCH, diet_pattern=p.diet, profile=p,
+        )
+        return out.target_used.point("energy_kcal")
+
+    day_kcal = day.point("energy_kcal")
+    assert lunch_point(profile(True)) == pytest.approx(day_kcal * 0.35)
+    assert lunch_point(profile(False)) == pytest.approx(day_kcal * 0.35 / 0.90)
+    with pytest.raises(ValueError, match="no snack"):
+        plan_meal(
+            _library(), day, region=Region.SOUTH_INDIAN,
+            meal_slot=MealSlot.SNACK, diet_pattern=DietPattern.VEGETARIAN,
+            profile=profile(False),
+        )

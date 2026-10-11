@@ -107,6 +107,20 @@ The fractions themselves are registered constants rather than literals here:
 CLAUDE.md's "no magic numbers" rule applies to a meal split exactly as it does
 to a yield factor, and there is no cited basis for anything more specific than
 "lunch is the big meal of an Indian day."
+
+**A day without a snack** (owner decision 2026-10-11, TASKS_3.md N30,
+docs/audit_log.md "N30"): a user may say they eat no snack. The snack's share
+is then spread over the three meals in proportion to their own shares --
+each divided by ``1 - snack share`` -- so breakfast, lunch and dinner become
+0.2778 / 0.3889 / 0.3333 and still add to the whole day. A rule, not a new
+constant: it moves with the four registered shares. The alternative recorded
+and not taken is equal thirds, which an Indian textbook (Bamji, Rao & Reddy,
+*Textbook of Human Nutrition*, 2nd ed., 2003, as quoted by Sivaramakrishnan
+& Kamath, Public Health Nutr 2012, DOI 10.1017/S1368980012002777; the book
+itself not opened) gives for three meals; intake surveys elsewhere (Japan,
+US) show breakfast the smallest meal, not an equal one, and proportional
+scaling keeps it so. A snack for a user who eats none is refused, not
+planned.
 """
 
 from __future__ import annotations
@@ -126,10 +140,21 @@ __all__ = ["meal_energy_fraction", "meal_target", "spent_before"]
 _DAY_BUDGETED: frozenset[str] = frozenset({"sodium_mg"})
 
 
-def meal_energy_fraction(meal_slot: MealSlot) -> float:
-    """This meal's registered share of a day's target, e.g. 0.35 for lunch."""
+def meal_energy_fraction(meal_slot: MealSlot, *, eats_snack: bool = True) -> float:
+    """This meal's share of a day's target, e.g. 0.35 for lunch.
 
-    return citations.value_of(f"meal_split.energy_fraction_{meal_slot.value}")
+    ``eats_snack=False`` spreads the snack's share over the other meals in
+    proportion (module docstring, "A day without a snack"); lunch becomes
+    0.35 / 0.90 = 0.3889. Asking for the snack's own share then raises: there
+    is no snack in that day to size.
+    """
+
+    share = citations.value_of(f"meal_split.energy_fraction_{meal_slot.value}")
+    if eats_snack:
+        return share
+    if meal_slot is MealSlot.SNACK:
+        raise ValueError("no snack share: this day has no snack (eats_snack=False)")
+    return share / (1.0 - citations.value_of("meal_split.energy_fraction_snack"))
 
 
 def spent_before(
@@ -271,14 +296,17 @@ def meal_target(
     meal_slot: MealSlot,
     *,
     ledger: DayLedger | None = None,
+    eats_snack: bool = True,
 ) -> NutritionTarget:
     """Scale ``day_target`` to one meal; day-budgeted macros use ``ledger``.
 
     ``ledger`` defaults to ``None`` — a day with nothing planned yet — so every
     caller written before day budgets existed keeps working unchanged.
+    ``eats_snack`` defaults to the day every caller assumed before N30: one
+    with a snack in it. See :func:`meal_energy_fraction`.
     """
 
-    fraction = meal_energy_fraction(meal_slot)
+    fraction = meal_energy_fraction(meal_slot, eats_snack=eats_snack)
 
     def _scaled(bounds: Mapping[str, float]) -> dict[str, float]:
         return {m: v * fraction for m, v in bounds.items() if m not in _DAY_BUDGETED}

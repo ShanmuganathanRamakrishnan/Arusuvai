@@ -816,6 +816,23 @@ MUTATIONS: tuple[Mutation, ...] = (
         '            name="drink",\n'
         '            accepted_categories=frozenset({"buttermilk"}),\n',
     ),
+    # TASKS_3.md N30 (2026-10-11): a day without a snack.
+    Mutation(
+        "NS1", MEAL_TARGET, "a day without a snack spreads its share over the meals",
+        '    return share / (1.0 - citations.value_of("meal_split.energy_fraction_snack"))\n',
+        "    return share\n",
+    ),
+    Mutation(
+        "NS2", MEAL_TARGET, "a snack for a day without one is refused",
+        "    if meal_slot is MealSlot.SNACK:\n"
+        '        raise ValueError("no snack share: this day has no snack (eats_snack=False)")\n',
+        "",
+    ),
+    Mutation(
+        "NS3", PLAN, "plan_meal passes the profile's eats_snack to meal_target",
+        "        eats_snack=True if profile is None else profile.eats_snack,\n",
+        "        eats_snack=True,\n",
+    ),
 )
 
 
@@ -854,7 +871,11 @@ OWN_TESTS: dict[str, tuple[str, ...]] = {
     # D1 and D2 respectively, but not symmetrically — see that file's module
     # docstring above the two classes, and finding 49 (docs/audit_log.md).
     SCHEMAS_COMMON: ("test_planner_candidates.py",),
-    PLAN: ("test_shown_plate_preference.py", "test_on_request_slot.py"),
+    # test_snack_coverage.py since N30: it owns the eats_snack wiring test.
+    PLAN: (
+        "test_shown_plate_preference.py", "test_on_request_slot.py",
+        "test_snack_coverage.py",
+    ),
     # test_planner_quality.py owns the quality floor's per-slot rule.
     # test_snack_coverage.py (N29) is scoped to both: it exists to notice a
     # snack bound or a snack slot that takes a plate away from any body.

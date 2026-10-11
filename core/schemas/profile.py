@@ -95,6 +95,11 @@ class Profile:
     #: (DIAAS varies by pattern), not only by a later candidate filter.
     diet: DietPattern
     clinical_flags: frozenset[ClinicalFlag] = frozenset()
+    #: Whether this user's day has a snack in it (owner decision 2026-10-11,
+    #: TASKS_3.md N30). ``False`` gives the snack's share of the day to the
+    #: three meals; see ``core.nutrition.meal_target``. Defaults to the day
+    #: every profile had before the setting existed.
+    eats_snack: bool = True
     warnings: tuple[str, ...] = field(default_factory=tuple)
 
     def __post_init__(self) -> None:
