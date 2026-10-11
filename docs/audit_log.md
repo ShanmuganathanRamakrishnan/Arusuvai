@@ -6,6 +6,94 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-11 — N30b: the snack question in the profile and on the page
+
+**Asked.** Second half of N30 (entry below): the user answers the snack
+question once, it is saved, and the dashboard follows it.
+
+**Built.**
+- `ProfileIn.eats_snack` and `ProfileOut.eats_snack`, **required** (web/CLAUDE.md:
+  a new wire field is required, not defaulted). Every test payload updated
+  to send it.
+- `StoredProfile.eats_snack` (Boolean, not null). `create_all` adds tables,
+  not columns, so `_add_missing_columns` adds it to an older
+  `data/app.db` with every existing row True, the day those profiles were
+  planned against. Checked on a copy of the real database before use: 19
+  profiles, `(19, 19)` True. The local `data/app.db` was then upgraded by
+  the API start for the browser run.
+- `POST /api/plan` refuses a snack plate (422) for a profile with no snack.
+- Onboarding step 4: "A snack in your day?", "Yes, plan me a snack"
+  (default) or "No snack", with one line saying the three meals grow to
+  cover the whole day. Prefilled for a returning user.
+- Dashboard: no snack cards for a profile with no snack (hidden and
+  disabled; `.dash-plate-card[hidden]` needed, since the card's own
+  `display: flex` overrode the attribute), a "No snack" tag, and
+  `eats_snack` on every plan request.
+
+**Tests.** `tests/test_api_eats_snack.py` (5) and
+`tests/test_web_no_snack.py` (6). The first draft of the browser test used
+`expect_request`, which `tests/test_web_no_nested_waits.py` bans; it went
+red in the full run and was changed to `expect_response`.
+
+**Deletion checks, server, by hand** (each mechanism removed, the file
+run, restored):
+```
+A1 snack refused for a no-snack profile
+    FAILED tests/test_api_eats_snack.py::test_a_snack_plate_is_refused_for_a_profile_without_one
+    1 failed, 4 passed, 1 warning in 4.04s
+A2 setting stored
+    FAILED tests/test_api_eats_snack.py::test_the_setting_is_stored_and_read_back
+    1 failed, 4 passed, 1 warning in 2.90s
+A3 older database gains the column
+    FAILED tests/test_api_eats_snack.py::test_an_older_database_gains_the_column_with_every_profile_keeping_its_snack
+    1 failed, 4 passed, 1 warning in 3.34s
+A4 setting required on the wire
+    FAILED tests/test_api_eats_snack.py::test_a_profile_without_the_setting_is_rejected
+    1 failed, 4 passed, 1 warning in 2.25s
+```
+
+**Deletion checks, web, by hand** (the harness cannot grade `web/`; servers
+on 3000/8000, `FOODAI_WEB_TESTS=required`, after the `expect_response`
+change):
+```
+B1 dashboard hides snack plates
+    FAILED tests/test_web_no_snack.py::test_a_profile_without_a_snack_gets_no_snack_plates
+    1 failed, 5 passed in 6.45s
+B2 hidden card is not shown (CSS)
+    FAILED tests/test_web_no_snack.py::test_a_profile_without_a_snack_gets_no_snack_plates
+    1 failed, 5 passed in 6.44s
+B3 plan request carries eats_snack
+    FAILED tests/test_web_no_snack.py::test_every_plan_request_carries_the_answer
+    1 failed, 5 passed in 5.87s
+B4 onboarding sends the answer
+    FAILED tests/test_web_no_snack.py::test_a_returning_user_sees_and_sends_their_saved_answer
+    1 failed, 5 passed in 6.29s
+B5 onboarding prefills the saved answer
+    FAILED tests/test_web_no_snack.py::test_a_returning_user_sees_and_sends_their_saved_answer
+    1 failed, 5 passed in 6.23s
+B6 No snack tag
+    FAILED tests/test_web_no_snack.py::test_the_page_says_no_snack
+    1 failed, 5 passed in 6.13s
+B7 yes is the default
+    6 errors in 3.10s
+```
+B7 is red but not specific: with no default the fixture's first read finds
+no checked answer and every test errors. Stated rather than counted as a
+named failure.
+
+**Suite.**
+```
+FOODAI_WEB_TESTS=required python -m pytest tests/ -q
+702 passed, 1 warning in 290.21s (0:04:50)
+```
+
+**Not done.** No screenshot review of the new question's layout beyond
+`tests/test_web_wizard_layout.py` passing. A saved snack choice
+(`/api/choices`) for a user who then turns the snack off stays stored and
+unused; harmless, not cleaned up.
+
+**Disposition.** N30 done.
+
 ## 2026-10-11 — N30: a day without a snack (planner)
 
 **Asked.** Owner, 2026-10-11: "there should be an option for the person to

@@ -54,6 +54,9 @@
       const flags = p.clinical_flags.map((f) => Copy.FLAG_LABELS[f] || Copy.humanise(f)).join(", ");
       wrap.innerHTML += `<span class="tag">${flags}</span>`;
     }
+    // N30: said on the page, so a reader knows why there are no snack plates
+    // and why the meals are bigger.
+    if (!p.eats_snack) wrap.innerHTML += `<span class="tag">No snack</span>`;
   }
 
   // docs/methodology.md, "dev_mode versus validated": a plate solved with the

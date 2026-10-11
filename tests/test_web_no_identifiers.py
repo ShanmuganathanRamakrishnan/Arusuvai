@@ -163,7 +163,7 @@ def rendered_text() -> dict[str, list[str]]:
                 credentials: 'include', headers: j, body: JSON.stringify({
                   age_years: 31, sex: 'male', weight_kg: 121, height_cm: 176,
                   activity: 'moderate', goal: 'maintain', diet: 'vegetarian',
-                  clinical_flags: ['chronic_kidney_disease']})});
+                  clinical_flags: ['chronic_kidney_disease'], eats_snack: true})});
             }""",
             ["identifier-sweep@example.com", "sweep-pw-31882"],
         )

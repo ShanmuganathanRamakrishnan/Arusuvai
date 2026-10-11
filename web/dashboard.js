@@ -97,6 +97,7 @@
 
     mainEl.hidden = false;
     ArusuvaiDashboardSuccess.renderProfileTags(profile);
+    hideSnackPlates(profile);
   }
 
   // ------------------------------------------------------------------
@@ -115,6 +116,20 @@
   const planNetworkErrorEl = document.getElementById("obPlanNetworkError");
   const planSuccessEl = document.getElementById("obPlanSuccess");
   const planDeclineEl = document.getElementById("obPlanDecline");
+
+  // N30: a profile with no snack in its day gets no snack plates to pick.
+  // The API refuses one anyway; hiding the cards keeps the page from
+  // offering what it would then decline.
+  function hideSnackPlates(p) {
+    if (p.eats_snack) return;
+    document.querySelectorAll('input[name="plate"][value$=":snack"]').forEach((el) => {
+      el.checked = false;
+      el.disabled = true;
+      el.closest("label").hidden = true;
+    });
+    const checked = document.querySelector('input[name="plate"]:checked');
+    if (!checked) document.querySelector('input[name="plate"]:not(:disabled)').checked = true;
+  }
 
   function collectPlate() {
     const raw = document.querySelector('input[name="plate"]:checked').value;
@@ -259,6 +274,7 @@
         goal: profile.goal,
         diet: profile.diet,
         clinical_flags: profile.clinical_flags,
+        eats_snack: profile.eats_snack,
         picks,
         leave_empty: leaveEmpty,
       },

@@ -87,7 +87,7 @@ def walk():
                 credentials: 'include', headers: j, body: JSON.stringify({
                   age_years: 28, sex: 'male', weight_kg: 70, height_cm: 175,
                   activity: 'moderate', goal: 'maintain', diet: 'eggetarian',
-                  clinical_flags: []})});
+                  clinical_flags: [], eats_snack: true})});
             }""",
             ["remove-dish@example.com", "remove-dish-pw-71344"],
         )

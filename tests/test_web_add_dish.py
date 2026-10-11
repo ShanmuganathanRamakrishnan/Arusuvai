@@ -84,6 +84,7 @@ def _put_profile(page, email, password, **body):
 _BODY = dict(
     age_years=28, sex="male", weight_kg=70, height_cm=175,
     activity="moderate", goal="maintain", diet="eggetarian", clinical_flags=[],
+    eats_snack=True,
 )
 
 

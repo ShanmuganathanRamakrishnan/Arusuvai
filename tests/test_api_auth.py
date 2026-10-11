@@ -26,6 +26,7 @@ PROFILE = {
     "goal": "maintain",
     "diet": "vegetarian",
     "clinical_flags": ["hypertension"],
+    "eats_snack": True,
 }
 
 

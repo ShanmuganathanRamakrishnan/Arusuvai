@@ -24,7 +24,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, create_engine
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -80,6 +80,10 @@ class StoredProfile(Base):
     goal: Mapped[str] = mapped_column(String(32), nullable=False)
     diet: Mapped[str] = mapped_column(String(32), nullable=False)
     clinical_flags: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    #: TASKS_3.md N30. A profile saved before the setting existed reads as
+    #: True -- the day it was planned against until then (see
+    #: ``_add_missing_columns``).
+    eats_snack: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
@@ -122,6 +126,23 @@ class SavedChoices(Base):
         return [s for s in self.leave_empty.split(",") if s]
 
 
+def _add_missing_columns(engine) -> None:
+    """Add a column a newer ``StoredProfile`` has to an older database file.
+
+    ``create_all`` makes missing tables, never missing columns, so a
+    ``data/app.db`` from before N30 (2026-10-11) would fail every profile read.
+    Only ``eats_snack`` so far; existing rows get True, the day they were
+    planned against until then.
+    """
+
+    with engine.begin() as conn:
+        cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(profiles)")}
+        if "eats_snack" not in cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE profiles ADD COLUMN eats_snack BOOLEAN NOT NULL DEFAULT 1"
+            )
+
+
 def make_sessionmaker(database_url: str) -> tuple[sessionmaker[Session], "object"]:
     """Build an isolated engine + sessionmaker and create its tables.
 
@@ -138,6 +159,7 @@ def make_sessionmaker(database_url: str) -> tuple[sessionmaker[Session], "object
     else:
         engine = create_engine(database_url, connect_args=connect_args)
     Base.metadata.create_all(engine)
+    _add_missing_columns(engine)
     return sessionmaker(bind=engine, autoflush=False, autocommit=False), engine
 
 

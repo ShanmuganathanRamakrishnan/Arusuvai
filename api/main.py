@@ -47,7 +47,7 @@ from core.nutrition import citations
 from core.nutrition.targets import DerivedTarget, derive_target
 from core.foods.templates import template_for
 from core.planner.plan import default_library, plan_meal
-from core.schemas import ClinicalFlag, Profile
+from core.schemas import ClinicalFlag, MealSlot, Profile
 
 app = FastAPI(
     title="Arusuvai targets API",
@@ -150,6 +150,7 @@ def _profile_out(sp: StoredProfile) -> ProfileOut:
         goal=sp.goal,
         diet=sp.diet,
         clinical_flags=[ClinicalFlag(f) for f in sp.flags_list()],
+        eats_snack=sp.eats_snack,
         updated_at=sp.updated_at.isoformat(),
     )
 
@@ -174,6 +175,7 @@ def _validate_profile_in(body: ProfileIn) -> Profile:
             goal=body.goal,
             diet=body.diet,
             clinical_flags=frozenset(body.clinical_flags),
+            eats_snack=body.eats_snack,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -193,6 +195,7 @@ def _upsert_profile(db: Session, user: User, body: ProfileIn) -> StoredProfile:
     sp.goal = body.goal.value
     sp.diet = body.diet.value
     sp.clinical_flags = ",".join(f.value for f in body.clinical_flags)
+    sp.eats_snack = body.eats_snack
     db.commit()
     db.refresh(sp)
     return sp
@@ -441,6 +444,7 @@ def targets(body: ProfileIn) -> TargetsOut:
             goal=body.goal,
             diet=body.diet,
             clinical_flags=frozenset(body.clinical_flags),
+            eats_snack=body.eats_snack,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -494,9 +498,17 @@ def plan(body: PlanRequestIn) -> PlanOut:
             goal=body.goal,
             diet=body.diet,
             clinical_flags=frozenset(body.clinical_flags),
+            eats_snack=body.eats_snack,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    if body.meal_slot is MealSlot.SNACK and not profile.eats_snack:
+        # TASKS_3.md N30: this user's day has no snack, so there is no snack
+        # share to size one against. Refused rather than planned at 0.10.
+        raise HTTPException(
+            status_code=422, detail="This profile eats no snack, so no snack is planned."
+        )
 
     dt = derive_target(profile)
     # Passed explicitly rather than left to the default, so the value echoed
