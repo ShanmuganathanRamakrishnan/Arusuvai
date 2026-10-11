@@ -6,6 +6,80 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-10 — N29: a standing check that every body gets a snack plate
+
+**Asked.** Owner, 2026-10-10, "option 1" after N28 merged: add a test that
+fails if any region or diet loses its snack plate.
+
+**Why.** N28 found three North vegan bodies with no snack, and no test
+failed. The count lived only in `docs/design/probes/probe_banana_tea_dishes.py`.
+
+**Built.** `tests/test_snack_coverage.py`: the probe's grid (3 goals x 2
+sexes x 55/70/90 kg, 170 cm, 30 y, moderate) for both regions and all four
+diets, 144 cases, 8 parametrized tests. Each asserts every one of its 18
+bodies gets a passing snack plate. A failure names the bodies. The expected
+value is the owner's rule (every body gets a plate), not a snapshot of
+output; it pins the real library, so it is a product guard, not a test of
+one mechanism.
+
+**Shown to fail first.** With soya_chana_chaat back at its pre-N28 half
+katori (from 1732f52~1), then restored:
+```
+E       AssertionError: north_indian vegan: no snack for ['lose_fat male 55 kg', 'lose_fat female 55 kg', 'lose_fat female 70 kg']
+FAILED tests/test_snack_coverage.py::test_every_body_gets_a_snack_plate[vegan-north_indian]
+1 failed, 7 passed in 2.39s
+```
+Restored: `8 passed in 3.95s`.
+
+**Deletion rows.** `d4b_mutations.py`: `test_snack_coverage.py` added to
+the scoped tests of `MEAL_TARGET` and `TEMPLATES`. SP1-SP4 and FT1-FT4,
+full failure lists, PYTHONHASHSEED=0:
+```
+   all failures (2):
+      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_protein_floor
+      tests/test_snack_coverage.py::test_every_body_gets_a_snack_plate[vegan-north_indian]
+SP1  covered      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_protein_floor
+   all failures (3):
+      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_quality_protein_floor
+      tests/test_snack_coverage.py::test_every_body_gets_a_snack_plate[vegan-south_indian]
+      tests/test_snack_coverage.py::test_every_body_gets_a_snack_plate[vegan-north_indian]
+SP2  covered      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_quality_protein_floor
+   all failures (2):
+      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_protein_floor
+      tests/test_snack_coverage.py::test_every_body_gets_a_snack_plate[vegan-north_indian]
+SP3  covered      tests/test_nutrition_meal_target.py::TestASnackHasNoProteinFloor::test_a_snack_has_no_protein_floor
+   all failures (3):
+      tests/test_nutrition_meal_target.py::TestASnackHasNoFatOrCarbFloor::test_the_fat_carb_rung_does_not_restore_a_dropped_floor
+      tests/test_nutrition_meal_target.py::TestASnackHasNoCarbCeiling::test_a_snack_has_no_carb_ceiling
+      tests/test_snack_coverage.py::test_every_body_gets_a_snack_plate[vegan-north_indian]
+SP4  covered      tests/test_nutrition_meal_target.py::TestASnackHasNoFatOrCarbFloor::test_the_fat_carb_rung_does_not_restore_a_dropped_floor
+   all failures (1):
+      tests/test_templates_and_portions.py::TestTemplatesAreNotUniform::test_south_snack_is_one_dish_and_an_optional_drink
+FT1  covered      tests/test_templates_and_portions.py::TestTemplatesAreNotUniform::test_south_snack_is_one_dish_and_an_optional_drink
+   all failures (1):
+      tests/test_templates_and_portions.py::TestTemplatesAreNotUniform::test_south_snack_is_one_dish_and_an_optional_drink
+FT2  covered      tests/test_templates_and_portions.py::TestTemplatesAreNotUniform::test_south_snack_is_one_dish_and_an_optional_drink
+   all failures (2):
+      tests/test_snack_coverage.py::test_every_body_gets_a_snack_plate[vegan-north_indian]
+      tests/test_templates_and_portions.py::TestTemplatesAreNotUniform::test_north_snack_offers_two_dish_kinds_and_an_optional_drink
+FT3  covered      tests/test_snack_coverage.py::test_every_body_gets_a_snack_plate[vegan-north_indian]
+   all failures (1):
+      tests/test_templates_and_portions.py::TestTemplatesAreNotUniform::test_north_snack_offers_two_dish_kinds_and_an_optional_drink
+FT4  covered      tests/test_templates_and_portions.py::TestTemplatesAreNotUniform::test_north_snack_offers_two_dish_kinds_and_an_optional_drink
+====================================================================================================
+8 mechanisms: 8 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+The new test goes red on SP1, SP2, SP3, SP4 and FT3. On FT1, FT2 and FT4 it
+stays green, correctly: without fruit at the South snack or tea in either
+drink slot, every body still gets a plate. Those three stay covered by the
+template shape tests only.
+
+**Suite.** `FOODAI_WEB_TESTS=required python -m pytest tests/ -q`, servers
+up, same session:
+```
+685 passed, 1 warning in 293.20s (0:04:53)
+```
+
 ## 2026-10-09 — N28: soya chana chaat served by the quarter katori
 
 **Asked.** Owner, 2026-10-09, "option 1": find out why 3 of 18 North vegan
