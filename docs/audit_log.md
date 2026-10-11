@@ -6,6 +6,37 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-11 — N30c: the plate picker stops counting its plates
+
+**Found.** Owner asked to see the N30 screens before pushing ("option 2").
+Screenshots at 1440 x 900 and 390 x 844 (onboarding step 4; dashboard
+with and without a snack) showed one defect: the dashboard said "These
+eight are the only region-and-meal combinations..." above six plates for a
+profile with no snack. N30b's tests did not read that sentence.
+
+**Fixed.** The sentence no longer counts: "These are the only
+region-and-meal combinations with verified recipe data today."
+`tests/test_web_no_snack.py::test_the_picker_does_not_count_plates_it_may_not_show`
+reads it for both profiles.
+
+**Deletion check, by hand** ("These eight" put back, file run, restored):
+```
+C1 picker note has no count ("These eight" restored)
+    FAILED tests/test_web_no_snack.py::test_the_picker_does_not_count_plates_it_may_not_show
+    1 failed, 6 passed in 8.33s
+```
+
+**Also seen, not changed.** On a phone-width full-page screenshot the
+wizard's sticky Back / See my targets bar sits over the middle of step 4.
+That is how a full-page capture draws a bar fixed to the screen, not a
+new overlap; the question itself shows in full.
+
+**Suite.**
+```
+FOODAI_WEB_TESTS=required python -m pytest tests/ -q
+703 passed, 1 warning in 302.19s (0:05:02)
+```
+
 ## 2026-10-11 — N30b: the snack question in the profile and on the page
 
 **Asked.** Second half of N30 (entry below): the user answers the snack

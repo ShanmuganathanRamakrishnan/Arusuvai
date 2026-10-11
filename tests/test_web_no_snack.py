@@ -51,6 +51,7 @@ def _dashboard(page, seen, key):
     page.wait_for_selector("#dashGenerate")
     seen[f"{key}_plates"] = page.evaluate(PLATES)
     seen[f"{key}_tags"] = page.evaluate(TAGS)
+    seen[f"{key}_picker_note"] = page.inner_text("#dashPickerNote")
     page.click('input[name="plate"][value="north_indian:lunch"]')
     with page.expect_response(
         lambda r: "/api/plan" in r.url and r.request.method == "POST", timeout=30000
@@ -138,3 +139,10 @@ def test_every_plan_request_carries_the_answer(walk):
 def test_a_returning_user_sees_and_sends_their_saved_answer(walk):
     assert walk["returning_answer"] == "no"
     assert walk["targets_bodies"] and all(b["eats_snack"] is False for b in walk["targets_bodies"])
+
+
+def test_the_picker_does_not_count_plates_it_may_not_show(walk):
+    # "These eight" sat above six plates for a profile with no snack, found
+    # in the N30 screenshots (docs/audit_log.md "N30c").
+    for key in ("without", "with"):
+        assert "eight" not in walk[f"{key}_picker_note"].lower()
