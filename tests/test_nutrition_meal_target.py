@@ -24,6 +24,43 @@ def test_fractions_match_the_registered_constants_and_sum_to_a_day():
     )
 
 
+class TestADayWithoutASnack:
+    """Owner decision 2026-10-11 (TASKS_3.md N30, docs/audit_log.md "N30"):
+    a user who eats no snack gets the snack's 0.10 spread over the three
+    meals in proportion, each share divided by 1 - 0.10 = 0.90.
+    """
+
+    def test_each_meal_share_grows_in_proportion(self):
+        #   breakfast 0.25 / 0.90 = 0.27778
+        #   lunch     0.35 / 0.90 = 0.38889
+        #   dinner    0.30 / 0.90 = 0.33333
+        assert meal_energy_fraction(MealSlot.BREAKFAST, eats_snack=False) == pytest.approx(0.27778, abs=1e-5)
+        assert meal_energy_fraction(MealSlot.LUNCH, eats_snack=False) == pytest.approx(0.38889, abs=1e-5)
+        assert meal_energy_fraction(MealSlot.DINNER, eats_snack=False) == pytest.approx(0.33333, abs=1e-5)
+
+    def test_the_three_meals_still_make_a_whole_day(self):
+        total = sum(
+            meal_energy_fraction(slot, eats_snack=False)
+            for slot in (MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER)
+        )
+        assert total == pytest.approx(1.0)
+
+    def test_a_snack_for_a_day_without_one_is_refused(self):
+        with pytest.raises(ValueError, match="no snack"):
+            meal_energy_fraction(MealSlot.SNACK, eats_snack=False)
+        with pytest.raises(ValueError, match="no snack"):
+            meal_target(_day(), MealSlot.SNACK, eats_snack=False)
+
+    def test_meal_target_scales_by_the_grown_share(self):
+        # day energy point 2000 kcal x 0.35 / 0.90 = 777.78 kcal
+        lunch = meal_target(_day(), MealSlot.LUNCH, eats_snack=False)
+        assert lunch.point("energy_kcal") == pytest.approx(777.78, abs=0.01)
+
+    def test_the_default_is_a_day_with_a_snack(self):
+        # 2000 x 0.35 = 700 kcal, unchanged from before N30.
+        assert meal_target(_day(), MealSlot.LUNCH).point("energy_kcal") == pytest.approx(700.0)
+
+
 def _day() -> "object":
     # day energy 2000 kcal +/-5% -> floor 1900, ceiling 2100 (simple_target's
     # own default tolerance). protein floor 100 g. fat 60 g +/-3/11 (0.2727,

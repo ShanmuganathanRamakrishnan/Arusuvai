@@ -24,6 +24,10 @@ class ProfileIn(BaseModel):
     goal: Goal
     diet: DietPattern
     clinical_flags: list[ClinicalFlag] = Field(default_factory=list)
+    #: TASKS_3.md N30 (owner 2026-10-11). Required, not defaulted
+    #: (web/CLAUDE.md: a new wire field is required): ``False`` sizes the
+    #: three meals to the whole day and refuses a snack plate.
+    eats_snack: bool = Field(description="Whether this user's day has a snack in it.")
 
 
 class EnergyOut(BaseModel):
@@ -189,6 +193,7 @@ class ProfileOut(BaseModel):
     goal: Goal
     diet: DietPattern
     clinical_flags: list[ClinicalFlag]
+    eats_snack: bool
     updated_at: str
 
 

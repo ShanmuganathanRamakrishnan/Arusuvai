@@ -59,7 +59,7 @@ def rendered():
                 credentials: 'include', headers: j, body: JSON.stringify({
                   age_years: 31, sex: 'male', weight_kg: 70, height_cm: 175,
                   activity: 'moderate', goal: 'maintain', diet: 'vegetarian',
-                  clinical_flags: []})});
+                  clinical_flags: [], eats_snack: true})});
             }""",
             ["portion-grams@example.com", "portion-pw-31882"],
         )

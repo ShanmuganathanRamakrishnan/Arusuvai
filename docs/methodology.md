@@ -917,6 +917,21 @@ splits nutrients by snack. **Limitations:** an all-carbohydrate snack is
 capped only by its energy window, and nothing yet checks the day's
 carbohydrate across meals.
 
+## A snack is the user's choice (2026-10-11)
+
+A user may say their day has no snack. The snack's share (0.10) then goes to
+the three meals in proportion to their own shares: breakfast 0.25 / 0.90 =
+0.2778, lunch 0.3889, dinner 0.3333, still a whole day. Owner decision,
+`docs/audit_log.md` "N30". A rule on the registered shares, not a new
+constant. The disagreement, recorded: an Indian nutrition textbook (Bamji,
+Rao & Reddy 2003, quoted in Public Health Nutr 2012, DOI
+10.1017/S1368980012002777; the book not opened) divides the day equally
+between three meals. Intake surveys in Japan and the US show breakfast the
+smallest meal, and no Indian study found measured the split, so the
+project's existing shape is kept and scaled. A snack plate is refused for a
+day without a snack. **Limitations:** the four shares themselves are still
+project decisions with no source.
+
 ## Sodium is a day budget, not a share of one (2026-08-02)
 
 Until 2026-08-02 every bound in a day target was scaled to a meal by the meal's

@@ -257,6 +257,7 @@
       goal: fd.get("goal"),
       diet: fd.get("diet"),
       clinical_flags: fd.getAll("clinical_flags"),
+      eats_snack: fd.get("eats_snack") === "yes",
     };
   }
 
@@ -278,6 +279,8 @@
     form.querySelectorAll('input[name="clinical_flags"]').forEach((el) => {
       el.checked = p.clinical_flags.includes(el.value);
     });
+    const snackEl = form.querySelector(`input[name="eats_snack"][value="${p.eats_snack ? "yes" : "no"}"]`);
+    if (snackEl) snackEl.checked = true;
   }
 
   // ------------------------------------------------------------------

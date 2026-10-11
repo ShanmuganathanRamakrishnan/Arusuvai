@@ -6,6 +6,200 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-11 — N30c: the plate picker stops counting its plates
+
+**Found.** Owner asked to see the N30 screens before pushing ("option 2").
+Screenshots at 1440 x 900 and 390 x 844 (onboarding step 4; dashboard
+with and without a snack) showed one defect: the dashboard said "These
+eight are the only region-and-meal combinations..." above six plates for a
+profile with no snack. N30b's tests did not read that sentence.
+
+**Fixed.** The sentence no longer counts: "These are the only
+region-and-meal combinations with verified recipe data today."
+`tests/test_web_no_snack.py::test_the_picker_does_not_count_plates_it_may_not_show`
+reads it for both profiles.
+
+**Deletion check, by hand** ("These eight" put back, file run, restored):
+```
+C1 picker note has no count ("These eight" restored)
+    FAILED tests/test_web_no_snack.py::test_the_picker_does_not_count_plates_it_may_not_show
+    1 failed, 6 passed in 8.33s
+```
+
+**Also seen, not changed.** On a phone-width full-page screenshot the
+wizard's sticky Back / See my targets bar sits over the middle of step 4.
+That is how a full-page capture draws a bar fixed to the screen, not a
+new overlap; the question itself shows in full.
+
+**Suite.**
+```
+FOODAI_WEB_TESTS=required python -m pytest tests/ -q
+703 passed, 1 warning in 302.19s (0:05:02)
+```
+
+## 2026-10-11 — N30b: the snack question in the profile and on the page
+
+**Asked.** Second half of N30 (entry below): the user answers the snack
+question once, it is saved, and the dashboard follows it.
+
+**Built.**
+- `ProfileIn.eats_snack` and `ProfileOut.eats_snack`, **required** (web/CLAUDE.md:
+  a new wire field is required, not defaulted). Every test payload updated
+  to send it.
+- `StoredProfile.eats_snack` (Boolean, not null). `create_all` adds tables,
+  not columns, so `_add_missing_columns` adds it to an older
+  `data/app.db` with every existing row True, the day those profiles were
+  planned against. Checked on a copy of the real database before use: 19
+  profiles, `(19, 19)` True. The local `data/app.db` was then upgraded by
+  the API start for the browser run.
+- `POST /api/plan` refuses a snack plate (422) for a profile with no snack.
+- Onboarding step 4: "A snack in your day?", "Yes, plan me a snack"
+  (default) or "No snack", with one line saying the three meals grow to
+  cover the whole day. Prefilled for a returning user.
+- Dashboard: no snack cards for a profile with no snack (hidden and
+  disabled; `.dash-plate-card[hidden]` needed, since the card's own
+  `display: flex` overrode the attribute), a "No snack" tag, and
+  `eats_snack` on every plan request.
+
+**Tests.** `tests/test_api_eats_snack.py` (5) and
+`tests/test_web_no_snack.py` (6). The first draft of the browser test used
+`expect_request`, which `tests/test_web_no_nested_waits.py` bans; it went
+red in the full run and was changed to `expect_response`.
+
+**Deletion checks, server, by hand** (each mechanism removed, the file
+run, restored):
+```
+A1 snack refused for a no-snack profile
+    FAILED tests/test_api_eats_snack.py::test_a_snack_plate_is_refused_for_a_profile_without_one
+    1 failed, 4 passed, 1 warning in 4.04s
+A2 setting stored
+    FAILED tests/test_api_eats_snack.py::test_the_setting_is_stored_and_read_back
+    1 failed, 4 passed, 1 warning in 2.90s
+A3 older database gains the column
+    FAILED tests/test_api_eats_snack.py::test_an_older_database_gains_the_column_with_every_profile_keeping_its_snack
+    1 failed, 4 passed, 1 warning in 3.34s
+A4 setting required on the wire
+    FAILED tests/test_api_eats_snack.py::test_a_profile_without_the_setting_is_rejected
+    1 failed, 4 passed, 1 warning in 2.25s
+```
+
+**Deletion checks, web, by hand** (the harness cannot grade `web/`; servers
+on 3000/8000, `FOODAI_WEB_TESTS=required`, after the `expect_response`
+change):
+```
+B1 dashboard hides snack plates
+    FAILED tests/test_web_no_snack.py::test_a_profile_without_a_snack_gets_no_snack_plates
+    1 failed, 5 passed in 6.45s
+B2 hidden card is not shown (CSS)
+    FAILED tests/test_web_no_snack.py::test_a_profile_without_a_snack_gets_no_snack_plates
+    1 failed, 5 passed in 6.44s
+B3 plan request carries eats_snack
+    FAILED tests/test_web_no_snack.py::test_every_plan_request_carries_the_answer
+    1 failed, 5 passed in 5.87s
+B4 onboarding sends the answer
+    FAILED tests/test_web_no_snack.py::test_a_returning_user_sees_and_sends_their_saved_answer
+    1 failed, 5 passed in 6.29s
+B5 onboarding prefills the saved answer
+    FAILED tests/test_web_no_snack.py::test_a_returning_user_sees_and_sends_their_saved_answer
+    1 failed, 5 passed in 6.23s
+B6 No snack tag
+    FAILED tests/test_web_no_snack.py::test_the_page_says_no_snack
+    1 failed, 5 passed in 6.13s
+B7 yes is the default
+    6 errors in 3.10s
+```
+B7 is red but not specific: with no default the fixture's first read finds
+no checked answer and every test errors. Stated rather than counted as a
+named failure.
+
+**Suite.**
+```
+FOODAI_WEB_TESTS=required python -m pytest tests/ -q
+702 passed, 1 warning in 290.21s (0:04:50)
+```
+
+**Not done.** No screenshot review of the new question's layout beyond
+`tests/test_web_wizard_layout.py` passing. A saved snack choice
+(`/api/choices`) for a user who then turns the snack off stays stored and
+unused; harmless, not cleaned up.
+
+**Disposition.** N30 done.
+
+## 2026-10-11 — N30: a day without a snack (planner)
+
+**Asked.** Owner, 2026-10-11: "there should be an option for the person to
+have a snack", not always given. Then "option 1" on how to share the
+snack's part of the day, then "option 1 it is".
+
+**Found.** The dashboard plans one meal at a time, so a snack was only
+planned when picked. But `meal_target` sized every meal as a fixed share of
+the day: breakfast 0.25, lunch 0.35, dinner 0.30, snack 0.10
+(`meal_split.energy_fraction_*`, project decisions, no source). A user who
+skips the snack had 10% of the day planned nowhere.
+
+**Evidence searched (2026-10-11).**
+- Indian guidance: the day's energy "equally divided between the three
+  major meals", adjusted for snacks. Bamji, Rao & Reddy, *Textbook of Human
+  Nutrition*, 2nd ed., 2003, as quoted by Sivaramakrishnan & Kamath, Public
+  Health Nutr 2012;15(11):2040-6, DOI 10.1017/S1368980012002777 (1,027
+  people, Mumbai). The textbook itself was not opened.
+- No Indian study found that measured adults' energy share per meal. The
+  Mumbai study reports only breakfast: 64% got 15% or less of the day's
+  energy RDA from it.
+- Intake elsewhere: Japan breakfast 21 / lunch 32 / dinner 40 / snacks 11
+  (PMC9991704); US adults breakfast 18 / lunch 23 / dinner 36 (USDA WWEIA
+  Data Briefs 55, 57, 59, NHANES 2017-March 2020). Breakfast is the smallest
+  meal in both.
+
+**Decision (owner, "option 1").** Proportional: each meal's share divided
+by 1 - 0.10, so breakfast 0.2778, lunch 0.3889, dinner 0.3333. A rule on the
+registered shares, not a new constant. Equal thirds (the textbook) was
+offered and not taken: it would grow breakfast from 0.25 to 0.33 where
+intake data shows breakfast smallest. Per the owner's 2026-10-10 rule, a
+clear written boundary, with the disagreement noted.
+
+**Built.**
+- `Profile.eats_snack` (default True, the day every profile had before).
+- `meal_energy_fraction(slot, eats_snack=)` and `meal_target(...,
+  eats_snack=)`; `eats_snack=False` divides by 0.90, and a snack for that
+  day raises `ValueError` rather than being sized at 0.10.
+- `plan_meal` passes `profile.eats_snack` (True when no profile).
+- Tests: `TestADayWithoutASnack` (5) in
+  `tests/test_nutrition_meal_target.py`; one wiring test in
+  `tests/test_snack_coverage.py` (lunch point 0.35 vs 0.35 / 0.90 of the
+  day; snack refused).
+
+**Deletion rows.** NS1 (division removed), NS2 (snack refusal removed), NS3
+(`plan_meal` always passes True). `test_snack_coverage.py` added to `PLAN`'s
+scoped tests. PYTHONHASHSEED=0, full failure lists:
+```
+   all failures (4):
+      tests/test_nutrition_meal_target.py::TestADayWithoutASnack::test_each_meal_share_grows_in_proportion
+      tests/test_nutrition_meal_target.py::TestADayWithoutASnack::test_the_three_meals_still_make_a_whole_day
+      tests/test_nutrition_meal_target.py::TestADayWithoutASnack::test_meal_target_scales_by_the_grown_share
+      tests/test_snack_coverage.py::test_a_profile_without_a_snack_gets_bigger_meals_and_no_snack
+NS1  covered      tests/test_nutrition_meal_target.py::TestADayWithoutASnack::test_each_meal_share_grows_in_proportion
+   all failures (2):
+      tests/test_nutrition_meal_target.py::TestADayWithoutASnack::test_a_snack_for_a_day_without_one_is_refused
+      tests/test_snack_coverage.py::test_a_profile_without_a_snack_gets_bigger_meals_and_no_snack
+NS2  covered      tests/test_nutrition_meal_target.py::TestADayWithoutASnack::test_a_snack_for_a_day_without_one_is_refused
+   all failures (1):
+      tests/test_snack_coverage.py::test_a_profile_without_a_snack_gets_bigger_meals_and_no_snack
+NS3  covered      tests/test_snack_coverage.py::test_a_profile_without_a_snack_gets_bigger_meals_and_no_snack
+====================================================================================================
+3 mechanisms: 3 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+**Suite (this commit alone, api/ and web/ changes set aside).** Browser
+tests not run for this commit: the default is unchanged, and the next
+commit (the setting on the wire and the page) runs them required.
+```
+590 passed, 101 skipped, 1 warning in 123.89s (0:02:03)
+```
+
+**Disposition.** Planner half done. The profile setting, its storage and
+the page follow in the next commit.
+
 ## 2026-10-10 — N29: a standing check that every body gets a snack plate
 
 **Asked.** Owner, 2026-10-10, "option 1" after N28 merged: add a test that

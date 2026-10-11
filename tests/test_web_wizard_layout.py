@@ -506,7 +506,7 @@ def test_plate_picker_control_column_matches_the_wizard(measurements):
                 credentials: 'include', headers: j, body: JSON.stringify({
                   age_years: 31, sex: 'male', weight_kg: 74, height_cm: 176,
                   activity: 'moderate', goal: 'maintain', diet: 'vegetarian',
-                  clinical_flags: []})});
+                  clinical_flags: [], eats_snack: true})});
             }""",
             [email, "layout-pw-77213"],
         )

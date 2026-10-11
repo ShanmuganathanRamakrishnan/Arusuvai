@@ -27,6 +27,7 @@ def _body(**overrides) -> dict:
         "activity": "moderate",
         "goal": "maintain",
         "diet": "non_vegetarian",
+        "eats_snack": True,
     }
     body.update(overrides)
     return body

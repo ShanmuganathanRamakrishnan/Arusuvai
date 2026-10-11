@@ -126,7 +126,7 @@ def _render_decline(playwright, violations, dev_mode=True):
                 credentials: 'include', headers: j, body: JSON.stringify({
                   age_years: 31, sex: 'male', weight_kg: 74, height_cm: 176,
                   activity: 'moderate', goal: 'maintain', diet: 'vegetarian',
-                  clinical_flags: ['chronic_kidney_disease']})});
+                  clinical_flags: ['chronic_kidney_disease'], eats_snack: true})});
             }""",
             ["decline-copy@example.com", "decline-pw-31882"],
         )

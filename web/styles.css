@@ -1238,6 +1238,8 @@ a:focus-visible {
    :has(input:checked) below carries the selected state, same mechanism as
    .ob-selectable elsewhere in this sheet; :has(input:focus-visible) carries
    the keyboard ring. */
+/* N30: a snack card for a profile with no snack in its day. */
+.dash-plate-card[hidden] { display: none; }
 .dash-plate-card input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
 .dash-plate-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 9px; }
 .dash-plate-slot { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; color: rgba(43, 38, 34, .42); transition: color .25s; }

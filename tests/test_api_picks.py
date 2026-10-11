@@ -20,7 +20,7 @@ client = TestClient(app)
 
 BODY = dict(
     weight_kg=70, height_cm=175, age_years=28, sex="male", activity="moderate",
-    goal="maintain", diet="eggetarian", clinical_flags=[],
+    goal="maintain", diet="eggetarian", clinical_flags=[], eats_snack=True,
     region="south_indian", meal_slot="breakfast",
 )
 

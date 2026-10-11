@@ -181,7 +181,10 @@ def plan_meal(
     """
 
     template = template_for(region, meal_slot)
-    single_meal_target = meal_target(day_target, meal_slot, ledger=ledger)
+    single_meal_target = meal_target(
+        day_target, meal_slot, ledger=ledger,
+        eats_snack=True if profile is None else profile.eats_snack,
+    )
     pool = build_candidate_pool(
         library.components(),
         library.ingredients,

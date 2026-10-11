@@ -39,7 +39,7 @@ SIGN_IN = """async ([email, password, choices]) => {
     credentials: 'include', headers: j, body: JSON.stringify({
       age_years: 28, sex: 'male', weight_kg: 70, height_cm: 175,
       activity: 'moderate', goal: 'maintain', diet: 'eggetarian',
-      clinical_flags: []})});
+      clinical_flags: [], eats_snack: true})});
   // The account outlives the run (data/app.db): start from a known state.
   await fetch('http://localhost:8000/api/choices', {method: 'PUT',
     credentials: 'include', headers: j, body: JSON.stringify(Object.assign(

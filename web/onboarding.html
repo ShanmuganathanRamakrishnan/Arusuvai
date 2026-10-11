@@ -266,6 +266,16 @@
             <p class="ob-field-note">South and North Indian are the two regions with verified recipe data today. Jain
               plans skip onion, garlic and root vegetables automatically.</p>
 
+            <!-- TASKS_3.md N30 (owner 2026-10-11): a snack is the user's
+                 choice. "No" shares the snack's part of the day across the
+                 three meals and takes the snack plates off the dashboard. -->
+            <span class="ob-group-lbl" style="margin-top:20px;">A snack in your day?</span>
+            <div class="ob-pill-row" role="radiogroup" aria-label="A snack in your day">
+              <label class="ob-plate-opt ob-selectable"><input type="radio" name="eats_snack" value="yes" checked> Yes, plan me a snack</label>
+              <label class="ob-plate-opt ob-selectable"><input type="radio" name="eats_snack" value="no"> No snack</label>
+            </div>
+            <p class="ob-field-note">With no snack, your breakfast, lunch and dinner grow to cover the whole day.</p>
+
             <div class="ob-flags">
               <span class="ob-flags-title">Anything we should protect around?</span>
               <!-- Compressed from five lines. The cards below name the exact
