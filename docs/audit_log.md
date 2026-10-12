@@ -6,6 +6,82 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-12 — N31: no body loses its breakfast, lunch or dinner plate
+
+**Asked.** Owner, 2026-10-11, "go with the check": N29's snack guard for
+breakfast, lunch and dinner. Then, after the finding below, "option 1 and
+fix gaps after".
+
+**Premise wrong, said and stopped.** Measured before any test was written
+(scratchpad probe, PYTHONHASHSEED=0): not every body gets a plate. N29's
+grid (3 goals x 2 sexes x 55/70/90 kg, 170 cm, 30 y, moderate), both
+regions, four diets, with a snack in the day and without (N30):
+```
+(True, 'breakfast') 138/144
+(True, 'lunch') 136/144
+(True, 'dinner') 130/144
+(False, 'breakfast') 136/144
+(False, 'lunch') 139/144
+(False, 'dinner') 139/144
+```
+818 of 864 plan; 46 do not, 45 of them lose_fat, plus gain_muscle female
+90 kg vegan at South lunch without a snack. Blocking macros, from the
+probe: mostly energy, carbohydrate or fat, a few protein,
+quality-protein or sodium. Worst cells: North vegan breakfast (12/18 with
+a snack, 13/18 without) and South vegan dinner (13/18 with). Not new: the
+dashboard's own notes record partial coverage. N30's side effect, stated:
+going without a snack closes 13 lunch and dinner gaps and opens 1 (gain_muscle
+female 90 kg vegan, South lunch, sodium), net +12; at breakfast it opens 3
+and closes 1, net -2: lose_fat female 90 kg at North breakfast
+(veg/egg/non-veg), where the bigger share passes what the dishes reach.
+(Reported to the owner on 2026-10-11 as "fixes 11 lunches and dinners";
+the net is 12. Corrected here.)
+
+**Built (option 1).** `tests/test_meal_coverage.py`: `KNOWN_GAPS` lists
+the 46 by (eats_snack, meal, region, diet). Twelve tests, one per (snack or
+not, meal, region); each fails on a body outside the list with no plate
+("lost a plate") and on a listed body that now plans ("gap closed, take it
+out of KNOWN_GAPS"). A thirteenth checks the list sums to 28 + 18. The gap
+list was generated under PYTHONHASHSEED 1 and 777 in separate processes:
+byte-identical (`cmp`).
+
+**Deletion checks, by hand** (each restored after):
+```
+M1 soya_chunk_curry removed from data/recipes (lost plates expected)
+    E       AssertionError: lost a plate: ['vegetarian: lose_fat female 90 kg', 'eggetarian: lose_fat female 90 kg', 'vegan: lose_fat female 90 kg']
+    FAILED tests/test_meal_coverage.py::test_no_body_loses_its_plate[snack-lunch-north_indian]
+    FAILED tests/test_meal_coverage.py::test_no_body_loses_its_plate[snack-dinner-north_indian]
+    2 failed, 11 deselected in 40.72s
+M2 no-snack share division removed (NS1)
+    FAILED tests/test_meal_coverage.py::test_no_body_loses_its_plate[no_snack-breakfast-north_indian]
+    FAILED tests/test_meal_coverage.py::test_no_body_loses_its_plate[no_snack-lunch-south_indian]
+    FAILED tests/test_meal_coverage.py::test_no_body_loses_its_plate[no_snack-dinner-south_indian]
+    FAILED tests/test_meal_coverage.py::test_no_body_loses_its_plate[no_snack-dinner-north_indian]
+    4 failed, 2 passed, 7 deselected in 149.25s (0:02:29)
+M3 a fake gap added (vegetarian maintain male 70 kg, North breakfast)
+E       AssertionError: gap closed, take it out of KNOWN_GAPS: ['vegetarian: maintain male 70 kg']
+1 failed, 12 deselected in 5.85s
+```
+`d4b_mutations.py`: the file is scoped to `MEAL_TARGET` and `TEMPLATES`.
+No sweep was re-run for this commit; M1-M3 stand in for it.
+
+**Cost, stated.** The file takes 346.81 s alone (13 passed), about one
+second per plan. Profiled on nine South lunches: 7.3 s, 8.0 s of it
+cumulative in `nutrition_of_recipe` (59,772 calls) under
+`combinations.macro_bounds` -- the same dish-unit nutrition worked out again
+for every combination. Logged, not fixed here: a cache there is a
+performance change to `core/` with its own deletion check. Every full run
+and every mutation row is about 6 minutes longer until then.
+
+**Suite.**
+```
+FOODAI_WEB_TESTS=required python -m pytest tests/ -q
+716 passed, 1 warning in 536.65s (0:08:56)
+```
+
+**Disposition.** Guard in place. The 46 gaps are the open to-do list (owner:
+"fix gaps after").
+
 ## 2026-10-11 — N30c: the plate picker stops counting its plates
 
 **Found.** Owner asked to see the N30 screens before pushing ("option 2").

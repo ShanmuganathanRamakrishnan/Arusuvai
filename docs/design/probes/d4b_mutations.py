@@ -879,12 +879,18 @@ OWN_TESTS: dict[str, tuple[str, ...]] = {
     # test_planner_quality.py owns the quality floor's per-slot rule.
     # test_snack_coverage.py (N29) is scoped to both: it exists to notice a
     # snack bound or a snack slot that takes a plate away from any body.
+    # test_meal_coverage.py (N31) likewise for breakfast, lunch and dinner,
+    # against a written list of known gaps. It takes about 6 minutes, so
+    # every row of a sweep now costs that much more.
     MEAL_TARGET: (
         "test_nutrition_meal_target.py", "test_planner_quality.py",
-        "test_snack_coverage.py",
+        "test_snack_coverage.py", "test_meal_coverage.py",
     ),
     # The file that pins each snack slot's accepted kinds.
-    TEMPLATES: ("test_templates_and_portions.py", "test_snack_coverage.py"),
+    TEMPLATES: (
+        "test_templates_and_portions.py", "test_snack_coverage.py",
+        "test_meal_coverage.py",
+    ),
 }
 
 
