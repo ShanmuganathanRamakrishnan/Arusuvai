@@ -251,6 +251,21 @@ MUTATIONS: tuple[Mutation, ...] = (
         "            if reachable < quality_floor:",
         "            if False:",
     ),
+    Mutation(
+        "N33a", COMBINATIONS, "the pre-filter remembers each component's macro reach",
+        "                bounds = reach.get(key)",
+        "                bounds = None",
+    ),
+    Mutation(
+        "N33b", COMBINATIONS, "the remembered reach is keyed by component and macro",
+        "                key = (component.id, macro)",
+        "                key = component.id",
+    ),
+    Mutation(
+        "N33c", COMBINATIONS, "the pre-filter remembers each component's quality reach",
+        "                top = quality_reach.get(component.id)",
+        "                top = None",
+    ),
     # ------------------------------------------------------------------- solver
     Mutation(
         "S1", SOLVER, "solver gate: macro floor",

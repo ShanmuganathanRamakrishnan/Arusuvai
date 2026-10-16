@@ -251,6 +251,115 @@ class TestFeasibilityPreFilter:
         }
 
 
+class TestEachDishIsSummedOnce:
+    """TASKS_3.md N33 (docs/audit_log.md 2026-10-16): the pre-filter
+    remembers each component's reach instead of re-summing it per combination.
+
+    The feasibility fixture has 2 slots x 2 candidates = 4 components and 4
+    combinations, each combination holding 2 components. With two bounded
+    macros and floors every combination clears (no early break):
+      re-summed every time: 4 combinations x 2 macros x 2 components = 16
+      remembered:           4 components x 2 macros                 =  8
+    and for the quality floor, 4 x 2 = 8 against 4.
+    """
+
+    def _pool(self):
+        return build_candidate_pool(
+            FEASIBILITY_COMPONENTS,
+            FEASIBILITY_INGREDIENTS,
+            template=FEASIBILITY_TEMPLATE,
+            diet_pattern=DietPattern.VEGETARIAN,
+            dev_mode=False,
+        )
+
+    def test_each_component_macro_is_worked_out_once(self, monkeypatch):
+        import core.planner.combinations as combinations
+
+        calls = []
+        real = combinations.macro_bounds
+        monkeypatch.setattr(
+            combinations,
+            "macro_bounds",
+            lambda component, macro, ingredients: calls.append((component.id, macro))
+            or real(component, macro, ingredients),
+        )
+        combos = enumerate_combinations(self._pool())
+        assert len(combos) == 4
+        # Lowest combination: energy 150, protein 7 (TestFeasibilityPreFilter).
+        target = NutritionTarget(floors={"energy_kcal": 100.0, "protein_g": 1.0})
+        assert len(combinations.feasible_combinations(combos, target, FEASIBILITY_INGREDIENTS)) == 4
+        assert len(calls) == 8
+        assert len(set(calls)) == 8
+
+    def test_each_component_quality_reach_is_worked_out_once(self, monkeypatch):
+        import core.planner.combinations as combinations
+
+        calls = []
+        real = combinations.quality_protein_bounds
+        monkeypatch.setattr(
+            combinations,
+            "quality_protein_bounds",
+            lambda component, ingredients: calls.append(component.id)
+            or real(component, ingredients),
+        )
+        # Same set-up as the B8 test: a1 alone qualifies, 5 g at its one unit.
+        ingredients = dict(FEASIBILITY_INGREDIENTS)
+        ingredients["a1"] = dataclasses.replace(ingredients["a1"], diaas=1.0)
+        combos = enumerate_combinations(self._pool())
+        target = NutritionTarget(quality_protein_floor_g=4.0)
+        survivors = combinations.feasible_combinations(combos, target, ingredients)
+        assert {c.recipe_ids() for c in survivors} == {
+            frozenset({"a1", "b1"}),
+            frozenset({"a1", "b2"}),
+        }
+        assert sorted(calls) == ["a1@cat_a", "a2@cat_a", "b1@cat_b", "b2@cat_b"]
+
+    def test_remembering_changes_no_survivor_on_the_real_library(self):
+        # Against the definition, not a snapshot: a combination survives when,
+        # for every bounded macro, the summed max reaches the floor and the
+        # summed min stays under the ceiling, and the summed max qualifying
+        # protein reaches the quality floor. Re-derived here per combination
+        # with no memory, on every real template for one ordinary profile.
+        from core.foods.templates import ALL_TEMPLATES
+        from core.nutrition.meal_target import meal_target
+        from core.nutrition.targets import derive_target
+        from core.planner.plan import default_library
+        from core.schemas import Profile
+        from core.schemas.profile import ActivityLevel, Goal, Sex
+
+        def survives(combo, target, ingredients):
+            for macro in target.bounded_macros():
+                lows, highs = zip(*(macro_bounds(c, macro, ingredients) for c in combo.components))
+                floor, ceiling = target.floor(macro), target.ceiling(macro)
+                if floor is not None and sum(highs) < floor:
+                    return False
+                if ceiling is not None and sum(lows) > ceiling:
+                    return False
+            q = target.quality_protein_floor()
+            if q is not None:
+                return sum(quality_protein_bounds(c, ingredients)[1] for c in combo.components) >= q
+            return True
+
+        profile = Profile(weight_kg=70, height_cm=170, age_years=30, sex=Sex.FEMALE,
+                          activity=ActivityLevel.MODERATE, goal=Goal.MAINTAIN,
+                          diet=DietPattern.VEGETARIAN)
+        day = derive_target(profile).nutrition_target
+        library = default_library()
+        checked = 0
+        for template in ALL_TEMPLATES:
+            pool = build_candidate_pool(
+                library.components(), library.ingredients, template=template,
+                diet_pattern=DietPattern.VEGETARIAN, dev_mode=True,
+            )
+            combos = enumerate_combinations(pool)
+            target = meal_target(day, template.meal_slot)
+            got = feasible_combinations(combos, target, library.ingredients)
+            want = tuple(c for c in combos if survives(c, target, library.ingredients))
+            assert got == want, template.id
+            checked += len(combos)
+        assert checked > 0
+
+
 class TestMacroBounds:
     """Each component's least and greatest contribution, from its serving unit.
 

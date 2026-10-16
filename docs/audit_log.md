@@ -6,6 +6,78 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-16 — N33: the pre-filter sums each dish once
+
+**Asked.** Owner, 2026-10-16: push N31, then "do N33 first, so every later
+test run, including all the gap work, is quicker". Logged in the N31 entry:
+`tests/test_meal_coverage.py` alone took 346.81 s.
+
+**Measured first** (scratchpad profile, nine South lunches: maintain male,
+55/70/90 kg, vegetarian/vegan/non-vegetarian, PYTHONHASHSEED=0):
+```
+before: 19.5s   feasible_combinations 17.406 cum   macro_bounds 46037 calls   nutrition_of_recipe 92753 calls
+after:   1.6s   feasible_combinations  0.214 cum   macro_bounds   612 calls   nutrition_of_recipe  1903 calls
+```
+89% of planning time was `feasible_combinations` re-summing the same
+dish at its min and max count for every combination holding it.
+
+**Built.** `core/planner/combinations.py`: `feasible_combinations` keeps two
+per-call dicts, `(component.id, macro) -> macro_bounds(...)` and
+`component.id -> quality_protein_bounds(...)[1]`, the same key the solver's
+`_point_vector` cache uses. The remembered value is what `macro_bounds`
+returns, so the validator's decline arithmetic cannot drift from it; it
+lives for one call, so a changed `ingredients` mapping is never read stale.
+Summation order is unchanged, so every float is the same.
+
+Tests (`tests/test_planner_combinations.py::TestEachDishIsSummedOnce`):
+- macro reach worked out once per component and macro: 8 calls, not 16
+  (4 components x 2 macros; 4 combinations x 2 macros x 2 components);
+- quality reach once per component: 4 calls, not 8;
+- on every real template (vegetarian, maintain female 70 kg) the
+  survivors equal a memory-free re-derivation from the definition; it
+  drops combinations on 7 of 8 templates (e.g. south_lunch 72 -> 39).
+
+**Same plans, checked across processes and seeds.** All 864 N31 cases
+(recipe ids and unit counts, or "none") dumped from `main` d3a72d8 under
+PYTHONHASHSEED=1 and from this tree under 777:
+```
+   864 n33_before.txt
+   864 n33_after.txt
+IDENTICAL
+46            (": none" lines; KNOWN_GAPS is 46)
+```
+
+**Deletion rows** N33a (macro memory removed), N33b (key drops the macro),
+N33c (quality memory removed), swept with B4, B5, B8 whose functions it
+now calls through:
+```
+B4   covered      tests/test_planner_combinations.py::TestMacroBounds::test_the_low_bound_is_the_fewest_servings_and_the_high_the_most
+B5   covered      tests/test_planner_combinations.py::TestMacroBounds::test_quality_protein_bounds_span_the_fewest_to_the_most_servings
+B8   covered      tests/test_planner_combinations.py::TestFeasibilityPreFilter::test_a_combination_that_cannot_reach_the_quality_floor_is_dropped
+N33a covered      tests/test_planner_combinations.py::TestEachDishIsSummedOnce::test_each_component_macro_is_worked_out_once
+N33b covered      tests/test_planner_combinations.py::TestEachDishIsSummedOnce::test_each_component_macro_is_worked_out_once
+N33c covered      tests/test_planner_combinations.py::TestEachDishIsSummedOnce::test_each_component_quality_reach_is_worked_out_once
+6 mechanisms: 6 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+Failure counts: N33a 1 and N33c 1 (only the call-count tests: removing a
+memory changes no answer, so nothing else can see it); N33b 51, including
+the real-library comparison and all 12 coverage tests.
+
+**Logged, not fixed: the harness crashed on its first run.** `_run_suite`
+decodes pytest's output in the locale encoding (cp1252 here); byte 0x8d
+raised `UnicodeDecodeError` in the reader thread, `proc.stdout` came back
+`None`, and the sweep died with `AttributeError` before any row ran. Rerun
+with `PYTHONUTF8=1`. It failed loudly, not falsely, but `subprocess.run`
+there should pass `encoding="utf-8"`.
+
+**Cost now.**
+```
+python -m pytest tests/test_meal_coverage.py -q
+13 passed in 68.53s (0:01:08)                (was 346.81s)
+FOODAI_WEB_TESTS=required python -m pytest tests/ -q
+719 passed, 1 warning in 272.44s (0:04:32)   (was 716 in 536.65s)
+```
+
 ## 2026-10-12 — N31: no body loses its breakfast, lunch or dinner plate
 
 **Asked.** Owner, 2026-10-11, "go with the check": N29's snack guard for
