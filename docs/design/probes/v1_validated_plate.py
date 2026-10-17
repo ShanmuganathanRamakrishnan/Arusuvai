@@ -46,6 +46,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import re
 from collections import Counter
 
 import core.foods.nutrition_of as nutrition_of
@@ -245,7 +246,9 @@ def _source_kind(ing) -> str:
     note = _NOTES.get(ing.id, "").lower()
     if ing.ifct_code:
         return "names a source (IFCT " + ing.ifct_code + ")"
-    if "fdc" in note or "fooddata central" in note:
+    # An FDC id, not the words: the two oil rows say "USDA FoodData Central"
+    # only to say a source like it is still needed (docs/audit_log.md "V2").
+    if re.search(r"fdc(?: id)? *\d{5,7}", note):
         return "names a source (USDA FDC)"
     return "no source named: needs sourcing first"
 

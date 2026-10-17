@@ -6,6 +6,31 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-17 — V1 correction: 15 rows name a source, not 17
+
+**Correction to the V1 entry below.** V1 reported "17 name a source a
+person can open today (10 IFCT codes, 7 USDA FDC ids) and 23 name none".
+Wrong: the probe's `_source_kind` matched the words "FoodData Central",
+and the `gingelly_oil` and `sunflower_oil` notes use them only to say a
+source like it *would be needed*. Neither names an FDC id. Correct count:
+**15 name a source (10 IFCT, 5 USDA FDC ids), 25 name none.** Found while
+building V2's checklist from the row notes.
+
+**Fixed.** `docs/design/probes/v1_validated_plate.py` now requires an FDC id
+(`fdc` followed by 5-7 digits) rather than the words. Re-run:
+```
+PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/v1_validated_plate.py
+exit 0
+scenario        eligible recipes  plates (of 864)  under 15% unverified
+today                   0 of 55            0              0
+rows_checked           50 of 55          677            332   (unverified energy 8%-30%)
+process_known           0 of 55            0              0
+both                   55 of 55          850            850   (unverified energy 0%-0%)
+...
+  all 40 rows: names a source 15, no source named 25
+```
+Nothing else in V1 changes: neither oil was in the ranked list (oil carries
+no protein), and the scenario table does not read source notes.
 ## 2026-10-17 — V2a: the target lists every source it reads
 
 **Asked.** Owner, 2026-10-17, "option 1": fix the error V1 found, then the
