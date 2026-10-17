@@ -33,7 +33,17 @@ Tests        335 passed,     723 passed, 0 failed, 0 skipped (FOODAI_WEB_TESTS=r
 - The header of this file says "Per CLAUDE.md's audit-workflow section"; that
   section moved to `docs/repo_policy.md` on 2026-08-12.
 
-**Disposition.** Open. Each is a docs edit for its own task.
+**Disposition.** README part FIXED 2026-10-17 (owner asked, same day). Every
+README number was measured again before it was written: recipes 55 and
+ingredients 40 from `python demo.py`; templates 8 from `ALL_TEMPLATES`;
+constants 76, all on unverified evidence, from `citations.all_constants()` and
+`citations.unverified()` (the README had said 63 in one place and 65 in
+another); tests 723 from the full run; coverage 850 of 864 from
+`KNOWN_GAPS` in `tests/test_meal_coverage.py`, which that run held exact. The
+README also said there was no LLM code (there is: `llm/ranker.py`, unused,
+N13), showed a stale decline transcript (regenerated) and said the reference
+North lunch needed four rungs (it now needs none). The other three items stay
+open.
 
 ## 2026-10-17 — V2: a checklist for the owner to check 12 food rows
 
