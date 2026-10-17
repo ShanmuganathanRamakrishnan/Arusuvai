@@ -582,15 +582,26 @@ a.brand:hover { opacity: .62; }
    one is redundant. */
 .site-footer > .footer-bottom:only-child { border-top: none; padding-top: 0; }
 
-/* ---------- auth modal ---------- */
+/* ---------- auth modal ----------
+   The overlay scrolls, and the box carries margin:auto. On a screen shorter
+   than the box (a phone on its side: 360px against a 483px box) centring
+   pushed the top -- with the close button -- above the screen, where no
+   scroll could reach it. Auto margins take the free space before
+   align-items does, so the box centres exactly as before whenever it fits,
+   and when it does not they collapse to 0 and it starts at the top. That
+   makes align-items:center inert here; it is left as it was (a deletion
+   check changing it to flex-start changed nothing). Pinned by tests/test_web_mobile.py::
+   test_the_signup_box_can_be_closed_on_a_short_screen. */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 70; background: rgba(43, 38, 34, .42);
   backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
   display: flex; align-items: center; justify-content: center; padding: 20px;
+  overflow-y: auto; overscroll-behavior: contain;
   animation: ar-fadein .3s ease;
 }
 .modal-overlay[hidden] { display: none; }
 .modal {
+  margin: auto;
   width: 100%; max-width: 412px; background: var(--cream);
   border: 1px solid rgba(43, 38, 34, .1); border-radius: 22px;
   box-shadow: 0 24px 60px rgba(43, 38, 34, .28); padding: clamp(28px, 4vw, 38px); position: relative;
@@ -1412,6 +1423,7 @@ a:focus-visible {
   .ob-account-tab { min-height: 44px; }
   .ob-sources summary { min-height: 44px; padding: 6px 0; box-sizing: border-box; }
   .dash-dish-swap select { min-height: 44px; }
+  .modal-close { width: 44px; height: 44px; top: 10px; right: 10px; }
   .dash-dish-remove { min-height: 44px; display: inline-flex; align-items: center; padding: 0 4px; }
 }
 /* iOS Safari zooms the page when a text box under 16px takes focus, and

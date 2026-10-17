@@ -6,6 +6,58 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-17 — M6: the sign-up box can be closed on a short screen
+
+**Found by the whole-flow walk** (owner, 2026-10-17: "check if it is
+consistent completely through user flow"). The walk taps through landing →
+sign-up box → wizard steps 1–6 → account → dashboard → plate → swap →
+remove → edit profile → log out, at 375×740, 320×568, 414×896 and 740×360
+(a phone on its side). The three upright sizes passed. On its side:
+
+**Defect.** The sign-up box is 483px tall; the screen is 360. The overlay
+centred it and did not scroll, so its top, with the close button, sat at
+y=-62, above the screen, unreachable. Also, on every screen its close
+button was 34×34, under 44. The tap-target sweep (M2) never saw it: the box
+is hidden until opened.
+
+**Fixed.** `web/styles.css`: the overlay scrolls (`overflow-y: auto`), and
+the box has `margin: auto`. Auto margins take the free space before
+`align-items` does, so the box is centred exactly as before when it fits
+(1600×950: 226px above and below, unchanged) and starts at the top when it
+does not. The close button is 44×44 on a phone or touch screen.
+
+**Tests.** `tests/test_web_mobile.py::test_the_signup_box_can_be_closed_on_a_short_screen`
+(top on screen or reachable by scroll; still centred where it fits) and
+`::test_the_signup_close_button_is_44px`. Red before:
+```
+E       AssertionError: sign-up box top or close button off screen and unreachable: {(740, 360): {'modal_top': -62, 'close_top': -45, 'close_w': 34, 'close_h': 34, 'fits': False, 'can_scroll': False}}
+E       AssertionError: close button under 44px: {(320, 568): (34, 34), (740, 360): (34, 34)}
+2 failed, 8 deselected in 7.39s
+```
+**A survivor, and what it meant.** My first version also changed the
+overlay's `align-items` from `center` to `flex-start`. Deleting that change
+left both tests green: `margin: auto` does all the work, so the change was
+inert. It is reverted, and the CSS comment says why `align-items` stays.
+Deletion checks on the final CSS:
+```
+== M: box margin:auto removed (align-items:center back in force)
+E       AssertionError: sign-up box top or close button off screen and unreachable: {(740, 360): {'modal_top': -62, 'modal_gap_below': -62, 'close_top': -51, 'close_w': 44, 'close_h': 44, 'fits': False, 'can_scroll': True}}
+FAILED tests/test_web_mobile.py::test_the_signup_box_can_be_closed_on_a_short_screen
+1 failed, 1 passed, 8 deselected in 6.45s
+== restored (byte-identical)
+== M: overlay scroll removed
+E       AssertionError: sign-up box top or close button off screen and unreachable: {(740, 360): {'modal_top': 20, 'modal_gap_below': -143, 'close_top': 31, 'close_w': 44, 'close_h': 44, 'fits': False, 'can_scroll': False}}
+FAILED tests/test_web_mobile.py::test_the_signup_box_can_be_closed_on_a_short_screen
+1 failed, 1 passed, 8 deselected in 7.12s
+== restored (byte-identical)
+== M: close button 44px removed
+E       AssertionError: close button under 44px: {(320, 568): (34, 34), (740, 360): (34, 34)}
+FAILED tests/test_web_mobile.py::test_the_signup_close_button_is_44px - Asser...
+1 failed, 1 passed, 8 deselected in 6.73s
+== restored (byte-identical)
+```
+After: `10 passed in 41.50s`.
+
 ## 2026-10-17 — M5: the calculator tab is a corner pill on a phone
 
 **Defect.** Closed, the landing page's protein-calculator tab sat on the

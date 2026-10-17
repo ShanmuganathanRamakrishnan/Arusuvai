@@ -268,3 +268,69 @@ def test_the_closed_calculator_tab_is_small_on_a_phone(phone_views):
     # screen, over the hero buttons. Height alone passed that.
     floating = {w: s for w, s in sizes.items() if s["gap_below"] > 32}
     assert not floating, f"closed calculator tab is not in the bottom corner: {floating}"
+
+
+#: Short screens: the smallest phone upright, and a phone on its side.
+SHORT_SCREENS = ((320, 568), (740, 360))
+
+
+@pytest.fixture(scope="module")
+def signup_modal() -> dict[tuple[int, int], dict]:
+    """The sign-up box opened from the landing header, on short screens."""
+    playwright = pytest.importorskip(
+        "playwright.sync_api",
+        reason="playwright is a dev-only dependency; see requirements-dev.txt",
+    )
+    if not _listening("localhost", 3000):
+        pytest.skip(f"no static server on {WEB_ORIGIN}")
+    out = {}
+    with playwright.sync_playwright() as p:
+        browser = p.chromium.launch()
+        for w, h in SHORT_SCREENS:
+            ctx = browser.new_context(viewport={"width": w, "height": h}, is_mobile=True, has_touch=True)
+            page = ctx.new_page()
+            page.goto(f"{WEB_ORIGIN}/index.html", wait_until="networkidle")
+            page.wait_for_timeout(600)
+            page.tap("#hdrSignup")
+            page.wait_for_timeout(500)
+            out[(w, h)] = page.evaluate("""() => {
+              const o = document.querySelector('.modal-overlay');
+              o.scrollTop = 0;
+              const m = document.querySelector('.modal').getBoundingClientRect();
+              const c = document.querySelector('.modal-close').getBoundingClientRect();
+              return {modal_top: Math.round(m.top), modal_gap_below: Math.round(innerHeight - m.bottom),
+                      close_top: Math.round(c.top),
+                      close_w: Math.round(c.width), close_h: Math.round(c.height),
+                      fits: m.height <= innerHeight, can_scroll: o.scrollHeight > o.clientHeight
+                        && ['auto', 'scroll'].includes(getComputedStyle(o).overflowY)};
+            }""")
+            ctx.close()
+        browser.close()
+    return out
+
+
+def test_the_signup_box_can_be_closed_on_a_short_screen(signup_modal):
+    """On a phone on its side (740x360) the box is 483px tall. It was centred
+    in a non-scrolling overlay, so its top -- with the close button -- sat at
+    y=-62, above the screen, with no way to scroll to it."""
+    bad = {}
+    for size, g in signup_modal.items():
+        if g["close_top"] < 0 or g["modal_top"] < 0:
+            bad[size] = g
+        elif not g["fits"] and not g["can_scroll"]:
+            bad[size] = g
+    assert not bad, f"sign-up box top or close button off screen and unreachable: {bad}"
+    # ...and where it does fit, it is still centred, as it always was.
+    off = {s: g for s, g in signup_modal.items()
+           if g["fits"] and abs(g["modal_top"] - g["modal_gap_below"]) > 2}
+    assert any(g["fits"] for g in signup_modal.values()), (
+        "no screen here fits the box, so the centring check below checks nothing")
+    assert not off, f"sign-up box fits but is not centred: {off}"
+
+
+def test_the_signup_close_button_is_44px(signup_modal):
+    """The sweep above never sees the box (it is hidden until opened). Its
+    close button was 34x34."""
+    bad = {s: (g["close_w"], g["close_h"]) for s, g in signup_modal.items()
+           if g["close_w"] < 44 or g["close_h"] < 44}
+    assert not bad, f"close button under 44px: {bad}"
