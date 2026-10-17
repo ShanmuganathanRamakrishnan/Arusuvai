@@ -80,18 +80,23 @@ contains neither an `agents/` nor a `commands/` directory. The section is
 rewritten below as the design it is, with the gap stated first rather than
 contradicted later.
 
-**Today:** audits run via an ad-hoc read-only subagent, configured per session.
-Findings land in `docs/audit_log.md`.
+**Built (2026-10-17).** The design below was "intended, not built" from
+2026-08-12 until today; it is now three committed subagents, with two changes
+from that design, both deliberate:
 
-**Intended, not built:**
+- `.claude/agents/auditor.md` — tools `Read, Grep, Glob` and nothing else. The
+  design gave it `Bash(pytest:*)` and write access to `docs/audit_log.md`; it
+  has neither. It returns findings as text and the main session appends them
+  to `docs/audit_log.md` verbatim, so the auditor can write nothing at all.
+- `.claude/agents/probe-runner.md` and `.claude/agents/mutation-checker.md` —
+  added alongside it, each in its own worktree (`isolation: worktree`), for
+  the before/after probe runs and the deletion sweep.
+- `.claude/commands/grill.md` is still not built.
 
-- `.claude/agents/auditor.md` — a subagent with **read-only** tool permissions
-  (`Read`, `Grep`, `Glob`, `Bash(pytest:*)` — no `Edit`, no `Write` outside
-  `docs/audit_log.md`). Its job is to find places where code and the docs agree
-  with each other and neither survives a concrete input. It does not propose
-  fixes and does not soften findings.
-- `.claude/commands/grill.md` — invokes the auditor against modules changed
-  since the last `docs/audit_log.md` entry.
+The roles and what each may never do are in `AGENTS.md` "Roles". A subagent's
+worktree starts on the default branch, not the session's branch, so the two
+that run code check out the commit they are given; they cannot see uncommitted
+work.
 
 **Already true regardless:** `docs/audit_log.md` is dated and append-only. It is
 the artifact; a finding that is not in that file did not happen, per the process

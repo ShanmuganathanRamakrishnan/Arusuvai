@@ -17,15 +17,16 @@ can enumerate every feasible plate; what it cannot know is that sambar + curd
 rice + more sambar is not a plate anyone in Chennai would eat. That is the
 model's job, and it is the whole of it.
 
-> **The ranking/narration layer is not built.** There is no LLM code in this
-> repo today — no client, no calls. What exists is the deterministic half, which
-> is the half that has to be right for the constraint to mean anything, and the
-> seams that make "the model proposes a portion multiplier" unrepresentable
-> rather than merely discouraged.
+> **The app calls no model today.** `llm/ranker.py` was built and measured
+> live against a local 7B model (2026-10-07, [N13](docs/audit_log.md)): its
+> choices were no better than the planner's own nearest plate, so nothing in the
+> app calls it. A written rule does that job instead — among valid plates,
+> prefer one that does not serve the same main ingredient twice
+> ([N14](docs/audit_log.md)). Narration is not built.
 
 **The system tracks its own uncertainty and refuses to certify output on
 unverified inputs.** `dev_mode` is not an unfinished state — it is the system
-correctly reporting that nobody has opened its source documents. All 63
+correctly reporting that nobody has opened its source documents. All 76
 registered constants rest on `verified=False` evidence, so nothing can ship as
 `validated`, and every transcript says so in its own first and last line.
 
@@ -39,11 +40,12 @@ recipes at servable portions — whole counts of a named unit, 3 phulka rather
 than 1.25× a roti — or **declines and names the exact constraint it could not
 meet, and by how much**.
 
-Today, against its own small recipe library, it declines more often than not —
-and when it does serve a plate it says what it could not do. The reference
-profile's North Indian lunch passes only after four relaxation rungs, and
-discloses the cost in the units the target was stated in: *"delivers 36.8g of
-protein against a 39.2g target, a shortfall of 2.4g."* That is the system
+Across a fixed test grid of 144 bodies (3 goals × 2 sexes × 55/70/90 kg × 2
+regions × 4 diets), every body gets a snack plate, and **850 of 864** breakfast,
+lunch and dinner cases get a plate (each meal planned with and without a snack
+in the day). The other 14 are all fat-loss vegan bodies at North breakfast or
+South dinner, and for those it declines and names the constraint it could not
+meet: *"carb_g is 76.3g, above its ceiling of 74.2g."* That is the system
 working.
 
 ## How it works
@@ -53,7 +55,7 @@ Profile ─► target derivation ─► candidate filter ─► combination enum
                                                             │
                                     O(1) feasibility pre-filter
                                                             │
-                              integer-unit solver ─► [LLM ranking: not built]
+                  integer-unit solver ─► prefer no main ingredient served twice
                                                             │
                                      validator ─► plate, or a named decline
 ```
@@ -115,25 +117,19 @@ missed its purpose.
 
 | | |
 |---|---|
-| Recipes | **15** — every required slot in all four templates has a candidate |
-| Templates | 4 (`south_breakfast`, `south_lunch`, `north_lunch`, `north_dinner`) |
-| Ingredients | 29, of which **1** is verified (`water`, whose macros are all zero) |
-| Registered constants | 65, of which **65** rest on unverified evidence |
+| Recipes | **55** — vegetarian, vegan, egg, chicken and fish dishes |
+| Templates | 8 — South and North Indian breakfast, lunch, dinner and snack |
+| Ingredients | 40, of which **1** is verified (`water`, whose macros are all zero) |
+| Registered constants | 76, of which **76** rest on unverified evidence |
 | Status | `dev_mode`, permanently, until a human opens IFCT 2017 |
-| Tests | `335 passed, 1 failed` (excluding 3 browser-driven web files) — the failure is deliberate, holding an open finding visible rather than letting it go quiet |
+| Tests | `723 passed`, browser tests included (`FOODAI_WEB_TESTS=required`) |
+| Plate coverage | snack: 144 of 144 bodies; breakfast, lunch, dinner: 850 of 864 cases |
 
-All four templates enumerate as of 2026-08-02. The gap that had kept three of
-them at **zero** was *category breadth*, not recipe count, and it closed with six
-files filling chutney, gravy, vegetable, curd and sabzi. Three further recipes
-carrying paneer, tofu and soya then raised north_lunch to 24 combinations and
-north_dinner to 12.
-
-**The two North Indian templates now serve the reference profile, with no
-relaxation rung fired.** Both south templates still decline, on sodium: a South
-Indian lunch is four separately salted dishes, and two of `south_lunch`'s three
-combinations sit above the per-plate sodium guard at their *minimum* serving
-counts — unreachable for any profile. That the blocking number is one nobody
-measured is the [open finding](docs/audit_log.md), not a detail.
+The reference profile's North Indian lunch passes with no relaxation rung
+fired. The 14 cases with no plate are pinned by name in
+`tests/test_meal_coverage.py`: the test fails if any other body loses its plate,
+and fails if one of the 14 gets a plate without being taken off the list.
+The list has only shrunk (46 cases on 2026-10-11, 14 on 2026-10-17).
 
 This is stated, not apologised for. A portfolio project that claims validated
 nutritional output on hand-entered fixture data would be demonstrating the exact
@@ -165,34 +161,37 @@ python -m pytest tests/ -q     # browser-driven web tests need Playwright
 python demo.py                 # everything, for the reference profile
 python demo.py plan --region north_indian --meal-slot lunch
 python demo.py plan --sodium-spent-mg 1200      # against a partly-eaten day
-uvicorn api.main:app --reload  # POST /api/targets, POST /api/plan
+uvicorn api.main:app --reload  # the API: /api/targets, /api/plan, accounts
+python -m http.server 3000 --directory web     # the page, at :3000
 ```
+
+The page and the API run on different ports; `web/README.md` has the details.
 
 `demo.py` is the reproducibility boundary: every transcript in the audit log
 from 2026-07-31 onward must be regenerable by a documented invocation of it.
 
 ```
-  STATUS: DEV_MODE
-  These targets are dev-mode, not validated: the equations behind them have not
-  yet been checked against their primary sources...
+$ python demo.py plan --region north_indian --meal-slot breakfast --goal lose_fat     --diet vegan --weight-kg 70 --height-cm 170 --age-years 30 --sex male
 
   TARGET AS ASKED (unrelaxed -- before any relaxation rung fires):
-      energy_kcal  floor     854.9   ceiling     944.9
-      protein_g    floor      43.6   ceiling         -
-      sodium_mg    floor         -   ceiling    1400.0   [per-plate cap on a day's allowance]
-
-  TARGET AS SOLVED (after 4 relaxation rung(s)):
-      energy_kcal  floor     809.9   ceiling     989.9
-      sodium_mg    floor         -   ceiling    1400.0   [per-plate cap on a day's allowance]
-
+      energy_kcal  floor     476.4   ceiling     526.5
+      protein_g    floor      31.5   ceiling      63.0
+      carb_g       floor      50.5   ceiling      68.3
+      ...
+  TARGET AS SOLVED (after 4 relaxation rung(s): sodium_max_fibre_min, fat_carb_tolerance, energy_tolerance, protein_tolerance):
+      energy_kcal  floor     451.3   ceiling     551.6
+      protein_g    floor      26.8   ceiling      63.0
+      carb_g       floor      44.5   ceiling      74.2
+      ...
 passed         : False
 PLAN           : None (declined)
 violations     :
-    kind='above_ceiling' macro='sodium_mg' actual=1649.3 bound=1400.0
+    kind='above_ceiling' macro='carb_g' actual=76.3 bound=74.2 locked_by=()
+      reach='jointly_infeasible' relaxability='relaxed_to_limit'
 
-disclosure     : No plan could be built for this profile: sodium_mg is 1649.3mg,
-                 above its ceiling of 1400.0mg (more than one plate may take of a
-                 whole day's allowance)
+disclosure     : No plan could be built for this profile: carb_g is 76.3g, above its ceiling of 74.2g
+
+  END OF RUN -- STATUS: DEV_MODE. Nothing above can ship as validated.
 ```
 
 Both targets are printed and labelled, because reading the fully-relaxed bounds
@@ -204,7 +203,8 @@ as the original ones caused a miscalibrated prediction once already.
   condition. `clinical_flags` covers three conditions; anything else gets no
   protection at all.
 - **Not a commerce product.** No orders, subscriptions, delivery zones or
-  pricing. Accounts do exactly two things: exist, and hold one profile.
+  pricing. Accounts do exactly three things: exist, hold one profile, and
+  remember the user's dish choices per meal.
 - **Not production auth.** No email verification, no password reset, no OAuth,
   and — named as a missing *safeguard* rather than a missing feature — no rate
   limiting on login.
@@ -218,5 +218,5 @@ as the original ones caused a miscalibrated prediction once already.
   finding not written here did not happen.
 - **[docs/design/target_model_v2.md](docs/design/target_model_v2.md)** — a
   design doc that opens by correcting three of its own claims.
-- **[CLAUDE.md](CLAUDE.md)** — the architectural rules, written against specific
+- **[AGENTS.md](AGENTS.md)** — the architectural rules, written against specific
   named failure modes rather than from convention.

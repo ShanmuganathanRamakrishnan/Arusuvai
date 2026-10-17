@@ -100,6 +100,32 @@ In this order, every task:
 6. **Report** (see "Reporting").
 7. **Stop.** Mark this task DONE, mark the next NEXT, wait.
 
+## Roles
+
+One role builds; the others check. A check is only worth something if the
+checker cannot change what it checks.
+
+- **Implementer** (the main session). Edits code, data and docs, commits, runs
+  the finish sequence. The only role that edits `core/`, `api/`, `web/` or
+  `data/`. Never hands implementation to a review role.
+- **Auditor.** Reads code and docs for places where they agree with each other
+  and neither survives a concrete input. Returns findings as text; the
+  implementer appends them to `docs/audit_log.md` verbatim. Never edits a file,
+  never runs commands, never proposes a fix, never softens a finding.
+- **Probe-runner.** Runs one named probe from `docs/design/probes/` on two named
+  commits, in its own isolated checkout. Saves both raw outputs to files and
+  returns their paths and checksums; the implementer reads them. Never edits a
+  tracked file, never retypes or summarises output, never judges the result.
+- **Mutation-checker.** Runs `docs/design/probes/d4b_mutations.py` in its own
+  isolated checkout. For every survivor, checks reachability with an
+  unconditional `raise` and a full suite run before anyone calls it a hole.
+  Never edits a tracked file outside that checkout, never adds `web/` rows.
+
+No review role edits `core/`, `api/`, `web/` or `data/`. No role sets
+`verified=True`: only the owner does, after opening the primary source
+(invariant 4). An agent types that change only when quoting the owner's own
+message saying so, as `docs/verification_checklist.md` describes.
+
 ## Commands
 
 ```bash
