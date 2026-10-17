@@ -6,6 +6,356 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-17 — M8: drop-downs no longer cut their own text on a narrow phone
+
+**Found by the whole-flow walk (M6 entry).** At 320px on the North Indian
+lunch plate, the dish swap box showed "Soya chunk masala" cut short: at 16px
+(M3) the name needs 137px and the box beside its "Swap for" label had 125.
+
+**Fixed.** `web/styles.css`, touch/≤560px block: `.dash-dish-swap` wraps,
+so a box that does not fit beside its label drops to its own line under it.
+Where it fits, the row is unchanged.
+
+**Test.** New measurement `clipped_selects` and
+`tests/test_web_mobile.py::test_no_drop_down_cuts_its_own_text`, measuring
+every visible drop-down's chosen text against its inner width. The first
+version passed against the defect: the fixture's only plate (South Indian
+breakfast) has no long dish names. A second plate view,
+`dashboard_north_lunch`, was added; with it the test went red. Red before:
+```
+E       AssertionError: drop-downs whose chosen text does not fit: {'320px dashboard_north_lunch': ['"Soya chunk masala" needs 137px, has 125px']}
+1 failed, 1 passed, 10 deselected in 42.38s
+```
+After: `12 passed in 56.65s` (whole file). Deletion check:
+```
+== M: M8 wrap removed
+E       AssertionError: drop-downs whose chosen text does not fit: {'320px dashboard_north_lunch': ['"Soya chunk masala" needs 137px, has 125px']}
+FAILED tests/test_web_mobile.py::test_no_drop_down_cuts_its_own_text - Assert...
+1 failed, 11 passed in 50.17s
+== restored (byte-identical)
+```
+
+**Whole-flow walk, rerun after M5–M8** (scratch script, tapping as a user
+would; it now also measures the drop-downs after a dish is removed). Every
+flow completes at all four sizes. The "Choose a dish" box the earlier walk
+showed as "Choose a d" now fits (needs 101px, has 116):
+```
+=== walk a 375x740   header heights: {'landing': 64, 'wizard': 64, 'dashboard': 64}
+note: drop-downs after remove [text, need, room, is_add_row]: [['Dal tadka', 69, 138, False], ['Choose a dish', 101, 116, True]]
+PROBLEMS: 0
+=== walk b 320x568   (same header heights and drop-downs)   PROBLEMS: 0
+=== walk c 414x896   (same header heights and drop-downs)   PROBLEMS: 0
+=== walk d 740x360   (same header heights and drop-downs)   PROBLEMS: 1
+  - signup modal not fully on screen: {'l': 164, 'r': 576, 't': 20, 'b': 503.1875, 'ih': 360, 'iw': 740, 'fonts': ['16px', '16px']}
+```
+The one walk problem is expected: the box is taller than a phone on its
+side, and since M6 it scrolls with its top and close button on screen.
+Each walk also logs three `401 (Unauthorized)` console lines; checked, they
+are `GET /api/auth/me` on `index.html` and `onboarding.html` while signed
+out: the page asking "am I signed in?" and being told no.
+
+**Found in passing, not fixed (owner decisions, not defects):**
+- Below 560px the landing page hides "Get your targets" (`hide-sm`), so a
+  phone visitor reaches the wizard only through Sign up.
+- At 320×568 the wizard's stacked Continue + Back bar takes about 30% of the
+  screen. DESIGN_SYSTEM.md fixes Continue's position, so shrinking it is a
+  design decision.
+
+## 2026-10-17 — Logged, not fixed: a recipe category shows as raw text on the dashboard
+
+**Found by the M6 whole-flow walk.** On the North Indian lunch plate the
+Rajma chawal card's role line reads "Combo_rice_legume".
+`web/dashboard-success.js:219` renders `c.category` as is; the
+`.dash-dish-role` rule's `text-transform: capitalize` makes the first
+letter capital. It breaks the rule that no identifier appears in visible
+text. Not mobile-specific, so per CLAUDE.md it is logged and left.
+
+**Why the sweep missed it.** `tests/test_web_no_identifiers.py` reads
+`textContent`, which is still lowercase `combo_rice_legume`, so its regex
+would match. The gap is coverage: the sweep renders only the default plate
+and `south_indian:lunch`, never `north_indian:lunch`, the only plate whose
+plan holds a `combo_rice_legume` dish (`data/recipes/rajma_chawal.yaml:13`).
+(Correction: during the session I first put this down to the regex missing
+a capital first letter. That was wrong; the capital comes from CSS.)
+
+**Disposition.** Open. The fix needs both a readable label for the category
+and a sweep view that renders that plate.
+
+## 2026-10-17 — M7: on a phone on its side, the header scrolls away
+
+**Found by the whole-flow walk (M6 entry).** At 740×360 the sticky header
+(64px) and the wizard's sticky Continue bar (76px) stay on screen while
+scrolling, leaving 219px, 61% of the screen, for the form.
+
+**Fixed.** `web/styles.css`: under `@media (max-height: 500px)` the header
+is `position: relative`, so it scrolls away with the page. Continue stays
+pinned: it is the action, and DESIGN_SYSTEM.md's rule puts it in the
+sticky bar. Upright phones and desktop are taller than 500px, so unchanged.
+
+**Test.** `tests/test_web_mobile.py::test_a_phone_on_its_side_keeps_most_of_the_screen_for_content`,
+scrolled 300px into wizard step 4, needs at least 70% of the screen free.
+Red before:
+```
+E       AssertionError: only 61% of a 360px-tall screen is left for content: {'header_bottom': 65, 'nav_top': 284.25, 'inner': 360, 'scrolled': 300}
+1 failed, 10 deselected in 4.47s
+```
+After: `1 passed, 10 deselected in 4.59s` (79%: 284 of 360). Deletion check:
+```
+== M: the short-screen header rule removed
+E       AssertionError: only 61% of a 360px-tall screen is left for content: {'header_bottom': 65, 'nav_top': 284.25, 'inner': 360, 'scrolled': 300}
+FAILED tests/test_web_mobile.py::test_a_phone_on_its_side_keeps_most_of_the_screen_for_content
+1 failed, 10 deselected in 4.45s
+== restored (byte-identical)
+```
+
+## 2026-10-17 — M6: the sign-up box can be closed on a short screen
+
+**Found by the whole-flow walk** (owner, 2026-10-17: "check if it is
+consistent completely through user flow"). The walk taps through landing →
+sign-up box → wizard steps 1–6 → account → dashboard → plate → swap →
+remove → edit profile → log out, at 375×740, 320×568, 414×896 and 740×360
+(a phone on its side). The three upright sizes passed. On its side:
+
+**Defect.** The sign-up box is 483px tall; the screen is 360. The overlay
+centred it and did not scroll, so its top, with the close button, sat at
+y=-62, above the screen, unreachable. Also, on every screen its close
+button was 34×34, under 44. The tap-target sweep (M2) never saw it: the box
+is hidden until opened.
+
+**Fixed.** `web/styles.css`: the overlay scrolls (`overflow-y: auto`), and
+the box has `margin: auto`. Auto margins take the free space before
+`align-items` does, so the box is centred exactly as before when it fits
+(1600×950: 226px above and below, unchanged) and starts at the top when it
+does not. The close button is 44×44 on a phone or touch screen.
+
+**Tests.** `tests/test_web_mobile.py::test_the_signup_box_can_be_closed_on_a_short_screen`
+(top on screen or reachable by scroll; still centred where it fits) and
+`::test_the_signup_close_button_is_44px`. Red before:
+```
+E       AssertionError: sign-up box top or close button off screen and unreachable: {(740, 360): {'modal_top': -62, 'close_top': -45, 'close_w': 34, 'close_h': 34, 'fits': False, 'can_scroll': False}}
+E       AssertionError: close button under 44px: {(320, 568): (34, 34), (740, 360): (34, 34)}
+2 failed, 8 deselected in 7.39s
+```
+**A survivor, and what it meant.** My first version also changed the
+overlay's `align-items` from `center` to `flex-start`. Deleting that change
+left both tests green: `margin: auto` does all the work, so the change was
+inert. It is reverted, and the CSS comment says why `align-items` stays.
+Deletion checks on the final CSS:
+```
+== M: box margin:auto removed (align-items:center back in force)
+E       AssertionError: sign-up box top or close button off screen and unreachable: {(740, 360): {'modal_top': -62, 'modal_gap_below': -62, 'close_top': -51, 'close_w': 44, 'close_h': 44, 'fits': False, 'can_scroll': True}}
+FAILED tests/test_web_mobile.py::test_the_signup_box_can_be_closed_on_a_short_screen
+1 failed, 1 passed, 8 deselected in 6.45s
+== restored (byte-identical)
+== M: overlay scroll removed
+E       AssertionError: sign-up box top or close button off screen and unreachable: {(740, 360): {'modal_top': 20, 'modal_gap_below': -143, 'close_top': 31, 'close_w': 44, 'close_h': 44, 'fits': False, 'can_scroll': False}}
+FAILED tests/test_web_mobile.py::test_the_signup_box_can_be_closed_on_a_short_screen
+1 failed, 1 passed, 8 deselected in 7.12s
+== restored (byte-identical)
+== M: close button 44px removed
+E       AssertionError: close button under 44px: {(320, 568): (34, 34), (740, 360): (34, 34)}
+FAILED tests/test_web_mobile.py::test_the_signup_close_button_is_44px - Asser...
+1 failed, 1 passed, 8 deselected in 6.73s
+== restored (byte-identical)
+```
+After: `10 passed in 41.50s`.
+
+## 2026-10-17 — M5: the calculator tab is a corner pill on a phone
+
+**Defect.** Closed, the landing page's protein-calculator tab sat on the
+right edge as a vertical rail, 40px wide and 267px tall (309 at 320px), over
+the hero text. At 320px it cut "planned around yo|" and "free, everywher|".
+
+**Fixed.** `web/styles.css`, a ≤560px block beside the dock's own rules:
+the tab is a one-line, 44px-tall pill 12px from the bottom-right corner, and
+the drawer opens upward above it. Width still comes from `--calc-panel-w`,
+so the open drawer fits as before (the existing
+`test_the_open_calculator_dock_fits_the_viewport` and
+`test_the_closed_dock_paints_nothing_outside_the_viewport` still pass). The
+card loses its shadow on a phone: the panel's `overflow: hidden` cut it into
+a square.
+
+**My own first version was wrong, and the first test missed it.** It used
+`flex-direction: column-reverse`. The drawer comes first in the markup, so
+reversed, the closed drawer (0px wide but full height) stacked under the pill
+and the pill floated 287px up the screen, over the hero buttons. The test
+then checked only the pill's height, which passed. Seen in a screenshot, not
+by the test. The test now also checks the pill is within 32px of the bottom,
+and was red on that version:
+```
+E       AssertionError: closed calculator tab is not in the bottom corner: {320: {'w': 191, 'h': 44, 'gap_below': 329}, 375: {'w': 191, 'h': 44, 'gap_below': 287}, 414: {'w': 191, 'h': 44, 'gap_below': 287}}
+1 failed, 7 deselected in 32.86s
+```
+Red before any fix: `{320: {'w': 40, 'h': 309}, 375: {'w': 40, 'h': 267}, 414: {'w': 40, 'h': 267}}`.
+
+**Deletion checks by hand:**
+```
+== M: the phone pill block removed
+E       AssertionError: closed calculator tab taller than one 48px line: {320: {'w': 133, 'h': 309, 'gap_below': 16}, 375: {'w': 133, 'h': 267, 'gap_below': 16}, 414: {'w': 133, 'h': 267, 'gap_below': 16}}
+FAILED tests/test_web_mobile.py::test_the_closed_calculator_tab_is_small_on_a_phone
+1 failed, 7 deselected in 32.70s
+== restored (byte-identical)
+== M: column put back to column-reverse
+E       AssertionError: closed calculator tab is not in the bottom corner: {320: {'w': 191, 'h': 44, 'gap_below': 329}, 375: {'w': 191, 'h': 44, 'gap_below': 287}, 414: {'w': 191, 'h': 44, 'gap_below': 287}}
+FAILED tests/test_web_mobile.py::test_the_closed_calculator_tab_is_small_on_a_phone
+1 failed, 7 deselected in 32.71s
+== restored (byte-identical)
+```
+After: `tests/test_web_mobile.py` and `tests/test_web_wizard_layout.py`,
+`34 passed in 70.45s`.
+
+## 2026-10-17 — M4: the wizard's step bar is one readable row on a phone
+
+**Defect.** Under 560px the six step labels were shrunk to 9px, under the
+design system's 11px floor, to fit six labelled pills on two rows. Measured:
+9px on every wizard step at 320, 375 and 414px; two rows at all three.
+
+**Fixed.** `web/styles.css`, the ≤560px block: the 9px rule is gone. On a
+phone only the current step keeps its pill and its label, at the normal
+13px; the other steps are their number circle alone (done steps still
+green), so the bar is one row. Their labels stay in the page for screen
+readers, clipped rather than removed. Desktop unchanged.
+
+**Tests.** `tests/test_web_mobile.py::test_no_visible_text_under_11px` and
+`::test_the_step_bar_is_one_row_on_a_phone`. The row test first counted
+distinct top edges and stayed red after the fix: the taller current pill and
+the short circles share a row but not a top. It now groups pills that
+overlap vertically; red on the old CSS (2 rows everywhere), green on the
+new. Deletion checks by hand:
+```
+== M: the 9px rule put back in place of the phone step bar
+E       AssertionError: visible text under 11px: {'320px wizard_step1': ['span.ob-progress2-label 9px "Body"', 'span.ob-progress2-label 9px "Activity"', 'span.ob-progress2-label 9px "Goal"', 'span.ob-progress2-label 9px "Diet"', 'span.ob-progress2-label 9px "T
+E       AssertionError: step bar on more than one row: {'320px wizard_step1': 2, '320px wizard_step2': 2, '320px wizard_step3': 2, '320px wizard_step4': 2, '320px wizard_step5': 2, '320px wizard_step6': 2, '375px wizard_step1': 2, '375px wizard_step2': 2, '375
+FAILED tests/test_web_mobile.py::test_no_visible_text_under_11px - AssertionE...
+FAILED tests/test_web_mobile.py::test_the_step_bar_is_one_row_on_a_phone - As...
+2 failed, 5 passed in 32.58s
+== M: only the label clip removed
+   last line: 7 errors in 35.24s
+== restored (byte-identical)
+```
+The second is caught as errors, not as a named failure: with the labels
+shown and wrapping off, the bar ran wider than the screen and the fixture
+could not click Continue (`Page.click: Timeout 30000ms exceeded` on
+`#obNext`). That is a broken page, so red is the right answer, but the
+message does not name the cause.
+
+**Full mobile file after:** `7 passed in 33.53s`.
+
+## 2026-10-17 — M3: text boxes are 16px on a phone, so iOS does not zoom
+
+**Defect.** iOS Safari zooms the whole page when a text box under 16px
+takes focus, and leaves it zoomed. Measured at all three phone widths: the
+wizard's four number boxes 15px, the account email and password 15px, the
+early-access email 14px, the dashboard's swap boxes 13px.
+
+**Fixed.** `web/styles.css`: those five selectors (plus the sign-in modal's
+fields, which share the account fields' rule) are 16px under
+`@media (max-width: 560px), (pointer: coarse)`. Desktop is unchanged.
+
+**Test.** `tests/test_web_mobile.py::test_no_text_box_makes_the_phone_zoom`,
+red before with the list above. Deletion check by hand:
+```
+== M: the swap box removed from the 16px list
+E       AssertionError: text boxes under 16px on a phone: {'320px dashboard_after_plan': ['select 13px', 'select 13px', 'select 13px'], '375px dashboard_after_plan': ['select 13px', 'select 13px', 'select 13px'], '414px dashboard_after_plan': ['select 13px', '
+FAILED tests/test_web_mobile.py::test_no_text_box_makes_the_phone_zoom - Asse...
+1 failed, 4 deselected in 34.76s
+== restored (byte-identical)
+```
+After: `5 passed in 35.11s`. The modal's fields are hidden during the sweep,
+so the test does not see them; they are checked by hand in M6's walk.
+
+## 2026-10-17 — M2: every tap target 44px tall on a phone; the header stays one row
+
+**Defect.** Measured at 375px with touch emulation (M1 entry): header
+buttons 36px tall, the brand link 35, the wizard's choice pills 35, the
+account tabs 40, the sources toggle 34, the dashboard's swap boxes 31,
+"Remove" 25, the landing footer links 18. Separately, at 320px the header
+wrapped to two rows: 112px tall on the landing page and the dashboard.
+
+**Fixed.** `web/styles.css`, a new block under
+`@media (max-width: 560px), (pointer: coarse)`: each of those targets gets
+`min-height: 44px` (Apple HIG; WCAG 2.5.5). The header loses 4px of padding
+top and bottom to pay for it, so it stays one 64px row (10 + 44 + 10), the
+height DESIGN_SYSTEM.md fixes. A second block under `max-width: 400px`
+tightens the header gaps so the brand and two items fit 320px's 284px row.
+Width is not raised to 44: the seven day buttons share one row and at 320px
+seven 44px buttons do not fit. They are 25px wide there, above WCAG 2.5.8's
+24px. Desktop with a mouse is untouched: neither query matches.
+
+**Tests.** `tests/test_web_mobile.py::test_every_tap_target_is_at_least_44px_tall`
+and `::test_the_header_stays_one_row`, red before the fix (the lists above
+are their failure output). Deletion checks by hand, each restoring the file
+byte-identical:
+```
+== M: Remove's 44px line removed
+E       AssertionError: tap targets under 44px tall (or 24px wide): {'320px dashboard_after_plan': ['button.dash-dish-remove "Remove" 44x25'], '375px dashboard_after_plan': ['button.dash-dish-remove "Remove" 44x25'], '414px dashboard_after_plan': ['button.dash
+FAILED tests/test_web_mobile.py::test_every_tap_target_is_at_least_44px_tall
+1 failed, 3 passed in 33.58s
+== restored (byte-identical)
+== M: the 400px header block removed
+E       AssertionError: header taller than one 64px row: {'320px landing': 120, '320px dashboard': 120, '320px dashboard_after_plan': 120}
+FAILED tests/test_web_mobile.py::test_the_header_stays_one_row - AssertionErr...
+1 failed, 3 passed in 33.86s
+== restored (byte-identical)
+== M: the header's 10px padding removed
+E       AssertionError: header taller than one 64px row: {'320px landing': 72, '320px wizard_step1': 72, '320px wizard_step2': 72, '320px wizard_step3': 72, '320px wizard_step4': 72, '320px wizard_step5': 72, '320px wizard_step6': 72, '320px dashboard': 72, '3
+FAILED tests/test_web_mobile.py::test_the_header_stays_one_row - AssertionErr...
+1 failed, 3 passed in 32.31s
+== restored (byte-identical)
+```
+Every existing browser test still passes:
+```
+FOODAI_WEB_TESTS=required python -m pytest tests/ -q -m web
+113 passed, 614 deselected, 1 warning in 192.40s (0:03:12)
+```
+
+## 2026-10-17 — M1: grid columns shrink to fit a narrow phone
+
+**Asked.** Owner, 2026-10-17: "make sure the UI is suitable and dynamic for
+mobile application as well", on a separate branch (`mobile-ui`).
+
+**Measured first.** All nine views a person passes through (landing, wizard
+steps 1–6, dashboard before and after a plate) at 320, 375 and 414px in a
+touch-emulating Chromium. Every view reported `scrollWidth == clientWidth`,
+which proves nothing here: `body { overflow-x: clip }` hides overflow
+(DESIGN_SYSTEM.md, known inconsistency 0). Measuring elements found, besides
+this entry's defect, small tap targets, 13–15px text boxes (iOS zooms on
+focus), 9px step labels, and a 267px-tall calculator tab over the landing
+text. Those are M2–M5.
+
+**The defect.** Eleven `repeat(auto-fit, minmax(Npx, 1fr))` grids had a bare
+pixel minimum. Where N is wider than the content column, the one remaining
+column overhangs it. At 320px the column is 284px (18px inset each side) and
+`.science-grid` asked for 300, so `.quality-card` ran 16px past the column's
+right edge. Still inside the viewport, so nothing scrolled and no scroll check
+could see it.
+
+**Fixed.** All eleven now use `minmax(min(Npx, 100%), 1fr)`, the form
+`.dash-plate-grid` already used. A no-op wherever the column is at least N
+wide, so desktop is unchanged.
+
+**Test.** `tests/test_web_mobile.py::test_no_grid_child_overhangs_its_grid`
+checks every grid on every view, not just this one. Red before the fix:
+```
+python -m pytest tests/test_web_mobile.py -q
+E       AssertionError: grid children past their grid's edge: {'320px landing': ['div.col in div.science-grid: child 18..318, grid 18..302', 'div.col in div.science-grid: child 18..318, grid 18..302']}
+1 failed, 1 passed in 32.63s
+```
+After: `2 passed in 34.07s`. Deletion check by hand (web is not graded by the
+mutation harness), `.science-grid`'s `min()` alone removed:
+```
+== M: science-grid min() removed
+E       AssertionError: grid children past their grid's edge: {'320px landing': ['div.col in div.science-grid: child 18..318, grid 18..302', 'div.col in div.science-grid: child 18..318, grid 18..302']
+1 failed, 1 passed in 33.79s
+== restored
+2 passed in 33.62s
+```
+No other view went red: the other ten minimums are 280px or less, or
+(`.ob-decline-grid`, `.ob-goal-row.is-stacked`) only apply above 640/680px,
+or (`.ob-grid`, 340px) belong to a class no page uses. Their `min()` is
+protection, not a measured fix. `.ob-grid` being unused is logged here, not
+removed.
+
 ## 2026-10-17 — auditor findings 1–3 on `core/foods/retention.py`, checked by running code
 
 **Asked.** Session `local_8d997800`, for the owner, 2026-10-17: verify by
