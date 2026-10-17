@@ -6,6 +6,29 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-17 — M3: text boxes are 16px on a phone, so iOS does not zoom
+
+**Defect.** iOS Safari zooms the whole page when a text box under 16px
+takes focus, and leaves it zoomed. Measured at all three phone widths: the
+wizard's four number boxes 15px, the account email and password 15px, the
+early-access email 14px, the dashboard's swap boxes 13px.
+
+**Fixed.** `web/styles.css`: those five selectors (plus the sign-in modal's
+fields, which share the account fields' rule) are 16px under
+`@media (max-width: 560px), (pointer: coarse)`. Desktop is unchanged.
+
+**Test.** `tests/test_web_mobile.py::test_no_text_box_makes_the_phone_zoom`,
+red before with the list above. Deletion check by hand:
+```
+== M: the swap box removed from the 16px list
+E       AssertionError: text boxes under 16px on a phone: {'320px dashboard_after_plan': ['select 13px', 'select 13px', 'select 13px'], '375px dashboard_after_plan': ['select 13px', 'select 13px', 'select 13px'], '414px dashboard_after_plan': ['select 13px', '
+FAILED tests/test_web_mobile.py::test_no_text_box_makes_the_phone_zoom - Asse...
+1 failed, 4 deselected in 34.76s
+== restored (byte-identical)
+```
+After: `5 passed in 35.11s`. The modal's fields are hidden during the sweep,
+so the test does not see them; they are checked by hand in M6's walk.
+
 ## 2026-10-17 — M2: every tap target 44px tall on a phone; the header stays one row
 
 **Defect.** Measured at 375px with touch emulation (M1 entry): header

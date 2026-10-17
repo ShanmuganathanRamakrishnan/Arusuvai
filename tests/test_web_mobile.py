@@ -211,3 +211,12 @@ def test_the_header_stays_one_row(phone_views):
            if (h := m["header_height"]) is not None and h > 64
            for k in [f"{w}px {v}"]}
     assert not bad, f"header taller than one 64px row: {bad}"
+
+
+def test_no_text_box_makes_the_phone_zoom(phone_views):
+    """iOS Safari zooms the whole page when a text box under 16px takes focus,
+    and does not zoom back out. Measured before the fix: the wizard's number
+    boxes 15px, the account email/password 15px, the early-access email 14px,
+    the dashboard's swap boxes 13px."""
+    bad = _collect(phone_views, "small_inputs")
+    assert not bad, f"text boxes under 16px on a phone: {bad}"

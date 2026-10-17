@@ -1382,6 +1382,18 @@ a:focus-visible {
   .dash-dish-swap select { min-height: 44px; }
   .dash-dish-remove { min-height: 44px; display: inline-flex; align-items: center; padding: 0 4px; }
 }
+/* iOS Safari zooms the page when a text box under 16px takes focus, and
+   does not zoom back. Every text box a person types into or picks from is
+   16px on a phone or touch screen: the wizard's number boxes and the account
+   fields were 15px, the early-access email 14px, the dashboard's swap boxes
+   13px. The calculator's inline boxes are 18px already and are not listed.
+   Pinned by tests/test_web_mobile.py::test_no_text_box_makes_the_phone_zoom. */
+@media (max-width: 560px), (pointer: coarse) {
+  .ob-input-unit input,
+  .modal label input, .ob-account-fields label input,
+  .early-form input,
+  .dash-dish-swap select { font-size: 16px; }
+}
 /* At 320px the brand (135px) and two header items no longer fit the 284px
    row with the default gaps, and the nav wrapped under itself: the header
    measured 112px on the landing page and the dashboard. Tighter gaps and
