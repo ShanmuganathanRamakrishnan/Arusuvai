@@ -161,7 +161,7 @@ def rendered_text() -> dict[str, list[str]]:
                 credentials: 'include', headers: j, body: JSON.stringify({email, password})});
               await fetch('http://localhost:8000/api/profile', {method: 'PUT',
                 credentials: 'include', headers: j, body: JSON.stringify({
-                  age_years: 31, sex: 'male', weight_kg: 121, height_cm: 176,
+                  age_years: 31, sex: 'male', weight_kg: 124, height_cm: 205,
                   activity: 'moderate', goal: 'maintain', diet: 'vegetarian',
                   clinical_flags: ['chronic_kidney_disease'], eats_snack: true})});
             }""",
@@ -183,7 +183,17 @@ def rendered_text() -> dict[str, list[str]]:
         # (`docs/audit_log.md` finding 36).
         #
         # south_indian:lunch is the plate that declines for the CKD profile
-        # above. Repointed again 2026-09-27 (docs/audit_log.md, South Indian
+        # above. Repointed again 2026-10-17 (docs/audit_log.md, N32b): protein
+        # weight now counts only up to BMI 30, which at 176 cm is 92.9 kg, so
+        # every weight above it gets 92.9 kg's target, and 45..130 kg at
+        # 176 cm all passed. The decline needs a target only a heavy body
+        # gets, so the body is now tall: at 205 cm (cap 126.1 kg) 121..126 kg
+        # decline on sodium alone (2054.4 to 2595.9 mg vs 1400.0 mg), and from
+        # 127 kg on every weight shares the capped target and declines too.
+        # 124 kg is the middle of the uncapped run, BMI 29.5, so the cap does
+        # not decide it. The notes below are kept as history.
+        #
+        # Repointed 2026-09-27 (docs/audit_log.md, South Indian
         # lunch): 88 kg stopped declining once soya_chunk_poriyal gave
         # south_lunch's vegetable slot a protein-dense option. weight_kg=121
         # declines on sodium alone, locked by chronic_kidney_disease (2281.1

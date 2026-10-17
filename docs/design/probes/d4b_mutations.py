@@ -144,6 +144,9 @@ MEAL_TARGET = "core/nutrition/meal_target.py"
 #: whether a banana or a cup of tea can ever be served, so each addition is a
 #: gate in this file's sense. Only the four N26 additions are rowed.
 TEMPLATES = "core/foods/templates.py"
+#: Added for N32b (2026-10-17). The weight a protein g/kg figure multiplies
+#: stops at BMI 30; removing that cap raises every heavy body's protein floor.
+TARGETS = "core/nutrition/targets.py"
 
 MUTATIONS: tuple[Mutation, ...] = (
     # ---------------------------------------------------------------- candidates
@@ -848,6 +851,12 @@ MUTATIONS: tuple[Mutation, ...] = (
         "        eats_snack=True if profile is None else profile.eats_snack,\n",
         "        eats_snack=True,\n",
     ),
+    # ------------------------------------------------------------------ targets
+    Mutation(
+        "PW1", TARGETS, "protein weight is counted only up to BMI 30 (N32b)",
+        "    weight_basis_kg = min(profile.weight_kg, cap_kg)\n",
+        "    weight_basis_kg = profile.weight_kg\n",
+    ),
 )
 
 
@@ -906,6 +915,8 @@ OWN_TESTS: dict[str, tuple[str, ...]] = {
         "test_templates_and_portions.py", "test_snack_coverage.py",
         "test_meal_coverage.py",
     ),
+    # test_meal_coverage.py too: the cap exists to give heavy bodies a plate.
+    TARGETS: ("test_nutrition_targets.py", "test_meal_coverage.py"),
 }
 
 

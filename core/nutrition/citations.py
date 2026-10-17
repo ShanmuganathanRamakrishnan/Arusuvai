@@ -1346,6 +1346,38 @@ PROJECT_PROTEIN_TARGET_POLICY = register_evidence(
     )
 )
 
+register_evidence(
+    Evidence(
+        id="weijs_2025_protein_obesity",
+        summary="Review of protein requirement in obesity: count body weight only up to BMI 30.",
+        phenomenon=(
+            "a narrative review's recommendation on which body weight a g/kg "
+            "protein requirement should multiply in adults with obesity: actual "
+            "weight up to the weight at BMI 30, ignoring fat mass above it, "
+            "because systematic reviews it cites find no raised protein "
+            "requirement in obesity; it advises at least 1.2 g/kg/day of that "
+            "capped weight during weight loss and reports an older-adult study "
+            "that capped at BMI 25 (to age 70) and 27 (over 70)"
+        ),
+        source=(
+            "Weijs, P.J.M. Protein requirement in obesity. Current Opinion in "
+            "Clinical Nutrition and Metabolic Care (2025; online 2024)."
+        ),
+        grade=Grade.TEXTBOOK,
+        doi="10.1097/MCO.0000000000001087",
+        verified=False,
+        display_ref="Weijs (2025)",
+        note=(
+            "Read 2026-10-17 from text a program extracted from the PDF; no "
+            "person has opened it. A recommendation, not a measured breakpoint. "
+            "Others in 2025 use adjusted body weight instead (ideal weight plus "
+            "a quarter of the excess: the EASO/EFAD/ECPO consensus, read only "
+            "in secondary reports; Joslin 2018). Only the weight cap is taken "
+            "from it: the g/kg figures stay the project's own, above its 1.2."
+        ),
+    )
+)
+
 # --- BMR: Mifflin-St Jeor coefficients ------------------------------------
 # BMR = weight_coeff*kg + height_coeff*cm - age_coeff*years + sex_constant.
 # The coefficients are exact regression outputs (uncertainty 0); the equation's
@@ -1426,6 +1458,23 @@ register_constant(Constant(
     evidence_id="project_protein_target_policy",
     applied_to="the protein intake target in a building phase",
     uncertainty=0.15,
+))
+register_constant(Constant(
+    key="protein.weight_cap_bmi", value=30.0, unit="kg/m^2",
+    evidence_id="weijs_2025_protein_obesity",
+    applied_to=(
+        "the body weight every protein.g_per_kg_* figure multiplies: actual "
+        "weight, counted only up to the weight at this BMI for the person's "
+        "height"
+    ),
+    uncertainty=0.0,
+    note=(
+        "A boundary, not a measurement (owner, 2026-10-10: pick a clear "
+        "boundary and write it down). 30 is the review's own figure. The "
+        "Asian BMI cut-offs are lower, and the review reports a study that "
+        "used 25; 25 was trialled and closes 10 gaps rather than 8 "
+        "(docs/audit_log.md 2026-10-17, N32b) but has no source for this use."
+    ),
 ))
 
 # --- Diet: representative DIAAS by pattern (divides the protein target) ----
@@ -1759,6 +1808,7 @@ REVIEWED_MECHANISM_MATCHES.update({
     "protein.g_per_kg_maintain": "reviewed: meta-regression protein breakpoint, applied to the protein intake target",
     "protein.g_per_kg_lose_fat": "reviewed: project decision above the Morton anchor; no single measured breakpoint claimed",
     "protein.g_per_kg_gain_muscle": "reviewed: project decision above the Morton anchor; no single measured breakpoint claimed",
+    "protein.weight_cap_bmi": "NOT YET REVIEWED by a person: the recommendation was read from program-extracted text, and applied_to restates it; a human must open the source",
     "diaas.non_vegetarian": "reviewed: NO matching primary source for a per-diet rollup; project estimate of protein quality",
     "diaas.pescatarian": "reviewed: NO matching primary source for a per-diet rollup; project estimate of protein quality",
     "diaas.eggetarian": "reviewed: NO matching primary source for a per-diet rollup; project estimate of protein quality",

@@ -6,6 +6,109 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-17 — N32b: protein weight is counted only up to BMI 30
+
+**Asked.** Owner, 2026-10-17: "option 1 it is" (the eight non-breakfast
+gaps first; North vegan breakfast left as a known limit), then "Check with
+more recent papers and change accordingly" for the protein rule.
+
+**Why protein.** Of N32a's 22 gaps, the heavy ones traced to the protein
+floor: 1.8 g/kg x actual weight is 162 g a day for a 90 kg lose_fat woman,
+and a South vegan lunch reached 34.0 g against a 48.2 g floor.
+
+**Evidence read** (2026-10-17, none opened by a person; all `verified=False`):
+- Weijs, P.J.M., "Protein requirement in obesity", Curr Opin Clin Nutr
+  Metab Care, DOI 10.1097/MCO.0000000000001087 (2025; online 2024). Text
+  extracted from the PDF by pypdf. Recommends at least 1.2 g/kg during
+  weight loss, with body weight capped at the weight of BMI 30, since fat
+  mass above it adds little to protein need; reports systematic reviews
+  finding no raised requirement in obesity, and a study that capped at
+  BMI 25 (to age 70) and 27 (over 70). The PDF was saved by the fetch tool
+  outside the repo; it is not committed.
+- Hamdy et al., Joslin Diabetes Center guideline (2018): 1.0-1.5 g/kg of
+  adjusted body weight (ideal weight + 0.25 x excess); no ideal-weight
+  formula given.
+- Sievenpiper et al., Obesity Pillars 2025;17:100228: 1.2-1.5 g/kg actual
+  weight, noting it may overestimate when fat mass is high.
+- EASO/EFAD/ECPO consensus, Lancet Diabetes Endocrinol 2025: 1.0-1.5 g/kg
+  adjusted weight, at least 60 g a day. Read only in secondary reports.
+
+**Trialled before choosing** (scratchpad `n32b_trial.py`, monkeypatches the
+weight `compute_protein` uses; 864-body grid, PYTHONHASHSEED=0):
+```
+rule devine (adjusted weight, Devine ideal): gaps 10 (was 22); closed 12; opened 0
+rule bmi23  (adjusted weight, ideal = BMI 23): gaps 11 (was 22); opened 0
+rule cap30: gaps 14 (was 22); closed 8; opened 0
+rule cap25: gaps 12 (was 22); closed 10; opened 0
+```
+**Chosen: cap30.** It is the most recent primary text actually read, it
+is that text's own figure, and it needs no ideal-weight formula (the
+adjusted-weight sources give none, and Devine is a 1974 drug-dosing
+formula from US data). Fewer gaps close than with the other rules; the
+gap count was not the reason to choose. 25 is closer to the Asian BMI
+cut-offs, but no source here applies it to protein for adults under 70.
+The g/kg figures (1.6 / 1.8 / 1.8) are unchanged: only the weight they
+multiply is.
+
+**Built.**
+- `core/nutrition/citations.py`: Evidence `weijs_2025_protein_obesity`
+  (TEXTBOOK grade, `verified=False`); constant `protein.weight_cap_bmi` =
+  30.0. Its mechanism-review line says NOT YET REVIEWED by a person.
+- `core/nutrition/targets.py` `compute_protein`: weight basis =
+  min(weight, 30 x height_m^2); `base_g` = basis x g/kg. New required field
+  `ProteinTarget.weight_basis_kg`.
+- `api/models.py` `ProteinOut.weight_basis_kg` (required) and
+  `api/main.py`; `web/onboarding.js` now reads "1.6 g/kg of 87 kg".
+
+**Result** (`tests/test_meal_coverage.py`, KNOWN_GAPS regenerated under
+PYTHONHASHSEED 1 and 777, `cmp` identical):
+```
+gaps: 22 -> 14   (with a snack 12 -> 8, without 10 -> 6)
+closed: South vegan lunch f 90; North dinner veg/egg/vegan f 90 (snack);
+        North breakfast veg/egg/non-veg f 90 (no snack); South vegan dinner f 90 (no snack)
+left:   North vegan breakfast 11; South vegan dinner 3 (f 55 and f 90 with a snack, f 70 without)
+```
+
+**Re-pointed.** `tests/test_web_no_identifiers.py` needed a CKD profile
+whose South lunch declines on sodium alone. The old one, 121 kg at 176 cm,
+now gets 92.9 kg's target, and every weight 45..130 kg at 176 cm passed
+(scratchpad `n32b_ckd.py`). Now 124 kg at 205 cm: 121..126 kg decline on
+sodium alone (2054.4 to 2595.9 mg vs 1400.0 mg), 124 is the middle, BMI
+29.5, under the cap.
+
+**Deletion checks.**
+```
+   all failures (5):
+      tests/test_meal_coverage.py::test_no_body_loses_its_plate[snack-lunch-south_indian]
+      tests/test_meal_coverage.py::test_no_body_loses_its_plate[snack-dinner-north_indian]
+      tests/test_meal_coverage.py::test_no_body_loses_its_plate[no_snack-breakfast-north_indian]
+      tests/test_meal_coverage.py::test_no_body_loses_its_plate[no_snack-dinner-south_indian]
+      tests/test_nutrition_targets.py::TestProteinWeightStopsAtBMI30::test_weight_above_bmi_30_is_counted_at_bmi_30
+PW1  covered      tests/test_meal_coverage.py::test_no_body_loses_its_plate[snack-lunch-south_indian]
+1 mechanisms: 1 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+The web wording, by hand (scratchpad `n32b_web.py`, onboarding wizard,
+female 170 cm, maintain):
+```
+68 kg -> 109 g/day (1.6 g/kg of 68 kg)
+90 kg -> 139 g/day (1.6 g/kg of 87 kg)
+== M: 'of N kg' removed
+90 kg -> 139 g/day (1.6 g/kg)
+== restored
+90 kg -> 139 g/day (1.6 g/kg of 87 kg)
+```
+No automated test reads this line; logged, not fixed.
+
+**Suite.** First run: `1 failed, 721 passed` (the CKD decline above).
+After re-pointing:
+```
+FOODAI_WEB_TESTS=required python -m pytest tests/ -q
+722 passed, 1 warning in 267.74s (0:04:27)
+```
+
+**Not done here.** No person has opened Weijs; `protein.weight_cap_bmi`
+stays unreviewed. Whether 30 or the lower Asian cut-off fits Indian bodies
+is the owner's call.
 ## 2026-10-17 — N32a: rice is served in 120 g steps, not one 200 g cup
 
 **Asked.** Owner, 2026-10-17: of N32's four groups, "option 1" -- a smaller
