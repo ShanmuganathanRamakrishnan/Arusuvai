@@ -6,6 +6,129 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-17 — V1: what stands between today's library and one validated plate
+
+**Asked.** Owner, 2026-10-17, "option 1": work toward a plate that can
+honestly be called validated, measuring first. Context: Phase R's exit
+condition is met (`probe_rank_input2.py`, run 2026-10-17: 993/1152 =
+86.2% offer >= 2 valid plates, weakest south_indian/lunch 98/144 = 68.1%,
+29 declines), yet every plate ships as "Development estimate".
+
+**Measured** with a new probe, `docs/design/probes/v1_validated_plate.py`
+(in-memory scenarios only; nothing in `data/` or `core/` edited). Grid:
+`tests/test_meal_coverage.py`'s 864 bodies-and-meals, `dev_mode=False`.
+```
+recipes in library: 55; ingredient rows: 40, verified today: 1
+ceilings: protein_g 0.15, energy_kcal 0.2
+
+scenario        eligible recipes  plates (of 864)  under 15% unverified
+today                   0 of 55            0              0
+rows_checked           50 of 55          677            332   (unverified energy 8%-30%)
+process_known           0 of 55            0              0
+both                   55 of 55          850            850   (unverified energy 0%-0%)
+```
+`rows_checked` = every ingredient row read from its source by a person.
+`process_known` = every process a recipe leaves unassessed given a sourced,
+checked constant adding no band: the best case for finding 41, not a
+forecast. `both` gives 850, the same as today's dev-mode count (864 - 14
+KNOWN_GAPS), so with both done the eligibility gate removes nothing.
+
+**Blocker 1: ingredient rows (the largest).** Checking rows alone takes
+plates from 0 to 677 of 864 and dishes from 0 to 50 of 55. Of the 40 rows,
+17 name a source a person can open today (10 IFCT codes, 7 USDA FDC ids) and
+23 name none ("Hand-entered approximation"), so those 23 need a source
+found before anyone can check them. Rows each dish needs checked to clear
+the protein ceiling (fewest, largest protein share first), by how many
+dishes need them:
+```
+      8  soya_chunks_dry        no source named: needs sourcing first
+      5  egg_whole_raw          names a source (IFCT M001)
+      4  egg_boiled             names a source (IFCT M004)
+      4  toor_dal_cooked        no source named: needs sourcing first
+      4  curd_dahi              no source named: needs sourcing first
+      4  chicken_breast_raw     names a source (IFCT N003)
+      3  urad_dal_raw           no source named: needs sourcing first
+      3  moong_dal_raw          names a source (USDA FDC)
+      2  wheat_atta_raw         no source named: needs sourcing first
+      2  rice_milled_raw        names a source (IFCT A015)
+      2  pomfret_white_raw      names a source (IFCT P057)
+      2  paneer_fresh           no source named: needs sourcing first
+      2  rice_cooked            no source named: needs sourcing first
+      2  soya_curd_plain        names a source (USDA FDC)
+      1  potato_boiled          no source named: needs sourcing first
+      1  banana_ripe            names a source (IFCT E012)
+      1  carrot_raw             no source named: needs sourcing first
+      1  coconut_fresh          no source named: needs sourcing first
+      1  rajma_cooked           no source named: needs sourcing first
+      1  tofu_firm              no source named: needs sourcing first
+  all 40 rows: names a source 17, no source named 23
+```
+
+**Blocker 2: cooking constants (finding 41).** Every process constant is a
+project estimate, which `Evidence.__post_init__` will never let be marked
+verified:
+```
+  oil_uptake.chicken_tikka_pan_roasted     project_estimate
+  oil_uptake.dosa_griddled                 project_estimate
+  oil_uptake.fish_tawa_fried               project_estimate
+  oil_uptake.paratha_griddled              project_estimate
+  oil_uptake.tikka_pan_roasted             project_estimate
+  oil_uptake.vegetable_tempering           project_estimate
+  process.unassessed_uncertainty           project_estimate
+  yield.potato_boiled                      project_estimate
+  yield.rajma_soaked_boiled                project_estimate
+  yield.rice_milled_boiled                 project_estimate
+  yield.toor_dal_boiled                    project_estimate
+```
+Two effects. (a) 5 dishes cannot clear the protein ceiling even with
+every row checked, because they declare protein's process unassessed
+(0.20 band): `idli`, `milk_tea`, `phulka`, `soya_chana_chaat`, `soya_idli`.
+(b) The 15% unverified-energy rule: with rows checked, 345 of 677 plates
+are still 15-30% unverified, from lines whose quantity an oil-uptake or
+yield constant set. Each needs a measured source, or the rule stays out of
+reach for those plates.
+
+**Blocker 3: the target side.** `_status_and_disclosure` returns
+"validated" only when every `_SOURCE_KEYS` constant rests on verified
+evidence. 10 of 30 rest on project estimates and can never be verified:
+the five `activity.pal_*` and the five `diaas.*`. The `diaas.*` values move
+no gated number (`ProteinTarget.quality_adjusted_g` is display-only), but
+they still hold the status at dev_mode.
+
+**Blocker 4: the API.** `api/main.py` sets `dev_mode = True` for every
+plan. Even with all of the above done, a code change is needed to serve a
+plate without it. The 15% rule is in `docs/methodology.md` and nothing in
+`core/` enforces it; the page shows the fraction.
+
+**Correction (my own error, N32b, merged in PR #44).** `compute_protein`
+now reads `protein.weight_cap_bmi`, but I did not add it to
+`_SOURCE_KEYS`, so `DerivedTarget.sources` omits the Weijs citation and
+target status ignores it. `diaas.pescatarian` (R1a, 2026-08-14) is
+missing the same way. Logged, not fixed here.
+
+**Stale claim found.** `docs/methodology.md` ("The 15% unverified-energy
+shipping threshold", correction note 2) says that checking every
+ingredient row "leaves all four plates unenumerable outside `dev_mode`"
+and that `idli`, `phulka` and `steamed_rice` are blocked. Measured today:
+with rows checked, `steamed_rice` clears both ceilings and 677 of 864
+plates plan; `idli` and `phulka` are still blocked, now by their
+unassessed process band. Logged, not corrected in place here.
+
+**Cost, in the order it moves plates:**
+1. Owner checks the 17 rows that name a source (no code; a checklist).
+2. Source the 23 unnamed rows (IFCT 2017 PDF, needs download permission),
+   then owner checks them. Rows 1+2 together: 0 -> 677 plates.
+3. Measured sources for steaming/boiling/griddling and oil uptake, or
+   accept that those plates disclose more than 15%: 677 -> 850.
+4. Sources for the PAL factors; decide whether display-only `diaas.*`
+   should hold target status; add the two missing `_SOURCE_KEYS`.
+5. Let the API serve `dev_mode=False` when the pool allows it.
+
+**Run.**
+```
+PYTHONHASHSEED=0 PYTHONPATH=. python docs/design/probes/v1_validated_plate.py
+exit 0
+```
 ## 2026-10-17 — N32b: protein weight is counted only up to BMI 30
 
 **Asked.** Owner, 2026-10-17: "option 1 it is" (the eight non-breakfast
