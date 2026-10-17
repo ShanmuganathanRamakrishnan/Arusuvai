@@ -17,6 +17,7 @@ data/app.db
 # stale tomorrow. Kept on disk, never pushed.
 TASKS.md
 TASKS_2.MD
+TASKS_3.md
 
 # Session-local Claude Code state (output styles, permission grants).
 .claude/output-styles/
