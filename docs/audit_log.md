@@ -6,6 +6,35 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-17 — AGENTS.md: README and three other places have drifted (logged, not fixed)
+
+**Asked.** Owner, 2026-10-17: move the shared rules from `CLAUDE.md` into a new
+`AGENTS.md`; check six named claims by hand; log any README drift here and
+leave it. The claims corrected inside `CLAUDE.md` itself are listed in its
+"Restructure note, 2026-10-17".
+
+**README "Current state" table is stale.** Measured on `81e23b4`:
+
+```
+README says                  measured
+Recipes      15              55  (python demo.py: "recipes loaded : 55", rejected [])
+Templates    4               8   (core/foods/templates.py ALL_TEMPLATES)
+Ingredients  29              40  (python demo.py: "ingredients    : 40")
+Tests        335 passed,     723 passed, 0 failed, 0 skipped (FOODAI_WEB_TESTS=required,
+             1 failed         browser files included; 325.92s)
+```
+
+**Noticed in passing, also left:**
+
+- `demo.py` prints the heading "SLOT COVERAGE, ALL FOUR TEMPLATES" and then
+  covers eight.
+- `docs/repo_policy.md` names `CLAUDE.md` as tracked "because it is the
+  contract" and does not yet name `AGENTS.md`, which now holds most of it.
+- The header of this file says "Per CLAUDE.md's audit-workflow section"; that
+  section moved to `docs/repo_policy.md` on 2026-08-12.
+
+**Disposition.** Open. Each is a docs edit for its own task.
+
 ## 2026-10-17 — V2: a checklist for the owner to check 12 food rows
 
 **Asked.** Owner, 2026-10-17, "option 1": after V2a, a checklist for the
