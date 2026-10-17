@@ -94,7 +94,7 @@ In this order, every task:
 
 1. **Verify.** Run the stated verification; paste the raw transcript.
 2. **Commit.** One task, one commit, task ID in the message.
-3. **Push** the branch.
+3. **Push** the branch, after the owner says yes. Ask before every push.
 4. **Confirm** with `git log origin/<branch> -1` that the remote has the commit.
 5. **Reconsider the queue.** Does anything found change or reorder a task below?
 6. **Report** (see "Reporting").
