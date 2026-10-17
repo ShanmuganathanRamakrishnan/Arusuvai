@@ -6,6 +6,48 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-17 — V2: a checklist for the owner to check 12 food rows
+
+**Asked.** Owner, 2026-10-17, "option 1": after V2a, a checklist for the
+ingredient rows that name a source, most important first.
+
+**Built.** `docs/verification_checklist.md`: for each row, what to open,
+which page and code, and the numbers the source should show; how to tell
+the assistant the result. The assistant then marks the row `verified=true`
+quoting the owner's message; it never marks one on its own (CLAUDE.md
+invariant 4).
+
+**Which rows.** Of V1's 15 rows that name a source, 12 are used by a dish;
+`rajma_raw`, `toor_dal_raw` and `potato_raw` are used by none (recipes
+use their cooked rows), so checking them unblocks nothing and they are
+left off. Order: V1's "dishes that need this row" count, then use.
+Recipe use counted from the loaded library:
+```
+egg_whole_raw 5   egg_boiled 4   chicken_breast_raw 4   moong_dal_raw 3
+rice_milled_raw 6   pomfret_white_raw 2   soya_curd_plain 2   banana_ripe 1
+rajma_raw 0   toor_dal_raw 0   potato_raw 0   soya_flour_defatted 2
+chickpea_boiled 2   milk_cow_whole 1   tea_black_brewed 1
+```
+
+**Page numbers and a machine pre-check.** `IFCT2017.pdf` (already on this
+computer from an earlier task, 585 pages) was text-extracted with pypdf
+and each code's Table 1 line read against the CSV:
+```
+M001 p58 | csv protein 13.28 fat 9.15 kcal 134.8 -> 564 kJ | pdf line: M001 Egg, poultry, whole, raw 6 76.51±0.20 13.28±0.29 0.81±0.04 9.15±0.14 564±3
+M004 p58 | csv protein 13.43 fat 10.54 kcal 147.7 -> 618 kJ | pdf line: M004 Egg, poultry, whole, boiled 6 73.46±0.22 13.43±0.28 0.86±0.04 10.54±0.19 618±6
+N003 p58 | csv protein 21.81 fat 9.0 kcal 168.3 -> 704 kJ | pdf line: N003 Chicken, poultry, breast, skinless 5 67.15±0.18 21.81±0.81 1.19±0.09 9.00±0.52 704±24
+P057 p65 | csv protein 19.02 fat 5.12 kcal 122.6 -> 513 kJ | pdf line: P057 Pomfret, white (Pampus argenteus) 2 75.91 19.02 1.01 5.12 513
+A015 p41 | csv protein 7.94 fat 0.52 kcal 356.4 -> 1491 kJ | pdf line: A015 Rice, raw, milled  (Oryza sativa ) 6 9.93±0.75 7.94±0.58 0.56±0.08 0.52±0.05 2.81±0.42 1.99±0.39 0.82±0.22 78.24±1.
+E012 p49 | csv protein 1.23 fat 0.33 kcal 105.2 -> 440 kJ | pdf line: E012 Banana, ripe, robusta (Musa x paradisiaca) 6 71.93±0.85 1.23±0.08 0.94±0.17 0.33±0.01 1.94±0.07 1.23±0.10 0.71±0.07
+L002 p57 | csv protein 3.26 fat 4.48 kcal 72.9 -> 305 kJ | pdf line: L002 Milk, whole, Cow 6 86.64±1.10 3.26±0.06 0.68±0.02 4.48±0.29 4.94±1.02 305±23
+```
+(± shown where the terminal printed an unreadable byte.) All seven match.
+This catches typing errors only; it is not a check by a person and marks
+nothing. The five USDA rows were not re-fetched: their checklist numbers
+are the project's own, for the owner to compare.
+
+**Not done here.** The 18 Evidence sources (a second list); sourcing the
+25 rows that name none.
 ## 2026-10-17 — V1 correction: 15 rows name a source, not 17
 
 **Correction to the V1 entry below.** V1 reported "17 name a source a
