@@ -6,6 +6,38 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-17 — N33b-enc: the mutation harness reads pytest's output as utf-8
+
+**Asked.** Owner, 2026-10-17, "Option 2 then 1": fix the harness crash
+logged in "2026-10-16 — N33" as its own commit, before pushing.
+
+**Cause, reproduced, not guessed.** A first attempt to reproduce with
+`PYTHONIOENCODING` unset did not crash: pytest then writes cp1252 and the
+harness reads cp1252, so they agree. The crash needs the two to disagree:
+an inherited `PYTHONIOENCODING=utf-8` (the way every sweep in this log is
+launched) makes pytest write utf-8, while `subprocess.run(text=True)`
+decodes with the locale default, cp1252. Same shell, same code, different
+answer depending on one environment variable -- the finding-35 shape.
+
+**Fix.** `_run_suite` passes `encoding="utf-8", errors="replace"` and sets
+`PYTHONIOENCODING=utf-8` in the child's environment, so both ends agree
+whatever the launching shell has set.
+
+**Before/after, row B4** (61 failures, the largest output), launched with
+`env -u PYTHONUTF8 PYTHONIOENCODING=utf-8`:
+```
+== old harness, PYTHONIOENCODING=utf-8, no PYTHONUTF8
+UnicodeDecodeError: 'charmap' codec can't decode byte 0x8d in position 204250: character maps to <undefined>
+AttributeError: 'NoneType' object has no attribute 'splitlines'
+== fixed harness, same env
+   all failures (61):
+B4   covered      tests/test_planner_combinations.py::TestMacroBounds::test_the_low_bound_is_the_fewest_servings_and_the_high_the_most
+1 mechanisms: 1 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+Also with both variables unset (fixed harness, row N33c): `1 covered`.
+Byte position 204250 matches the 2026-10-16 crash exactly. No `web/` or
+pipeline code touched; the harness is not itself under a harness row.
+
 ## 2026-10-16 — N33: the pre-filter sums each dish once
 
 **Asked.** Owner, 2026-10-16: push N31, then "do N33 first, so every later
