@@ -359,20 +359,29 @@ class TestAgainstTheRealLibrary:
         # the 1400 mg ceiling with no rung relaxed at all. This is a real
         # measured effect of adding one recipe, re-derived here rather than
         # asserted from the pre-fix plate.
+        #
+        # Re-pinned 2026-10-17 (N32a, docs/audit_log.md): steamed_rice went
+        # from one 200 g cup to 120 g units. The plate is now 2 x 120 = 240 g
+        # of rice, and plain curd fits under the ceiling where soya_curd was
+        # needed beside 200 g. Still no rung relaxed, which is this test's
+        # claim. Per-unit sodium (mg): rice 1.200, soya_kuzhambu 323.466,
+        # carrot_poriyal 240.130, thayir_plain 261.945;
+        #   2(1.200) + 2(323.466) + 2(240.130) + 261.945
+        #   = 2.400 + 646.932 + 480.260 + 261.945 = 1391.537 <= 1400
         outcome = _plan(real, Region.SOUTH_INDIAN, MealSlot.LUNCH)
         assert outcome.result.relaxation_applied == ()
         assert outcome.plan.unit_counts == {
-            "steamed_rice@rice": 1,
+            "steamed_rice@rice": 2,
             "soya_kuzhambu@kuzhambu": 2,
             "carrot_poriyal@poriyal": 2,
-            "soya_curd@curd": 1,
+            "thayir_plain@curd": 1,
         }
         point = nutrition_of_components(
             [(real.recipes.components[c.split("@")[0]], n)
              for c, n in outcome.plan.unit_counts.items()],
             real.ingredients,
         ).point
-        assert point.sodium_mg == pytest.approx(1344.737, abs=0.5)
+        assert point.sodium_mg == pytest.approx(1391.537, abs=0.5)
 
     def test_the_decline_never_shows_a_reader_the_identifier(self, real):
         # A Violation macro is a stable token crossing the API; the sentence a

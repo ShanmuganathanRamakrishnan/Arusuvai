@@ -6,6 +6,86 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-17 — N32a: rice is served in 120 g steps, not one 200 g cup
+
+**Asked.** Owner, 2026-10-17: of N32's four groups, "option 1" -- a smaller
+rice serving, backed by a published Indian serving size. Then "option 1"
+again: download the ICMR-NIN 2024 guidelines to find one.
+
+**Diagnosis first** (scratchpad `n32_diag.py`, each of N31's 46 gaps, its
+violations). Four groups: South lunches and dinners whose smallest plate is
+over the carbohydrate or energy ceiling (South vegan dinner: carb_g 83.5
+above 72.6-83.4, reach `unreachable`, at every count); North vegan
+breakfast with no low-carbohydrate protein dish; protein floors that are
+high for a 90 kg lose_fat woman (53.5 g at a no-snack lunch); near misses
+(fat_g 24.0 vs 23.9).
+
+**Evidence.** The 200 g cup was itself unverified: `measure.cup_cooked_rice_g`
+rests on `nin_household_measures`, "Transcribed from memory". Downloaded with
+the owner's permission: `DGI_2024.pdf`, nin.res.in, 24,471,521 bytes, text
+extracted with pypdf (148 pages; no page was viewed as an image, so tables
+are read from extracted text). Annexure I (p. 111) defines the standard
+katoris, 360/200/155/115 ml. Annexure V gives sample diets as **raw** weight
+per meal; the cereal lines:
+```
+p.120  sedentary men 65 kg / women 55 kg   lunch 100 / 80 g   dinner 80 / 60 g
+p.121  elderly (>60 y)                     lunch 60 g         dinner 40 g "1/4 of a medium (200ml) katori"
+p.119  children 18 / 25 kg                 lunch 60 g         dinner 50 g
+```
+(Which of the men's and women's blocks is which on p.120 is read from text
+order, not seen laid out.) At the project's own 3.0 boiling yield
+(`yield.rice_milled_boiled`, `project_yield_estimate`, unverified), adult
+meals run 180-300 g cooked and the smallest adult meal is 120 g. No
+cooked-rice serving size was found in the document.
+
+**Chosen boundary** (owner, 2026-10-10: "pick a clear boundary and write the
+rule down"): one unit = the smallest adult cereal portion in Annexure V,
+40 g raw = 120 g cooked; 1 to 5 units (600 g, the old 3 x 200 g ceiling),
+default 2. Displayed as "small katori". `sambar_sadam` keeps its 200 g cup.
+Trial before choosing: 120 g leaves 22 gaps, 100 g leaves 20; 120 g was
+taken because it is the published portion and 100 g is not.
+
+**Result** (`tests/test_meal_coverage.py`, KNOWN_GAPS regenerated under
+PYTHONHASHSEED 1 and 777, `cmp` identical):
+```
+gaps: 46 -> 22   (with a snack 28 -> 12, without 18 -> 10)
+plates changed of 864: 274   (24 none -> a plate; 0 plate -> none)
+   all in south_indian lunch (139) and dinner (135)
+steamed_rice on a plate: before 1 cup x196, 2 cups x26
+                         after  1 x112, 2 x141, 3 x24   (120 / 240 / 360 g)
+```
+Remaining 22: North vegan breakfast 11, North breakfast lose_fat female
+90 kg without a snack 3, North dinner lose_fat female 90 kg 3 (fat 24.0 vs
+23.9), South vegan dinner 4, South vegan lunch 1.
+
+**Re-pinned.** `test_planner_quality.py::test_the_reference_lunch_now_passes_unrelaxed`
+pinned the old plate (rice x1 200 g, soya_curd). The test's claim, no rung
+relaxed, still holds; the plate is now rice x2 (240 g) with thayir_plain,
+sodium 2(1.200) + 2(323.466) + 2(240.130) + 261.945 = 1391.537 mg.
+
+**Deletion check, by hand** (the harness cannot vary `data/` per row):
+```
+== M1: 200 g rice restored
+FAILED tests/test_meal_coverage.py::test_no_body_loses_its_plate[snack-lunch-south_indian]
+FAILED tests/test_meal_coverage.py::test_no_body_loses_its_plate[snack-dinner-south_indian]
+FAILED tests/test_meal_coverage.py::test_no_body_loses_its_plate[no_snack-lunch-south_indian]
+FAILED tests/test_meal_coverage.py::test_no_body_loses_its_plate[no_snack-dinner-south_indian]
+4 failed, 9 passed in 65.40s (0:01:05)
+```
+
+**Suite.** First run, before the re-pin:
+`1 failed, 718 passed, 1 warning in 267.07s (0:04:27)` (the reference
+lunch above). After:
+```
+FOODAI_WEB_TESTS=required python -m pytest tests/ -q
+719 passed, 1 warning in 265.97s (0:04:25)
+```
+
+**Not done here.** `nin_household_measures` stays `verified=False`: text was
+extracted by a program, and only a human who has opened the source may set
+it. The 200 g generic cup constant is unchanged and still from memory; the
+guidelines give no cooked cup weight to check it against.
+
 ## 2026-10-17 — N33b-enc: the mutation harness reads pytest's output as utf-8
 
 **Asked.** Owner, 2026-10-17, "Option 2 then 1": fix the harness crash

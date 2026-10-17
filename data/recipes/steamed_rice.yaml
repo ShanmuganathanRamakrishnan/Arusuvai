@@ -36,15 +36,24 @@ tags: [lunch, base, plain, low_sodium]
 
 serving_unit:
   measure: cup
-  grams_per_unit: 200.0
+  name: small katori
+  grams_per_unit: 120.0
   min_count: 1
   default_count: 2
-  max_count: 3
+  max_count: 5
   note: >-
-    The generic cup weight — no override, and the same 200 g cup sambar_sadam
-    uses, so the two rice_base candidates are directly comparable at equal unit
-    counts. Three cups is a large lunch and a real one; the ceiling is what
-    stops the solver closing an energy gap with five.
+    120 g of cooked rice, overriding the generic 200 g cup (TASKS_3.md N32a,
+    docs/audit_log.md 2026-10-17). The smallest cereal portion in the adult
+    sample diets of ICMR-NIN, Dietary Guidelines for Indians (2024), Annexure V,
+    p. 121: dinner, 40 g raw, "1/4 of a medium (200ml) katori", for elderly
+    adults. At the project's unverified 3.0 boiling yield
+    (yield.rice_milled_boiled) that is 120 g cooked. The same annexure's other
+    adult meals run 60-100 g raw (180-300 g cooked), which 2, 3 and 4 of these
+    reach; with one 200 g step the smallest plate was already above what a
+    smaller or fat-losing adult's meal can hold: 24 of N31's 46 known gaps
+    were South lunches and dinners that this step closes. Five units is
+    600 g, the same ceiling three 200 g cups gave. sambar_sadam keeps the 200 g cup: it is a one-pot dish served
+    by the cup, not rice served beside a gravy.
 
 # One ingredient, on a cooked basis, against a fixed 200 g portion — so cooking
 # yield does not enter this file at all.
@@ -75,7 +84,7 @@ process_uncertainty_unassessed: [iron_mg, calcium_mg, b12_ug]
 
 ingredients:
   - id: rice_cooked
-    quantity_g: 200.0
+    quantity_g: 120.0
     state: cooked
     note: >-
       The whole portion. rice_cooked is a cooked-basis composition row, so the
