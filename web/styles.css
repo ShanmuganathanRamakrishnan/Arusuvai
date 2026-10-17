@@ -1437,6 +1437,12 @@ a:focus-visible {
   .modal label input, .ob-account-fields label input,
   .early-form input,
   .dash-dish-swap select { font-size: 16px; }
+  /* At 16px a long dish name no longer fits beside "Swap for" at 320px
+     ("Soya chunk masala" needed 137px and had 125), and the box cut its own
+     text. Wrapping lets the box drop under its label only when it does not
+     fit; where it fits, the row is unchanged. Pinned by
+     tests/test_web_mobile.py::test_no_drop_down_cuts_its_own_text. */
+  .dash-dish-swap { flex-wrap: wrap; row-gap: 6px; }
 }
 /* At 320px the brand (135px) and two header items no longer fit the 284px
    row with the default gaps, and the nav wrapped under itself: the header

@@ -6,6 +6,81 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-17 — M8: drop-downs no longer cut their own text on a narrow phone
+
+**Found by the whole-flow walk (M6 entry).** At 320px on the North Indian
+lunch plate, the dish swap box showed "Soya chunk masala" cut short: at 16px
+(M3) the name needs 137px and the box beside its "Swap for" label had 125.
+
+**Fixed.** `web/styles.css`, touch/≤560px block: `.dash-dish-swap` wraps,
+so a box that does not fit beside its label drops to its own line under it.
+Where it fits, the row is unchanged.
+
+**Test.** New measurement `clipped_selects` and
+`tests/test_web_mobile.py::test_no_drop_down_cuts_its_own_text`, measuring
+every visible drop-down's chosen text against its inner width. The first
+version passed against the defect: the fixture's only plate (South Indian
+breakfast) has no long dish names. A second plate view,
+`dashboard_north_lunch`, was added; with it the test went red. Red before:
+```
+E       AssertionError: drop-downs whose chosen text does not fit: {'320px dashboard_north_lunch': ['"Soya chunk masala" needs 137px, has 125px']}
+1 failed, 1 passed, 10 deselected in 42.38s
+```
+After: `12 passed in 56.65s` (whole file). Deletion check:
+```
+== M: M8 wrap removed
+E       AssertionError: drop-downs whose chosen text does not fit: {'320px dashboard_north_lunch': ['"Soya chunk masala" needs 137px, has 125px']}
+FAILED tests/test_web_mobile.py::test_no_drop_down_cuts_its_own_text - Assert...
+1 failed, 11 passed in 50.17s
+== restored (byte-identical)
+```
+
+**Whole-flow walk, rerun after M5–M8** (scratch script, tapping as a user
+would; it now also measures the drop-downs after a dish is removed). Every
+flow completes at all four sizes. The "Choose a dish" box the earlier walk
+showed as "Choose a d" now fits (needs 101px, has 116):
+```
+=== walk a 375x740   header heights: {'landing': 64, 'wizard': 64, 'dashboard': 64}
+note: drop-downs after remove [text, need, room, is_add_row]: [['Dal tadka', 69, 138, False], ['Choose a dish', 101, 116, True]]
+PROBLEMS: 0
+=== walk b 320x568   (same header heights and drop-downs)   PROBLEMS: 0
+=== walk c 414x896   (same header heights and drop-downs)   PROBLEMS: 0
+=== walk d 740x360   (same header heights and drop-downs)   PROBLEMS: 1
+  - signup modal not fully on screen: {'l': 164, 'r': 576, 't': 20, 'b': 503.1875, 'ih': 360, 'iw': 740, 'fonts': ['16px', '16px']}
+```
+The one walk problem is expected: the box is taller than a phone on its
+side, and since M6 it scrolls with its top and close button on screen.
+Each walk also logs three `401 (Unauthorized)` console lines; checked, they
+are `GET /api/auth/me` on `index.html` and `onboarding.html` while signed
+out: the page asking "am I signed in?" and being told no.
+
+**Found in passing, not fixed (owner decisions, not defects):**
+- Below 560px the landing page hides "Get your targets" (`hide-sm`), so a
+  phone visitor reaches the wizard only through Sign up.
+- At 320×568 the wizard's stacked Continue + Back bar takes about 30% of the
+  screen. DESIGN_SYSTEM.md fixes Continue's position, so shrinking it is a
+  design decision.
+
+## 2026-10-17 — Logged, not fixed: a recipe category shows as raw text on the dashboard
+
+**Found by the M6 whole-flow walk.** On the North Indian lunch plate the
+Rajma chawal card's role line reads "Combo_rice_legume".
+`web/dashboard-success.js:219` renders `c.category` as is; the
+`.dash-dish-role` rule's `text-transform: capitalize` makes the first
+letter capital. It breaks the rule that no identifier appears in visible
+text. Not mobile-specific, so per CLAUDE.md it is logged and left.
+
+**Why the sweep missed it.** `tests/test_web_no_identifiers.py` reads
+`textContent`, which is still lowercase `combo_rice_legume`, so its regex
+would match. The gap is coverage: the sweep renders only the default plate
+and `south_indian:lunch`, never `north_indian:lunch`, the only plate whose
+plan holds a `combo_rice_legume` dish (`data/recipes/rajma_chawal.yaml:13`).
+(Correction: during the session I first put this down to the regex missing
+a capital first letter. That was wrong; the capital comes from CSS.)
+
+**Disposition.** Open. The fix needs both a readable label for the category
+and a sweep view that renders that plate.
+
 ## 2026-10-17 — M7: on a phone on its side, the header scrolls away
 
 **Found by the whole-flow walk (M6 entry).** At 740×360 the sticky header

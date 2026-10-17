@@ -1,7 +1,7 @@
 """The three routes on a phone: measured, not assumed (mobile-ui, 2026-10-17).
 
 Every view a person passes through -- the landing page, all six wizard steps,
-the dashboard before and after a plate is solved -- is loaded at three phone
+the dashboard before and after a plate is solved, and a second plate -- is loaded at three phone
 widths (320, 375 and 414px) in a touch-emulating browser, and measured.
 
 Why every check measures an element and never the page's scroll width:
@@ -99,6 +99,20 @@ MEASURE = r"""() => {
     if (fs < 11) out.tiny_text.push(`${name(el)} ${fs}px "${el.textContent.trim().slice(0, 24)}"`);
   }
 
+  // A drop-down whose chosen text is wider than the room inside it shows a
+  // cut word ("Choose a d"). Text measured in the select's own font; the room
+  // is its inner width less padding and ~20px for the arrow.
+  out.clipped_selects = [];
+  const ctx2d = document.createElement('canvas').getContext('2d');
+  for (const el of document.querySelectorAll('select')) {
+    if (!shown(el)) continue;
+    const cs = getComputedStyle(el);
+    ctx2d.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+    const text = el.selectedOptions[0] ? el.selectedOptions[0].text : '';
+    const need = ctx2d.measureText(text).width;
+    const room = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 20;
+    if (need > room + 0.5) out.clipped_selects.push(`"${text}" needs ${Math.round(need)}px, has ${Math.round(room)}px`);
+  }
   const segs = [...document.querySelectorAll('.ob-progress2-seg')].filter(shown);
   // Rows by vertical overlap, not by equal tops: a taller current pill beside
   // short number circles has a different top on the same row.
@@ -180,6 +194,13 @@ def phone_views() -> dict[tuple[int, str], dict]:
             page.wait_for_selector("#obPlanMeals .dash-dish-swap select", timeout=20000)
             page.wait_for_timeout(600)
             views[(width, "dashboard_after_plan")] = page.evaluate(MEASURE)
+            # A second plate: north_indian:lunch carries the "Add a salad or
+            # raita" row, the one drop-down with a long label beside it.
+            page.click('input[name="plate"][value="north_indian:lunch"]')
+            page.click("#dashGenerate")
+            page.wait_for_selector("#obPlanMeals .dash-dish-add select", timeout=20000)
+            page.wait_for_timeout(600)
+            views[(width, "dashboard_north_lunch")] = page.evaluate(MEASURE)
             ctx.close()
         browser.close()
     return views
@@ -191,7 +212,7 @@ def _collect(views, key):
 
 def test_every_view_was_reached(phone_views):
     """A sweep that silently covered fewer views would pass and mean nothing."""
-    assert len(phone_views) == len(PHONE_WIDTHS) * 9, sorted(phone_views)
+    assert len(phone_views) == len(PHONE_WIDTHS) * 10, sorted(phone_views)
 
 
 def test_no_grid_child_overhangs_its_grid(phone_views):
@@ -369,3 +390,11 @@ def test_a_phone_on_its_side_keeps_most_of_the_screen_for_content():
     assert g["scrolled"] >= 300, f"step 4 was too short to scroll 300px: {g}"
     free = (g["nav_top"] - g["header_bottom"]) / g["inner"]
     assert free >= 0.7, f"only {free:.0%} of a 360px-tall screen is left for content: {g}"
+
+
+def test_no_drop_down_cuts_its_own_text(phone_views):
+    """Seen in the whole-flow walk at 320px after M3 made drop-downs 16px:
+    the dashboard's "Add a salad or raita" box read "Choose a d", squeezed
+    beside its long label."""
+    bad = _collect(phone_views, "clipped_selects")
+    assert not bad, f"drop-downs whose chosen text does not fit: {bad}"
