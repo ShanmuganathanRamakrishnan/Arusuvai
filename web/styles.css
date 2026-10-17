@@ -343,6 +343,25 @@ a.brand:hover { opacity: .62; }
 @media (max-width: 1100px) {
   .calc-dock { top: auto; bottom: 16px; transform: none; }
 }
+/* On a phone the closed rail (40 x 267px, 309px at 320) sat over the right
+   edge of the landing text. It becomes a one-line pill in the bottom corner,
+   and the drawer opens upward above it instead of leftward beside it
+   (column, not column-reverse: the drawer comes first in the markup, and
+   reversed it stacked the closed 0px-wide, full-height drawer under the
+   pill, which then floated ~290px up the screen). The
+   panel and card still take their width from --calc-panel-w, so the open
+   drawer fits exactly as before. Pinned by
+   tests/test_web_mobile.py::test_the_closed_calculator_tab_is_small_on_a_phone. */
+@media (max-width: 560px) {
+  .calc-dock { right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); flex-direction: column; align-items: flex-end; gap: 8px; }
+  .calc-toggle { flex-direction: row; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 999px; box-shadow: 0 4px 14px rgba(43, 38, 34, .18); }
+  .calc-toggle .lbl { writing-mode: horizontal-tb; transform: none; }
+  /* The chevron points up (opens) and down (closes): it is drawn pointing left. */
+  .calc-toggle .chev { transform: rotate(90deg); }
+  .calc-dock.open .calc-toggle .chev { transform: rotate(-90deg); }
+  /* No shadow: the panel's overflow:hidden would cut it into a square. */
+  .calc-card { border-right: 1px solid rgba(43, 38, 34, .12); border-radius: 16px; box-shadow: none; }
+}
 
 /* ---------- hero ---------- */
 .hero {

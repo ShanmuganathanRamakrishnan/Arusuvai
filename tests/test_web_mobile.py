@@ -114,7 +114,7 @@ MEASURE = r"""() => {
   const hi = document.querySelector('.header-inner');
   out.header_height = hi ? Math.round(hi.getBoundingClientRect().height) : null;
   const t = document.getElementById('calcToggle');
-  if (t) { const r = t.getBoundingClientRect(); out.calc_toggle = {w: Math.round(r.width), h: Math.round(r.height)}; }
+  if (t) { const r = t.getBoundingClientRect(); out.calc_toggle = {w: Math.round(r.width), h: Math.round(r.height), gap_below: Math.round(innerHeight - r.bottom)}; }
   return out;
 }"""
 
@@ -251,3 +251,20 @@ def test_the_step_bar_is_one_row_on_a_phone(phone_views):
     assert rows, "no view showed the step bar"
     bad = {k: r for k, r in rows.items() if r != 1}
     assert not bad, f"step bar on more than one row: {bad}"
+
+
+def test_the_closed_calculator_tab_is_small_on_a_phone(phone_views):
+    """Closed, the landing page's calculator tab sat on the right edge as a
+    vertical rail 40px wide and 267px tall, over the hero text ("planned
+    around yo|", "free, everywher|" were cut by it at 320px). On a phone it
+    is a single-line pill in the bottom corner. The open drawer's fit is
+    tests/test_web_wizard_layout.py::test_the_open_calculator_dock_fits_the_viewport."""
+    sizes = {w: m["calc_toggle"] for (w, v), m in phone_views.items() if v == "landing"}
+    assert len(sizes) == len(PHONE_WIDTHS), sizes
+    bad = {w: s for w, s in sizes.items() if s["h"] > 48}
+    assert not bad, f"closed calculator tab taller than one 48px line: {bad}"
+    # In the corner, not floating: the first version of the pill stacked the
+    # closed (0px-wide but full-height) drawer BELOW it and sat ~300px up the
+    # screen, over the hero buttons. Height alone passed that.
+    floating = {w: s for w, s in sizes.items() if s["gap_below"] > 32}
+    assert not floating, f"closed calculator tab is not in the bottom corner: {floating}"

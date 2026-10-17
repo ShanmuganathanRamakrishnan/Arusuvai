@@ -6,6 +6,50 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-17 — M5: the calculator tab is a corner pill on a phone
+
+**Defect.** Closed, the landing page's protein-calculator tab sat on the
+right edge as a vertical rail, 40px wide and 267px tall (309 at 320px), over
+the hero text. At 320px it cut "planned around yo|" and "free, everywher|".
+
+**Fixed.** `web/styles.css`, a ≤560px block beside the dock's own rules:
+the tab is a one-line, 44px-tall pill 12px from the bottom-right corner, and
+the drawer opens upward above it. Width still comes from `--calc-panel-w`,
+so the open drawer fits as before (the existing
+`test_the_open_calculator_dock_fits_the_viewport` and
+`test_the_closed_dock_paints_nothing_outside_the_viewport` still pass). The
+card loses its shadow on a phone: the panel's `overflow: hidden` cut it into
+a square.
+
+**My own first version was wrong, and the first test missed it.** It used
+`flex-direction: column-reverse`. The drawer comes first in the markup, so
+reversed, the closed drawer (0px wide but full height) stacked under the pill
+and the pill floated 287px up the screen, over the hero buttons. The test
+then checked only the pill's height, which passed. Seen in a screenshot, not
+by the test. The test now also checks the pill is within 32px of the bottom,
+and was red on that version:
+```
+E       AssertionError: closed calculator tab is not in the bottom corner: {320: {'w': 191, 'h': 44, 'gap_below': 329}, 375: {'w': 191, 'h': 44, 'gap_below': 287}, 414: {'w': 191, 'h': 44, 'gap_below': 287}}
+1 failed, 7 deselected in 32.86s
+```
+Red before any fix: `{320: {'w': 40, 'h': 309}, 375: {'w': 40, 'h': 267}, 414: {'w': 40, 'h': 267}}`.
+
+**Deletion checks by hand:**
+```
+== M: the phone pill block removed
+E       AssertionError: closed calculator tab taller than one 48px line: {320: {'w': 133, 'h': 309, 'gap_below': 16}, 375: {'w': 133, 'h': 267, 'gap_below': 16}, 414: {'w': 133, 'h': 267, 'gap_below': 16}}
+FAILED tests/test_web_mobile.py::test_the_closed_calculator_tab_is_small_on_a_phone
+1 failed, 7 deselected in 32.70s
+== restored (byte-identical)
+== M: column put back to column-reverse
+E       AssertionError: closed calculator tab is not in the bottom corner: {320: {'w': 191, 'h': 44, 'gap_below': 329}, 375: {'w': 191, 'h': 44, 'gap_below': 287}, 414: {'w': 191, 'h': 44, 'gap_below': 287}}
+FAILED tests/test_web_mobile.py::test_the_closed_calculator_tab_is_small_on_a_phone
+1 failed, 7 deselected in 32.71s
+== restored (byte-identical)
+```
+After: `tests/test_web_mobile.py` and `tests/test_web_wizard_layout.py`,
+`34 passed in 70.45s`.
+
 ## 2026-10-17 — M4: the wizard's step bar is one readable row on a phone
 
 **Defect.** Under 560px the six step labels were shrunk to 9px, under the
