@@ -6,6 +6,53 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-17 — M1: grid columns shrink to fit a narrow phone
+
+**Asked.** Owner, 2026-10-17: "make sure the UI is suitable and dynamic for
+mobile application as well", on a separate branch (`mobile-ui`).
+
+**Measured first.** All nine views a person passes through (landing, wizard
+steps 1–6, dashboard before and after a plate) at 320, 375 and 414px in a
+touch-emulating Chromium. Every view reported `scrollWidth == clientWidth`,
+which proves nothing here: `body { overflow-x: clip }` hides overflow
+(DESIGN_SYSTEM.md, known inconsistency 0). Measuring elements found, besides
+this entry's defect, small tap targets, 13–15px text boxes (iOS zooms on
+focus), 9px step labels, and a 267px-tall calculator tab over the landing
+text. Those are M2–M5.
+
+**The defect.** Eleven `repeat(auto-fit, minmax(Npx, 1fr))` grids had a bare
+pixel minimum. Where N is wider than the content column, the one remaining
+column overhangs it. At 320px the column is 284px (18px inset each side) and
+`.science-grid` asked for 300, so `.quality-card` ran 16px past the column's
+right edge. Still inside the viewport, so nothing scrolled and no scroll check
+could see it.
+
+**Fixed.** All eleven now use `minmax(min(Npx, 100%), 1fr)`, the form
+`.dash-plate-grid` already used. A no-op wherever the column is at least N
+wide, so desktop is unchanged.
+
+**Test.** `tests/test_web_mobile.py::test_no_grid_child_overhangs_its_grid`
+checks every grid on every view, not just this one. Red before the fix:
+```
+python -m pytest tests/test_web_mobile.py -q
+E       AssertionError: grid children past their grid's edge: {'320px landing': ['div.col in div.science-grid: child 18..318, grid 18..302', 'div.col in div.science-grid: child 18..318, grid 18..302']}
+1 failed, 1 passed in 32.63s
+```
+After: `2 passed in 34.07s`. Deletion check by hand (web is not graded by the
+mutation harness), `.science-grid`'s `min()` alone removed:
+```
+== M: science-grid min() removed
+E       AssertionError: grid children past their grid's edge: {'320px landing': ['div.col in div.science-grid: child 18..318, grid 18..302', 'div.col in div.science-grid: child 18..318, grid 18..302']
+1 failed, 1 passed in 33.79s
+== restored
+2 passed in 33.62s
+```
+No other view went red: the other ten minimums are 280px or less, or
+(`.ob-decline-grid`, `.ob-goal-row.is-stacked`) only apply above 640/680px,
+or (`.ob-grid`, 340px) belong to a class no page uses. Their `min()` is
+protection, not a measured fix. `.ob-grid` being unused is logged here, not
+removed.
+
 ## 2026-10-17 — V2: a checklist for the owner to check 12 food rows
 
 **Asked.** Owner, 2026-10-17, "option 1": after V2a, a checklist for the
