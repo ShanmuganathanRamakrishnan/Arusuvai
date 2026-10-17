@@ -1346,7 +1346,20 @@ a:focus-visible {
   /* The calc dock's bottom anchoring moved up to its own ≤1100px rule beside
      the component. Repeating it here said the behaviour started at 560px,
      which was never true of anything but this declaration. */
-  .ob-progress2-label { font-size: 9px; }
+  /* The step bar on a phone: one row, every label readable. Six labelled
+     pills need three rows at 320px at 13px, and the old answer -- 9px labels
+     on two rows -- was under the design system's 11px floor. So only the
+     current step keeps its pill and label; the others are their number
+     circle alone, done steps still green. Their labels stay in the page for
+     screen readers (clipped, not removed). Pinned by
+     tests/test_web_mobile.py::test_the_step_bar_is_one_row_on_a_phone and
+     ::test_no_visible_text_under_11px. */
+  .ob-progress2-bars { flex-wrap: nowrap; gap: 8px; }
+  .ob-progress2-seg:not(.is-current) { padding: 0; border-color: transparent; background: transparent; }
+  .ob-progress2-seg:not(.is-current) .ob-progress2-label {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+  }
   .ob-wizard-card { padding: 20px; }
   .ob-nav { flex-wrap: wrap; }
   .ob-nav-next { width: 100%; margin-left: 0; order: 1; padding: 13px; }

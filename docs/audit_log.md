@@ -6,6 +6,43 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-17 — M4: the wizard's step bar is one readable row on a phone
+
+**Defect.** Under 560px the six step labels were shrunk to 9px, under the
+design system's 11px floor, to fit six labelled pills on two rows. Measured:
+9px on every wizard step at 320, 375 and 414px; two rows at all three.
+
+**Fixed.** `web/styles.css`, the ≤560px block: the 9px rule is gone. On a
+phone only the current step keeps its pill and its label, at the normal
+13px; the other steps are their number circle alone (done steps still
+green), so the bar is one row. Their labels stay in the page for screen
+readers, clipped rather than removed. Desktop unchanged.
+
+**Tests.** `tests/test_web_mobile.py::test_no_visible_text_under_11px` and
+`::test_the_step_bar_is_one_row_on_a_phone`. The row test first counted
+distinct top edges and stayed red after the fix: the taller current pill and
+the short circles share a row but not a top. It now groups pills that
+overlap vertically; red on the old CSS (2 rows everywhere), green on the
+new. Deletion checks by hand:
+```
+== M: the 9px rule put back in place of the phone step bar
+E       AssertionError: visible text under 11px: {'320px wizard_step1': ['span.ob-progress2-label 9px "Body"', 'span.ob-progress2-label 9px "Activity"', 'span.ob-progress2-label 9px "Goal"', 'span.ob-progress2-label 9px "Diet"', 'span.ob-progress2-label 9px "T
+E       AssertionError: step bar on more than one row: {'320px wizard_step1': 2, '320px wizard_step2': 2, '320px wizard_step3': 2, '320px wizard_step4': 2, '320px wizard_step5': 2, '320px wizard_step6': 2, '375px wizard_step1': 2, '375px wizard_step2': 2, '375
+FAILED tests/test_web_mobile.py::test_no_visible_text_under_11px - AssertionE...
+FAILED tests/test_web_mobile.py::test_the_step_bar_is_one_row_on_a_phone - As...
+2 failed, 5 passed in 32.58s
+== M: only the label clip removed
+   last line: 7 errors in 35.24s
+== restored (byte-identical)
+```
+The second is caught as errors, not as a named failure: with the labels
+shown and wrapping off, the bar ran wider than the screen and the fixture
+could not click Continue (`Page.click: Timeout 30000ms exceeded` on
+`#obNext`). That is a broken page, so red is the right answer, but the
+message does not name the cause.
+
+**Full mobile file after:** `7 passed in 33.53s`.
+
 ## 2026-10-17 — M3: text boxes are 16px on a phone, so iOS does not zoom
 
 **Defect.** iOS Safari zooms the whole page when a text box under 16px

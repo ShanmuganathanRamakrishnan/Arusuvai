@@ -99,6 +99,18 @@ MEASURE = r"""() => {
     if (fs < 11) out.tiny_text.push(`${name(el)} ${fs}px "${el.textContent.trim().slice(0, 24)}"`);
   }
 
+  const segs = [...document.querySelectorAll('.ob-progress2-seg')].filter(shown);
+  // Rows by vertical overlap, not by equal tops: a taller current pill beside
+  // short number circles has a different top on the same row.
+  out.stepper_rows = null;
+  if (segs.length) {
+    const rs = segs.map(e => e.getBoundingClientRect()).sort((a, b) => a.top - b.top);
+    let rows = 1, bottom = rs[0].bottom;
+    for (const r of rs.slice(1)) {
+      if (r.top >= bottom - 0.5) { rows += 1; bottom = r.bottom; } else bottom = Math.max(bottom, r.bottom);
+    }
+    out.stepper_rows = rows;
+  }
   const hi = document.querySelector('.header-inner');
   out.header_height = hi ? Math.round(hi.getBoundingClientRect().height) : null;
   const t = document.getElementById('calcToggle');
@@ -220,3 +232,22 @@ def test_no_text_box_makes_the_phone_zoom(phone_views):
     the dashboard's swap boxes 13px."""
     bad = _collect(phone_views, "small_inputs")
     assert not bad, f"text boxes under 16px on a phone: {bad}"
+
+
+def test_no_visible_text_under_11px(phone_views):
+    """DESIGN_SYSTEM.md's floor is the 11px uppercase eyebrow. Measured before
+    the fix: the wizard's six step labels shrank to 9px under 560px, to keep
+    six labelled pills on two rows."""
+    bad = _collect(phone_views, "tiny_text")
+    assert not bad, f"visible text under 11px: {bad}"
+
+
+def test_the_step_bar_is_one_row_on_a_phone(phone_views):
+    """With readable labels the six pills would take three rows at 320px, so
+    on a phone only the current step keeps its label; the others show their
+    number. Before the fix: two rows at every phone width."""
+    rows = {f"{w}px {v}": m["stepper_rows"] for (w, v), m in phone_views.items()
+            if m["stepper_rows"] is not None}
+    assert rows, "no view showed the step bar"
+    bad = {k: r for k, r in rows.items() if r != 1}
+    assert not bad, f"step bar on more than one row: {bad}"
