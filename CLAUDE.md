@@ -19,14 +19,23 @@ Reports use the `plain-report` output style
 the "Reporting" section of `AGENTS.md`. If the style is not active in a session,
 follow that section anyway.
 
-## Auditor stays read-only
+## Subagents
 
-Audits run as an ad-hoc read-only subagent, configured per session.
-`.claude/agents/auditor.md` and `.claude/commands/grill.md` do **not** exist;
-they are a design, described in `docs/repo_policy.md`. Never give an auditor
-write access to anything under `core/`, `api/` or `web/`: an auditor that can
-edit what it reviews can rubber-stamp its own work. Its only writable file is
-`docs/audit_log.md`.
+The project subagents are in `.claude/agents/`: `auditor`, `probe-runner`,
+`mutation-checker` (roles in `AGENTS.md` "Roles"). Use subagents for
+self-contained checks only; implementation stays in the main session.
+
+The auditor has `Read, Grep, Glob` and nothing else, so it cannot write any
+file. It returns findings as text, and the main session appends them to
+`docs/audit_log.md` verbatim. Never widen its tools: an auditor that can edit
+what it reviews can rubber-stamp its own work. `.claude/commands/grill.md` is
+still not built.
+
+`probe-runner` and `mutation-checker` run in their own worktree, which starts
+on `main`, not on this branch: give them commit SHAs. They return file paths
+and checksums, never retyped output; read the files yourself. A worktree whose
+HEAD moved is left behind: check `git status` there is empty, then
+`git worktree remove` it and delete its `worktree-agent-*` branch.
 
 ## Plan mode first
 
