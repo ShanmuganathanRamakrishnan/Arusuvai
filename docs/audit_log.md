@@ -6,6 +6,51 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-17 — M2: every tap target 44px tall on a phone; the header stays one row
+
+**Defect.** Measured at 375px with touch emulation (M1 entry): header
+buttons 36px tall, the brand link 35, the wizard's choice pills 35, the
+account tabs 40, the sources toggle 34, the dashboard's swap boxes 31,
+"Remove" 25, the landing footer links 18. Separately, at 320px the header
+wrapped to two rows: 112px tall on the landing page and the dashboard.
+
+**Fixed.** `web/styles.css`, a new block under
+`@media (max-width: 560px), (pointer: coarse)`: each of those targets gets
+`min-height: 44px` (Apple HIG; WCAG 2.5.5). The header loses 4px of padding
+top and bottom to pay for it, so it stays one 64px row (10 + 44 + 10), the
+height DESIGN_SYSTEM.md fixes. A second block under `max-width: 400px`
+tightens the header gaps so the brand and two items fit 320px's 284px row.
+Width is not raised to 44: the seven day buttons share one row and at 320px
+seven 44px buttons do not fit. They are 25px wide there, above WCAG 2.5.8's
+24px. Desktop with a mouse is untouched: neither query matches.
+
+**Tests.** `tests/test_web_mobile.py::test_every_tap_target_is_at_least_44px_tall`
+and `::test_the_header_stays_one_row`, red before the fix (the lists above
+are their failure output). Deletion checks by hand, each restoring the file
+byte-identical:
+```
+== M: Remove's 44px line removed
+E       AssertionError: tap targets under 44px tall (or 24px wide): {'320px dashboard_after_plan': ['button.dash-dish-remove "Remove" 44x25'], '375px dashboard_after_plan': ['button.dash-dish-remove "Remove" 44x25'], '414px dashboard_after_plan': ['button.dash
+FAILED tests/test_web_mobile.py::test_every_tap_target_is_at_least_44px_tall
+1 failed, 3 passed in 33.58s
+== restored (byte-identical)
+== M: the 400px header block removed
+E       AssertionError: header taller than one 64px row: {'320px landing': 120, '320px dashboard': 120, '320px dashboard_after_plan': 120}
+FAILED tests/test_web_mobile.py::test_the_header_stays_one_row - AssertionErr...
+1 failed, 3 passed in 33.86s
+== restored (byte-identical)
+== M: the header's 10px padding removed
+E       AssertionError: header taller than one 64px row: {'320px landing': 72, '320px wizard_step1': 72, '320px wizard_step2': 72, '320px wizard_step3': 72, '320px wizard_step4': 72, '320px wizard_step5': 72, '320px wizard_step6': 72, '320px dashboard': 72, '3
+FAILED tests/test_web_mobile.py::test_the_header_stays_one_row - AssertionErr...
+1 failed, 3 passed in 32.31s
+== restored (byte-identical)
+```
+Every existing browser test still passes:
+```
+FOODAI_WEB_TESTS=required python -m pytest tests/ -q -m web
+113 passed, 614 deselected, 1 warning in 192.40s (0:03:12)
+```
+
 ## 2026-10-17 — M1: grid columns shrink to fit a narrow phone
 
 **Asked.** Owner, 2026-10-17: "make sure the UI is suitable and dynamic for

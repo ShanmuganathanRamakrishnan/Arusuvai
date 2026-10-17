@@ -188,3 +188,26 @@ def test_no_grid_child_overhangs_its_grid(phone_views):
     column's right edge -- inside the viewport, so no scroll check saw it."""
     bad = _collect(phone_views, "grid_overhang")
     assert not bad, f"grid children past their grid's edge: {bad}"
+
+
+def test_every_tap_target_is_at_least_44px_tall(phone_views):
+    """44px is the platform guidance for a fingertip (Apple HIG; WCAG 2.5.5).
+    Width is held only to WCAG 2.5.8's 24px: the seven day buttons of the
+    activity step share one row, and at 320px seven 44px buttons do not fit.
+
+    Measured before the fix at 375px: header buttons 36px, the brand 35px,
+    the wizard's choice pills 35px, the account tabs 40px, the sources
+    toggle 34px, the dashboard's swap boxes 31px, "Remove" 25px and the
+    landing footer links 18px."""
+    bad = _collect(phone_views, "small_targets")
+    assert not bad, f"tap targets under 44px tall (or 24px wide): {bad}"
+
+
+def test_the_header_stays_one_row(phone_views):
+    """DESIGN_SYSTEM.md: every route's header is one 64px row. Taller tap
+    targets must not cost a second row; at 320px the landing page's two
+    buttons used to wrap under each other."""
+    bad = {k: h for (w, v), m in phone_views.items()
+           if (h := m["header_height"]) is not None and h > 64
+           for k in [f"{w}px {v}"]}
+    assert not bad, f"header taller than one 64px row: {bad}"
