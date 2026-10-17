@@ -251,6 +251,21 @@ MUTATIONS: tuple[Mutation, ...] = (
         "            if reachable < quality_floor:",
         "            if False:",
     ),
+    Mutation(
+        "N33a", COMBINATIONS, "the pre-filter remembers each component's macro reach",
+        "                bounds = reach.get(key)",
+        "                bounds = None",
+    ),
+    Mutation(
+        "N33b", COMBINATIONS, "the remembered reach is keyed by component and macro",
+        "                key = (component.id, macro)",
+        "                key = component.id",
+    ),
+    Mutation(
+        "N33c", COMBINATIONS, "the pre-filter remembers each component's quality reach",
+        "                top = quality_reach.get(component.id)",
+        "                top = None",
+    ),
     # ------------------------------------------------------------------- solver
     Mutation(
         "S1", SOLVER, "solver gate: macro floor",
@@ -921,8 +936,14 @@ def _run_suite(worktree: Path) -> tuple[str, ...]:
         [sys.executable, "-m", "pytest", "tests/", "-q", "--color=no",
          "-p", "no:cacheprovider",
          *(arg for test in DESELECT for arg in ("--deselect", test))],
-        cwd=worktree, capture_output=True, text=True,
-        env={**os.environ, "FORCE_COLOR": "0", "PY_COLORS": "0", "NO_COLOR": "1"},
+        # utf-8 on both ends, added 2026-10-17 (docs/audit_log.md "N33b-enc"):
+        # an inherited PYTHONIOENCODING=utf-8 made pytest write utf-8 while this
+        # side decoded with the Windows locale default, cp1252. Byte 0x8d raised
+        # in the reader thread, stdout came back None, and the sweep died before
+        # any row -- so the shell that launched it decided whether it ran.
+        cwd=worktree, capture_output=True, text=True, encoding="utf-8", errors="replace",
+        env={**os.environ, "FORCE_COLOR": "0", "PY_COLORS": "0", "NO_COLOR": "1",
+             "PYTHONIOENCODING": "utf-8"},
     )
     if proc.returncode == 0:
         return ()

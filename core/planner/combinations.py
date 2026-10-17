@@ -258,8 +258,19 @@ def feasible_combinations(
     but it never discards one the solver could have solved, and it is cheap
     enough to run on the full enumerated set before the solver's integer
     search touches anything.
+
+    Each component's reach is worked out once per call and remembered
+    (TASKS_3.md N33, docs/audit_log.md 2026-10-16). Without that, the same
+    handful of dishes were re-summed for every combination they appear in:
+    92,753 recipe sums for nine South lunches, 89% of planning time. The
+    remembered value is what ``macro_bounds`` and ``quality_protein_bounds``
+    return, so nothing a decline message reads can differ from it. Keyed by
+    ``component.id`` like the solver's ``_point_vector`` cache; it lives for
+    one call, so a changed ``ingredients`` mapping is never read stale.
     """
 
+    reach: dict[tuple[str, str], tuple[float, float]] = {}
+    quality_reach: dict[str, float] = {}
     survivors = []
     for combo in combinations:
         ok = True
@@ -267,7 +278,12 @@ def feasible_combinations(
             total_low = 0.0
             total_high = 0.0
             for component in combo.components:
-                low, high = macro_bounds(component, macro, ingredients)
+                key = (component.id, macro)
+                bounds = reach.get(key)
+                if bounds is None:
+                    bounds = macro_bounds(component, macro, ingredients)
+                    reach[key] = bounds
+                low, high = bounds
                 total_low += low
                 total_high += high
             floor = target.floor(macro)
@@ -283,10 +299,13 @@ def feasible_combinations(
             # Only the max side is worth computing: a quality floor is one-sided,
             # so a combination is discardable exactly when every component at its
             # MAXIMUM count still cannot reach it.
-            reachable = sum(
-                quality_protein_bounds(component, ingredients)[1]
-                for component in combo.components
-            )
+            reachable = 0
+            for component in combo.components:
+                top = quality_reach.get(component.id)
+                if top is None:
+                    top = quality_protein_bounds(component, ingredients)[1]
+                    quality_reach[component.id] = top
+                reachable += top
             if reachable < quality_floor:
                 ok = False
         if ok:
