@@ -6,6 +6,237 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-17 — auditor findings 1–3 on `core/foods/retention.py`, checked by running code
+
+**Asked.** Session `local_8d997800`, for the owner, 2026-10-17: verify by
+running code the three auditor findings in the entry below ("first run of the
+three subagents"). Do not fix anything. Run on `71e2c73` (`origin/agent-roles`;
+PR #47 was still open, so not `origin/main`).
+
+**Verdicts.** Finding 1: **confirmed**, with one correction to what it
+implies. Finding 2: **confirmed**, with one wording correction. Finding 3:
+**confirmed**. Nothing fixed.
+
+### Finding 1 — retention's functions are never called by the pipeline
+
+Static check. The only callers of any `retention.` function are in
+`tests/test_citations.py`; `docs/methodology.md:1321` mentions one by name
+but does not call it.
+
+```
+$ git grep -nE "import retention|foods\.retention import|foods import .*retention|retention\.(process|PROCESSES|cooked_mass|raw_mass_for_cooked|retained_oil_mass|process_uncertainty|unverified_processes)\b" -- ":!docs/audit_log.md"
+docs/methodology.md:1321:   `retention.unverified_processes()` report this honestly, and a test asserts
+tests/test_citations.py:14:from core.foods import retention
+tests/test_citations.py:134:        for p in retention.PROCESSES.values():
+tests/test_citations.py:139:        assert retention.cooked_mass(60.0, "boil_rice") == pytest.approx(180.0)
+tests/test_citations.py:140:        assert retention.raw_mass_for_cooked(180.0, "boil_rice") == pytest.approx(60.0)
+tests/test_citations.py:144:            retention.cooked_mass(10.0, "griddle_dosa")
+tests/test_citations.py:146:            retention.retained_oil_mass(10.0, "boil_rice")
+tests/test_citations.py:150:        assert retention.retained_oil_mass(5.0, "griddle_dosa") == pytest.approx(3.5)
+tests/test_citations.py:154:            retention.process("deep_fry_dosa")
+tests/test_citations.py:159:        assert len(retention.unverified_processes()) == len(retention.PROCESSES)
+```
+
+Run-time check, which a grep cannot give: a full `demo.py plan` run, and
+importing the API, never load the module at all.
+
+```
+$ python -c "<run demo.py plan --region north_indian --meal-slot lunch --weight-kg 70 in-process, then report whether core.foods.retention was ever imported>"
+template north_lunch: 10 recipe(s) kept past their eligibility ceiling (dev_mode=True) � not validated
+demo.py exit code: 0; stdout lines: 92
+core.foods.retention imported during a full plan run: False
+core.foods.recipe_loader imported: True
+$ python -c "import sys, api.main; print(...)"
+core.foods.retention imported by api.main: False
+```
+
+Oil lines. A throwaway script (not committed) read every
+`data/recipes/*.yaml` with `yaml.safe_load`, kept each ingredient line whose
+`process` starts `oil_uptake.`, and printed `quantity_g`, the registered
+factor (`citations.value_of`), `quantity_g / factor` (the applied amount the
+factor implies), whether the note matches `appl` or a gram figure, and any
+key besides `id`/`quantity_g`/`state`/`process`/`note`. Its third section (the
+31 matching notes, quoted in full) is left out of this paste; the fourth
+section pulls the figure after "about"/"About" out of each note and compares.
+
+```
+$ python oil_lines.py   (run from the worktree root)
+recipe                   ingredient        qty_g process                              factor qty/factor applied_in_note other_keys
+aloo_paratha             sunflower_oil      4.80 oil_uptake.paratha_griddled            0.80       6.00 True            []
+aloo_sabzi               sunflower_oil      5.50 oil_uptake.vegetable_tempering         0.95       5.79 True            []
+anda_curry               sunflower_oil      5.00 oil_uptake.vegetable_tempering         0.95       5.26 True            []
+carrot_kootu             gingelly_oil       2.50 oil_uptake.vegetable_tempering         0.95       2.63 True            []
+carrot_poriyal           gingelly_oil       2.50 oil_uptake.vegetable_tempering         0.95       2.63 True            []
+chicken_chukka           gingelly_oil       2.50 oil_uptake.chicken_tikka_pan_roasted   0.80       3.12 True            []
+chicken_curry            sunflower_oil      5.00 oil_uptake.vegetable_tempering         0.95       5.26 False           []
+chicken_kuzhambu         gingelly_oil       5.00 oil_uptake.vegetable_tempering         0.95       5.26 False           []
+chicken_tikka            sunflower_oil      2.00 oil_uptake.chicken_tikka_pan_roasted   0.80       2.50 True            []
+coconut_chutney          gingelly_oil       0.50 oil_uptake.vegetable_tempering         0.95       0.53 True            []
+dal_tadka                sunflower_oil      5.00 oil_uptake.vegetable_tempering         0.95       5.26 True            []
+egg_bhurji               sunflower_oil      2.50 oil_uptake.vegetable_tempering         0.95       2.63 False           []
+egg_dosa                 gingelly_oil       3.50 oil_uptake.dosa_griddled               0.70       5.00 False           []
+masala_dosa              gingelly_oil       3.50 oil_uptake.dosa_griddled               0.70       5.00 True            []
+masala_dosa              gingelly_oil       3.00 oil_uptake.vegetable_tempering         0.95       3.16 False           []
+meen_kuzhambu            gingelly_oil       5.00 oil_uptake.vegetable_tempering         0.95       5.26 True            []
+meen_varuval             gingelly_oil       4.00 oil_uptake.fish_tawa_fried             0.80       5.00 True            []
+moong_dal_chilla         sunflower_oil      2.10 oil_uptake.dosa_griddled               0.70       3.00 True            []
+moong_soya_chilla        sunflower_oil      2.10 oil_uptake.dosa_griddled               0.70       3.00 True            []
+mutta_kuzhambu           gingelly_oil       5.00 oil_uptake.vegetable_tempering         0.95       5.26 True            []
+muttai_carrot_poriyal    gingelly_oil       2.50 oil_uptake.vegetable_tempering         0.95       2.63 False           []
+muttai_omelette          gingelly_oil       2.50 oil_uptake.vegetable_tempering         0.95       2.63 False           []
+muttai_podimas           gingelly_oil       2.50 oil_uptake.vegetable_tempering         0.95       2.63 False           []
+onion_tomato_uttapam     gingelly_oil       3.50 oil_uptake.dosa_griddled               0.70       5.00 False           []
+paneer_masala            sunflower_oil      5.00 oil_uptake.vegetable_tempering         0.95       5.26 True            []
+paneer_moong_chilla      sunflower_oil      2.10 oil_uptake.dosa_griddled               0.70       3.00 True            []
+paneer_paratha           sunflower_oil      4.00 oil_uptake.paratha_griddled            0.80       5.00 True            []
+plain_dosa               gingelly_oil       3.50 oil_uptake.dosa_griddled               0.70       5.00 False           []
+plain_paratha            sunflower_oil      4.00 oil_uptake.paratha_griddled            0.80       5.00 True            []
+rajma_chawal             sunflower_oil      8.00 oil_uptake.vegetable_tempering         0.95       8.42 True            []
+sambar                   gingelly_oil       3.00 oil_uptake.vegetable_tempering         0.95       3.16 True            []
+sambar_sadam             gingelly_oil       4.00 oil_uptake.vegetable_tempering         0.95       4.21 True            []
+soya_chana_sundal        gingelly_oil       0.62 oil_uptake.vegetable_tempering         0.95       0.66 True            []
+soya_chunk_curry         sunflower_oil      5.00 oil_uptake.vegetable_tempering         0.95       5.26 True            []
+soya_chunk_masala        sunflower_oil     10.00 oil_uptake.vegetable_tempering         0.95      10.53 True            []
+soya_chunk_poriyal       gingelly_oil       2.50 oil_uptake.vegetable_tempering         0.95       2.63 True            []
+soya_chunk_sundal        gingelly_oil       0.62 oil_uptake.vegetable_tempering         0.95       0.66 True            []
+soya_keema_paratha       sunflower_oil      4.00 oil_uptake.paratha_griddled            0.80       5.00 True            []
+soya_kuzhambu            gingelly_oil       5.00 oil_uptake.vegetable_tempering         0.95       5.26 True            []
+soya_tikka               sunflower_oil      2.00 oil_uptake.tikka_pan_roasted           0.90       2.22 True            []
+tofu_bhurji              sunflower_oil      5.00 oil_uptake.vegetable_tempering         0.95       5.26 True            []
+
+41 oil_uptake lines in 40 recipes; 31 notes mention an applied amount or a gram figure; 0 lines carry any extra key.
+
+[... 31 quoted notes omitted from this paste ...]
+
+applied figure parsed from the note ('about X g' / 'About X g'), times the factor, vs quantity_g:
+recipe/ingredient                        note_applied x factor  qty_g  diff_g
+aloo_paratha/sunflower_oil                       6.00    4.800   4.80  -0.000
+aloo_sabzi/sunflower_oil                         5.80    5.510   5.50  -0.010
+anda_curry/sunflower_oil                         5.30    5.035   5.00  -0.035
+carrot_kootu/gingelly_oil                        2.60    2.470   2.50  +0.030
+carrot_poriyal/gingelly_oil                      2.60    2.470   2.50  +0.030
+chicken_chukka/gingelly_oil                      3.10    2.480   2.50  +0.020
+chicken_curry/sunflower_oil                    (none)
+chicken_kuzhambu/gingelly_oil                  (none)
+chicken_tikka/sunflower_oil                      2.50    2.000   2.00  +0.000
+coconut_chutney/gingelly_oil                     0.53    0.503   0.50  -0.003
+dal_tadka/sunflower_oil                          5.30    5.035   5.00  -0.035
+egg_bhurji/sunflower_oil                       (none)
+egg_dosa/gingelly_oil                          (none)
+masala_dosa/gingelly_oil                         5.00    3.500   3.50  +0.000
+masala_dosa/gingelly_oil                       (none)
+meen_kuzhambu/gingelly_oil                       5.30    5.035   5.00  -0.035
+meen_varuval/gingelly_oil                        5.00    4.000   4.00  +0.000
+moong_dal_chilla/sunflower_oil                   3.00    2.100   2.10  +0.000
+moong_soya_chilla/sunflower_oil                  3.00    2.100   2.10  +0.000
+mutta_kuzhambu/gingelly_oil                      5.30    5.035   5.00  -0.035
+muttai_carrot_poriyal/gingelly_oil             (none)
+muttai_omelette/gingelly_oil                   (none)
+muttai_podimas/gingelly_oil                    (none)
+onion_tomato_uttapam/gingelly_oil              (none)
+paneer_masala/sunflower_oil                      5.30    5.035   5.00  -0.035
+paneer_moong_chilla/sunflower_oil                3.00    2.100   2.10  +0.000
+paneer_paratha/sunflower_oil                     5.00    4.000   4.00  +0.000
+plain_dosa/gingelly_oil                        (none)
+plain_paratha/sunflower_oil                      5.00    4.000   4.00  +0.000
+rajma_chawal/sunflower_oil                       8.40    7.980   8.00  +0.020
+sambar/gingelly_oil                              3.20    3.040   3.00  -0.040
+sambar_sadam/gingelly_oil                        4.20    3.990   4.00  +0.010
+soya_chana_sundal/gingelly_oil                   0.66    0.627   0.62  -0.002
+soya_chunk_curry/sunflower_oil                   5.30    5.035   5.00  -0.035
+soya_chunk_masala/sunflower_oil                 10.50    9.975  10.00  +0.025
+soya_chunk_poriyal/gingelly_oil                  2.60    2.470   2.50  +0.030
+soya_chunk_sundal/gingelly_oil                   0.66    0.627   0.62  -0.002
+soya_keema_paratha/sunflower_oil                 5.00    4.000   4.00  +0.000
+soya_kuzhambu/gingelly_oil                       5.30    5.035   5.00  -0.035
+soya_tikka/sunflower_oil                         2.20    1.980   2.00  +0.020
+tofu_bhurji/sunflower_oil                        5.30    5.035   5.00  -0.035
+largest |quantity_g - applied x factor| among lines with a parsed figure: 0.040 g
+```
+
+What this shows:
+
+- **Nothing computes or checks an oil line from its constant.** Certain: the
+  module is not loaded on a plan run, and no line has an applied-amount
+  field. If `oil_uptake.dosa_griddled` changed from 0.70 tomorrow, every
+  `quantity_g` above would stay as it is, with the suite green.
+- **Correction to what finding 1 implies: today the numbers agree.** Of 41
+  oil lines, 31 have an applied amount in free-text `note`, and every one of
+  those equals applied x factor within 0.04 g — the size of rounding the
+  applied figure to one decimal. So the factors were used, by hand, when the
+  files were written. The gap is that nothing holds them together, not that
+  they have drifted. Certain for these 31; the 0.04 g is my parse of
+  "about X g", not a field anyone reads.
+- **10 lines record no applied amount anywhere**, contrary to the
+  `data/recipes/schema.yaml:29-31` rule ("Note the applied amount in
+  `note`"): `chicken_curry`, `chicken_kuzhambu`, `egg_bhurji`, `egg_dosa`,
+  `masala_dosa` (its tempering line), `muttai_carrot_poriyal`,
+  `muttai_omelette`, `muttai_podimas`, `onion_tomato_uttapam`, `plain_dosa`.
+  Certain, for the regex used; a note phrased without "about"/"applied"/a
+  gram figure would be missed, so read the ten notes before relying on the
+  count.
+
+### Finding 2 — `PROCESSES` keys don't match the keys recipes use
+
+```
+$ python f2.py
+retention.process('oil_uptake.dosa_griddled') -> KeyError: "unknown process 'oil_uptake.dosa_griddled'. Add it here with a constant registered in citations.py � do not multiply by a yield factor inline."
+retention.process('oil_uptake.paratha_griddled') -> KeyError: "unknown process 'oil_uptake.paratha_griddled'. Add it here with a constant registered in citations.py � do not multiply by a yield factor inline."
+retention.process('griddle_dosa') -> key='griddle_dosa' constant_key='oil_uptake.dosa_griddled' factor=0.7
+PROCESSES keys: ['boil_potato', 'boil_rajma', 'boil_rice', 'boil_toor_dal', 'griddle_dosa', 'temper_vegetables']
+registered oil_uptake.* constants: ['oil_uptake.chicken_tikka_pan_roasted', 'oil_uptake.dosa_griddled', 'oil_uptake.fish_tawa_fried', 'oil_uptake.paratha_griddled', 'oil_uptake.tikka_pan_roasted', 'oil_uptake.vegetable_tempering']
+oil_uptake constants reachable through PROCESSES: ['oil_uptake.dosa_griddled', 'oil_uptake.vegetable_tempering']
+  oil_uptake.chicken_tikka_pan_roasted   value=0.8 verified=False in_PROCESSES=False
+  oil_uptake.dosa_griddled               value=0.7 verified=False in_PROCESSES=True
+  oil_uptake.fish_tawa_fried             value=0.8 verified=False in_PROCESSES=False
+  oil_uptake.paratha_griddled            value=0.8 verified=False in_PROCESSES=False
+  oil_uptake.tikka_pan_roasted           value=0.9 verified=False in_PROCESSES=False
+  oil_uptake.vegetable_tempering         value=0.95 verified=False in_PROCESSES=True
+```
+
+(`�` is the console's rendering of the em dash in the message, not part of
+it.) Both `KeyError`s are real, and 2 of 6 registered oil-uptake constants
+are reachable through `PROCESSES`. Certain.
+
+**Wording correction.** Finding 2 calls the four missing constants
+"graded and mechanism-reviewed exactly as the error message demands". Their
+`REVIEWED_MECHANISM_MATCHES` rows (`core/nutrition/citations.py:279-284`) all
+read "reviewed: NO matching primary source; project estimate", and all six are
+`verified=False` above. "Reviewed" here means someone looked and found no
+source — not that a mechanism was confirmed. The finding's substance stands.
+
+### Finding 3 — `retention.unverified_processes()` is called only by a test
+
+```
+$ git grep -n "unverified_processes"
+core/foods/retention.py:179:def unverified_processes() -> tuple[Process, ...]:
+docs/audit_log.md:39:Methodology text states: *"`citations.unverified()` and `retention.unverified_processes()` report this honestly, [...]
+docs/methodology.md:1321:   `retention.unverified_processes()` report this honestly, and a test asserts
+tests/test_citations.py:159:        assert len(retention.unverified_processes()) == len(retention.PROCESSES)
+```
+
+(The `audit_log.md:39` line is the auditor's own finding, cut here after its
+quote.) One definition, one test caller, two mentions. Certain.
+
+**Also noticed, left:** the same methodology sentence names
+`citations.unverified()`. Its only callers are `citations.unverified_report()`
+(`core/nutrition/citations.py:247`) and `tests/test_citations.py:122`, and
+`unverified_report()` itself is called only by `tests/test_citations.py:121`:
+
+```
+$ git grep -nE "unverified_report\(" -- ":!docs/audit_log.md"
+core/nutrition/citations.py:245:def unverified_report() -> str:
+tests/test_citations.py:121:        report = citations.unverified_report()
+```
+
+So the whole sentence, not only its `retention` half, describes a report that
+only the tests produce. Not a new finding number; it belongs with finding 3
+if the owner chooses to act on it.
+
+**Disposition.** Findings 1–3: confirmed by running code, still open. Which
+(if any) to fix is the owner's call. Nothing in `core/`, `data/` or `docs/`
+other than this file was changed.
+
 ## 2026-10-17 — first run of the three subagents: three auditor findings, one probe-runner defect
 
 **Asked.** Owner, 2026-10-17: build `.claude/agents/` (auditor, probe-runner,
@@ -23,7 +254,7 @@ No findings missed beyond the three below. Read: `core/foods/retention.py` (full
 Concrete input: `plain_dosa.yaml`'s `gingelly_oil` line — `quantity_g: 3.5`, `process: oil_uptake.dosa_griddled`. `oil_uptake.dosa_griddled` is registered at `citations.py:718-735` as "fraction of applied oil retained" = 0.70. AGENTS.md's recipe-authoring rule says "Oil lines record oil retained... the applied amount goes in `note`" — but the note at `plain_dosa.yaml:60` reads only `"Retained oil, masala_dosa's line (oil_uptake.dosa_griddled)."`, with no applied-gram figure, and nothing in `recipe_loader.py` calls `retention.retained_oil_mass(applied_g, process_key)` to derive or check `3.5` against the registered 0.70 factor. A full-repo grep for every caller of `retention.cooked_mass`, `retention.raw_mass_for_cooked`, `retention.retained_oil_mass` and `retention.process` found exactly one file: `tests/test_citations.py`. Production code (`recipe_loader.py:90-111`) instead reads `citations.uncertainty_of(line.process_key)` directly to widen an *uncertainty* band, never `citations.value_of`/`retention.retained_oil_mass` to compute or verify the *point-estimate* mass. So the registered 0.70 retention factor has zero effect on the energy/fat value a user is shown for this line — it only scales the error bar. This is exactly invariant 2/3's target: a citation exists, is graded and mechanism-reviewed, but the number the user sees is not actually derived from it, and AGENTS.md's "No yield factor inline: go through `core/foods/retention.py`" is unenforced — nothing stops `quantity_g` on an oil-uptake line from drifting arbitrarily from what the cited constant would produce.
 Confidence: certain for the reachability claim (based on a full-repo static grep, not an execution claim); guess as to whether 3.5 g is itself wrong for 5.0 g applied (I have not independently derived the applied amount from a primary source — note `tests/test_citations.py:150` separately asserts `retained_oil_mass(5.0, "griddle_dosa") == 3.5`, which is the applied figure the note omits).
 
-*Disposition:* open.
+*Disposition:* open. Confirmed by running code, 2026-10-17 entry "auditor findings 1–3 on `core/foods/retention.py`, checked by running code" — and the oil quantities agree with their factors today; 10 lines record no applied amount.
 
 **2. `PROCESSES`' key vocabulary never matches the keys production code actually supplies, and covers only 2 of 6 registered oil-uptake constants — MEDIUM**
 `core/foods/retention.py:60-119`, `core/nutrition/citations.py:761-836`
@@ -31,7 +262,7 @@ Confidence: certain for the reachability claim (based on a full-repo static grep
 `retention.PROCESSES` is keyed by names like `"griddle_dosa"`, `"temper_vegetables"`, `"boil_rice"`. Every real call site that carries a process identifier — `RecipeIngredient.process_key` (`core/foods/models.py:220-226`) and every recipe YAML file — stores the `citations.py` constant key itself, e.g. `"oil_uptake.dosa_griddled"` (confirmed in `plain_dosa.yaml:59`, `masala_dosa.yaml:69,87`, `egg_dosa.yaml:63`). `retention.process("oil_uptake.dosa_griddled")` therefore raises `KeyError`, even for the one process `PROCESSES` claims to cover. Separately, `citations.py` registers and mechanism-reviews four more oil-uptake constants — `oil_uptake.paratha_griddled`, `oil_uptake.tikka_pan_roasted`, `oil_uptake.chicken_tikka_pan_roasted`, `oil_uptake.fish_tawa_fried` (lines 761-836) — none of which appear in `PROCESSES` at all. Concrete input: `retention.process("oil_uptake.paratha_griddled")` → `KeyError: "unknown process 'oil_uptake.paratha_griddled'. Add it here with a constant registered in citations.py"`, despite that constant already being registered, graded and mechanism-reviewed exactly as the error message demands. The module's own docstring ("holds the mapping from a named domestic process to the constant that describes it") and `citations.py`'s review entries agree with each other that the constant exists and is reviewed; neither survives being asked for the key the other side actually uses.
 Confidence: certain (read directly; no runtime claim).
 
-*Disposition:* open.
+*Disposition:* open. Confirmed by running code, 2026-10-17 entry "auditor findings 1–3 on `core/foods/retention.py`, checked by running code"; "mechanism-reviewed" there means "no matching source found".
 
 **3. `docs/methodology.md` reports a "reporting" mechanism that nothing invokes — LOW**
 `docs/methodology.md:1318-1322`, `core/foods/retention.py:179-180`
@@ -39,7 +270,7 @@ Confidence: certain (read directly; no runtime claim).
 Methodology text states: *"`citations.unverified()` and `retention.unverified_processes()` report this honestly, and a test asserts nothing has been quietly flipped."* A full-repo grep for `unverified_processes` and for any `retention.` call outside tests found only `tests/test_citations.py`. No CLI command (`demo.py`), API route, or build-log generation step calls `retention.unverified_processes()`; combined with finding 2, it also only ever iterates the 2 processes in `PROCESSES`, not the 6 registered oil-uptake constants. The claim that this "report[s]" the unverified status is true only inside the test suite's own assertion, not as a live status surface a reader or the planner ever sees. This is a status claim (invariant 5 adjacent) resting on an artifact that is not actually reachable from anywhere a transcript would be taken.
 Confidence: certain that no non-test caller exists (static grep); guess as to whether this was the intended scope when the sentence was written.
 
-*Disposition:* open.
+*Disposition:* open. Confirmed by running code, 2026-10-17 entry "auditor findings 1–3 on `core/foods/retention.py`, checked by running code".
 
 **Probe-runner defect, found on its first run and fixed before commit.** Asked
 to run `d10_process_zero.py` on `81e23b4` and `2185bf4`, it ran both correctly
@@ -74,7 +305,7 @@ words despite the rule; the restatement matched the file.
 since 2026-10-17. And a subagent worktree whose HEAD moved is not cleaned up
 automatically (two were left behind and removed by hand).
 
-**Disposition.** Auditor findings 1–3: open. Probe-runner defect: fixed in
+**Disposition.** Auditor findings 1–3: open; confirmed by running code, see the 2026-10-17 entry "auditor findings 1–3 on `core/foods/retention.py`, checked by running code". Probe-runner defect: fixed in
 the commit that adds the agents.
 
 ## 2026-10-17 — AGENTS.md: README and three other places have drifted (logged, not fixed)
