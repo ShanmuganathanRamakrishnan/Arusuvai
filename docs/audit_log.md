@@ -6,6 +6,56 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-17 — V2a: the target lists every source it reads
+
+**Asked.** Owner, 2026-10-17, "option 1": fix the error V1 found, then the
+row checklist.
+
+**The error.** `core/nutrition/targets.py`'s `_SOURCE_KEYS` is the list
+`DerivedTarget.sources` reports and `_status_and_disclosure` checks.
+`compute_protein` read `protein.weight_cap_bmi` (since N32b, my change,
+PR #44) and `diaas.pescatarian` (since R1a, 2026-08-14), but neither was
+listed. Measured before the fix, every key the module's own `citations`
+name reads over all goals x activities x diets x sexes, against the list:
+```
+read not listed ['diaas.pescatarian', 'protein.weight_cap_bmi', 'tolerance.energy_default', 'tolerance.fat_carb_default', 'tolerance.fat_default']
+listed not read []
+```
+(The three tolerance keys were seen because that first run patched the
+shared module; they are read by `simple_target` in
+`core/nutrition/target.py`, which `_SOURCE_KEYS`'s comment excludes. The
+test below patches only `targets.py`'s own name.)
+
+**Fixed.** Both keys added. Status is unchanged (both rest on unverified
+evidence, so it stays dev_mode). The API now reports 32 sources, the
+Weijs entry among them:
+```
+32 sources
+[{'key': 'protein.weight_cap_bmi', 'value': 30.0, 'unit': 'kg/m^2', 'source': 'Weijs, P.J.M. Protein requirement in obesity. ...', 'grade': 'textbook', 'doi': '10.1097/MCO.0000000000001087', 'verified': False}]
+```
+
+**Test.** `tests/test_nutrition_targets.py::test_the_listed_sources_are_exactly_what_this_module_reads`:
+the set read equals the set listed, both ways. Deletion check by hand:
+```
+== M: the two keys removed
+E         Extra items in the left set:
+1 failed, 36 passed in 0.19s
+== restored
+37 passed in 0.09s
+```
+Harness row SK1 (the weight-cap key removed):
+```
+   all failures (1):
+      tests/test_nutrition_targets.py::test_the_listed_sources_are_exactly_what_this_module_reads
+SK1  covered      tests/test_nutrition_targets.py::test_the_listed_sources_are_exactly_what_this_module_reads
+1 mechanisms: 1 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+**Suite.**
+```
+FOODAI_WEB_TESTS=required python -m pytest tests/ -q
+723 passed, 1 warning in 265.97s (0:04:25)
+```
 ## 2026-10-17 — V1: what stands between today's library and one validated plate
 
 **Asked.** Owner, 2026-10-17, "option 1": work toward a plate that can

@@ -316,7 +316,13 @@ _SOURCE_KEYS: tuple[str, ...] = (
     "protein.g_per_kg_maintain",
     "protein.g_per_kg_lose_fat",
     "protein.g_per_kg_gain_muscle",
+    # Added 2026-10-17 (TASKS_3.md V2a, docs/audit_log.md "V1"): compute_protein
+    # has read this since N32b, and diaas.pescatarian since R1a (2026-08-14),
+    # but neither was listed, so the sources a reader is shown left them out
+    # and status was computed without them.
+    "protein.weight_cap_bmi",
     "diaas.non_vegetarian",
+    "diaas.pescatarian",
     "diaas.eggetarian",
     "diaas.vegetarian",
     "diaas.jain",

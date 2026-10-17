@@ -857,6 +857,11 @@ MUTATIONS: tuple[Mutation, ...] = (
         "    weight_basis_kg = min(profile.weight_kg, cap_kg)\n",
         "    weight_basis_kg = profile.weight_kg\n",
     ),
+    Mutation(
+        "SK1", TARGETS, "the weight-cap constant is listed among the target's sources (V2a)",
+        '    "protein.weight_cap_bmi",\n',
+        "",
+    ),
 )
 
 

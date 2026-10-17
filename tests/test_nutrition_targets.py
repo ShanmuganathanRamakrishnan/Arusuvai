@@ -427,6 +427,30 @@ def test_the_target_constants_are_exactly_these():
     assert citations.value_of("nutrient.sodium_max_mg") == 2000.0
 
 
+def test_the_listed_sources_are_exactly_what_this_module_reads(monkeypatch):
+    # TASKS_3.md V2a (docs/audit_log.md 2026-10-17 "V1"): N32b added a read
+    # of protein.weight_cap_bmi and R1a one of diaas.pescatarian without
+    # listing either. Record every key core.nutrition.targets itself reads
+    # (its own `citations` name only, so the tolerance keys simple_target
+    # reads in core.nutrition.target stay out, as _SOURCE_KEYS's comment
+    # says) over every goal, activity, diet and sex.
+    import itertools
+    import types
+
+    from core.nutrition import targets as targets_mod
+
+    read = set()
+    proxy = types.SimpleNamespace(**{
+        name: getattr(citations, name) for name in dir(citations) if not name.startswith("__")
+    })
+    proxy.value_of = lambda key: (read.add(key), citations.value_of(key))[1]
+    proxy.uncertainty_of = lambda key: (read.add(key), citations.uncertainty_of(key))[1]
+    monkeypatch.setattr(targets_mod, "citations", proxy)
+    for goal, activity, diet, sex in itertools.product(Goal, ActivityLevel, DietPattern, Sex):
+        derive_target(_make(goal=goal, activity=activity, diet=diet, sex=sex))
+    assert read == set(targets_mod._SOURCE_KEYS)
+
+
 def test_every_target_source_rests_on_unverified_evidence_today():
     # The honest basis for status == dev_mode. If someone verifies a source,
     # this test tells them which invariant to revisit.
