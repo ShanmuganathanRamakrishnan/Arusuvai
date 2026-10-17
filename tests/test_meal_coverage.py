@@ -37,19 +37,13 @@ REGIONS = (Region.SOUTH_INDIAN, Region.NORTH_INDIAN)
 #: (eats_snack, meal, region, diet) -> bodies with no passing plate, as
 #: measured 2026-10-11 (N31): 28 with a snack in the day, 18 without.
 #: 2026-10-17 (N32a, a 120 g rice step): 12 with, 10 without.
+#: 2026-10-17 (N32b, protein weight counted up to BMI 30): 8 with, 6 without.
 #: Shrinks as gaps are fixed; must never grow.
 KNOWN_GAPS: dict[tuple[bool, str, str, str], list[str]] = {
     (True, 'breakfast', 'north_indian', 'vegan'): ['lose_fat male 55 kg', 'lose_fat male 70 kg', 'lose_fat male 90 kg', 'lose_fat female 55 kg', 'lose_fat female 70 kg', 'lose_fat female 90 kg'],
-    (True, 'lunch', 'south_indian', 'vegan'): ['lose_fat female 90 kg'],
     (True, 'dinner', 'south_indian', 'vegan'): ['lose_fat female 55 kg', 'lose_fat female 90 kg'],
-    (True, 'dinner', 'north_indian', 'vegetarian'): ['lose_fat female 90 kg'],
-    (True, 'dinner', 'north_indian', 'eggetarian'): ['lose_fat female 90 kg'],
-    (True, 'dinner', 'north_indian', 'vegan'): ['lose_fat female 90 kg'],
-    (False, 'breakfast', 'north_indian', 'vegetarian'): ['lose_fat female 90 kg'],
-    (False, 'breakfast', 'north_indian', 'eggetarian'): ['lose_fat female 90 kg'],
-    (False, 'breakfast', 'north_indian', 'non_vegetarian'): ['lose_fat female 90 kg'],
     (False, 'breakfast', 'north_indian', 'vegan'): ['lose_fat male 70 kg', 'lose_fat male 90 kg', 'lose_fat female 55 kg', 'lose_fat female 70 kg', 'lose_fat female 90 kg'],
-    (False, 'dinner', 'south_indian', 'vegan'): ['lose_fat female 70 kg', 'lose_fat female 90 kg'],
+    (False, 'dinner', 'south_indian', 'vegan'): ['lose_fat female 70 kg'],
 }
 
 
@@ -78,10 +72,10 @@ def _missing(eats_snack, slot, region, diet):
 
 
 def test_the_known_gaps_add_up():
-    # 6+1+2+1+1+1 = 12 with a snack; 1+1+1+5+2 = 10 without; 22 of 864
-    # (46 at N31, 2026-10-11; 24 closed by N32a's rice step).
-    assert sum(len(v) for k, v in KNOWN_GAPS.items() if k[0]) == 12
-    assert sum(len(v) for k, v in KNOWN_GAPS.items() if not k[0]) == 10
+    # 6+2 = 8 with a snack; 5+1 = 6 without; 14 of 864 (46 at N31,
+    # 2026-10-11; 24 closed by N32a's rice step, 8 by N32b's BMI-30 cap).
+    assert sum(len(v) for k, v in KNOWN_GAPS.items() if k[0]) == 8
+    assert sum(len(v) for k, v in KNOWN_GAPS.items() if not k[0]) == 6
 
 
 @pytest.mark.parametrize("region", REGIONS, ids=lambda r: r.value)

@@ -42,6 +42,9 @@ class ProteinOut(BaseModel):
     quality_adjusted_g: float
     g_per_kg: float
     diaas: float
+    #: The weight ``g_per_kg`` multiplies: actual weight up to BMI 30
+    #: (TASKS_3.md N32b). Required: the onboarding line says "g/kg of" it.
+    weight_basis_kg: float
     #: Slice 4. Grams of the day's protein that should come from sources
     #: clearing the DIAAS threshold. Displayed, gated on by nothing at day
     #: level; what IS enforced is the per-meal share of it, inside

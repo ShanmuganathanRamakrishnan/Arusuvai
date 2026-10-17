@@ -392,8 +392,12 @@
     // started deciding which dishes a plan may contain: a reader would have
     // concluded DIAAS affects nothing at all. "(a snack does not)" added
     // 2026-10-08, docs/audit_log.md "N23": a snack has no quality floor now.
+    // "of N kg" added 2026-10-17, docs/audit_log.md "N32b": weight counts
+    // only up to BMI 30, so "1.8 g/kg" alone would let a 90 kg reader
+    // multiply by 90 and get a number that is not the target.
     document.getElementById("obProtein").textContent =
-      `${fmtGrams(p.base_g)} g/day (${fmtRatio(p.g_per_kg)} g/kg) · protein ` +
+      `${fmtGrams(p.base_g)} g/day (${fmtRatio(p.g_per_kg)} g/kg of ` +
+      `${fmtGrams(p.weight_basis_kg)} kg) · protein ` +
       `quality is not applied to this target: DIAAS ${p.diaas} would imply ` +
       `${fmtGrams(p.quality_adjusted_g)} g, which is not what the plan is ` +
       `checked against · quality is applied to the dishes instead — about ` +

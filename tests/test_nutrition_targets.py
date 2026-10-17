@@ -118,6 +118,32 @@ class TestProteinIsQualityAdjusted:
         assert compute_protein(_make(goal=Goal.LOSE_FAT)).base_g == pytest.approx(126.0)
 
 
+class TestProteinWeightStopsAtBMI30:
+    """TASKS_3.md N32b (docs/audit_log.md 2026-10-17): the weight a g/kg
+    protein figure multiplies is counted only up to BMI 30 (Weijs, 2025)."""
+
+    def test_weight_above_bmi_30_is_counted_at_bmi_30(self):
+        # 170 cm: 30 x 1.70^2 = 86.7 kg. 90 kg is BMI 31.1, so 86.7 kg
+        # counts: 86.7 x 1.8 = 156.06 g, where actual weight gave 162.0 g.
+        pt = compute_protein(_make(weight_kg=90.0, height_cm=170.0,
+                                   sex=Sex.FEMALE, goal=Goal.LOSE_FAT))
+        assert pt.weight_basis_kg == pytest.approx(86.7)
+        assert pt.base_g == pytest.approx(156.06)
+        assert pt.g_per_kg == pytest.approx(1.8)
+
+    def test_weight_under_bmi_30_is_counted_in_full(self):
+        # 175 cm caps at 30 x 1.75^2 = 91.875 kg; 70 kg is under it.
+        pt = compute_protein(_make())
+        assert pt.weight_basis_kg == pytest.approx(70.0)
+        assert pt.base_g == pytest.approx(112.0)
+
+    def test_the_cap_follows_height(self):
+        # Same 90 kg: at 175 cm (cap 91.875 kg) it counts in full.
+        pt = compute_protein(_make(weight_kg=90.0, height_cm=175.0))
+        assert pt.weight_basis_kg == pytest.approx(90.0)
+        assert pt.base_g == pytest.approx(144.0)
+
+
 class TestMacros:
     def test_fat_is_the_amdr_midpoint_and_carb_is_the_remainder(self):
         # AMDR fat midpoint = (0.20 + 0.35) / 2 = 0.275 of energy.

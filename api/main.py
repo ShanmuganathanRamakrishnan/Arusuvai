@@ -465,6 +465,7 @@ def targets(body: ProfileIn) -> TargetsOut:
             quality_adjusted_g=dt.protein.quality_adjusted_g,
             g_per_kg=dt.protein.g_per_kg,
             diaas=dt.protein.diaas,
+            weight_basis_kg=dt.protein.weight_basis_kg,
             quality_source_day_g=dt.protein.quality_source_day_g,
         ),
         fat_g=dt.fat_g,

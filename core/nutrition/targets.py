@@ -9,7 +9,8 @@ invariant"):
     BMR (Mifflin-St Jeor)
       -> TDEE = BMR * activity PAL
         -> energy target = TDEE * goal factor
-    protein g/kg (by goal) * weight    <- the floor, unadjusted for quality
+    protein g/kg (by goal) * weight, counted up to BMI 30
+                                       <- the floor, unadjusted for quality
     energy -> fat (AMDR midpoint) + carb (remainder) + fibre + sodium ceiling
 
 ``diet`` is still read here, and as of slice 4 (2026-08-07) it **still changes
@@ -174,6 +175,13 @@ class ProteinTarget:
     quality_adjusted_g: float
     g_per_kg: float
     diaas: float
+    #: The body weight ``g_per_kg`` multiplies: actual weight, counted only up
+    #: to the weight of BMI ``protein.weight_cap_bmi`` at the person's height
+    #: (TASKS_3.md N32b, docs/audit_log.md 2026-10-17). ``base_g`` is
+    #: ``weight_basis_kg * g_per_kg``, so a display that says "g/kg" must say
+    #: of which weight. Required, not defaulted: a default would be a weight
+    #: the eater does not have.
+    weight_basis_kg: float
     #: Slice 4. Grams of the day's protein that should come from sources
     #: clearing ``protein.quality_diaas_threshold``. Carried on the DAY target
     #: and **gated on by nothing**: enforcing a day floor against a planner that
@@ -194,7 +202,13 @@ def compute_protein(profile: Profile) -> ProteinTarget:
 
     g_per_kg = citations.value_of(_protein_key(profile.goal))
     diaas = citations.value_of(_diaas_key(profile))
-    base_g = profile.weight_kg * g_per_kg
+    # Fat mass above BMI 30 adds little to the protein a body needs, so the
+    # weight a g/kg figure multiplies stops there (Weijs, 2025; TASKS_3.md
+    # N32b). Without it a 90 kg, 170 cm woman losing fat was asked for 162 g
+    # a day; stopping at BMI 30 closes 8 of N32a's 22 gaps.
+    cap_kg = citations.value_of("protein.weight_cap_bmi") * (profile.height_cm / 100.0) ** 2
+    weight_basis_kg = min(profile.weight_kg, cap_kg)
+    base_g = weight_basis_kg * g_per_kg
     # Divide, not multiply: DIAAS < 1 would mean MORE grams to hit the same
     # utilisable-protein requirement. Computed so the figure stays inspectable
     # and the per-diet constants stay meaningful, but no longer used as the
@@ -206,6 +220,7 @@ def compute_protein(profile: Profile) -> ProteinTarget:
         quality_adjusted_g=quality_adjusted_g,
         g_per_kg=g_per_kg,
         diaas=diaas,
+        weight_basis_kg=weight_basis_kg,
         # A fraction of base_g, NOT of quality_adjusted_g. Taking it off the
         # inflated figure would reintroduce DIAAS as a multiplier on a target
         # by the back door -- the exact double-application slice 2 removed and
