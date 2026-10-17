@@ -1448,6 +1448,15 @@ a:focus-visible {
   .app-nav .btn-link { padding-left: 4px; padding-right: 4px; }
 }
 
+/* A short screen -- in practice a phone on its side, 360px tall. The sticky
+   header (64px) and the wizard's sticky Continue bar (76px) together left
+   219px, 61% of the screen, for the form. Here the header scrolls away with
+   the page; Continue stays pinned, because it is the action. Pinned by
+   tests/test_web_mobile.py::test_a_phone_on_its_side_keeps_most_of_the_screen_for_content. */
+@media (max-height: 500px) {
+  .site-header { position: relative; }
+}
+
 /* ---------- reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

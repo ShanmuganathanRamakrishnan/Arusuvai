@@ -334,3 +334,38 @@ def test_the_signup_close_button_is_44px(signup_modal):
     bad = {s: (g["close_w"], g["close_h"]) for s, g in signup_modal.items()
            if g["close_w"] < 44 or g["close_h"] < 44}
     assert not bad, f"close button under 44px: {bad}"
+
+
+def test_a_phone_on_its_side_keeps_most_of_the_screen_for_content():
+    """At 740x360 the sticky header (64px) and the wizard's sticky Continue bar
+    (76px) left 219 of 360px for the form while scrolling -- 61%. On a short
+    screen the header now scrolls away with the page; Continue stays pinned,
+    because it is the action. Measured scrolled 300px into step 4 (the
+    longest step before the targets), where the header used to stay put."""
+    playwright = pytest.importorskip(
+        "playwright.sync_api",
+        reason="playwright is a dev-only dependency; see requirements-dev.txt",
+    )
+    if not _listening("localhost", 3000):
+        pytest.skip(f"no static server on {WEB_ORIGIN}")
+    with playwright.sync_playwright() as p:
+        browser = p.chromium.launch()
+        ctx = browser.new_context(viewport={"width": 740, "height": 360}, is_mobile=True, has_touch=True)
+        page = ctx.new_page()
+        page.goto(f"{WEB_ORIGIN}/onboarding.html", wait_until="networkidle")
+        page.wait_for_timeout(500)
+        for _ in range(3):
+            page.wait_for_selector("#obNext:not([disabled])", timeout=20000)
+            page.tap("#obNext")
+            page.wait_for_timeout(500)
+        g = page.evaluate("""() => {
+          document.documentElement.style.scrollBehavior = 'auto';
+          window.scrollTo(0, 300);
+          const h = document.querySelector('.site-header').getBoundingClientRect();
+          const n = document.querySelector('.ob-nav').getBoundingClientRect();
+          return {header_bottom: Math.max(0, h.bottom), nav_top: n.top, inner: innerHeight, scrolled: scrollY};
+        }""")
+        browser.close()
+    assert g["scrolled"] >= 300, f"step 4 was too short to scroll 300px: {g}"
+    free = (g["nav_top"] - g["header_bottom"]) / g["inner"]
+    assert free >= 0.7, f"only {free:.0%} of a 360px-tall screen is left for content: {g}"

@@ -6,6 +6,33 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-17 — M7: on a phone on its side, the header scrolls away
+
+**Found by the whole-flow walk (M6 entry).** At 740×360 the sticky header
+(64px) and the wizard's sticky Continue bar (76px) stay on screen while
+scrolling, leaving 219px, 61% of the screen, for the form.
+
+**Fixed.** `web/styles.css`: under `@media (max-height: 500px)` the header
+is `position: relative`, so it scrolls away with the page. Continue stays
+pinned: it is the action, and DESIGN_SYSTEM.md's rule puts it in the
+sticky bar. Upright phones and desktop are taller than 500px, so unchanged.
+
+**Test.** `tests/test_web_mobile.py::test_a_phone_on_its_side_keeps_most_of_the_screen_for_content`,
+scrolled 300px into wizard step 4, needs at least 70% of the screen free.
+Red before:
+```
+E       AssertionError: only 61% of a 360px-tall screen is left for content: {'header_bottom': 65, 'nav_top': 284.25, 'inner': 360, 'scrolled': 300}
+1 failed, 10 deselected in 4.47s
+```
+After: `1 passed, 10 deselected in 4.59s` (79%: 284 of 360). Deletion check:
+```
+== M: the short-screen header rule removed
+E       AssertionError: only 61% of a 360px-tall screen is left for content: {'header_bottom': 65, 'nav_top': 284.25, 'inner': 360, 'scrolled': 300}
+FAILED tests/test_web_mobile.py::test_a_phone_on_its_side_keeps_most_of_the_screen_for_content
+1 failed, 10 deselected in 4.45s
+== restored (byte-identical)
+```
+
 ## 2026-10-17 — M6: the sign-up box can be closed on a short screen
 
 **Found by the whole-flow walk** (owner, 2026-10-17: "check if it is
