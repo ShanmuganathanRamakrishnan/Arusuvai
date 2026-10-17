@@ -6,6 +6,77 @@ recorded whether or not they are fixed; the "Disposition" line says which.
 
 Newest entries at the top.
 
+## 2026-10-17 — first run of the three subagents: three auditor findings, one probe-runner defect
+
+**Asked.** Owner, 2026-10-17: build `.claude/agents/` (auditor, probe-runner,
+mutation-checker) and run each once on HEAD (`2185bf4`).
+
+**Auditor — run on `core/foods/retention.py`.** Its reply, appended verbatim
+as the workflow requires (`docs/repo_policy.md` "Audit workflow"). Not yet
+checked by the main session; each finding is open until someone runs it.
+
+No findings missed beyond the three below. Read: `core/foods/retention.py` (full), `core/nutrition/citations.py` (lines 1–1204, covering `Evidence`, `Constant`, `REVIEWED_MECHANISM_MATCHES`, all yield/oil-uptake constants), `core/foods/models.py:190-250` (`RecipeIngredient`), `core/foods/recipe_loader.py:80-310` (process-uncertainty derivation, `_check_zero_process_is_earned`, `load_recipe_file`), `data/recipes/plain_dosa.yaml`, `data/recipes/masala_dosa.yaml`, `data/recipes/egg_dosa.yaml`, `docs/methodology.md:1300-1330`, `core/CLAUDE.md`, plus a whole-repo grep for every caller of `core/foods/retention.py`.
+
+**1. `retention.py`'s computational API is never called by the pipeline that produces a recipe's numbers — HIGH**
+`core/foods/retention.py:140-176`, `core/foods/recipe_loader.py:90-111,291-297`, `data/recipes/plain_dosa.yaml:56-60`
+
+Concrete input: `plain_dosa.yaml`'s `gingelly_oil` line — `quantity_g: 3.5`, `process: oil_uptake.dosa_griddled`. `oil_uptake.dosa_griddled` is registered at `citations.py:718-735` as "fraction of applied oil retained" = 0.70. AGENTS.md's recipe-authoring rule says "Oil lines record oil retained... the applied amount goes in `note`" — but the note at `plain_dosa.yaml:60` reads only `"Retained oil, masala_dosa's line (oil_uptake.dosa_griddled)."`, with no applied-gram figure, and nothing in `recipe_loader.py` calls `retention.retained_oil_mass(applied_g, process_key)` to derive or check `3.5` against the registered 0.70 factor. A full-repo grep for every caller of `retention.cooked_mass`, `retention.raw_mass_for_cooked`, `retention.retained_oil_mass` and `retention.process` found exactly one file: `tests/test_citations.py`. Production code (`recipe_loader.py:90-111`) instead reads `citations.uncertainty_of(line.process_key)` directly to widen an *uncertainty* band, never `citations.value_of`/`retention.retained_oil_mass` to compute or verify the *point-estimate* mass. So the registered 0.70 retention factor has zero effect on the energy/fat value a user is shown for this line — it only scales the error bar. This is exactly invariant 2/3's target: a citation exists, is graded and mechanism-reviewed, but the number the user sees is not actually derived from it, and AGENTS.md's "No yield factor inline: go through `core/foods/retention.py`" is unenforced — nothing stops `quantity_g` on an oil-uptake line from drifting arbitrarily from what the cited constant would produce.
+Confidence: certain for the reachability claim (based on a full-repo static grep, not an execution claim); guess as to whether 3.5 g is itself wrong for 5.0 g applied (I have not independently derived the applied amount from a primary source — note `tests/test_citations.py:150` separately asserts `retained_oil_mass(5.0, "griddle_dosa") == 3.5`, which is the applied figure the note omits).
+
+*Disposition:* open.
+
+**2. `PROCESSES`' key vocabulary never matches the keys production code actually supplies, and covers only 2 of 6 registered oil-uptake constants — MEDIUM**
+`core/foods/retention.py:60-119`, `core/nutrition/citations.py:761-836`
+
+`retention.PROCESSES` is keyed by names like `"griddle_dosa"`, `"temper_vegetables"`, `"boil_rice"`. Every real call site that carries a process identifier — `RecipeIngredient.process_key` (`core/foods/models.py:220-226`) and every recipe YAML file — stores the `citations.py` constant key itself, e.g. `"oil_uptake.dosa_griddled"` (confirmed in `plain_dosa.yaml:59`, `masala_dosa.yaml:69,87`, `egg_dosa.yaml:63`). `retention.process("oil_uptake.dosa_griddled")` therefore raises `KeyError`, even for the one process `PROCESSES` claims to cover. Separately, `citations.py` registers and mechanism-reviews four more oil-uptake constants — `oil_uptake.paratha_griddled`, `oil_uptake.tikka_pan_roasted`, `oil_uptake.chicken_tikka_pan_roasted`, `oil_uptake.fish_tawa_fried` (lines 761-836) — none of which appear in `PROCESSES` at all. Concrete input: `retention.process("oil_uptake.paratha_griddled")` → `KeyError: "unknown process 'oil_uptake.paratha_griddled'. Add it here with a constant registered in citations.py"`, despite that constant already being registered, graded and mechanism-reviewed exactly as the error message demands. The module's own docstring ("holds the mapping from a named domestic process to the constant that describes it") and `citations.py`'s review entries agree with each other that the constant exists and is reviewed; neither survives being asked for the key the other side actually uses.
+Confidence: certain (read directly; no runtime claim).
+
+*Disposition:* open.
+
+**3. `docs/methodology.md` reports a "reporting" mechanism that nothing invokes — LOW**
+`docs/methodology.md:1318-1322`, `core/foods/retention.py:179-180`
+
+Methodology text states: *"`citations.unverified()` and `retention.unverified_processes()` report this honestly, and a test asserts nothing has been quietly flipped."* A full-repo grep for `unverified_processes` and for any `retention.` call outside tests found only `tests/test_citations.py`. No CLI command (`demo.py`), API route, or build-log generation step calls `retention.unverified_processes()`; combined with finding 2, it also only ever iterates the 2 processes in `PROCESSES`, not the 6 registered oil-uptake constants. The claim that this "report[s]" the unverified status is true only inside the test suite's own assertion, not as a live status surface a reader or the planner ever sees. This is a status claim (invariant 5 adjacent) resting on an artifact that is not actually reachable from anywhere a transcript would be taken.
+Confidence: certain that no non-test caller exists (static grep); guess as to whether this was the intended scope when the sentence was written.
+
+*Disposition:* open.
+
+**Probe-runner defect, found on its first run and fixed before commit.** Asked
+to run `d10_process_zero.py` on `81e23b4` and `2185bf4`, it ran both correctly
+(its own `diff` exit 0) but then retyped the output into its reply, and the
+retyped BEFORE block had a line the probe never printed (`neer_mor_wait_ignore`)
+and was missing one it did print (`phulka ... <-- moved`). It said so itself.
+A model retyping a transcript is not a transcript. Both code-running agents now
+write output to a file and return only path, sha256 and line count; the main
+session reads the file. Second run, checked by the main session:
+
+```
+before.txt  80 lines  sha256 90a6771c62034c4d92cd81b47902b65acff3b5a0bb9a0553e53db317e5caf060
+after.txt   80 lines  sha256 90a6771c62034c4d92cd81b47902b65acff3b5a0bb9a0553e53db317e5caf060
+main session's own run of the same probe on 2185bf4: sha256 90a6771c62034c4d92cd81b47902b65acff3b5a0bb9a0553e53db317e5caf060
+```
+
+**Mutation-checker — row B4 on `2185bf4`.** Its harness file, read by the
+main session (sha256 `bcabe0544bee99e8e418ac51526cb439b7670d90c5652ca867faed6835bcf7d9`):
+
+```
+B4   covered      tests/test_planner_combinations.py::TestMacroBounds::test_the_low_bound_is_the_fewest_servings_and_the_high_the_most
+====================================================================================================
+1 mechanisms: 1 covered, 0 soft-covered, 0 SURVIVED, 0 harness errors.
+```
+
+No survivor, so its reachability step (the unconditional `raise`) was not
+exercised by this run. Its reply also restated the summary line in its own
+words despite the rule; the restatement matched the file.
+
+**Also noticed, left:** `docs/design/probes/README.md` still says
+"`CLAUDE.md`'s Deletion testing convention"; that section is in `AGENTS.md`
+since 2026-10-17. And a subagent worktree whose HEAD moved is not cleaned up
+automatically (two were left behind and removed by hand).
+
+**Disposition.** Auditor findings 1–3: open. Probe-runner defect: fixed in
+the commit that adds the agents.
+
 ## 2026-10-17 — AGENTS.md: README and three other places have drifted (logged, not fixed)
 
 **Asked.** Owner, 2026-10-17: move the shared rules from `CLAUDE.md` into a new
